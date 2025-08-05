@@ -1,3 +1,5 @@
+
+
 import logging
 import sounddevice as sd
 import scipy.io.wavfile as wav
@@ -7,6 +9,8 @@ from PIL import Image, ImageDraw
 import pystray
 import numpy as np
 import os
+import sys
+import subprocess
 from dotenv import load_dotenv
 import json
 import pyperclip
@@ -16,48 +20,94 @@ import time
 from google.cloud import speech
 from google.oauth2 import service_account
 
+# Importations pour l'interface graphique (Tkinter)
+from gui_tkinter import VisualizerWindowTkinter # Notre fenêtre de visualiseur Tkinter
+
 # Charger les variables d'environnement depuis le fichier .env
-load_dotenv()
+# Utilise le chemin absolu pour être sûr de charger le bon fichier
+script_dir = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(script_dir, '.env')
+load_dotenv(env_path)
 
 # --- Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-HOTKEY_STRING = '<ctrl>+<alt>+s'
+CONFIG_FILE = "config.json"
 SAMPLE_RATE = 44100
 OUTPUT_FILENAME = "recording.wav"
 
 # --- Variables globales ---
+config = {} # Contiendra la configuration chargée depuis config.json
 is_recording = False
 hotkey_listener = None
 audio_stream = None
 audio_frames = []
-google_credentials = None # Pour stocker les crédentials en mémoire
+google_credentials = None
+transcription_history = [] # Historique des transcriptions réussies
+global_icon_pystray = None # Pour accéder à l'icône depuis d'autres fonctions
+
+# Variables globales pour la GUI Tkinter
+visualizer_window = None
+
+# --- Custom Logging Handler ---
+class GuiLoggingHandler(logging.Handler):
+    """Un handler de log qui envoie les enregistrements à la fenêtre Tkinter."""
+    def __init__(self, gui_window_instance):
+        super().__init__()
+        self.gui_window = gui_window_instance
+
+    def emit(self, record):
+        if self.gui_window and self.gui_window.main_window:
+            log_entry = self.format(record)
+            self.gui_window.add_log_message(log_entry)
 
 # --- Fonctions de l'application ---
 
-def get_google_credentials():
-    """Crée un objet credentials en mémoire à partir des variables d'environnement."""
-    env_vars = ["PROJECT_ID", "PRIVATE_KEY_ID", "PRIVATE_KEY", "CLIENT_EMAIL", "CLIENT_ID"]
-    if not all(os.getenv(var) for var in env_vars):
-        logging.error("ERREUR: Toutes les variables d'environnement Google Cloud ne sont pas définies dans le .env")
-        return None
+def load_config():
+    """Charge la configuration depuis config.json ou la crée avec des valeurs par défaut."""
+    global config
+    defaults = {
+        "record_hotkey": "<ctrl>+<alt>+s",
+        "open_window_hotkey": "<ctrl>+<alt>+o"
+    }
+    try:
+        if not os.path.exists(CONFIG_FILE):
+            logging.info(f"Fichier de configuration non trouvé, création de {CONFIG_FILE} avec les valeurs par défaut.")
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(defaults, f, indent=4)
+            config = defaults
+        else:
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+    except Exception as e:
+        logging.error(f"Erreur lors du chargement de la configuration : {e}")
+        config = defaults
 
+
+def get_google_credentials():
+    env_vars = ["PROJECT_ID", "PRIVATE_KEY_ID", "PRIVATE_KEY", "CLIENT_EMAIL", "CLIENT_ID"]
+    
+    # Debug: vérifier quelles variables sont manquantes
+    missing_vars = [var for var in env_vars if not os.getenv(var)]
+    if missing_vars:
+        logging.error(f"ERREUR: Variables d'environnement manquantes: {missing_vars}")
+        logging.error("Vérifiez que le fichier .env existe et contient toutes les variables requises.")
+        return None
     credentials_info = {
         "type": "service_account",
         "project_id": os.getenv("PROJECT_ID"),
         "private_key_id": os.getenv("PRIVATE_KEY_ID"),
-        "private_key": os.getenv("PRIVATE_KEY").replace('\n', '\n'),
+        "private_key": os.getenv("PRIVATE_KEY", "").replace('\\n', '\n'),
         "client_email": os.getenv("CLIENT_EMAIL"),
         "client_id": os.getenv("CLIENT_ID"),
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{os.getenv('CLIENT_EMAIL').replace('@', '%40')}"
+        "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{os.getenv('CLIENT_EMAIL', '').replace('@', '%40')}"
     }
-    
     logging.info("Crédentials Google Cloud chargés en mémoire.")
     return service_account.Credentials.from_service_account_info(credentials_info)
 
-def create_icon(color1, color2):
+def create_icon_pystray(color1, color2):
     width = 64
     height = 64
     image = Image.new('RGB', (width, height), color1)
@@ -66,102 +116,317 @@ def create_icon(color1, color2):
     dc.rectangle((0, height // 2, width // 2, height), fill=color2)
     return image
 
-def transcribe_and_copy(filename, icon):
-    """Transcription directe avec l'API Google Cloud pour une qualité optimale."""
-    global google_credentials
+def transcribe_and_copy(filename):
+    global google_credentials, visualizer_window, transcription_history
     try:
+        # Vérification des credentials
+        if google_credentials is None:
+            logging.error("Les credentials Google Cloud ne sont pas initialisés.")
+            raise Exception("Credentials not initialized")
+        
+        logging.info(f"Utilisation des credentials pour le projet: {google_credentials.project_id}")
         client = speech.SpeechClient(credentials=google_credentials)
-
         with open(filename, "rb") as audio_file:
             content = audio_file.read()
-
         audio = speech.RecognitionAudio(content=content)
         config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
             sample_rate_hertz=SAMPLE_RATE,
             language_code="fr-FR",
-            # --- Options avancées pour la qualité de dictée ---
             enable_automatic_punctuation=True,
-            model="latest_long" # Modèle optimisé pour les formats longs
+            model="latest_long"
         )
-
         logging.info("Envoi de l'audio à Google Cloud Speech (mode dictée)...")
         response = client.recognize(config=config, audio=audio)
-        
         if not response.results:
             logging.warning("Aucun texte n'a pu être transcrit.")
-            raise sr.UnknownValueError()
-
+            raise Exception("No text transcribed")
         text = response.results[0].alternatives[0].transcript
         logging.info(f"Texte transcrit: {text}")
-        
         pyperclip.copy(text)
         logging.info("Texte copié dans le presse-papiers !")
+
+        # Ajout à l'historique et mise à jour de la GUI si elle est ouverte
+        transcription_history.append(text)
+        if visualizer_window and visualizer_window.main_window and visualizer_window.main_window.winfo_exists():
+            # Planifie l'ajout dans le thread de la GUI pour éviter les conflits
+            visualizer_window.root.after(0, visualizer_window.add_transcription_to_history, text)
         
-        icon.icon = create_icon('green', 'darkgreen')
-        time.sleep(2)
+        # Notification visuelle via la fenêtre GUI
+        if visualizer_window and hasattr(visualizer_window, 'show_status'):
+            visualizer_window.show_status("success")
 
     except Exception as e:
         logging.error(f"Erreur lors de la transcription/copie : {e}")
-        icon.icon = create_icon('orange', 'darkorange')
-        time.sleep(2)
-    finally:
-        if not is_recording:
-            icon.icon = create_icon('white', 'gray')
+        if visualizer_window and hasattr(visualizer_window, 'show_status'):
+            visualizer_window.show_status("error")
 
-def toggle_recording(icon):
-    global is_recording, audio_stream, audio_frames
+# Plus besoin de la fonction transcription spécialisée - on utilise la standard
+
+def audio_callback(indata, frames, time, status):
+    global visualizer_window
+    if status:
+        logging.warning(status)
+    audio_frames.append(indata.copy())
+    if indata.size > 0:
+        mean_square = np.mean(indata**2)
+        if mean_square < 0: mean_square = 0
+        rms = np.sqrt(mean_square) / 32768.0
+        rms_scaled = rms * 200 
+        
+        # Mise à jour du visualiseur Tkinter (doit être fait dans le thread Tkinter)
+        if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
+            visualizer_window.window.after(0, visualizer_window.update_visualizer, rms_scaled)
+
+# Plus besoin du callback spécialisé - on utilise le standard
+
+def toggle_recording(icon_pystray):
+    global is_recording, audio_stream, audio_frames, visualizer_window
+
     is_recording = not is_recording
+
+    # Mettre à jour l'état du bouton d'enregistrement dans l'interface
+    if visualizer_window and hasattr(visualizer_window, 'root') and visualizer_window.root:
+        try:
+            visualizer_window.root.after(0, lambda: visualizer_window.update_record_button_state(is_recording))
+        except Exception as e:
+            logging.error(f"Erreur lors de la mise à jour du bouton: {e}")
+
     if is_recording:
         logging.info("Démarrage de l'enregistrement...")
-        icon.icon = create_icon('blue', 'darkblue')
+        
+        # Note: visualizer_window sera initialisé par le thread principal
+        
+        # Afficher la fenêtre de visualisation si disponible
+        if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
+            visualizer_window.window.after(0, visualizer_window.show) # Affiche la fenêtre
+            visualizer_window.window.after(0, visualizer_window.set_mode, "recording") # Passe en mode enregistrement
+        
         audio_frames = []
-        def audio_callback(indata, frames, time, status):
-            if status: logging.warning(status)
-            audio_frames.append(indata.copy())
         audio_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='int16', callback=audio_callback)
         audio_stream.start()
+
     else:
-        if not audio_stream: return
         logging.info("Arrêt de l'enregistrement...")
-        audio_stream.stop()
-        audio_stream.close()
-        icon.icon = create_icon('white', 'gray')
-        recording_data = np.concatenate(audio_frames, axis=0)
-        wav.write(OUTPUT_FILENAME, SAMPLE_RATE, recording_data)
-        logging.info(f"Fichier sauvegardé: {OUTPUT_FILENAME}")
-        threading.Thread(target=transcribe_and_copy, args=(OUTPUT_FILENAME, icon)).start()
-        logging.info("Prêt pour un nouvel enregistrement.")
+        
+        # Vérification et arrêt sécurisé de l'audio stream
+        if not audio_stream:
+            logging.warning("Aucun stream audio à arrêter")
+            return
+            
+        try:
+            logging.info("Arrêt du stream audio...")
+            audio_stream.stop()
+            audio_stream.close()
+            audio_stream = None  # Réinitialiser la variable
+            logging.info("Stream audio fermé avec succès")
+        except Exception as e:
+            logging.error(f"Erreur lors de la fermeture du stream audio: {e}")
+            audio_stream = None  # Réinitialiser même en cas d'erreur
+        
+        # Vérifier que visualizer_window est bien initialisé
+        try:
+            if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
+                visualizer_window.window.after(0, visualizer_window.set_mode, "processing") # Passe en mode traitement
+                visualizer_window.window.after(0, visualizer_window.hide) # Cache la fenêtre
+                logging.info("Interface de visualisation mise à jour")
+        except Exception as e:
+            logging.error(f"Erreur lors de la mise à jour de l'interface: {e}")
 
-def setup_hotkey(icon):
-    global hotkey_listener
-    if hotkey_listener: hotkey_listener.stop()
-    hotkey_listener = keyboard.GlobalHotKeys({HOTKEY_STRING: lambda: toggle_recording(icon)})
+        # Sauvegarde sécurisée des données audio
+        try:
+            if len(audio_frames) == 0:
+                logging.warning("Aucune donnée audio à sauvegarder")
+                return
+                
+            logging.info(f"Concaténation de {len(audio_frames)} frames audio...")
+            recording_data = np.concatenate(audio_frames, axis=0)
+            wav.write(OUTPUT_FILENAME, SAMPLE_RATE, recording_data)
+            logging.info(f"Fichier sauvegardé: {OUTPUT_FILENAME}")
+
+            # Lancement de la transcription dans un thread séparé
+            logging.info("Lancement de la transcription...")
+            threading.Thread(target=transcribe_and_copy, args=(OUTPUT_FILENAME,)).start()
+            logging.info("Thread de transcription démarré - Prêt pour un nouvel enregistrement.")
+            
+        except Exception as e:
+            logging.error(f"Erreur lors de la sauvegarde ou de la transcription: {e}")
+
+def toggle_recording_with_gui(icon_pystray, gui_instance):
+    """Version de toggle_recording qui utilise l'instance GUI fournie."""
+    global is_recording, audio_stream, audio_frames, visualizer_window
+    
+    # TRUC SIMPLE : remplacer temporairement visualizer_window par gui_instance
+    old_visualizer_window = visualizer_window
+    visualizer_window = gui_instance
+    
+    try:
+        # Appeler la fonction normale qui marche
+        toggle_recording(icon_pystray)
+    finally:
+        # Remettre l'ancienne valeur
+        visualizer_window = old_visualizer_window
+
+def toggle_recording_from_gui():
+    """Version de toggle_recording spécialement pour l'interface GUI."""
+    global global_icon_pystray
+    toggle_recording(global_icon_pystray)
+
+def update_and_restart_hotkeys(new_config):
+    """Met à jour la configuration, la sauvegarde et redémarre l'écoute des raccourcis."""
+    global config, global_icon_pystray
+    config.update(new_config)
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=4)
+        logging.info(f"Configuration sauvegardée dans {CONFIG_FILE}")
+    except Exception as e:
+        logging.error(f"Erreur lors de la sauvegarde de la configuration : {e}")
+    
+    if global_icon_pystray:
+        setup_hotkey(global_icon_pystray)
+
+def setup_hotkey(icon_pystray):
+    global hotkey_listener, config
+    if hotkey_listener:
+        hotkey_listener.stop()
+
+    hotkey_map = {}
+    record_key = config.get('record_hotkey')
+    open_key = config.get('open_window_hotkey')
+
+    if record_key: hotkey_map[record_key] = lambda: toggle_recording(icon_pystray)
+    if open_key: hotkey_map[open_key] = open_interface
+
+    if not hotkey_map:
+        logging.warning("Aucun raccourci clavier n'est configuré.")
+        return
+
+    hotkey_listener = keyboard.GlobalHotKeys(hotkey_map)
     hotkey_listener.start()
+    logging.info(f"Raccourcis clavier activés : {list(hotkey_map.keys())}")
 
-def on_quit(icon, item):
-    global hotkey_listener
+def on_quit(icon_pystray, item):
+    global hotkey_listener, visualizer_window
     logging.info("Arrêt de l'application...")
-    if hotkey_listener: hotkey_listener.stop()
-    if audio_stream: audio_stream.close()
-    icon.stop()
+    if hotkey_listener:
+        hotkey_listener.stop()
+    if audio_stream:
+        audio_stream.close()
+    if visualizer_window:
+        # Planifie la fermeture de la fenêtre Tkinter dans son propre thread
+        # pour éviter les problèmes de concurrence qui peuvent bloquer la fermeture.
+        visualizer_window.root.after(0, visualizer_window.close)
+    icon_pystray.stop()
+
+def open_interface():
+    """Demande à la boucle Tkinter d'ouvrir l'interface principale."""
+    if visualizer_window:
+        # On utilise `after` pour s'assurer que la création de la fenêtre
+        # se fait dans le thread Tkinter, évitant les problèmes de concurrence.
+        # after() ne supporte que les arguments positionnels, donc on utilise lambda
+        visualizer_window.root.after(
+            0, 
+            lambda: visualizer_window.create_main_interface_window(
+                history=transcription_history, 
+                current_config=config, 
+                save_callback=update_and_restart_hotkeys))
+    else:
+        logging.warning("La fenêtre du visualiseur n'est pas encore initialisée.")
+
+def run_tkinter_app():
+    """Fonction pour lancer l'application Tkinter dans un thread séparé."""
+    global visualizer_window
+    visualizer_window = VisualizerWindowTkinter()
+    visualizer_window.run() # Lance la boucle principale Tkinter
 
 def main():
-    global google_credentials
+    global google_credentials, visualizer_window, global_icon_pystray
+
+    # --- Gestion du mode de lancement (console ou arrière-plan) ---
+    # Si '--console' est passé en argument, on est en mode de développement/debug.
+    # Sinon, on lance en arrière-plan.
+    is_console_mode = '--console' in sys.argv
+    is_background_child = '--background-child' in sys.argv
+
+    # Si on n'est pas en mode console et qu'on n'est pas déjà le processus enfant,
+    # on relance le script en arrière-plan et on quitte.
+    if not is_console_mode and not is_background_child:
+        try:
+            # Construit le chemin vers pythonw.exe pour un lancement sans console sur Windows
+            python_executable = sys.executable.replace('python.exe', 'pythonw.exe')
+            script_path = os.path.abspath(__file__)
+            args = [python_executable, script_path, '--background-child']
+
+            # Lance le processus enfant de manière détachée
+            subprocess.Popen(args, creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW)
+            print("Application lancée en arrière-plan. Les logs sont dans 'voice_tool.log'.")
+            sys.exit(0)
+        except Exception as e:
+            print(f"Erreur lors du lancement en arrière-plan : {e}")
+            sys.exit(1)
+
+    # --- Configuration du logging ---
+    if is_console_mode:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    else:
+        # Pour le processus en arrière-plan, on logue dans un fichier
+        log_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'voice_tool.log')
+        logging.basicConfig(filename=log_file_path, filemode='a', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    load_config() # Charge la configuration au démarrage
+
+    # Debug: vérifier si le .env est bien chargé
+    logging.info(f"Répertoire de travail: {os.getcwd()}")
+    logging.info(f"Fichier .env existe: {os.path.exists('.env')}")
+    logging.info(f"PROJECT_ID chargé: {'Oui' if os.getenv('PROJECT_ID') else 'Non'}")
+    
     google_credentials = get_google_credentials()
     if not google_credentials:
         return
 
-    logging.info("Lancement de l'application en mode barre d'état système.")
-    menu = pystray.Menu(pystray.MenuItem('Quitter', on_quit))
-    icon = pystray.Icon(
+    logging.info("Démarrage de l'application...")
+
+    # Lancer l'application Tkinter dans un thread séparé
+    tkinter_thread = threading.Thread(target=run_tkinter_app)
+    tkinter_thread.daemon = True # Permet au thread de se fermer avec l'app principale
+    tkinter_thread.start()
+
+    # Attendre que la fenêtre Tkinter soit initialisée avant de continuer
+    max_wait = 50  # 5 secondes maximum
+    wait_count = 0
+    while visualizer_window is None and wait_count < max_wait:
+        time.sleep(0.1)
+        wait_count += 1
+    
+    if visualizer_window is None:
+        logging.error("Impossible d'initialiser la fenêtre de visualisation dans les temps impartis.")
+        return
+    else:
+        logging.info("Fenêtre de visualisation initialisée avec succès.")
+
+    # --- Rediriger les logs vers la GUI ---
+    # Créer le handler personnalisé et l'ajouter au logger racine.
+    # Tous les logs seront maintenant aussi envoyés à la GUI si sa fenêtre est ouverte.
+    gui_handler = GuiLoggingHandler(visualizer_window)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
+    gui_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(gui_handler)
+
+    # Configuration de l'icône Pystray (reste statique)
+    menu = pystray.Menu(
+        pystray.MenuItem('Ouvrir', open_interface),
+        pystray.MenuItem('Quitter', on_quit)
+    )
+    icon_pystray = pystray.Icon(
         'VoiceTool',
-        icon=create_icon('white', 'gray'), 
+        icon=create_icon_pystray('white', 'gray'), 
         title='Voice Tool (Ctrl+Alt+S) - Google Cloud',
         menu=menu
     )
-    setup_hotkey(icon)
-    icon.run()
+    global_icon_pystray = icon_pystray # Rend l'icône accessible globalement
+    setup_hotkey(icon_pystray)
+    icon_pystray.run()
 
 if __name__ == "__main__":
     main()
