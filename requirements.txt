@@ -1,0 +1,9 @@
+pynput
+sounddevice
+scipy
+pystray
+Pillow
+SpeechRecognition
+google-cloud-speech
+python-dotenv
+pyperclip
