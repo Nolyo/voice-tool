@@ -253,6 +253,35 @@ class VisualizerWindowTkinter:
                 import sys
                 sys.exit(0)
 
+    def _on_history_double_click(self, event):
+        """Copie automatiquement l'élément sur lequel on double-clique."""
+        self._copy_history_selection()
+
+    def _on_history_right_click(self, event):
+        """Affiche le menu contextuel au clic droit."""
+        # Sélectionner l'élément sous le curseur
+        index = self.history_listbox.nearest(event.y)
+        if index >= 0:
+            self.history_listbox.selection_clear(0, tk.END)
+            self.history_listbox.selection_set(index)
+            self.history_listbox.activate(index)
+            
+            # Créer le menu contextuel
+            context_menu = tk.Menu(self.root, tearoff=0, bg="#2b2b2b", fg="white", 
+                                 activebackground="#0078d7", activeforeground="white",
+                                 relief=tk.FLAT, borderwidth=1)
+            
+            context_menu.add_command(label="📋 Copier", command=self._copy_history_selection)
+            context_menu.add_separator()
+            context_menu.add_command(label="🗑️ Supprimer", command=self._delete_history_selection, 
+                                   foreground="#dc3545")
+            
+            # Afficher le menu à la position du curseur
+            try:
+                context_menu.tk_popup(event.x_root, event.y_root)
+            finally:
+                context_menu.grab_release()
+
 
     def create_main_interface_window(self, history=None, current_config=None, save_callback=None):
         """Crée et affiche l'interface principale avec onglets (Historique/Logs, Paramètres)."""
@@ -292,6 +321,10 @@ class VisualizerWindowTkinter:
         self.history_listbox = tk.Listbox(listbox_frame, yscrollcommand=history_scrollbar.set, bg="#3c3c3c", fg="white", selectbackground="#0078d7", relief=tk.FLAT, borderwidth=0, highlightthickness=0, exportselection=False)
         self.history_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         history_scrollbar.config(command=self.history_listbox.yview)
+        
+        # Événements pour la listbox de l'historique
+        self.history_listbox.bind("<Double-Button-1>", self._on_history_double_click)
+        self.history_listbox.bind("<Button-3>", self._on_history_right_click)  # Clic droit
         # Charger l'historique avec support du nouveau format
         if history:
             self.history_listbox.text_data = {}
@@ -307,15 +340,12 @@ class VisualizerWindowTkinter:
                 self.history_listbox.insert(tk.END, display_text)
                 self.history_listbox.text_data[index] = actual_text
         
-        # Boutons pour l'historique
-        buttons_frame = tk.Frame(history_frame, bg="#2b2b2b")
-        buttons_frame.pack(pady=(10,5), padx=5, fill=tk.X)
+        # Indication pour les interactions avec l'historique
+        help_frame = tk.Frame(history_frame, bg="#2b2b2b")
+        help_frame.pack(pady=(10,5), padx=5, fill=tk.X)
         
-        tk.Button(buttons_frame, text="Copier la sélection", command=self._copy_history_selection, 
-                 bg="#0078d7", fg="white", relief=tk.FLAT, activebackground="#005a9e", activeforeground="white").pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0,2))
-        
-        tk.Button(buttons_frame, text="Supprimer", command=self._delete_history_selection, 
-                 bg="#dc3545", fg="white", relief=tk.FLAT, activebackground="#c82333", activeforeground="white").pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(2,0))
+        tk.Label(help_frame, text="💡 Double-clic pour copier • Clic droit pour le menu", 
+                fg="#888888", bg="#2b2b2b", font=("Arial", 9), justify=tk.CENTER).pack()
         
         # Message informatif pour le raccourci d'enregistrement
         shortcut_frame = tk.Frame(history_frame, bg="#1e1e1e", relief=tk.RAISED, bd=1)
