@@ -6,13 +6,20 @@ import numpy as np
 import logging
 from tkinter import ttk
 import pyperclip
+import os
 
 logging.basicConfig(level=logging.INFO)
 
 class VisualizerWindowTkinter:
-    def __init__(self):
+    def __init__(self, icon_path=None):
         self.root = tk.Tk()
         self.root.withdraw() # Cache la fenêtre principale Tkinter par défaut
+        self.icon_path = icon_path
+        
+        # Appliquer l'icône à la fenêtre root
+        if self.icon_path:
+            self.set_window_icon(self.root)
+        
         self.main_window = None # Pour garder une référence à la fenêtre principale
         self.log_text_widget = None # Pour le widget qui affichera les logs
         self.history_listbox = None # Pour la Listbox de l'historique
@@ -50,6 +57,17 @@ class VisualizerWindowTkinter:
         self.window.bind('<B1-Motion>', self._do_drag)
 
         logging.info("VisualizerWindowTkinter initialisée.")
+
+    def set_window_icon(self, window):
+        """Définit l'icône personnalisée pour une fenêtre Tkinter."""
+        try:
+            if self.icon_path and os.path.exists(self.icon_path):
+                window.iconbitmap(self.icon_path)
+                logging.info(f"Icône appliquée: {self.icon_path}")
+            else:
+                logging.warning("Impossible de trouver l'icône personnalisée")
+        except Exception as e:
+            logging.error(f"Erreur lors de l'application de l'icône: {e}")
 
     def center_window(self):
         self.window.update_idletasks()
@@ -135,11 +153,28 @@ class VisualizerWindowTkinter:
                 self.log_text_widget.see(tk.END) # Faire défiler jusqu'en bas
             self.root.after(0, append_message)
 
-    def add_transcription_to_history(self, text):
+    def add_transcription_to_history(self, history_item):
         """Ajoute une nouvelle transcription à la Listbox de l'historique, de manière thread-safe."""
         if self.history_listbox and self.history_listbox.winfo_exists():
             def insert_item():
-                self.history_listbox.insert(tk.END, text)
+                # Gérer à la fois l'ancien format (string) et le nouveau (dict)
+                if isinstance(history_item, dict):
+                    display_text = f"[{history_item['timestamp']}] {history_item['text']}"
+                    actual_text = history_item['text']
+                else:
+                    # Rétrocompatibilité avec l'ancien format
+                    display_text = str(history_item)
+                    actual_text = str(history_item)
+                
+                # Stocker le texte réel dans une structure de données associée
+                index = self.history_listbox.size()
+                self.history_listbox.insert(tk.END, display_text)
+                
+                # Stocker le texte réel pour la copie (utilise un attribut personnalisé)
+                if not hasattr(self.history_listbox, 'text_data'):
+                    self.history_listbox.text_data = {}
+                self.history_listbox.text_data[index] = actual_text
+                
                 self.history_listbox.see(tk.END) # Faire défiler jusqu'au nouvel élément
             self.root.after(0, insert_item)
 
@@ -153,7 +188,14 @@ class VisualizerWindowTkinter:
             logging.info("Aucun élément sélectionné dans l'historique.")
             return
         
-        selected_text = self.history_listbox.get(selected_indices[0])
+        selected_index = selected_indices[0]
+        
+        # Utiliser le texte stocké si disponible, sinon fallback sur le texte affiché
+        if hasattr(self.history_listbox, 'text_data') and selected_index in self.history_listbox.text_data:
+            selected_text = self.history_listbox.text_data[selected_index]
+        else:
+            selected_text = self.history_listbox.get(selected_index)
+        
         pyperclip.copy(selected_text)
         logging.info(f"Texte copié depuis l'historique : '{selected_text[:40]}...'")
 
@@ -191,6 +233,10 @@ class VisualizerWindowTkinter:
         self.main_window = tk.Toplevel(self.root)
         self.main_window.title("Voice Tool")
         self.main_window.geometry("800x500")
+        
+        # Définir l'icône personnalisée
+        self.set_window_icon(self.main_window)
+        
         self.main_window.update_idletasks()
         x = self.root.winfo_screenwidth() // 2 - self.main_window.winfo_width() // 2
         y = self.root.winfo_screenheight() // 2 - self.main_window.winfo_height() // 2
@@ -214,7 +260,20 @@ class VisualizerWindowTkinter:
         self.history_listbox = tk.Listbox(listbox_frame, yscrollcommand=history_scrollbar.set, bg="#3c3c3c", fg="white", selectbackground="#0078d7", relief=tk.FLAT, borderwidth=0, highlightthickness=0, exportselection=False)
         self.history_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         history_scrollbar.config(command=self.history_listbox.yview)
-        if history: [self.history_listbox.insert(tk.END, item) for item in history]
+        # Charger l'historique avec support du nouveau format
+        if history:
+            self.history_listbox.text_data = {}
+            for index, item in enumerate(history):
+                if isinstance(item, dict):
+                    display_text = f"[{item['timestamp']}] {item['text']}"
+                    actual_text = item['text']
+                else:
+                    # Rétrocompatibilité avec l'ancien format
+                    display_text = str(item)
+                    actual_text = str(item)
+                
+                self.history_listbox.insert(tk.END, display_text)
+                self.history_listbox.text_data[index] = actual_text
         tk.Button(history_frame, text="Copier la sélection", command=self._copy_history_selection, bg="#0078d7", fg="white", relief=tk.FLAT, activebackground="#005a9e", activeforeground="white").pack(pady=(10,5), padx=5, fill=tk.X)
         
         # Bouton d'enregistrement

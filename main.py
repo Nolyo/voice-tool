@@ -15,6 +15,14 @@ from dotenv import load_dotenv
 import json
 import pyperclip
 import time
+import tempfile
+import platform
+
+# Import conditionnel selon l'OS
+if platform.system() != 'Windows':
+    import fcntl
+else:
+    import msvcrt
 
 # Importations spécifiques à Google Cloud
 from google.cloud import speech
@@ -35,6 +43,23 @@ CONFIG_FILE = "config.json"
 SAMPLE_RATE = 44100
 OUTPUT_FILENAME = "recording.wav"
 
+def get_app_data_dir():
+    """Retourne le répertoire AppData pour Voice Tool."""
+    if platform.system() == 'Windows':
+        appdata = os.getenv('APPDATA', os.path.expanduser('~'))
+        app_dir = os.path.join(appdata, 'VoiceTool')
+    else:
+        # Sur Linux/Mac, utiliser ~/.config/VoiceTool
+        app_dir = os.path.join(os.path.expanduser('~'), '.config', 'VoiceTool')
+    
+    # Créer le répertoire s'il n'existe pas
+    os.makedirs(app_dir, exist_ok=True)
+    return app_dir
+
+# Chemins vers les fichiers de données
+APP_DATA_DIR = get_app_data_dir()
+HISTORY_FILE = os.path.join(APP_DATA_DIR, 'transcription_history.json')
+
 # --- Variables globales ---
 config = {} # Contiendra la configuration chargée depuis config.json
 is_recording = False
@@ -48,6 +73,11 @@ global_icon_pystray = None # Pour accéder à l'icône depuis d'autres fonctions
 # Variables globales pour la GUI Tkinter
 visualizer_window = None
 
+# Variables pour la gestion d'instance unique
+lock_file = None
+LOCK_FILE_PATH = os.path.join(tempfile.gettempdir(), 'voice_tool.lock')
+COMMAND_FILE_PATH = os.path.join(tempfile.gettempdir(), 'voice_tool_command.txt')
+
 # --- Custom Logging Handler ---
 class GuiLoggingHandler(logging.Handler):
     """Un handler de log qui envoie les enregistrements à la fenêtre Tkinter."""
@@ -59,6 +89,164 @@ class GuiLoggingHandler(logging.Handler):
         if self.gui_window and self.gui_window.main_window:
             log_entry = self.format(record)
             self.gui_window.add_log_message(log_entry)
+
+# --- Fonctions de gestion d'instance unique ---
+
+def acquire_lock():
+    """Tente d'acquérir le verrou d'instance unique. Retourne True si réussi, False sinon."""
+    global lock_file
+    try:
+        if platform.system() == 'Windows':
+            # Sur Windows, on utilise un fichier simple avec gestion d'exception
+            if os.path.exists(LOCK_FILE_PATH):
+                # Vérifier si le processus est encore actif
+                try:
+                    with open(LOCK_FILE_PATH, 'r') as f:
+                        pid = int(f.read().strip())
+                    # Essayer de vérifier si le processus existe encore
+                    os.kill(pid, 0)  # Signal 0 ne tue pas mais vérifie l'existence
+                    return False  # Le processus existe encore
+                except (OSError, ValueError, ProcessLookupError):
+                    # Le processus n'existe plus, on peut prendre le verrou
+                    os.remove(LOCK_FILE_PATH)
+            
+            lock_file = open(LOCK_FILE_PATH, 'w')
+            lock_file.write(str(os.getpid()))
+            lock_file.flush()
+            return True
+        else:
+            # Sur Unix/Linux, on utilise fcntl
+            lock_file = open(LOCK_FILE_PATH, 'w')
+            fcntl.lockf(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            lock_file.write(str(os.getpid()))
+            lock_file.flush()
+            return True
+    except (IOError, OSError):
+        if lock_file:
+            lock_file.close()
+            lock_file = None
+        return False
+
+def release_lock():
+    """Libère le verrou d'instance unique."""
+    global lock_file
+    if lock_file:
+        try:
+            if platform.system() == 'Windows':
+                lock_file.close()
+                os.remove(LOCK_FILE_PATH)
+            else:
+                fcntl.lockf(lock_file, fcntl.LOCK_UN)
+                lock_file.close()
+                os.remove(LOCK_FILE_PATH)
+        except (IOError, OSError):
+            pass
+        lock_file = None
+
+def send_command_to_existing_instance(command):
+    """Envoie une commande à l'instance existante via un fichier temporaire."""
+    try:
+        with open(COMMAND_FILE_PATH, 'w') as f:
+            f.write(command)
+        return True
+    except (IOError, OSError):
+        return False
+
+def check_for_commands():
+    """Vérifie s'il y a des commandes en attente et les exécute."""
+    try:
+        if os.path.exists(COMMAND_FILE_PATH):
+            with open(COMMAND_FILE_PATH, 'r') as f:
+                command = f.read().strip()
+            os.remove(COMMAND_FILE_PATH)
+            
+            if command == 'open_window':
+                logging.info("Commande reçue: ouverture de la fenêtre principale")
+                open_interface()
+                return True
+    except (IOError, OSError):
+        pass
+    return False
+
+def start_command_monitor():
+    """Démarre le monitoring des commandes dans un thread séparé."""
+    def monitor_loop():
+        while True:
+            try:
+                check_for_commands()
+                time.sleep(0.5)  # Vérification toutes les 500ms
+            except Exception as e:
+                logging.error(f"Erreur dans le monitoring des commandes: {e}")
+                time.sleep(1)
+    
+    monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
+    monitor_thread.start()
+    logging.info("Monitoring des commandes démarré")
+
+# --- Fonctions de gestion de l'historique ---
+
+def load_transcription_history():
+    """Charge l'historique des transcriptions depuis le fichier JSON."""
+    try:
+        if os.path.exists(HISTORY_FILE):
+            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                # Valider la structure du fichier
+                if isinstance(data, dict) and 'transcriptions' in data:
+                    logging.info(f"Historique chargé: {len(data['transcriptions'])} transcriptions")
+                    return data['transcriptions']
+                else:
+                    logging.warning("Format d'historique invalide, création d'un nouveau fichier")
+                    return []
+        else:
+            logging.info("Aucun fichier d'historique trouvé, création d'un nouveau")
+            return []
+    except Exception as e:
+        logging.error(f"Erreur lors du chargement de l'historique: {e}")
+        return []
+
+def save_transcription_history(transcriptions):
+    """Sauvegarde l'historique des transcriptions dans le fichier JSON."""
+    try:
+        history_data = {
+            'version': '1.0',
+            'created': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'transcriptions': transcriptions
+        }
+        
+        # Créer le répertoire si nécessaire
+        os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+        
+        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(history_data, f, ensure_ascii=False, indent=2)
+        
+        logging.info(f"Historique sauvegardé: {len(transcriptions)} transcriptions")
+        return True
+    except Exception as e:
+        logging.error(f"Erreur lors de la sauvegarde de l'historique: {e}")
+        return False
+
+def add_to_transcription_history(text):
+    """Ajoute une nouvelle transcription à l'historique et la sauvegarde."""
+    global transcription_history
+    
+    # Créer un nouvel élément d'historique avec métadonnées
+    history_item = {
+        'text': text,
+        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+        'date': time.strftime('%Y-%m-%d')
+    }
+    
+    transcription_history.append(history_item)
+    
+    # Limiter l'historique à 1000 éléments maximum
+    if len(transcription_history) > 1000:
+        transcription_history = transcription_history[-1000:]
+    
+    # Sauvegarder immédiatement
+    save_transcription_history(transcription_history)
+    
+    return history_item
 
 # --- Fonctions de l'application ---
 
@@ -116,6 +304,40 @@ def create_icon_pystray(color1, color2):
     dc.rectangle((0, height // 2, width // 2, height), fill=color2)
     return image
 
+def create_window_icon():
+    """Crée une icône plus sophistiquée pour la fenêtre."""
+    width = 64
+    height = 64
+    image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    dc = ImageDraw.Draw(image)
+    
+    # Fond circulaire bleu
+    dc.ellipse([4, 4, width-4, height-4], fill='#2196F3', outline='#1976D2', width=2)
+    
+    # Icône microphone stylisé
+    mic_color = 'white'
+    # Corps du micro
+    dc.ellipse([22, 18, 42, 38], fill=mic_color)
+    # Tige du micro
+    dc.rectangle([30, 38, 34, 50], fill=mic_color)
+    # Base du micro
+    dc.rectangle([24, 50, 40, 54], fill=mic_color)
+    
+    # Cercles d'onde sonore
+    wave_color = '#FFD700'
+    dc.arc([12, 12, 52, 52], 45, 135, fill=wave_color, width=3)
+    dc.arc([8, 8, 56, 56], 45, 135, fill=wave_color, width=2)
+    
+    # Sauvegarder l'icône
+    icon_path = os.path.join(script_dir, 'voice_tool_icon.ico')
+    try:
+        image.save(icon_path, format='ICO', sizes=[(16,16), (32,32), (48,48), (64,64)])
+        logging.info(f"Icône sauvegardée: {icon_path}")
+        return icon_path
+    except Exception as e:
+        logging.error(f"Erreur lors de la création de l'icône: {e}")
+        return None
+
 def transcribe_and_copy(filename):
     global google_credentials, visualizer_window, transcription_history
     try:
@@ -146,11 +368,11 @@ def transcribe_and_copy(filename):
         pyperclip.copy(text)
         logging.info("Texte copié dans le presse-papiers !")
 
-        # Ajout à l'historique et mise à jour de la GUI si elle est ouverte
-        transcription_history.append(text)
+        # Ajout à l'historique avec sauvegarde automatique
+        history_item = add_to_transcription_history(text)
         if visualizer_window and visualizer_window.main_window and visualizer_window.main_window.winfo_exists():
             # Planifie l'ajout dans le thread de la GUI pour éviter les conflits
-            visualizer_window.root.after(0, visualizer_window.add_transcription_to_history, text)
+            visualizer_window.root.after(0, visualizer_window.add_transcription_to_history, history_item)
         
         # Notification visuelle via la fenêtre GUI
         if visualizer_window and hasattr(visualizer_window, 'show_status'):
@@ -317,6 +539,9 @@ def on_quit(icon_pystray, item):
         # Planifie la fermeture de la fenêtre Tkinter dans son propre thread
         # pour éviter les problèmes de concurrence qui peuvent bloquer la fermeture.
         visualizer_window.root.after(0, visualizer_window.close)
+    
+    # Libérer le verrou d'instance unique
+    release_lock()
     icon_pystray.stop()
 
 def open_interface():
@@ -337,11 +562,28 @@ def open_interface():
 def run_tkinter_app():
     """Fonction pour lancer l'application Tkinter dans un thread séparé."""
     global visualizer_window
-    visualizer_window = VisualizerWindowTkinter()
+    # Créer l'icône avant d'initialiser la GUI
+    icon_path = create_window_icon()
+    visualizer_window = VisualizerWindowTkinter(icon_path=icon_path)
     visualizer_window.run() # Lance la boucle principale Tkinter
 
 def main():
     global google_credentials, visualizer_window, global_icon_pystray
+
+    # --- Vérification d'instance unique ---
+    # Tenter d'acquérir le verrou avant toute autre opération
+    if not acquire_lock():
+        # Une autre instance est déjà en cours d'exécution
+        print("Une instance de Voice Tool est déjà en cours d'exécution.")
+        print("Ouverture de la fenêtre principale de l'instance existante...")
+        
+        # Envoyer la commande d'ouverture de fenêtre à l'instance existante
+        if send_command_to_existing_instance('open_window'):
+            print("Commande envoyée avec succès.")
+        else:
+            print("Impossible d'envoyer la commande à l'instance existante.")
+        
+        sys.exit(0)
 
     # --- Gestion du mode de lancement (console ou arrière-plan) ---
     # Si '--console' est passé en argument, on est en mode de développement/debug.
@@ -352,6 +594,9 @@ def main():
     # Si on n'est pas en mode console et qu'on n'est pas déjà le processus enfant,
     # on relance le script en arrière-plan et on quitte.
     if not is_console_mode and not is_background_child:
+        # Libérer le verrou avant de relancer, car le processus enfant devra l'acquérir
+        release_lock()
+        
         try:
             # Construit le chemin vers pythonw.exe pour un lancement sans console sur Windows
             python_executable = sys.executable.replace('python.exe', 'pythonw.exe')
@@ -375,11 +620,16 @@ def main():
         logging.basicConfig(filename=log_file_path, filemode='a', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     load_config() # Charge la configuration au démarrage
+    
+    # Charger l'historique des transcriptions
+    global transcription_history
+    transcription_history = load_transcription_history()
 
     # Debug: vérifier si le .env est bien chargé
     logging.info(f"Répertoire de travail: {os.getcwd()}")
     logging.info(f"Fichier .env existe: {os.path.exists('.env')}")
     logging.info(f"PROJECT_ID chargé: {'Oui' if os.getenv('PROJECT_ID') else 'Non'}")
+    logging.info(f"Répertoire AppData: {APP_DATA_DIR}")
     
     google_credentials = get_google_credentials()
     if not google_credentials:
@@ -412,6 +662,9 @@ def main():
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
     gui_handler.setFormatter(formatter)
     logging.getLogger().addHandler(gui_handler)
+
+    # --- Démarrer le monitoring des commandes inter-processus ---
+    start_command_monitor()
 
     # Configuration de l'icône Pystray (reste statique)
     menu = pystray.Menu(
