@@ -23,7 +23,6 @@ class VisualizerWindowTkinter:
         self.main_window = None # Pour garder une référence à la fenêtre principale
         self.log_text_widget = None # Pour le widget qui affichera les logs
         self.history_listbox = None # Pour la Listbox de l'historique
-        self.record_button = None # Pour le bouton d'enregistrement
         
         self.window = tk.Toplevel(self.root)
         self.window.overrideredirect(True) # Supprime la barre de titre et les bordures
@@ -199,28 +198,61 @@ class VisualizerWindowTkinter:
         pyperclip.copy(selected_text)
         logging.info(f"Texte copié depuis l'historique : '{selected_text[:40]}...'")
 
-    def _toggle_recording_from_gui(self):
-        """COPIE EXACTE du raccourci - ligne 298 de main.py"""
-        import main
+    def _delete_history_selection(self):
+        """Supprime l'élément sélectionné de l'historique."""
+        if not self.history_listbox:
+            return
         
-        # EXACTEMENT ce que fait le raccourci : lambda: toggle_recording(icon_pystray)
-        main.toggle_recording(main.global_icon_pystray)
+        selected_indices = self.history_listbox.curselection()
+        if not selected_indices:
+            logging.info("Aucun élément sélectionné pour suppression.")
+            return
+        
+        selected_index = selected_indices[0]
+        
+        # Confirmer la suppression
+        import tkinter.messagebox as msgbox
+        if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer cette transcription ?"):
+            # Supprimer de la listbox
+            self.history_listbox.delete(selected_index)
+            
+            # Supprimer des données associées
+            if hasattr(self.history_listbox, 'text_data') and selected_index in self.history_listbox.text_data:
+                del self.history_listbox.text_data[selected_index]
+                
+                # Réorganiser les indices
+                new_text_data = {}
+                for old_idx, text in self.history_listbox.text_data.items():
+                    if old_idx > selected_index:
+                        new_text_data[old_idx - 1] = text
+                    else:
+                        new_text_data[old_idx] = text
+                self.history_listbox.text_data = new_text_data
+            
+            # Supprimer de l'historique global et sauvegarder
+            import main
+            if selected_index < len(main.transcription_history):
+                deleted_item = main.transcription_history.pop(selected_index)
+                main.save_transcription_history(main.transcription_history)
+                logging.info(f"Transcription supprimée : '{str(deleted_item)[:40]}...'")
 
-    def update_record_button_state(self, is_recording):
-        """Met à jour l'état du bouton d'enregistrement selon le statut."""
-        if self.record_button and self.record_button.winfo_exists():
-            if is_recording:
-                self.record_button.config(
-                    text="⏹️ Arrêter l'enregistrement",
-                    bg="#28a745",
-                    activebackground="#1e7e34"
-                )
+    def _quit_application(self):
+        """Ferme complètement l'application après confirmation."""
+        import tkinter.messagebox as msgbox
+        if msgbox.askyesno("Fermer l'application", 
+                          "Êtes-vous sûr de vouloir fermer complètement Voice Tool ?\n\nL'application se fermera et ne fonctionnera plus en arrière-plan."):
+            logging.info("Fermeture complète de l'application demandée depuis l'interface")
+            
+            # Appeler directement la fonction on_quit qui fait tout le nettoyage
+            import main
+            if main.global_icon_pystray:
+                # Utiliser la fonction on_quit existante qui gère proprement la fermeture
+                main.on_quit(main.global_icon_pystray, None)
             else:
-                self.record_button.config(
-                    text="🎤 Démarrer l'enregistrement",
-                    bg="#dc3545",
-                    activebackground="#c82333"
-                )
+                # Fallback si l'icône n'est pas disponible
+                import sys
+                sys.exit(0)
+
 
     def create_main_interface_window(self, history=None, current_config=None, save_callback=None):
         """Crée et affiche l'interface principale avec onglets (Historique/Logs, Paramètres)."""
@@ -274,16 +306,29 @@ class VisualizerWindowTkinter:
                 
                 self.history_listbox.insert(tk.END, display_text)
                 self.history_listbox.text_data[index] = actual_text
-        tk.Button(history_frame, text="Copier la sélection", command=self._copy_history_selection, bg="#0078d7", fg="white", relief=tk.FLAT, activebackground="#005a9e", activeforeground="white").pack(pady=(10,5), padx=5, fill=tk.X)
         
-        # Bouton d'enregistrement
-        self.record_button = tk.Button(history_frame, text="🎤 Démarrer l'enregistrement", 
-                                     command=self._toggle_recording_from_gui, 
-                                     bg="#dc3545", fg="white", relief=tk.FLAT, 
-                                     activebackground="#c82333", activeforeground="white",
-                                     font=("Arial", 10, "bold"))
-        self.record_button.pack(pady=(5,10), padx=5, fill=tk.X)
-        paned_window.add(history_frame, width=350)
+        # Boutons pour l'historique
+        buttons_frame = tk.Frame(history_frame, bg="#2b2b2b")
+        buttons_frame.pack(pady=(10,5), padx=5, fill=tk.X)
+        
+        tk.Button(buttons_frame, text="Copier la sélection", command=self._copy_history_selection, 
+                 bg="#0078d7", fg="white", relief=tk.FLAT, activebackground="#005a9e", activeforeground="white").pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0,2))
+        
+        tk.Button(buttons_frame, text="Supprimer", command=self._delete_history_selection, 
+                 bg="#dc3545", fg="white", relief=tk.FLAT, activebackground="#c82333", activeforeground="white").pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(2,0))
+        
+        # Message informatif pour le raccourci d'enregistrement
+        shortcut_frame = tk.Frame(history_frame, bg="#1e1e1e", relief=tk.RAISED, bd=1)
+        shortcut_frame.pack(pady=(10,10), padx=5, fill=tk.X)
+        
+        tk.Label(shortcut_frame, text="🎤", fg="#FF6B6B", bg="#1e1e1e", font=("Arial", 16)).pack(pady=(8,2))
+        tk.Label(shortcut_frame, text="Pour démarrer/arrêter l'enregistrement", fg="white", bg="#1e1e1e", font=("Arial", 10)).pack()
+        
+        # Afficher le raccourci configuré
+        import main
+        current_shortcut = main.config.get('record_hotkey', '<ctrl>+<alt>+s')
+        tk.Label(shortcut_frame, text=f"Appuyez sur {current_shortcut}", fg="#4ECDC4", bg="#1e1e1e", font=("Arial", 11, "bold")).pack(pady=(2,8))
+        paned_window.add(history_frame, width=560)  # 70% de 800px = 560px
         # Panneau de droite : Logs
         log_frame = tk.Frame(paned_window, bg="#2b2b2b"); log_frame.pack(fill=tk.BOTH, expand=True)
         tk.Label(log_frame, text="Logs de l'application", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 10))
@@ -298,23 +343,66 @@ class VisualizerWindowTkinter:
         settings_frame = tk.Frame(notebook, bg="#2b2b2b", padx=20, pady=20)
         notebook.add(settings_frame, text='  Paramètres  ')
         
+        # === SECTION AUDIO ===
+        tk.Label(settings_frame, text="🔊 Audio", fg="#4CAF50", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        
+        # Option sons
+        sounds_var = tk.BooleanVar()
+        if current_config: sounds_var.set(current_config.get("enable_sounds", True))
+        sounds_check = tk.Checkbutton(settings_frame, text="Activer les sons d'interface", 
+                                     variable=sounds_var, fg="white", bg="#2b2b2b", 
+                                     selectcolor="#3c3c3c", activebackground="#2b2b2b", 
+                                     activeforeground="white")
+        sounds_check.pack(anchor='w', pady=(0, 15))
+        
+        # Séparateur
+        separator1 = tk.Frame(settings_frame, height=1, bg="#555555")
+        separator1.pack(fill=tk.X, pady=(0, 20))
+        
+        # === SECTION RACCOURCIS ===
+        tk.Label(settings_frame, text="⌨️ Raccourcis clavier", fg="#2196F3", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        
         # Raccourci Enregistrement
-        tk.Label(settings_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(10,2))
+        tk.Label(settings_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
         record_hotkey_entry = tk.Entry(settings_frame, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
         record_hotkey_entry.pack(fill=tk.X, pady=(0, 15))
         if current_config: record_hotkey_entry.insert(0, current_config.get("record_hotkey", ""))
 
-        # Raccourci Ouvrir Fenêtre
-        tk.Label(settings_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(10,2))
+        # Raccourci Ouvrir Fenêtre  
+        tk.Label(settings_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
         open_hotkey_entry = tk.Entry(settings_frame, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
         open_hotkey_entry.pack(fill=tk.X, pady=(0, 15))
         if current_config: open_hotkey_entry.insert(0, current_config.get("open_window_hotkey", ""))
+        
+        # Séparateur
+        separator2 = tk.Frame(settings_frame, height=1, bg="#555555")
+        separator2.pack(fill=tk.X, pady=(0, 15))
+        
+        # Aide pour les raccourcis (à la fin)
+        help_text = "Modificateurs: <ctrl>, <alt>, <shift>, <cmd> (Mac)\nTouches spéciales: <space>, <tab>, <enter>, <esc>, <f1>-<f12>\nExemples: <ctrl>+<shift>+r, <alt>+<space>, <f9>"
+        help_label = tk.Label(settings_frame, text=help_text, fg="#888888", bg="#2b2b2b", 
+                             font=("Consolas", 8), justify=tk.LEFT)
+        help_label.pack(anchor='w', pady=(10, 10))
+        
+        # Séparateur
+        separator3 = tk.Frame(settings_frame, height=1, bg="#555555")
+        separator3.pack(fill=tk.X, pady=(10, 15))
+        
+        # Bouton de fermeture complète (discret)
+        quit_frame = tk.Frame(settings_frame, bg="#2b2b2b")
+        quit_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        tk.Button(quit_frame, text="⚠️ Fermer complètement l'application", 
+                 command=self._quit_application, bg="#6c757d", fg="white", 
+                 relief=tk.FLAT, activebackground="#5a6268", activeforeground="white",
+                 font=("Arial", 9)).pack(side=tk.RIGHT)
 
         # Fonction pour sauvegarder la configuration
         def save_settings():
             new_config = {
                 "record_hotkey": record_hotkey_entry.get().strip(),
-                "open_window_hotkey": open_hotkey_entry.get().strip()
+                "open_window_hotkey": open_hotkey_entry.get().strip(),
+                "enable_sounds": sounds_var.get()
             }
             if save_callback:
                 save_callback(new_config)

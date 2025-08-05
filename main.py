@@ -17,6 +17,9 @@ import pyperclip
 import time
 import tempfile
 import platform
+import math
+import wave
+import struct
 
 # Import conditionnel selon l'OS
 if platform.system() != 'Windows':
@@ -59,6 +62,7 @@ def get_app_data_dir():
 # Chemins vers les fichiers de données
 APP_DATA_DIR = get_app_data_dir()
 HISTORY_FILE = os.path.join(APP_DATA_DIR, 'transcription_history.json')
+SOUNDS_DIR = os.path.join(APP_DATA_DIR, 'sounds')
 
 # --- Variables globales ---
 config = {} # Contiendra la configuration chargée depuis config.json
@@ -77,6 +81,9 @@ visualizer_window = None
 lock_file = None
 LOCK_FILE_PATH = os.path.join(tempfile.gettempdir(), 'voice_tool.lock')
 COMMAND_FILE_PATH = os.path.join(tempfile.gettempdir(), 'voice_tool_command.txt')
+
+# Variables pour les sons
+sound_paths = None
 
 # --- Custom Logging Handler ---
 class GuiLoggingHandler(logging.Handler):
@@ -248,6 +255,110 @@ def add_to_transcription_history(text):
     
     return history_item
 
+# --- Fonctions de génération de sons ---
+
+def generate_sound_wave(frequency, duration, sample_rate=44100, amplitude=0.02):
+    """Génère une onde sonore sinusoïdale."""
+    frames = int(duration * sample_rate)
+    wave_data = []
+    for i in range(frames):
+        value = amplitude * math.sin(2 * math.pi * frequency * i / sample_rate)
+        wave_data.append(int(value * 32767))  # Convertir en 16-bit
+    return wave_data
+
+def generate_sweep_sound(start_freq, end_freq, duration, sample_rate=44100, amplitude=0.02):
+    """Génère un son avec balayage de fréquence (sweep)."""
+    frames = int(duration * sample_rate)
+    wave_data = []
+    for i in range(frames):
+        # Interpolation linéaire de la fréquence
+        progress = i / frames
+        frequency = start_freq + (end_freq - start_freq) * progress
+        value = amplitude * math.sin(2 * math.pi * frequency * i / sample_rate)
+        wave_data.append(int(value * 32767))
+    return wave_data
+
+def create_sound_files():
+    """Crée les fichiers audio pour les différents événements."""
+    try:
+        os.makedirs(SOUNDS_DIR, exist_ok=True)
+        
+        # Supprimer les anciens fichiers pour forcer la régénération avec le nouveau volume
+        old_files = ['start_recording.wav', 'stop_recording.wav', 'success.wav']
+        for old_file in old_files:
+            old_path = os.path.join(SOUNDS_DIR, old_file)
+            if os.path.exists(old_path):
+                os.remove(old_path)
+                logging.info(f"Ancien fichier supprimé: {old_file}")
+        
+        # Son montant (démarrage enregistrement) : 400Hz -> 800Hz
+        start_sound = generate_sweep_sound(400, 800, 0.3)
+        start_path = os.path.join(SOUNDS_DIR, 'start_recording.wav')
+        save_wave_file(start_path, start_sound)
+        
+        # Son descendant (arrêt enregistrement) : 800Hz -> 400Hz
+        stop_sound = generate_sweep_sound(800, 400, 0.3)
+        stop_path = os.path.join(SOUNDS_DIR, 'stop_recording.wav')
+        save_wave_file(stop_path, stop_sound)
+        
+        # Son de validation (succès) : deux tons courts
+        success_sound = []
+        # Premier ton
+        success_sound.extend(generate_sound_wave(880, 0.1))  # A5
+        # Petit silence
+        success_sound.extend([0] * int(0.05 * 44100))
+        # Deuxième ton plus aigu
+        success_sound.extend(generate_sound_wave(1108, 0.15))  # C#6
+        
+        success_path = os.path.join(SOUNDS_DIR, 'success.wav')
+        save_wave_file(success_path, success_sound)
+        
+        logging.info("Fichiers audio créés avec succès")
+        return {
+            'start': start_path,
+            'stop': stop_path,
+            'success': success_path
+        }
+        
+    except Exception as e:
+        logging.error(f"Erreur lors de la création des sons: {e}")
+        return None
+
+def save_wave_file(filepath, wave_data, sample_rate=44100):
+    """Sauvegarde les données audio en fichier WAV."""
+    with wave.open(filepath, 'w') as wav_file:
+        wav_file.setnchannels(1)  # Mono
+        wav_file.setsampwidth(2)  # 16-bit
+        wav_file.setframerate(sample_rate)
+        
+        # Convertir en bytes
+        wave_bytes = struct.pack('<' + 'h' * len(wave_data), *wave_data)
+        wav_file.writeframes(wave_bytes)
+
+def play_sound_async(sound_path):
+    """Joue un son de manière asynchrone selon l'OS."""
+    # Vérifier si les sons sont activés
+    if not config.get('enable_sounds', True):
+        return
+        
+    if not sound_path or not os.path.exists(sound_path):
+        return
+    
+    def play():
+        try:
+            if platform.system() == 'Windows':
+                import winsound
+                winsound.PlaySound(sound_path, winsound.SND_FILENAME | winsound.SND_ASYNC)
+            elif platform.system() == 'Darwin':  # macOS
+                os.system(f'afplay "{sound_path}" &')
+            else:  # Linux
+                os.system(f'aplay "{sound_path}" > /dev/null 2>&1 &')
+        except Exception as e:
+            logging.error(f"Erreur lors de la lecture du son: {e}")
+    
+    # Jouer dans un thread séparé pour ne pas bloquer
+    threading.Thread(target=play, daemon=True).start()
+
 # --- Fonctions de l'application ---
 
 def load_config():
@@ -255,7 +366,8 @@ def load_config():
     global config
     defaults = {
         "record_hotkey": "<ctrl>+<alt>+s",
-        "open_window_hotkey": "<ctrl>+<alt>+o"
+        "open_window_hotkey": "<ctrl>+<alt>+o",
+        "enable_sounds": True
     }
     try:
         if not os.path.exists(CONFIG_FILE):
@@ -367,6 +479,10 @@ def transcribe_and_copy(filename):
         logging.info(f"Texte transcrit: {text}")
         pyperclip.copy(text)
         logging.info("Texte copié dans le presse-papiers !")
+        
+        # Jouer le son de succès
+        if sound_paths and 'success' in sound_paths:
+            play_sound_async(sound_paths['success'])
 
         # Ajout à l'historique avec sauvegarde automatique
         history_item = add_to_transcription_history(text)
@@ -407,15 +523,12 @@ def toggle_recording(icon_pystray):
 
     is_recording = not is_recording
 
-    # Mettre à jour l'état du bouton d'enregistrement dans l'interface
-    if visualizer_window and hasattr(visualizer_window, 'root') and visualizer_window.root:
-        try:
-            visualizer_window.root.after(0, lambda: visualizer_window.update_record_button_state(is_recording))
-        except Exception as e:
-            logging.error(f"Erreur lors de la mise à jour du bouton: {e}")
-
     if is_recording:
         logging.info("Démarrage de l'enregistrement...")
+        
+        # Jouer le son de démarrage
+        if sound_paths and 'start' in sound_paths:
+            play_sound_async(sound_paths['start'])
         
         # Note: visualizer_window sera initialisé par le thread principal
         
@@ -430,6 +543,10 @@ def toggle_recording(icon_pystray):
 
     else:
         logging.info("Arrêt de l'enregistrement...")
+        
+        # Jouer le son d'arrêt
+        if sound_paths and 'stop' in sound_paths:
+            play_sound_async(sound_paths['stop'])
         
         # Vérification et arrêt sécurisé de l'audio stream
         if not audio_stream:
@@ -622,8 +739,11 @@ def main():
     load_config() # Charge la configuration au démarrage
     
     # Charger l'historique des transcriptions
-    global transcription_history
+    global transcription_history, sound_paths
     transcription_history = load_transcription_history()
+    
+    # Initialiser les sons
+    sound_paths = create_sound_files()
 
     # Debug: vérifier si le .env est bien chargé
     logging.info(f"Répertoire de travail: {os.getcwd()}")
