@@ -375,6 +375,196 @@ class VisualizerWindowTkinter:
                 logging.error(f"Erreur lors de la suppression de l'historique: {e}")
                 msgbox.showerror("Erreur", "Une erreur est survenue lors de la suppression de l'historique.")
 
+    def _export_history(self):
+        """Ouvre une fenêtre de dialogue pour choisir le format d'export."""
+        import tkinter.messagebox as msgbox
+        import tkinter.filedialog as filedialog
+        import main
+        import csv
+        import json
+        from datetime import datetime
+        
+        # Recharger l'historique depuis le fichier pour être sûr d'avoir la version la plus récente
+        current_history = main.load_transcription_history()
+        
+        if not current_history:
+            msgbox.showwarning("Attention", "Aucune transcription à exporter.")
+            return
+        
+        # Demander le format d'export
+        export_window = tk.Toplevel(self.root)
+        export_window.title("Exporter l'historique")
+        export_window.geometry("300x220")
+        export_window.configure(bg="#2b2b2b")
+        export_window.resizable(False, False)
+        
+        # Centrer la fenêtre
+        export_window.update_idletasks()
+        x = export_window.winfo_screenwidth() // 2 - export_window.winfo_width() // 2
+        y = export_window.winfo_screenheight() // 2 - export_window.winfo_height() // 2
+        export_window.geometry(f"+{x}+{y}")
+        
+        tk.Label(export_window, text="Choisissez le format d'export :", 
+                fg="white", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(pady=(15, 10))
+        
+        def export_csv():
+            filename = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                title="Sauvegarder en CSV"
+            )
+            if filename:
+                try:
+                    with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+                        writer = csv.writer(csvfile)
+                        writer.writerow(['Timestamp', 'Texte'])
+                        for item in current_history:
+                            if isinstance(item, dict):
+                                writer.writerow([item['timestamp'], item['text']])
+                            else:
+                                writer.writerow([datetime.now().strftime('%Y-%m-%d %H:%M:%S'), str(item)])
+                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}")
+                except Exception as e:
+                    msgbox.showerror("Erreur", f"Erreur lors de l'export CSV: {e}")
+                finally:
+                    export_window.destroy()
+        
+        def export_txt():
+            filename = filedialog.asksaveasfilename(
+                defaultextension=".txt",
+                filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+                title="Sauvegarder en TXT"
+            )
+            if filename:
+                try:
+                    with open(filename, 'w', encoding='utf-8') as txtfile:
+                        txtfile.write(f"=== HISTORIQUE VOICE TOOL - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n\n")
+                        for i, item in enumerate(current_history, 1):
+                            if isinstance(item, dict):
+                                txtfile.write(f"{i}. [{item['timestamp']}]\n{item['text']}\n\n")
+                            else:
+                                txtfile.write(f"{i}. {str(item)}\n\n")
+                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}")
+                except Exception as e:
+                    msgbox.showerror("Erreur", f"Erreur lors de l'export TXT: {e}")
+                finally:
+                    export_window.destroy()
+        
+        def export_json():
+            filename = filedialog.asksaveasfilename(
+                defaultextension=".json",
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+                title="Sauvegarder en JSON"
+            )
+            if filename:
+                try:
+                    export_data = {
+                        'version': '1.0',
+                        'exported': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'count': len(current_history),
+                        'transcriptions': current_history
+                    }
+                    with open(filename, 'w', encoding='utf-8') as jsonfile:
+                        json.dump(export_data, jsonfile, ensure_ascii=False, indent=2)
+                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}")
+                except Exception as e:
+                    msgbox.showerror("Erreur", f"Erreur lors de l'export JSON: {e}")
+                finally:
+                    export_window.destroy()
+        
+        # Boutons d'export
+        btn_frame = tk.Frame(export_window, bg="#2b2b2b")
+        btn_frame.pack(pady=10)
+        
+        tk.Button(btn_frame, text="📊  CSV", command=export_csv, bg="#28a745", fg="white",
+                  relief=tk.FLAT, font=("Arial", 10), width=15, height=1).pack(pady=5)
+        tk.Button(btn_frame, text="📄  TXT", command=export_txt, bg="#6f42c1", fg="white",
+                  relief=tk.FLAT, font=("Arial", 10), width=15, height=1).pack(pady=5)
+        tk.Button(btn_frame, text="🔧  JSON", command=export_json, bg="#fd7e14", fg="white",
+                  relief=tk.FLAT, font=("Arial", 10), width=15, height=1).pack(pady=5)
+        
+        tk.Button(export_window, text="Annuler", command=export_window.destroy,
+                  bg="#6c757d", fg="white", relief=tk.FLAT, font=("Arial", 10)).pack(pady=10)
+
+    def _import_history(self):
+        """Importe un historique depuis un fichier JSON."""
+        import tkinter.messagebox as msgbox
+        import tkinter.filedialog as filedialog
+        import main
+        import json
+        
+        filename = filedialog.askopenfilename(
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*忽视")],
+            title="Importer un historique JSON"
+        )
+        
+        if not filename:
+            return
+        
+        try:
+            with open(filename, 'r', encoding='utf-8') as jsonfile:
+                data = json.load(jsonfile)
+            
+            # Vérifier la structure
+            if isinstance(data, dict) and 'transcriptions' in data:
+                imported_transcriptions = data['transcriptions']
+            elif isinstance(data, list):
+                imported_transcriptions = data
+            else:
+                raise ValueError("Format de fichier non supporté")
+            
+            # Demander confirmation pour le merge ou remplacement
+            if main.transcription_history:
+                result = msgbox.askyesnocancel("Import", 
+                    f"Importer {len(imported_transcriptions)} transcriptions.\n\n" +
+                    "Oui = Ajouter à l'historique existant\n" +
+                    "Non = Remplacer l'historique existant\n" +
+                    "Annuler = Annuler l'import")
+                
+                if result is None:  # Annuler
+                    return
+                elif result:  # Oui - Ajouter
+                    main.transcription_history.extend(imported_transcriptions)
+                else:  # Non - Remplacer
+                    main.transcription_history = imported_transcriptions
+            else:
+                main.transcription_history = imported_transcriptions
+            
+            # Sauvegarder et rafraîchir l'interface
+            main.save_transcription_history(main.transcription_history)
+            self._refresh_history_display()
+            
+            msgbox.showinfo("Succès", f"{len(imported_transcriptions)} transcriptions importées avec succès !")
+            
+        except Exception as e:
+            msgbox.showerror("Erreur", f"Erreur lors de l'import: {e}")
+
+    def _refresh_history_display(self):
+        """Rafraîchit l'affichage de l'historique après import."""
+        if not self.history_listbox:
+            return
+        
+        import main
+        
+        # Vider la listbox
+        self.history_listbox.delete(0, tk.END)
+        if hasattr(self.history_listbox, 'text_data'):
+            self.history_listbox.text_data = {}
+        
+        # Recharger l'historique
+        for index, item in enumerate(main.transcription_history):
+            if isinstance(item, dict):
+                display_text = f"[{item['timestamp']}] {item['text']}"
+                actual_text = item['text']
+            else:
+                display_text = str(item)
+                actual_text = str(item)
+            
+            self.history_listbox.insert(tk.END, display_text)
+            if not hasattr(self.history_listbox, 'text_data'):
+                self.history_listbox.text_data = {}
+            self.history_listbox.text_data[index] = actual_text
+
 
     def create_main_interface_window(self, history=None, current_config=None, save_callback=None):
         """Crée et affiche l'interface principale avec onglets (Historique/Logs, Paramètres)."""
@@ -448,11 +638,27 @@ class VisualizerWindowTkinter:
         tk.Label(help_frame, text="💡 Double-clic pour copier • Clic droit pour le menu", 
                 fg="#888888", bg="#2b2b2b", font=("Arial", 9), justify=tk.LEFT).pack(side=tk.LEFT)
 
+        # Boutons d'action
+        buttons_frame = tk.Frame(help_frame, bg="#2b2b2b")
+        buttons_frame.pack(side=tk.RIGHT)
+        
+        # Bouton d'import
+        tk.Button(buttons_frame, text="📥 Import", 
+                  command=self._import_history, bg="#28a745", fg="white", 
+                  relief=tk.FLAT, activebackground="#218838", activeforeground="white",
+                  font=("Arial", 8, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        
+        # Bouton d'export
+        tk.Button(buttons_frame, text="📤 Export", 
+                  command=self._export_history, bg="#007bff", fg="white", 
+                  relief=tk.FLAT, activebackground="#0056b3", activeforeground="white",
+                  font=("Arial", 8, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        
         # Bouton pour tout effacer
-        tk.Button(help_frame, text="🗑️ Tout effacer", 
+        tk.Button(buttons_frame, text="🗑️ Tout effacer", 
                   command=self._clear_all_history, bg="#dc3545", fg="white", 
                   relief=tk.FLAT, activebackground="#c82333", activeforeground="white",
-                  font=("Arial", 8, "bold")).pack(side=tk.RIGHT)
+                  font=("Arial", 8, "bold")).pack(side=tk.LEFT)
         
         # Message informatif pour le raccourci d'enregistrement
         shortcut_frame = tk.Frame(history_frame, bg="#1e1e1e", relief=tk.RAISED, bd=1)
