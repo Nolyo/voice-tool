@@ -367,7 +367,8 @@ def load_config():
     defaults = {
         "record_hotkey": "<ctrl>+<alt>+s",
         "open_window_hotkey": "<ctrl>+<alt>+o",
-        "enable_sounds": True
+        "enable_sounds": True,
+        "paste_at_cursor": False
     }
     try:
         if not os.path.exists(CONFIG_FILE):
@@ -377,7 +378,9 @@ def load_config():
             config = defaults
         else:
             with open(CONFIG_FILE, 'r') as f:
-                config = json.load(f)
+                loaded = json.load(f)
+                # Fusionner avec les valeurs par défaut pour garantir les nouvelles clés
+                config = {**defaults, **loaded}
     except Exception as e:
         logging.error(f"Erreur lors du chargement de la configuration : {e}")
         config = defaults
@@ -450,6 +453,31 @@ def create_window_icon():
         logging.error(f"Erreur lors de la création de l'icône: {e}")
         return None
 
+def paste_to_cursor():
+    """Simule un collage (Ctrl/Cmd+V) dans l'application actuellement focalisée.
+    Utilise pynput pour envoyer le raccourci 'coller' standard selon l'OS.
+    """
+    try:
+        # Utiliser le contrôleur clavier de pynput
+        controller = keyboard.Controller()
+        # Petite pause pour laisser le temps au presse-papiers de se mettre à jour
+        time.sleep(0.1)
+        if platform.system() == 'Darwin':
+            # macOS utilise Command ⌘
+            with controller.pressed(keyboard.Key.cmd):
+                controller.press('v')
+                controller.release('v')
+        else:
+            # Windows/Linux utilisent Ctrl
+            with controller.pressed(keyboard.Key.ctrl):
+                controller.press('v')
+                controller.release('v')
+        # Optionnel: légère pause post-collage
+        time.sleep(0.03)
+        logging.info("Commande de collage envoyée au curseur actif.")
+    except Exception as e:
+        logging.error(f"Impossible d'envoyer la commande de collage: {e}")
+
 def transcribe_and_copy(filename):
     global google_credentials, visualizer_window, transcription_history
     try:
@@ -463,7 +491,7 @@ def transcribe_and_copy(filename):
         with open(filename, "rb") as audio_file:
             content = audio_file.read()
         audio = speech.RecognitionAudio(content=content)
-        config = speech.RecognitionConfig(
+        recog_config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
             sample_rate_hertz=SAMPLE_RATE,
             language_code="fr-FR",
@@ -471,7 +499,7 @@ def transcribe_and_copy(filename):
             model="latest_long"
         )
         logging.info("Envoi de l'audio à Google Cloud Speech (mode dictée)...")
-        response = client.recognize(config=config, audio=audio)
+        response = client.recognize(config=recog_config, audio=audio)
         if not response.results:
             logging.warning("Aucun texte n'a pu être transcrit.")
             raise Exception("No text transcribed")
@@ -479,6 +507,11 @@ def transcribe_and_copy(filename):
         logging.info(f"Texte transcrit: {text}")
         pyperclip.copy(text)
         logging.info("Texte copié dans le presse-papiers !")
+        # Coller automatiquement au curseur si l'option est activée
+        if config.get('paste_at_cursor', False):
+            # Laisser un court délai pour que l'appli cible reprenne le focus
+            time.sleep(0.12)
+            paste_to_cursor()
         
         # Jouer le son de succès
         if sound_paths and 'success' in sound_paths:
@@ -490,13 +523,13 @@ def transcribe_and_copy(filename):
             # Planifie l'ajout dans le thread de la GUI pour éviter les conflits
             visualizer_window.root.after(0, visualizer_window.add_transcription_to_history, history_item)
         
-        # Notification visuelle via la fenêtre GUI
-        if visualizer_window and hasattr(visualizer_window, 'show_status'):
+        # Notification visuelle via la fenêtre GUI (désactivée si collage auto pour éviter de voler le focus)
+        if visualizer_window and hasattr(visualizer_window, 'show_status') and not config.get('paste_at_cursor', False):
             visualizer_window.show_status("success")
 
     except Exception as e:
         logging.error(f"Erreur lors de la transcription/copie : {e}")
-        if visualizer_window and hasattr(visualizer_window, 'show_status'):
+        if visualizer_window and hasattr(visualizer_window, 'show_status') and not config.get('paste_at_cursor', False):
             visualizer_window.show_status("error")
 
 # Plus besoin de la fonction transcription spécialisée - on utilise la standard
@@ -532,10 +565,11 @@ def toggle_recording(icon_pystray):
         
         # Note: visualizer_window sera initialisé par le thread principal
         
-        # Afficher la fenêtre de visualisation si disponible
+        # Afficher la fenêtre de visualisation si disponible et si cela ne risque pas de voler le focus
         if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-            visualizer_window.window.after(0, visualizer_window.show) # Affiche la fenêtre
-            visualizer_window.window.after(0, visualizer_window.set_mode, "recording") # Passe en mode enregistrement
+            if not config.get('paste_at_cursor', False):
+                visualizer_window.window.after(0, visualizer_window.show) # Affiche la fenêtre
+                visualizer_window.window.after(0, visualizer_window.set_mode, "recording") # Passe en mode enregistrement
         
         audio_frames = []
         audio_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='int16', callback=audio_callback)
@@ -563,12 +597,13 @@ def toggle_recording(icon_pystray):
             logging.error(f"Erreur lors de la fermeture du stream audio: {e}")
             audio_stream = None  # Réinitialiser même en cas d'erreur
         
-        # Vérifier que visualizer_window est bien initialisé
+        # Vérifier que visualizer_window est bien initialisé (éviter toute action UI si collage auto activé)
         try:
             if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-                visualizer_window.window.after(0, visualizer_window.set_mode, "processing") # Passe en mode traitement
-                visualizer_window.window.after(0, visualizer_window.hide) # Cache la fenêtre
-                logging.info("Interface de visualisation mise à jour")
+                if not config.get('paste_at_cursor', False):
+                    visualizer_window.window.after(0, visualizer_window.set_mode, "processing") # Passe en mode traitement
+                    visualizer_window.window.after(0, visualizer_window.hide) # Cache la fenêtre
+                    logging.info("Interface de visualisation mise à jour")
         except Exception as e:
             logging.error(f"Erreur lors de la mise à jour de l'interface: {e}")
 

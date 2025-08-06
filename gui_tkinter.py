@@ -197,6 +197,15 @@ class VisualizerWindowTkinter:
         
         pyperclip.copy(selected_text)
         logging.info(f"Texte copié depuis l'historique : '{selected_text[:40]}...'")
+        # Si l'option est activée ET que Tk n'a pas le focus, coller automatiquement au curseur
+        try:
+            import main
+            if main.config.get('paste_at_cursor', False):
+                # Si la fenêtre Tk a le focus, on évite de coller (l'utilisateur est dans l'UI)
+                if self.root.focus_get() is None:
+                    self.root.after(80, main.paste_to_cursor)
+        except Exception as e:
+            logging.error(f"Erreur lors du collage automatique: {e}")
 
     def _delete_history_selection(self):
         """Supprime l'élément sélectionné de l'historique."""
@@ -287,8 +296,12 @@ class VisualizerWindowTkinter:
         """Crée et affiche l'interface principale avec onglets (Historique/Logs, Paramètres)."""
         # Vérifie si la fenêtre n'est pas déjà ouverte pour éviter les doublons
         if self.main_window and self.main_window.winfo_exists():
-            self.main_window.lift() # Si elle existe, la mettre au premier plan
-            self.main_window.focus_force() # Lui donner le focus
+            # Lors d'une ouverture explicite, on donne toujours le focus à la fenêtre
+            self.main_window.lift()
+            try:
+                self.main_window.focus_force()
+            except Exception:
+                pass
             return
 
         self.main_window = tk.Toplevel(self.root)
@@ -384,6 +397,17 @@ class VisualizerWindowTkinter:
                                      selectcolor="#3c3c3c", activebackground="#2b2b2b", 
                                      activeforeground="white")
         sounds_check.pack(anchor='w', pady=(0, 15))
+
+        # === SECTION TEXTE ===
+        tk.Label(settings_frame, text="📝 Texte", fg="#E0A800", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        paste_var = tk.BooleanVar()
+        if current_config: paste_var.set(current_config.get("paste_at_cursor", False))
+        paste_check = tk.Checkbutton(settings_frame, text="Insérer automatiquement au curseur après la transcription / copie depuis l'historique", 
+                                     variable=paste_var, fg="white", bg="#2b2b2b", 
+                                     wraplength=700, justify=tk.LEFT,
+                                     selectcolor="#3c3c3c", activebackground="#2b2b2b", 
+                                     activeforeground="white")
+        paste_check.pack(anchor='w', pady=(0, 15))
         
         # Séparateur
         separator1 = tk.Frame(settings_frame, height=1, bg="#555555")
@@ -432,7 +456,8 @@ class VisualizerWindowTkinter:
             new_config = {
                 "record_hotkey": record_hotkey_entry.get().strip(),
                 "open_window_hotkey": open_hotkey_entry.get().strip(),
-                "enable_sounds": sounds_var.get()
+                "enable_sounds": sounds_var.get(),
+                "paste_at_cursor": paste_var.get()
             }
             if save_callback:
                 save_callback(new_config)
