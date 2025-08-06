@@ -726,13 +726,13 @@ def transcribe_and_copy(filename):
             # Planifie l'ajout dans le thread de la GUI pour éviter les conflits
             visualizer_window.root.after(0, visualizer_window.add_transcription_to_history, history_item)
         
-        # Notification visuelle via la fenêtre GUI (désactivée si collage auto pour éviter de voler le focus)
-        if visualizer_window and hasattr(visualizer_window, 'show_status') and not get_setting('paste_at_cursor', False):
+        # Notification visuelle via la fenêtre GUI (toujours affichée maintenant)
+        if visualizer_window and hasattr(visualizer_window, 'show_status'):
             visualizer_window.show_status("success")
 
     except Exception as e:
         logging.error(f"Erreur lors de la transcription/copie : {e}")
-        if visualizer_window and hasattr(visualizer_window, 'show_status') and not get_setting('paste_at_cursor', False):
+        if visualizer_window and hasattr(visualizer_window, 'show_status'):
             visualizer_window.show_status("error")
 
 # Plus besoin de la fonction transcription spécialisée - on utilise la standard
@@ -803,8 +803,8 @@ def toggle_recording(icon_pystray):
         try:
             if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
                 visualizer_window.window.after(0, visualizer_window.set_mode, "processing") # Passe en mode traitement
-                visualizer_window.window.after(100, visualizer_window.hide) # Cache la fenêtre avec un petit délai
-                logging.info("Interface de visualisation mise à jour")
+                # Ne plus cacher la fenêtre - elle restera visible en mode traitement
+                logging.info("Interface de visualisation mise à jour - mode traitement activé")
         except Exception as e:
             logging.error(f"Erreur lors de la mise à jour de l'interface: {e}")
 

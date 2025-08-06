@@ -204,22 +204,44 @@ class VisualizerWindowTkinter:
             # Simplement dessiner le visualiseur - pas de gestion complexe des layers
             self.draw_visualizer()
         elif mode == "processing":
+            # Effacer le canvas et afficher le message de traitement
+            self.canvas.delete("all")
             if self.status_label and self.status_label.winfo_exists():
-                self.status_label.config(text="Traitement...")
-                # Pas de tkraise/lower - laissons Tkinter gérer
+                self.status_label.config(
+                    text="⏳ Traitement en cours...", 
+                    fg="#4ECDC4", 
+                    bg="#1C1C1C", 
+                    font=("Arial", 14, "bold")
+                )
+                self.status_label.tkraise()
         else: # idle mode
             # Mode idle - rien de spécial à faire
             pass
-            # self.canvas.lower() # Plus nécessaire
 
     def show_status(self, status_type):
         if status_type == "success":
-            self.status_label.config(text="✔ Succès !", fg="lightgreen")
+            # Effacer le canvas pour une notification plus claire
+            self.canvas.delete("all")
+            self.status_label.config(
+                text="✅ Succès !", 
+                fg="#00FF00", 
+                bg="#1C1C1C", 
+                font=("Arial", 16, "bold")
+            )
+            self.status_label.tkraise()
+            # Fermer la fenêtre après 3 secondes
+            self.window.after(3000, self.hide)
         elif status_type == "error":
-            self.status_label.config(text="❌ Erreur !", fg="red")
-        self.status_label.tkraise() # Met le label au-dessus
-        self.window.after(2000, lambda: self.status_label.lower()) # Cache après 2s
-        self.window.after(2000, lambda: self.set_mode("idle")) # Retourne au mode idle
+            self.canvas.delete("all")
+            self.status_label.config(
+                text="❌ Erreur !", 
+                fg="#FF6B6B", 
+                bg="#1C1C1C", 
+                font=("Arial", 16, "bold")
+            )
+            self.status_label.tkraise()
+            # Fermer la fenêtre après 3 secondes même en cas d'erreur
+            self.window.after(3000, self.hide)
 
     def show(self):
         """Affiche la fenêtre et s'assure qu'elle est correctement positionnée"""
