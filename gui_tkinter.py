@@ -32,9 +32,9 @@ class VisualizerWindowTkinter:
         self.set_window_icon(self.window) # Appliquer l'icône à la fenêtre de visualisation
         self.window.overrideredirect(True) # Supprime la barre de titre et les bordures
         self.window.attributes("-topmost", True) # Toujours au-dessus
-        self.window.geometry("280x70") # Taille ajustée pour le nouveau design
-        self.window.configure(bg='white') # Fond blanc moderne
-        self.window.attributes("-alpha", 0.95) # Moins transparent pour plus de visibilité
+        self.window.geometry("300x60") # Taille ajustée pour le nouveau design
+        self.window.configure(bg='#1C1C1C') # Fond sombre moderne
+        self.window.attributes("-alpha", 0.9) # Un peu plus transparent
 
         # --- Configuration pour éviter le vol de focus (Windows) ---
         if platform.system() == 'Windows':
@@ -65,17 +65,16 @@ class VisualizerWindowTkinter:
         # Cacher la fenêtre au démarrage pour qu'elle n'apparaisse que lors de l'enregistrement
         self.window.withdraw()
 
-        # Style moderne avec fond blanc
-        self.canvas = tk.Canvas(self.window, width=280, height=70, bg='white', highlightthickness=0)
+        # Canvas pour le visualiseur
+        self.canvas = tk.Canvas(self.window, width=300, height=60, bg='#1C1C1C', highlightthickness=0)
         self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
 
-        self.status_label = tk.Label(self.window, text="", fg="#333333", bg="white", font=("Arial", 12, "bold"))
+        # Label pour les statuts (Succès, Erreur, etc.)
+        self.status_label = tk.Label(self.window, text="", fg="#1C1C1C", bg="white", font=("Arial", 12, "bold"))
         self.status_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-        # Initialement, le label est en dessous du canvas
         self.status_label.lower() 
 
-        self.audio_levels = np.zeros(50) # Plus de barres pour un effet plus fluide
-        self.bar_width = 280 / len(self.audio_levels)  # Largeur ajustée
+        self.audio_levels = np.zeros(60) # Plus de barres pour un effet plus fluide
 
         self.current_mode = "idle"
 
@@ -139,62 +138,63 @@ class VisualizerWindowTkinter:
             self.draw_visualizer()
 
     def draw_visualizer(self):
-        self.canvas.delete("all") # Efface les anciennes barres
+        self.canvas.delete("all")
         
         canvas_height = self.canvas.winfo_height()
         canvas_width = self.canvas.winfo_width()
         
-        # Marge pour centrer les barres verticalement
-        margin_y = 10
-        usable_height = canvas_height - (2 * margin_y)
-        
+        num_bars = len(self.audio_levels)
+        bar_width = 3  # Largeur fixe pour des barres fines
+        spacing = 2    # Espacement entre les barres
+        total_width = num_bars * (bar_width + spacing) - spacing
+        start_x = (canvas_width - total_width) / 2
+
         for i, level in enumerate(self.audio_levels):
-            # Position X avec espacement plus fin
-            x_center = (i + 0.5) * (canvas_width / len(self.audio_levels))
-            bar_width = max(2, int(canvas_width / len(self.audio_levels) * 0.6))  # Barres plus fines
+            x1 = start_x + i * (bar_width + spacing)
+            x2 = x1 + bar_width
             
-            x1 = x_center - bar_width // 2
-            x2 = x_center + bar_width // 2
+            # Courbe de croissance non-linéaire pour un effet plus doux
+            # La racine carrée rend les sons faibles plus visibles
+            bar_height = int(np.sqrt(level) * (canvas_height * 0.9))
+            bar_height = max(2, bar_height) # Hauteur minimale de 2px
             
-            # Hauteur de la barre avec une hauteur minimum pour l'esthétique
-            bar_height = max(4, int(level * usable_height * 0.8))
+            y1 = (canvas_height - bar_height) / 2
+            y2 = y1 + bar_height
             
-            # Position Y centrée
-            y_center = canvas_height // 2
-            y1 = y_center - bar_height // 2
-            y2 = y_center + bar_height // 2
+            # Dégradé de couleur moderne
+            color = self._get_color_gradient(level)
             
-            # Couleurs modernes et douces
-            if level < 0.2: 
-                color = "#E8F5E8"  # Vert très clair
-            elif level < 0.4: 
-                color = "#A8D8A8"  # Vert clair
-            elif level < 0.6: 
-                color = "#4CAF50"  # Vert principal
-            elif level < 0.8: 
-                color = "#FF9800"  # Orange
-            else: 
-                color = "#F44336"  # Rouge
-            
-            # Créer une barre "arrondie" en superposant des éléments
-            self._draw_rounded_rect(x1, y1, x2, y2, radius=bar_width//2, fill=color)
-    
-    def _draw_rounded_rect(self, x1, y1, x2, y2, radius=3, fill='#4CAF50'):
-        """Dessine un rectangle avec des coins arrondis en combinant rectangles et ovales"""
-        # Si la barre est très petite, dessiner juste un rectangle
-        if (y2 - y1) <= radius * 2 or (x2 - x1) <= radius * 2:
-            self.canvas.create_rectangle(x1, y1, x2, y2, fill=fill, outline=fill)
-            return
-            
-        # Rectangle central (sans les coins)
-        self.canvas.create_rectangle(x1, y1 + radius, x2, y2 - radius, fill=fill, outline=fill)
-        self.canvas.create_rectangle(x1 + radius, y1, x2 - radius, y2, fill=fill, outline=fill)
+            # Dessiner des barres arrondies (style "pilule")
+            self._draw_rounded_rect(x1, y1, x2, y2, radius=bar_width/2, fill=color)
+
+    def _get_color_gradient(self, level):
+        """Génère une couleur dans un dégradé en fonction du niveau audio."""
+        # Définir les points de couleur du dégradé (de bas à haut niveau)
+        colors = [
+            (0.0, (78, 220, 208)),   # Turquoise clair (#4EDCD0)
+            (0.3, (68, 156, 238)),   # Bleu électrique (#449CEE)
+            (0.7, (255, 107, 107)),  # Corail vif (#FF6B6B)
+            (1.0, (255, 255, 255))   # Blanc pour les pics extrêmes
+        ]
+
+        # Trouver les deux couleurs entre lesquelles interpoler
+        for i in range(len(colors) - 1):
+            p1, c1 = colors[i]
+            p2, c2 = colors[i+1]
+            if p1 <= level < p2:
+                # Interpolation linéaire entre c1 et c2
+                ratio = (level - p1) / (p2 - p1)
+                r = int(c1[0] + ratio * (c2[0] - c1[0]))
+                g = int(c1[1] + ratio * (c2[1] - c1[1]))
+                b = int(c1[2] + ratio * (c2[2] - c1[2]))
+                return f'#{r:02x}{g:02x}{b:02x}'
         
-        # Coins arrondis (4 petits ovales)
-        self.canvas.create_oval(x1, y1, x1 + 2*radius, y1 + 2*radius, fill=fill, outline=fill)  # Coin haut-gauche
-        self.canvas.create_oval(x2 - 2*radius, y1, x2, y1 + 2*radius, fill=fill, outline=fill)  # Coin haut-droit
-        self.canvas.create_oval(x1, y2 - 2*radius, x1 + 2*radius, y2, fill=fill, outline=fill)  # Coin bas-gauche  
-        self.canvas.create_oval(x2 - 2*radius, y2 - 2*radius, x2, y2, fill=fill, outline=fill)  # Coin bas-droit
+        # Si le niveau est au max (ou au-delà), retourner la dernière couleur
+        return f'#{colors[-1][1][0]:02x}{colors[-1][1][1]:02x}{colors[-1][1][2]:02x}'
+
+    def _draw_rounded_rect(self, x1, y1, x2, y2, radius=3, fill='#4CAF50'):
+        """Dessine un rectangle avec des coins entièrement arrondis (pilule)."""
+        self.canvas.create_oval(x1, y1, x2, y2, fill=fill, outline="")
 
 
     def set_mode(self, mode):
