@@ -196,6 +196,91 @@ class VisualizerWindowTkinter:
         """Dessine un rectangle avec des coins entièrement arrondis (pilule)."""
         self.canvas.create_oval(x1, y1, x2, y2, fill=fill, outline="")
 
+    def _draw_processing_interface(self):
+        """Dessine une interface de traitement professionnelle avec l'icône de l'app."""
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        
+        # Fond dégradé subtil
+        self.canvas.create_rectangle(0, 0, canvas_width, canvas_height, 
+                                   fill='#1C1C1C', outline='')
+        
+        # Cercle d'arrière-plan pour l'icône (style moderne)
+        center_x = canvas_width // 2
+        center_y = canvas_height // 2 - 8  # Remonter légèrement l'icône
+        
+        # Cercle principal (bleu Voice Tool)
+        self.canvas.create_oval(center_x - 20, center_y - 15, 
+                              center_x + 20, center_y + 15, 
+                              fill='#2196F3', outline='#1976D2', width=2)
+        
+        # Icône microphone stylisé (blanc)
+        # Corps du micro
+        self.canvas.create_oval(center_x - 8, center_y - 8, 
+                              center_x + 8, center_y + 2, 
+                              fill='white', outline='')
+        
+        # Tige du micro
+        self.canvas.create_rectangle(center_x - 1, center_y + 2, 
+                                   center_x + 1, center_y + 8, 
+                                   fill='white', outline='')
+        
+        # Base du micro
+        self.canvas.create_rectangle(center_x - 4, center_y + 8, 
+                                   center_x + 4, center_y + 10, 
+                                   fill='white', outline='')
+        
+        # Onde sonore animée (style moderne)
+        wave_color = '#4ECDC4'
+        # Arc de droite
+        self.canvas.create_arc(center_x + 12, center_y - 8, 
+                             center_x + 25, center_y + 5, 
+                             start=135, extent=90, 
+                             outline=wave_color, width=2, style='arc')
+        
+        # Texte "Voice Tool" discret en bas - même position que les autres
+        self.canvas.create_text(center_x, canvas_height - 6, 
+                              text="Voice Tool", 
+                              fill='#666666', 
+                              font=('Arial', 7, 'bold'))
+        
+        # Animation de points de chargement
+        self._animate_processing_dots()
+
+    def _animate_processing_dots(self):
+        """Anime les points de traitement."""
+        if self.current_mode != "processing":
+            return
+            
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        center_x = canvas_width // 2
+        
+        # Supprimer les anciens points
+        self.canvas.delete("processing_dots")
+        self.canvas.delete("processing_text")
+        
+        # Texte "Traitement en cours" - même position que les autres
+        self.canvas.create_text(center_x, canvas_height - 18, 
+                              text="Traitement", 
+                              fill='#4ECDC4', 
+                              font=('Arial', 9, 'bold'),
+                              tags="processing_text")
+        
+        # Points animés
+        import time
+        dot_count = int(time.time() * 2) % 4  # 2 cycles par seconde
+        dots_text = "." * dot_count
+        
+        self.canvas.create_text(center_x + 55, canvas_height - 18, 
+                              text=dots_text, 
+                              fill='#4ECDC4', 
+                              font=('Arial', 9, 'bold'),
+                              tags="processing_dots")
+        
+        # Programmer la prochaine animation
+        self.window.after(250, self._animate_processing_dots)
+
 
     def set_mode(self, mode):
         logging.info(f"GUI Tkinter: Changement de mode vers: {mode}")
@@ -204,44 +289,110 @@ class VisualizerWindowTkinter:
             # Simplement dessiner le visualiseur - pas de gestion complexe des layers
             self.draw_visualizer()
         elif mode == "processing":
-            # Effacer le canvas et afficher le message de traitement
+            # Effacer le canvas et dessiner une interface de traitement professionnelle
             self.canvas.delete("all")
-            if self.status_label and self.status_label.winfo_exists():
-                self.status_label.config(
-                    text="⏳ Traitement en cours...", 
-                    fg="#4ECDC4", 
-                    bg="#1C1C1C", 
-                    font=("Arial", 14, "bold")
-                )
-                self.status_label.tkraise()
+            self._draw_processing_interface()
         else: # idle mode
             # Mode idle - rien de spécial à faire
             pass
 
     def show_status(self, status_type):
         if status_type == "success":
-            # Effacer le canvas pour une notification plus claire
+            # Arrêter l'animation de traitement et effacer tout
+            self.current_mode = "success"  # Stopper l'animation
             self.canvas.delete("all")
-            self.status_label.config(
-                text="✅ Succès !", 
-                fg="#00FF00", 
-                bg="#1C1C1C", 
-                font=("Arial", 16, "bold")
-            )
-            self.status_label.tkraise()
+            # Cacher le label de statut pour éviter la superposition
+            if self.status_label:
+                self.status_label.place_forget()
+            self._draw_success_interface()
             # Fermer la fenêtre après 3 secondes
             self.window.after(3000, self.hide)
         elif status_type == "error":
+            # Arrêter l'animation de traitement et effacer tout
+            self.current_mode = "error"  # Stopper l'animation
             self.canvas.delete("all")
-            self.status_label.config(
-                text="❌ Erreur !", 
-                fg="#FF6B6B", 
-                bg="#1C1C1C", 
-                font=("Arial", 16, "bold")
-            )
-            self.status_label.tkraise()
+            # Cacher le label de statut pour éviter la superposition
+            if self.status_label:
+                self.status_label.place_forget()
+            self._draw_error_interface()
             # Fermer la fenêtre après 3 secondes même en cas d'erreur
             self.window.after(3000, self.hide)
+
+    def _draw_success_interface(self):
+        """Dessine une interface de succès professionnelle."""
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        center_x = canvas_width // 2
+        center_y = canvas_height // 2 - 8  # Remonter l'icône pour faire de la place
+        
+        # Fond
+        self.canvas.create_rectangle(0, 0, canvas_width, canvas_height, 
+                                   fill='#1C1C1C', outline='')
+        
+        # Cercle de succès (vert moderne) - taille réduite
+        self.canvas.create_oval(center_x - 15, center_y - 12, 
+                              center_x + 15, center_y + 12, 
+                              fill='#4CAF50', outline='#2E7D32', width=2)
+        
+        # Checkmark stylisé - proportions ajustées
+        # Trait 1 du checkmark
+        self.canvas.create_line(center_x - 6, center_y - 1,
+                              center_x - 2, center_y + 3,
+                              fill='white', width=2, capstyle='round')
+        # Trait 2 du checkmark
+        self.canvas.create_line(center_x - 2, center_y + 3,
+                              center_x + 6, center_y - 5,
+                              fill='white', width=2, capstyle='round')
+        
+        # Texte "Transcription réussie !" - descendre un peu plus
+        self.canvas.create_text(center_x, canvas_height - 18, 
+                              text="Copie réussie !", 
+                              fill='#4CAF50', 
+                              font=('Arial', 9, 'bold'))
+        
+        # Texte "Voice Tool" discret
+        self.canvas.create_text(center_x, canvas_height - 6, 
+                              text="Voice Tool", 
+                              fill='#666666', 
+                              font=('Arial', 7, 'bold'))
+
+    def _draw_error_interface(self):
+        """Dessine une interface d'erreur professionnelle."""
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        center_x = canvas_width // 2
+        center_y = canvas_height // 2 - 8  # Remonter l'icône pour faire de la place
+        
+        # Fond
+        self.canvas.create_rectangle(0, 0, canvas_width, canvas_height, 
+                                   fill='#1C1C1C', outline='')
+        
+        # Cercle d'erreur (rouge moderne) - taille réduite
+        self.canvas.create_oval(center_x - 15, center_y - 12, 
+                              center_x + 15, center_y + 12, 
+                              fill='#F44336', outline='#C62828', width=2)
+        
+        # X stylisé - proportions ajustées
+        # Trait 1 du X
+        self.canvas.create_line(center_x - 5, center_y - 5,
+                              center_x + 5, center_y + 5,
+                              fill='white', width=2, capstyle='round')
+        # Trait 2 du X
+        self.canvas.create_line(center_x + 5, center_y - 5,
+                              center_x - 5, center_y + 5,
+                              fill='white', width=2, capstyle='round')
+        
+        # Texte "Échec de la transcription" - descendre un peu plus
+        self.canvas.create_text(center_x, canvas_height - 18, 
+                              text="Échec de la transcription", 
+                              fill='#F44336', 
+                              font=('Arial', 9, 'bold'))
+        
+        # Texte "Voice Tool" discret
+        self.canvas.create_text(center_x, canvas_height - 6, 
+                              text="Voice Tool", 
+                              fill='#666666', 
+                              font=('Arial', 7, 'bold'))
 
     def show(self):
         """Affiche la fenêtre et s'assure qu'elle est correctement positionnée"""
@@ -253,6 +404,12 @@ class VisualizerWindowTkinter:
         self.center_window()
 
     def hide(self):
+        # Remettre le label de statut à sa position initiale
+        if self.status_label:
+            self.status_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+            self.status_label.lower()
+        # Remettre en mode idle
+        self.current_mode = "idle"
         self.window.withdraw() # Cache la fenêtre
 
     def close(self):
