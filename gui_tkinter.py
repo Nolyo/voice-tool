@@ -14,6 +14,7 @@ logging.basicConfig(level=logging.INFO)
 class VisualizerWindowTkinter:
     def __init__(self, icon_path=None):
         self.root = tk.Tk()
+        self.root.title("Voice Tool")  # Définir le titre de l'application
         self.root.withdraw() # Cache la fenêtre principale Tkinter par défaut
         self.icon_path = icon_path
         
@@ -26,6 +27,7 @@ class VisualizerWindowTkinter:
         self.history_listbox = None # Pour la Listbox de l'historique
         
         self.window = tk.Toplevel(self.root)
+        self.window.title("Voice Tool - Visualizer")  # Titre pour la fenêtre de visualisation
         self.set_window_icon(self.window) # Appliquer l'icône à la fenêtre de visualisation
         self.window.overrideredirect(True) # Supprime la barre de titre et les bordures
         self.window.attributes("-topmost", True) # Toujours au-dessus
@@ -370,7 +372,11 @@ class VisualizerWindowTkinter:
                 # Effacer la listbox dans l'interface
                 if self.history_listbox:
                     self.history_listbox.delete(0, tk.END)
+                    # Nettoyer aussi les données associées
+                    if hasattr(self.history_listbox, 'text_data'):
+                        self.history_listbox.text_data = {}
                 logging.info("Tout l'historique a été effacé.")
+                msgbox.showinfo("Succès", "L'historique a été complètement effacé.")
             except Exception as e:
                 logging.error(f"Erreur lors de la suppression de l'historique: {e}")
                 msgbox.showerror("Erreur", "Une erreur est survenue lors de la suppression de l'historique.")
@@ -534,11 +540,15 @@ class VisualizerWindowTkinter:
             """Sauvegarde automatique des paramètres utilisateur (paste_at_cursor, enable_sounds, auto_start)"""
             try:
                 import main
+                # Convertir la valeur d'affichage en valeur API pour transcription_provider
+                display_provider = transcription_provider_var.get()
+                api_provider = provider_display_to_api.get(display_provider, "Google")
+                
                 user_config = {
                     "enable_sounds": sounds_var.get(),
                     "paste_at_cursor": paste_var.get(),
                     "auto_start": auto_start_var.get(),
-                    "transcription_provider": transcription_provider_var.get()
+                    "transcription_provider": api_provider
                 }
                 
                 # Gérer le démarrage automatique si nécessaire
@@ -554,8 +564,17 @@ class VisualizerWindowTkinter:
             except Exception as e:
                 logging.error(f"Erreur auto-save: {e}")
 
-        # === SECTION AUDIO ===
-        tk.Label(settings_frame, text="🔊 Audio", fg="#4CAF50", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        # === LAYOUT 2x2 POUR LES SECTIONS ===
+        
+        # Frame pour la première ligne (Audio + Texte)
+        top_row_frame = tk.Frame(settings_frame, bg="#2b2b2b")
+        top_row_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        # === SECTION AUDIO (à gauche) ===
+        audio_frame = tk.Frame(top_row_frame, bg="#2b2b2b")
+        audio_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        
+        tk.Label(audio_frame, text="🔊 Audio", fg="#4CAF50", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
         
         # Charger depuis les paramètres utilisateur passés en paramètre
         if user_settings and "enable_sounds" in user_settings:
@@ -564,15 +583,19 @@ class VisualizerWindowTkinter:
             sounds_var.set(current_config.get("enable_sounds", True))
         else:
             sounds_var.set(True)
-        sounds_check = tk.Checkbutton(settings_frame, text="Activer les sons d'interface", 
+        sounds_check = tk.Checkbutton(audio_frame, text="Activer les sons d'interface", 
                                      variable=sounds_var, command=auto_save_user_setting,
                                      fg="white", bg="#2b2b2b", 
                                      selectcolor="#3c3c3c", activebackground="#2b2b2b", 
                                      activeforeground="white")
         sounds_check.pack(anchor='w', pady=(0, 15))
 
-        # === SECTION TEXTE ===
-        tk.Label(settings_frame, text="📝 Texte", fg="#E0A800", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        # === SECTION TEXTE (à droite) ===
+        text_frame = tk.Frame(top_row_frame, bg="#2b2b2b")
+        text_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+        
+        tk.Label(text_frame, text="📝 Texte", fg="#E0A800", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        
         # Charger depuis les paramètres utilisateur passés en paramètre
         if user_settings and "paste_at_cursor" in user_settings:
             paste_var.set(user_settings["paste_at_cursor"])
@@ -586,10 +609,10 @@ class VisualizerWindowTkinter:
             auto_start_var.set(user_settings["auto_start"])
         else:
             auto_start_var.set(False)
-        paste_check = tk.Checkbutton(settings_frame, text="Insérer automatiquement au curseur après la transcription / copie depuis l'historique", 
+        paste_check = tk.Checkbutton(text_frame, text="Insérer automatiquement au curseur\naprès la transcription / copie depuis l'historique", 
                                      variable=paste_var, command=auto_save_user_setting,
                                      fg="white", bg="#2b2b2b", 
-                                     wraplength=700, justify=tk.LEFT,
+                                     wraplength=350, justify=tk.LEFT,
                                      selectcolor="#3c3c3c", activebackground="#2b2b2b", 
                                      activeforeground="white")
         paste_check.pack(anchor='w', pady=(0, 15))
@@ -598,30 +621,44 @@ class VisualizerWindowTkinter:
         separator1 = tk.Frame(settings_frame, height=1, bg="#555555")
         separator1.pack(fill=tk.X, pady=(0, 20))
 
-        # === SECTION TRANSCRIPTION ===
-        tk.Label(settings_frame, text="🤖 Service de Transcription", fg="#9C27B0", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        # Frame pour la deuxième ligne (Service + Système)
+        bottom_row_frame = tk.Frame(settings_frame, bg="#2b2b2b")
+        bottom_row_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        # === SECTION TRANSCRIPTION (à gauche) ===
+        transcription_frame = tk.Frame(bottom_row_frame, bg="#2b2b2b")
+        transcription_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+        
+        tk.Label(transcription_frame, text="🤖 Service de Transcription", fg="#9C27B0", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+
+        # Mapping entre affichage UI et valeurs API
+        provider_display_to_api = {
+            "Google": "Google",
+            "OpenAI Whisper (recommandé)": "OpenAI"
+        }
+        provider_api_to_display = {v: k for k, v in provider_display_to_api.items()}
 
         transcription_provider_var = tk.StringVar()
 
-        # Charger la configuration du fournisseur
-        if user_settings and "transcription_provider" in user_settings:
-            transcription_provider_var.set(user_settings.get("transcription_provider", "Google"))
-        else:
-            transcription_provider_var.set("Google")
+        # Charger la configuration du fournisseur et convertir pour l'affichage
+        current_api_provider = user_settings.get("transcription_provider", "Google") if user_settings and "transcription_provider" in user_settings else "Google"
+        current_display_provider = provider_api_to_display.get(current_api_provider, "Google")
+        transcription_provider_var.set(current_display_provider)
 
         # Créer le menu déroulant
-        tk.Label(settings_frame, text="Fournisseur de service :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        # Obtenir la valeur actuelle pour l'affichage correct
-        current_provider = transcription_provider_var.get()
-        provider_menu = ttk.OptionMenu(settings_frame, transcription_provider_var, current_provider, "Google", "OpenAI")
+        tk.Label(transcription_frame, text="Fournisseur de service :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
+        provider_menu = ttk.OptionMenu(transcription_frame, transcription_provider_var, current_display_provider, "Google", "OpenAI Whisper (recommandé)")
         provider_menu.pack(anchor='w', fill=tk.X, pady=(0, 10))
 
-        # Associer la sauvegarde automatique
+        # Ajouter la trace automatique pour la sauvegarde
         transcription_provider_var.trace_add("write", lambda *_: auto_save_user_setting())
         
-        # === SECTION SYSTÈME ===
-        tk.Label(settings_frame, text="💻 Système", fg="#FF6B6B", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
-        auto_start_check = tk.Checkbutton(settings_frame, text="Démarrer automatiquement avec Windows", 
+        # === SECTION SYSTÈME (à droite) ===
+        system_frame = tk.Frame(bottom_row_frame, bg="#2b2b2b")
+        system_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+        
+        tk.Label(system_frame, text="💻 Système", fg="#FF6B6B", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        auto_start_check = tk.Checkbutton(system_frame, text="Démarrer automatiquement avec Windows", 
                                          variable=auto_start_var, command=auto_save_user_setting,
                                          fg="white", bg="#2b2b2b", 
                                          selectcolor="#3c3c3c", activebackground="#2b2b2b", 
@@ -672,13 +709,17 @@ class VisualizerWindowTkinter:
 
         # Fonction pour sauvegarder la configuration complète
         def save_settings():
+            # Convertir la valeur d'affichage en valeur API pour transcription_provider
+            display_provider = transcription_provider_var.get()
+            api_provider = provider_display_to_api.get(display_provider, "Google")
+            
             new_config = {
                 "record_hotkey": record_hotkey_entry.get().strip(),
                 "open_window_hotkey": open_hotkey_entry.get().strip(),
                 "enable_sounds": sounds_var.get(),
                 "paste_at_cursor": paste_var.get(),
                 "auto_start": auto_start_var.get(),
-                "transcription_provider": transcription_provider_var.get()
+                "transcription_provider": api_provider
             }
             if save_callback:
                 try:

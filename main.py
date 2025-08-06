@@ -24,6 +24,22 @@ import setproctitle
 import openai
 setproctitle.setproctitle("Voice Tool")
 
+# Configuration spécifique Windows pour l'identification de l'application dans la Taskbar
+if platform.system() == 'Windows':
+    try:
+        import ctypes
+        # Définir l'Application User Model ID pour Windows
+        app_id = u'VoiceTool.Application.1.0'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        
+        # Essayer aussi de changer le nom du processus visible dans Task Manager
+        try:
+            ctypes.windll.kernel32.SetConsoleTitleW("Voice Tool")
+        except:
+            pass
+    except Exception as e:
+        logging.warning(f"Impossible de configurer l'App ID Windows: {e}")
+
 # Import conditionnel selon l'OS
 if platform.system() != 'Windows':
     import fcntl
@@ -263,8 +279,12 @@ def add_to_transcription_history(text):
 def clear_all_transcription_history():
     """Efface tout l'historique des transcriptions."""
     global transcription_history
-    transcription_history = []
-    save_transcription_history(transcription_history)
+    # Effacer directement dans le fichier pour être sûr
+    empty_list = []
+    save_transcription_history(empty_list)
+    # Mettre à jour la variable globale
+    transcription_history = empty_list
+    logging.info("Historique des transcriptions complètement effacé")
 
 # --- Fonctions de gestion des paramètres utilisateur ---
 
@@ -618,7 +638,18 @@ def transcribe_with_openai(filename):
 def transcribe_and_copy(filename):
     global google_credentials, visualizer_window, transcription_history
     try:
-        provider = user_settings.get("transcription_provider", "Google")
+        # Recharger les user_settings pour avoir la version la plus récente
+        current_user_settings = load_user_settings()
+        provider_raw = current_user_settings.get("transcription_provider", "Google")
+        
+        # Conversion si c'est une valeur d'affichage qui s'est glissée
+        provider_mapping = {
+            "OpenAI Whisper (recommandé)": "OpenAI",
+            "Google": "Google",
+            "OpenAI": "OpenAI"
+        }
+        provider = provider_mapping.get(provider_raw, "Google")
+        
         text = ""
 
         if provider == "Google":
