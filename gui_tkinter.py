@@ -27,26 +27,26 @@ class VisualizerWindowTkinter:
         self.window = tk.Toplevel(self.root)
         self.window.overrideredirect(True) # Supprime la barre de titre et les bordures
         self.window.attributes("-topmost", True) # Toujours au-dessus
-        self.window.geometry("250x60") # Taille fixe plus petite
-        self.window.configure(bg='black') # Fond noir
-        self.window.attributes("-alpha", 0.5) # Opacité réduite (50%) pour un fond moins présent
+        self.window.geometry("280x70") # Taille ajustée pour le nouveau design
+        self.window.configure(bg='white') # Fond blanc moderne
+        self.window.attributes("-alpha", 0.95) # Moins transparent pour plus de visibilité
 
         self.center_window()
 
         # Cacher la fenêtre au démarrage pour qu'elle n'apparaisse que lors de l'enregistrement
         self.window.withdraw()
 
-        # Utilise place() pour le canvas aussi, pour une gestion d'empilement cohérente
-        self.canvas = tk.Canvas(self.window, width=250, height=60, bg='black', highlightthickness=0)
+        # Style moderne avec fond blanc
+        self.canvas = tk.Canvas(self.window, width=280, height=70, bg='white', highlightthickness=0)
         self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
 
-        self.status_label = tk.Label(self.window, text="", fg="white", bg="black", font=("Arial", 14, "bold"))
+        self.status_label = tk.Label(self.window, text="", fg="#333333", bg="white", font=("Arial", 12, "bold"))
         self.status_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         # Initialement, le label est en dessous du canvas
         self.status_label.lower() 
 
-        self.audio_levels = np.zeros(40) # Moins de barres pour une fenêtre plus petite
-        self.bar_width = 250 / len(self.audio_levels)
+        self.audio_levels = np.zeros(50) # Plus de barres pour un effet plus fluide
+        self.bar_width = 280 / len(self.audio_levels)  # Largeur ajustée
 
         self.current_mode = "idle"
 
@@ -69,10 +69,23 @@ class VisualizerWindowTkinter:
             logging.error(f"Erreur lors de l'application de l'icône: {e}")
 
     def center_window(self):
+        """Positionne la fenêtre en bas de l'écran, au-dessus de la barre des tâches"""
         self.window.update_idletasks()
-        x = self.window.winfo_screenwidth() // 2 - self.window.winfo_width() // 2
-        y = self.window.winfo_screenheight() // 2 - self.window.winfo_height() // 2
+        
+        # Centrer horizontalement
+        screen_width = self.window.winfo_screenwidth()
+        window_width = self.window.winfo_width()
+        x = (screen_width - window_width) // 2
+        
+        # Positionner en bas, avec une marge de 50px au-dessus de la barre des tâches
+        screen_height = self.window.winfo_screenheight()
+        window_height = self.window.winfo_height()
+        taskbar_height = 40  # Hauteur estimée de la barre des tâches Windows
+        margin_bottom = 20   # Marge au-dessus de la barre des tâches
+        y = screen_height - window_height - taskbar_height - margin_bottom
+        
         self.window.geometry(f"+{x}+{y}")
+        logging.info(f"Fenêtre positionnée en bas: {x}+{y}")
 
     def _start_drag(self, event):
         self._drag_data["x"] = event.x
@@ -91,35 +104,76 @@ class VisualizerWindowTkinter:
 
     def draw_visualizer(self):
         self.canvas.delete("all") # Efface les anciennes barres
+        
+        canvas_height = self.canvas.winfo_height()
+        canvas_width = self.canvas.winfo_width()
+        
+        # Marge pour centrer les barres verticalement
+        margin_y = 10
+        usable_height = canvas_height - (2 * margin_y)
+        
         for i, level in enumerate(self.audio_levels):
-            x1 = i * self.bar_width
-            x2 = x1 + (self.bar_width * 0.8) # 80% de la largeur pour l'espacement
-            bar_height = int(level * self.canvas.winfo_height() * 0.7) # Hauteur des barres réduite
-            y1 = self.canvas.winfo_height() - bar_height
-            y2 = self.canvas.winfo_height()
+            # Position X avec espacement plus fin
+            x_center = (i + 0.5) * (canvas_width / len(self.audio_levels))
+            bar_width = max(2, int(canvas_width / len(self.audio_levels) * 0.6))  # Barres plus fines
+            
+            x1 = x_center - bar_width // 2
+            x2 = x_center + bar_width // 2
+            
+            # Hauteur de la barre avec une hauteur minimum pour l'esthétique
+            bar_height = max(4, int(level * usable_height * 0.8))
+            
+            # Position Y centrée
+            y_center = canvas_height // 2
+            y1 = y_center - bar_height // 2
+            y2 = y_center + bar_height // 2
+            
+            # Couleurs modernes et douces
+            if level < 0.2: 
+                color = "#E8F5E8"  # Vert très clair
+            elif level < 0.4: 
+                color = "#A8D8A8"  # Vert clair
+            elif level < 0.6: 
+                color = "#4CAF50"  # Vert principal
+            elif level < 0.8: 
+                color = "#FF9800"  # Orange
+            else: 
+                color = "#F44336"  # Rouge
+            
+            # Créer une barre "arrondie" en superposant des éléments
+            self._draw_rounded_rect(x1, y1, x2, y2, radius=bar_width//2, fill=color)
+    
+    def _draw_rounded_rect(self, x1, y1, x2, y2, radius=3, fill='#4CAF50'):
+        """Dessine un rectangle avec des coins arrondis en combinant rectangles et ovales"""
+        # Si la barre est très petite, dessiner juste un rectangle
+        if (y2 - y1) <= radius * 2 or (x2 - x1) <= radius * 2:
+            self.canvas.create_rectangle(x1, y1, x2, y2, fill=fill, outline=fill)
+            return
+            
+        # Rectangle central (sans les coins)
+        self.canvas.create_rectangle(x1, y1 + radius, x2, y2 - radius, fill=fill, outline=fill)
+        self.canvas.create_rectangle(x1 + radius, y1, x2 - radius, y2, fill=fill, outline=fill)
+        
+        # Coins arrondis (4 petits ovales)
+        self.canvas.create_oval(x1, y1, x1 + 2*radius, y1 + 2*radius, fill=fill, outline=fill)  # Coin haut-gauche
+        self.canvas.create_oval(x2 - 2*radius, y1, x2, y1 + 2*radius, fill=fill, outline=fill)  # Coin haut-droit
+        self.canvas.create_oval(x1, y2 - 2*radius, x1 + 2*radius, y2, fill=fill, outline=fill)  # Coin bas-gauche  
+        self.canvas.create_oval(x2 - 2*radius, y2 - 2*radius, x2, y2, fill=fill, outline=fill)  # Coin bas-droit
 
-            # Couleurs pour le dégradé (Tkinter ne gère pas les dégradés directement sur les rectangles)
-            # On simplifie avec une couleur basée sur le niveau
-            if level < 0.33: color = "#00FF00" # Vert
-            elif level < 0.66: color = "#FFFF00" # Jaune
-            else: color = "#FF0000" # Rouge
-
-            self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline=color)
 
     def set_mode(self, mode):
         logging.info(f"GUI Tkinter: Changement de mode vers: {mode}")
         self.current_mode = mode
         if mode == "recording":
-            self.canvas.tkraise() # Met le canvas au-dessus
-            self.status_label.lower() # Cache le label
+            # Simplement dessiner le visualiseur - pas de gestion complexe des layers
             self.draw_visualizer()
         elif mode == "processing":
-            self.status_label.config(text="Traitement...")
-            self.status_label.tkraise() # Met le label au-dessus
-            # self.canvas.lower() # Plus nécessaire, tkraise() gère l'empilement
+            if self.status_label and self.status_label.winfo_exists():
+                self.status_label.config(text="Traitement...")
+                # Pas de tkraise/lower - laissons Tkinter gérer
         else: # idle mode
-            # En mode idle, on peut cacher les deux ou s'assurer que le label est en dessous
-            self.status_label.lower()
+            # Mode idle - rien de spécial à faire
+            pass
             # self.canvas.lower() # Plus nécessaire
 
     def show_status(self, status_type):
@@ -132,7 +186,13 @@ class VisualizerWindowTkinter:
         self.window.after(2000, lambda: self.set_mode("idle")) # Retourne au mode idle
 
     def show(self):
+        """Affiche la fenêtre et s'assure qu'elle est correctement positionnée"""
         self.window.deiconify() # Affiche la fenêtre
+        # S'assurer que la fenêtre est au premier plan et correctement positionnée
+        self.window.lift()  # Mettre au premier plan
+        self.window.attributes("-topmost", True)  # Réactiver topmost au cas où
+        # Repositionner au cas où elle aurait dérivé
+        self.center_window()
 
     def hide(self):
         self.window.withdraw() # Cache la fenêtre
@@ -200,7 +260,7 @@ class VisualizerWindowTkinter:
         # Si l'option est activée ET que Tk n'a pas le focus, coller automatiquement au curseur
         try:
             import main
-            if main.config.get('paste_at_cursor', False):
+            if main.get_setting('paste_at_cursor', False):
                 # Si la fenêtre Tk a le focus, on évite de coller (l'utilisateur est dans l'UI)
                 if self.root.focus_get() is None:
                     self.root.after(80, main.paste_to_cursor)
@@ -292,7 +352,7 @@ class VisualizerWindowTkinter:
                 context_menu.grab_release()
 
 
-    def create_main_interface_window(self, history=None, current_config=None, save_callback=None):
+    def create_main_interface_window(self, history=None, current_config=None, save_callback=None, user_settings=None):
         """Crée et affiche l'interface principale avec onglets (Historique/Logs, Paramètres)."""
         # Vérifie si la fenêtre n'est pas déjà ouverte pour éviter les doublons
         if self.main_window and self.main_window.winfo_exists():
@@ -386,24 +446,57 @@ class VisualizerWindowTkinter:
         settings_frame = tk.Frame(notebook, bg="#2b2b2b", padx=20, pady=20)
         notebook.add(settings_frame, text='  Paramètres  ')
         
+        # Définir les variables AVANT la fonction
+        sounds_var = tk.BooleanVar()
+        paste_var = tk.BooleanVar()
+        
+        # Fonction pour sauvegarder automatiquement les paramètres utilisateur
+        def auto_save_user_setting():
+            """Sauvegarde automatique des paramètres utilisateur (paste_at_cursor, enable_sounds)"""
+            try:
+                import main
+                user_config = {
+                    "enable_sounds": sounds_var.get(),
+                    "paste_at_cursor": paste_var.get()
+                }
+                # Mettre à jour la variable globale, sauvegarder ET recharger pour sync
+                main.user_settings.update(user_config)
+                main.save_user_settings(main.user_settings)
+                # Recharger pour être sûr de la synchronisation entre threads
+                main.user_settings = main.load_user_settings()
+                logging.info(f"Paramètres sauvegardés et rechargés: {user_config}")
+            except Exception as e:
+                logging.error(f"Erreur auto-save: {e}")
+
         # === SECTION AUDIO ===
         tk.Label(settings_frame, text="🔊 Audio", fg="#4CAF50", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
         
-        # Option sons
-        sounds_var = tk.BooleanVar()
-        if current_config: sounds_var.set(current_config.get("enable_sounds", True))
+        # Charger depuis les paramètres utilisateur passés en paramètre
+        if user_settings and "enable_sounds" in user_settings:
+            sounds_var.set(user_settings["enable_sounds"])
+        elif current_config:
+            sounds_var.set(current_config.get("enable_sounds", True))
+        else:
+            sounds_var.set(True)
         sounds_check = tk.Checkbutton(settings_frame, text="Activer les sons d'interface", 
-                                     variable=sounds_var, fg="white", bg="#2b2b2b", 
+                                     variable=sounds_var, command=auto_save_user_setting,
+                                     fg="white", bg="#2b2b2b", 
                                      selectcolor="#3c3c3c", activebackground="#2b2b2b", 
                                      activeforeground="white")
         sounds_check.pack(anchor='w', pady=(0, 15))
 
         # === SECTION TEXTE ===
         tk.Label(settings_frame, text="📝 Texte", fg="#E0A800", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
-        paste_var = tk.BooleanVar()
-        if current_config: paste_var.set(current_config.get("paste_at_cursor", False))
+        # Charger depuis les paramètres utilisateur passés en paramètre
+        if user_settings and "paste_at_cursor" in user_settings:
+            paste_var.set(user_settings["paste_at_cursor"])
+        elif current_config:
+            paste_var.set(current_config.get("paste_at_cursor", False))
+        else:
+            paste_var.set(False)
         paste_check = tk.Checkbutton(settings_frame, text="Insérer automatiquement au curseur après la transcription / copie depuis l'historique", 
-                                     variable=paste_var, fg="white", bg="#2b2b2b", 
+                                     variable=paste_var, command=auto_save_user_setting,
+                                     fg="white", bg="#2b2b2b", 
                                      wraplength=700, justify=tk.LEFT,
                                      selectcolor="#3c3c3c", activebackground="#2b2b2b", 
                                      activeforeground="white")
@@ -451,7 +544,7 @@ class VisualizerWindowTkinter:
                  relief=tk.FLAT, activebackground="#5a6268", activeforeground="white",
                  font=("Arial", 9)).pack(side=tk.RIGHT)
 
-        # Fonction pour sauvegarder la configuration
+        # Fonction pour sauvegarder la configuration complète
         def save_settings():
             new_config = {
                 "record_hotkey": record_hotkey_entry.get().strip(),

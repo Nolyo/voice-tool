@@ -63,9 +63,11 @@ def get_app_data_dir():
 APP_DATA_DIR = get_app_data_dir()
 HISTORY_FILE = os.path.join(APP_DATA_DIR, 'transcription_history.json')
 SOUNDS_DIR = os.path.join(APP_DATA_DIR, 'sounds')
+USER_SETTINGS_FILE = os.path.join(APP_DATA_DIR, 'user_settings.json')
 
 # --- Variables globales ---
 config = {} # Contiendra la configuration chargée depuis config.json
+user_settings = {} # Contiendra les paramètres utilisateur sauvegardés dans AppData
 is_recording = False
 hotkey_listener = None
 audio_stream = None
@@ -255,6 +257,55 @@ def add_to_transcription_history(text):
     
     return history_item
 
+# --- Fonctions de gestion des paramètres utilisateur ---
+
+def load_user_settings():
+    """Charge les paramètres utilisateur depuis le fichier JSON dans AppData."""
+    try:
+        if os.path.exists(USER_SETTINGS_FILE):
+            with open(USER_SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                # Valider la structure du fichier
+                if isinstance(data, dict) and 'settings' in data:
+                    logging.info("Paramètres utilisateur chargés")
+                    return data['settings']
+                else:
+                    logging.warning("Format de paramètres invalide, création d'un nouveau fichier")
+                    return {}
+        else:
+            logging.info("Aucun fichier de paramètres utilisateur trouvé, création d'un nouveau")
+            return {}
+    except Exception as e:
+        logging.error(f"Erreur lors du chargement des paramètres utilisateur: {e}")
+        return {}
+
+def save_user_settings(settings):
+    """Sauvegarde les paramètres utilisateur dans le fichier JSON dans AppData."""
+    try:
+        settings_data = {
+            'version': '1.0',
+            'created': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'settings': settings
+        }
+        
+        # Créer le répertoire si nécessaire
+        os.makedirs(os.path.dirname(USER_SETTINGS_FILE), exist_ok=True)
+        
+        with open(USER_SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(settings_data, f, ensure_ascii=False, indent=2)
+        
+        logging.info("Paramètres utilisateur sauvegardés")
+        return True
+    except Exception as e:
+        logging.error(f"Erreur lors de la sauvegarde des paramètres utilisateur: {e}")
+        return False
+
+def get_setting(key, default=None):
+    """Récupère un paramètre utilisateur avec fallback sur la config locale puis la valeur par défaut."""
+    # Toujours recharger depuis le fichier pour éviter les problèmes de sync entre threads
+    current_user_settings = load_user_settings()
+    return current_user_settings.get(key, config.get(key, default))
+
 # --- Fonctions de génération de sons ---
 
 def generate_sound_wave(frequency, duration, sample_rate=44100, amplitude=0.02):
@@ -338,7 +389,7 @@ def save_wave_file(filepath, wave_data, sample_rate=44100):
 def play_sound_async(sound_path):
     """Joue un son de manière asynchrone selon l'OS."""
     # Vérifier si les sons sont activés
-    if not config.get('enable_sounds', True):
+    if not get_setting('enable_sounds', True):
         return
         
     if not sound_path or not os.path.exists(sound_path):
@@ -508,7 +559,7 @@ def transcribe_and_copy(filename):
         pyperclip.copy(text)
         logging.info("Texte copié dans le presse-papiers !")
         # Coller automatiquement au curseur si l'option est activée
-        if config.get('paste_at_cursor', False):
+        if get_setting('paste_at_cursor', False):
             # Laisser un court délai pour que l'appli cible reprenne le focus
             time.sleep(0.12)
             paste_to_cursor()
@@ -524,12 +575,12 @@ def transcribe_and_copy(filename):
             visualizer_window.root.after(0, visualizer_window.add_transcription_to_history, history_item)
         
         # Notification visuelle via la fenêtre GUI (désactivée si collage auto pour éviter de voler le focus)
-        if visualizer_window and hasattr(visualizer_window, 'show_status') and not config.get('paste_at_cursor', False):
+        if visualizer_window and hasattr(visualizer_window, 'show_status') and not get_setting('paste_at_cursor', False):
             visualizer_window.show_status("success")
 
     except Exception as e:
         logging.error(f"Erreur lors de la transcription/copie : {e}")
-        if visualizer_window and hasattr(visualizer_window, 'show_status') and not config.get('paste_at_cursor', False):
+        if visualizer_window and hasattr(visualizer_window, 'show_status') and not get_setting('paste_at_cursor', False):
             visualizer_window.show_status("error")
 
 # Plus besoin de la fonction transcription spécialisée - on utilise la standard
@@ -567,7 +618,7 @@ def toggle_recording(icon_pystray):
         
         # Afficher la fenêtre de visualisation si disponible et si cela ne risque pas de voler le focus
         if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-            if not config.get('paste_at_cursor', False):
+            if not get_setting('paste_at_cursor', False):
                 visualizer_window.window.after(0, visualizer_window.show) # Affiche la fenêtre
                 visualizer_window.window.after(0, visualizer_window.set_mode, "recording") # Passe en mode enregistrement
         
@@ -600,7 +651,7 @@ def toggle_recording(icon_pystray):
         # Vérifier que visualizer_window est bien initialisé (éviter toute action UI si collage auto activé)
         try:
             if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-                if not config.get('paste_at_cursor', False):
+                if not get_setting('paste_at_cursor', False):
                     visualizer_window.window.after(0, visualizer_window.set_mode, "processing") # Passe en mode traitement
                     visualizer_window.window.after(0, visualizer_window.hide) # Cache la fenêtre
                     logging.info("Interface de visualisation mise à jour")
@@ -648,7 +699,13 @@ def toggle_recording_from_gui():
 
 def update_and_restart_hotkeys(new_config):
     """Met à jour la configuration, la sauvegarde et redémarre l'écoute des raccourcis."""
-    global config, global_icon_pystray
+    global config, user_settings, global_icon_pystray
+    
+    # Sauvegarder TOUS les paramètres dans AppData (comme l'historique)
+    user_settings.update(new_config)
+    save_user_settings(user_settings)
+    
+    # Aussi sauvegarder dans config.json pour compatibilité
     config.update(new_config)
     try:
         with open(CONFIG_FILE, 'w') as f:
@@ -707,7 +764,8 @@ def open_interface():
             lambda: visualizer_window.create_main_interface_window(
                 history=transcription_history, 
                 current_config=config, 
-                save_callback=update_and_restart_hotkeys))
+                save_callback=update_and_restart_hotkeys,
+                user_settings=user_settings))
     else:
         logging.warning("La fenêtre du visualiseur n'est pas encore initialisée.")
 
@@ -773,8 +831,11 @@ def main():
 
     load_config() # Charge la configuration au démarrage
     
+    # Charger les paramètres utilisateur
+    global transcription_history, sound_paths, user_settings
+    user_settings = load_user_settings()
+    
     # Charger l'historique des transcriptions
-    global transcription_history, sound_paths
     transcription_history = load_transcription_history()
     
     # Initialiser les sons
