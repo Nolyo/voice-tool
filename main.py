@@ -768,11 +768,10 @@ def toggle_recording(icon_pystray):
         
         # Note: visualizer_window sera initialisé par le thread principal
         
-        # Afficher la fenêtre de visualisation si disponible et si cela ne risque pas de voler le focus
+        # Afficher la fenêtre de visualisation si disponible
         if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-            if not get_setting('paste_at_cursor', False):
-                visualizer_window.window.after(0, visualizer_window.show) # Affiche la fenêtre
-                visualizer_window.window.after(0, visualizer_window.set_mode, "recording") # Passe en mode enregistrement
+            visualizer_window.window.after(0, visualizer_window.show) # Affiche la fenêtre
+            visualizer_window.window.after(0, visualizer_window.set_mode, "recording") # Passe en mode enregistrement
         
         audio_frames = []
         audio_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='int16', callback=audio_callback)
@@ -800,13 +799,12 @@ def toggle_recording(icon_pystray):
             logging.error(f"Erreur lors de la fermeture du stream audio: {e}")
             audio_stream = None  # Réinitialiser même en cas d'erreur
         
-        # Vérifier que visualizer_window est bien initialisé (éviter toute action UI si collage auto activé)
+        # Vérifier que visualizer_window est bien initialisé
         try:
             if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-                if not get_setting('paste_at_cursor', False):
-                    visualizer_window.window.after(0, visualizer_window.set_mode, "processing") # Passe en mode traitement
-                    visualizer_window.window.after(0, visualizer_window.hide) # Cache la fenêtre
-                    logging.info("Interface de visualisation mise à jour")
+                visualizer_window.window.after(0, visualizer_window.set_mode, "processing") # Passe en mode traitement
+                visualizer_window.window.after(100, visualizer_window.hide) # Cache la fenêtre avec un petit délai
+                logging.info("Interface de visualisation mise à jour")
         except Exception as e:
             logging.error(f"Erreur lors de la mise à jour de l'interface: {e}")
 

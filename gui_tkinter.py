@@ -7,6 +7,7 @@ import logging
 from tkinter import ttk
 import pyperclip
 import os
+import platform
 from PIL import ImageTk, Image
 
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +35,30 @@ class VisualizerWindowTkinter:
         self.window.geometry("280x70") # Taille ajustée pour le nouveau design
         self.window.configure(bg='white') # Fond blanc moderne
         self.window.attributes("-alpha", 0.95) # Moins transparent pour plus de visibilité
+
+        # --- Configuration pour éviter le vol de focus (Windows) ---
+        if platform.system() == 'Windows':
+            try:
+                import ctypes
+                # Style de fenêtre "tool window" pour ne pas apparaître dans la barre des tâches
+                self.window.attributes("-toolwindow", True)
+                
+                # Constantes WinAPI
+                GWL_EXSTYLE = -20
+                WS_EX_NOACTIVATE = 0x08000000
+
+                # Récupérer le handle de la fenêtre
+                hwnd = self.window.winfo_id()
+                
+                # Récupérer les styles étendus actuels
+                current_style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+                
+                # Ajouter le style WS_EX_NOACTIVATE
+                new_style = current_style | WS_EX_NOACTIVATE
+                ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, new_style)
+                logging.info("Configuration anti-focus appliquée pour Windows.")
+            except Exception as e:
+                logging.error(f"Erreur lors de la configuration anti-focus: {e}")
 
         self.center_window()
 
