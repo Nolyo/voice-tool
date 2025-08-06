@@ -8,3 +8,5 @@ google-cloud-speech
 python-dotenv
 pyperclip
 PySide6
+setproctitle
+openai

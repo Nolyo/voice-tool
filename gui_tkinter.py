@@ -7,6 +7,7 @@ import logging
 from tkinter import ttk
 import pyperclip
 import os
+from PIL import ImageTk, Image
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,6 +26,7 @@ class VisualizerWindowTkinter:
         self.history_listbox = None # Pour la Listbox de l'historique
         
         self.window = tk.Toplevel(self.root)
+        self.set_window_icon(self.window) # Appliquer l'icône à la fenêtre de visualisation
         self.window.overrideredirect(True) # Supprime la barre de titre et les bordures
         self.window.attributes("-topmost", True) # Toujours au-dessus
         self.window.geometry("280x70") # Taille ajustée pour le nouveau design
@@ -58,11 +60,18 @@ class VisualizerWindowTkinter:
         logging.info("VisualizerWindowTkinter initialisée.")
 
     def set_window_icon(self, window):
-        """Définit l'icône personnalisée pour une fenêtre Tkinter."""
+        """Définit l'icône personnalisée pour une fenêtre Tkinter de manière robuste."""
         try:
             if self.icon_path and os.path.exists(self.icon_path):
-                window.iconbitmap(self.icon_path)
-                logging.info(f"Icône appliquée: {self.icon_path}")
+                # Ouvrir l'image avec Pillow
+                pil_img = Image.open(self.icon_path)
+                # Convertir en PhotoImage pour Tkinter
+                photo_img = ImageTk.PhotoImage(pil_img)
+                # Définir l'icône
+                window.iconphoto(False, photo_img)
+                # Garder une référence pour éviter que l'image ne soit supprimée par le garbage collector
+                window.custom_icon = photo_img
+                logging.info(f"Icône appliquée avec PhotoImage: {self.icon_path}")
             else:
                 logging.warning("Impossible de trouver l'icône personnalisée")
         except Exception as e:
@@ -351,9 +360,28 @@ class VisualizerWindowTkinter:
             finally:
                 context_menu.grab_release()
 
+    def _clear_all_history(self):
+        """Supprime tout l'historique après confirmation."""
+        import tkinter.messagebox as msgbox
+        if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer tout l'historique des transcriptions ?\n\nCette action est irréversible."):
+            try:
+                import main
+                main.clear_all_transcription_history()
+                # Effacer la listbox dans l'interface
+                if self.history_listbox:
+                    self.history_listbox.delete(0, tk.END)
+                logging.info("Tout l'historique a été effacé.")
+            except Exception as e:
+                logging.error(f"Erreur lors de la suppression de l'historique: {e}")
+                msgbox.showerror("Erreur", "Une erreur est survenue lors de la suppression de l'historique.")
 
-    def create_main_interface_window(self, history=None, current_config=None, save_callback=None, user_settings=None):
+
+    def create_main_interface_window(self, history=None, current_config=None, save_callback=None):
         """Crée et affiche l'interface principale avec onglets (Historique/Logs, Paramètres)."""
+        # Importer ici pour s'assurer d'avoir l'état le plus récent
+        import main
+        # Recharger les user_settings pour être sûr d'avoir la version la plus récente
+        user_settings = main.load_user_settings()
         # Vérifie si la fenêtre n'est pas déjà ouverte pour éviter les doublons
         if self.main_window and self.main_window.winfo_exists():
             # Lors d'une ouverture explicite, on donne toujours le focus à la fenêtre
@@ -366,7 +394,7 @@ class VisualizerWindowTkinter:
 
         self.main_window = tk.Toplevel(self.root)
         self.main_window.title("Voice Tool")
-        self.main_window.geometry("800x600")  # Augmenté de 100px pour voir le bouton Sauvegarder
+        self.main_window.geometry("800x700")  # Augmenté de 200px au total (600->700) pour cacher le bouton sauvegarder
         
         # Définir l'icône personnalisée
         self.set_window_icon(self.main_window)
@@ -418,7 +446,13 @@ class VisualizerWindowTkinter:
         help_frame.pack(pady=(10,5), padx=5, fill=tk.X)
         
         tk.Label(help_frame, text="💡 Double-clic pour copier • Clic droit pour le menu", 
-                fg="#888888", bg="#2b2b2b", font=("Arial", 9), justify=tk.CENTER).pack()
+                fg="#888888", bg="#2b2b2b", font=("Arial", 9), justify=tk.LEFT).pack(side=tk.LEFT)
+
+        # Bouton pour tout effacer
+        tk.Button(help_frame, text="🗑️ Tout effacer", 
+                  command=self._clear_all_history, bg="#dc3545", fg="white", 
+                  relief=tk.FLAT, activebackground="#c82333", activeforeground="white",
+                  font=("Arial", 8, "bold")).pack(side=tk.RIGHT)
         
         # Message informatif pour le raccourci d'enregistrement
         shortcut_frame = tk.Frame(history_frame, bg="#1e1e1e", relief=tk.RAISED, bd=1)
@@ -453,16 +487,64 @@ class VisualizerWindowTkinter:
         # Définir les variables AVANT la fonction
         sounds_var = tk.BooleanVar()
         paste_var = tk.BooleanVar()
+        auto_start_var = tk.BooleanVar()
         
+        # Fonction pour gérer le démarrage automatique Windows
+        def manage_auto_start(enable):
+            """Active ou désactive le démarrage automatique avec Windows."""
+            try:
+                import os
+                import shutil
+                
+                # Chemin vers le dossier de démarrage Windows
+                startup_folder = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+                bat_file_name = "Voice Tool (Background).bat"
+                startup_bat_path = os.path.join(startup_folder, bat_file_name)
+                
+                # Chemin vers le fichier .bat source (dans le dossier du projet)
+                import main
+                project_dir = os.path.dirname(os.path.abspath(main.__file__))
+                source_bat_path = os.path.join(project_dir, bat_file_name)
+                
+                if enable:
+                    # Activer le démarrage automatique
+                    if os.path.exists(source_bat_path):
+                        shutil.copy2(source_bat_path, startup_bat_path)
+                        logging.info(f"Démarrage automatique activé: {startup_bat_path}")
+                        return True
+                    else:
+                        logging.error(f"Fichier .bat source introuvable: {source_bat_path}")
+                        return False
+                else:
+                    # Désactiver le démarrage automatique
+                    if os.path.exists(startup_bat_path):
+                        os.remove(startup_bat_path)
+                        logging.info(f"Démarrage automatique désactivé: {startup_bat_path}")
+                        return True
+                    else:
+                        logging.info("Démarrage automatique déjà désactivé")
+                        return True
+                        
+            except Exception as e:
+                logging.error(f"Erreur lors de la gestion du démarrage automatique: {e}")
+                return False
+
         # Fonction pour sauvegarder automatiquement les paramètres utilisateur
         def auto_save_user_setting():
-            """Sauvegarde automatique des paramètres utilisateur (paste_at_cursor, enable_sounds)"""
+            """Sauvegarde automatique des paramètres utilisateur (paste_at_cursor, enable_sounds, auto_start)"""
             try:
                 import main
                 user_config = {
                     "enable_sounds": sounds_var.get(),
-                    "paste_at_cursor": paste_var.get()
+                    "paste_at_cursor": paste_var.get(),
+                    "auto_start": auto_start_var.get(),
+                    "transcription_provider": transcription_provider_var.get()
                 }
+                
+                # Gérer le démarrage automatique si nécessaire
+                if 'auto_start' in user_config:
+                    manage_auto_start(user_config['auto_start'])
+                
                 # Mettre à jour la variable globale, sauvegarder ET recharger pour sync
                 main.user_settings.update(user_config)
                 main.save_user_settings(main.user_settings)
@@ -498,6 +580,12 @@ class VisualizerWindowTkinter:
             paste_var.set(current_config.get("paste_at_cursor", False))
         else:
             paste_var.set(False)
+            
+        # Charger le paramètre auto_start
+        if user_settings and "auto_start" in user_settings:
+            auto_start_var.set(user_settings["auto_start"])
+        else:
+            auto_start_var.set(False)
         paste_check = tk.Checkbutton(settings_frame, text="Insérer automatiquement au curseur après la transcription / copie depuis l'historique", 
                                      variable=paste_var, command=auto_save_user_setting,
                                      fg="white", bg="#2b2b2b", 
@@ -509,6 +597,40 @@ class VisualizerWindowTkinter:
         # Séparateur
         separator1 = tk.Frame(settings_frame, height=1, bg="#555555")
         separator1.pack(fill=tk.X, pady=(0, 20))
+
+        # === SECTION TRANSCRIPTION ===
+        tk.Label(settings_frame, text="🤖 Service de Transcription", fg="#9C27B0", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+
+        transcription_provider_var = tk.StringVar()
+
+        # Charger la configuration du fournisseur
+        if user_settings and "transcription_provider" in user_settings:
+            transcription_provider_var.set(user_settings.get("transcription_provider", "Google"))
+        else:
+            transcription_provider_var.set("Google")
+
+        # Créer le menu déroulant
+        tk.Label(settings_frame, text="Fournisseur de service :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
+        # Obtenir la valeur actuelle pour l'affichage correct
+        current_provider = transcription_provider_var.get()
+        provider_menu = ttk.OptionMenu(settings_frame, transcription_provider_var, current_provider, "Google", "OpenAI")
+        provider_menu.pack(anchor='w', fill=tk.X, pady=(0, 10))
+
+        # Associer la sauvegarde automatique
+        transcription_provider_var.trace_add("write", lambda *_: auto_save_user_setting())
+        
+        # === SECTION SYSTÈME ===
+        tk.Label(settings_frame, text="💻 Système", fg="#FF6B6B", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        auto_start_check = tk.Checkbutton(settings_frame, text="Démarrer automatiquement avec Windows", 
+                                         variable=auto_start_var, command=auto_save_user_setting,
+                                         fg="white", bg="#2b2b2b", 
+                                         selectcolor="#3c3c3c", activebackground="#2b2b2b", 
+                                         activeforeground="white")
+        auto_start_check.pack(anchor='w', pady=(0, 15))
+        
+        # Séparateur
+        separator1b = tk.Frame(settings_frame, height=1, bg="#555555")
+        separator1b.pack(fill=tk.X, pady=(0, 20))
         
         # === SECTION RACCOURCIS ===
         tk.Label(settings_frame, text="⌨️ Raccourcis clavier", fg="#2196F3", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
@@ -554,7 +676,9 @@ class VisualizerWindowTkinter:
                 "record_hotkey": record_hotkey_entry.get().strip(),
                 "open_window_hotkey": open_hotkey_entry.get().strip(),
                 "enable_sounds": sounds_var.get(),
-                "paste_at_cursor": paste_var.get()
+                "paste_at_cursor": paste_var.get(),
+                "auto_start": auto_start_var.get(),
+                "transcription_provider": transcription_provider_var.get()
             }
             if save_callback:
                 try:

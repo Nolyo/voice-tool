@@ -20,6 +20,9 @@ import platform
 import math
 import wave
 import struct
+import setproctitle
+import openai
+setproctitle.setproctitle("Voice Tool")
 
 # Import conditionnel selon l'OS
 if platform.system() != 'Windows':
@@ -257,13 +260,21 @@ def add_to_transcription_history(text):
     
     return history_item
 
+def clear_all_transcription_history():
+    """Efface tout l'historique des transcriptions."""
+    global transcription_history
+    transcription_history = []
+    save_transcription_history(transcription_history)
+
 # --- Fonctions de gestion des paramètres utilisateur ---
 
 def get_default_user_settings():
     """Retourne les paramètres utilisateur par défaut."""
     return {
         "enable_sounds": True,
-        "paste_at_cursor": False
+        "paste_at_cursor": False,
+        "auto_start": False,
+        "transcription_provider": "Google"
     }
 
 def load_user_settings():
@@ -334,7 +345,7 @@ def migrate_user_settings(user_params):
 def get_setting(key, default=None):
     """Récupère un paramètre utilisateur depuis AppData ou un paramètre système depuis config."""
     # Pour les paramètres utilisateur, toujours charger depuis AppData
-    if key in ['enable_sounds', 'paste_at_cursor']:
+    if key in ['enable_sounds', 'paste_at_cursor', 'auto_start']:
         current_user_settings = load_user_settings()
         return current_user_settings.get(key, default)
     
@@ -589,32 +600,59 @@ def paste_to_cursor():
     except Exception as e:
         logging.error(f"Impossible d'envoyer la commande de collage: {e}")
 
+def transcribe_with_openai(filename):
+    """Transcrire l'audio avec l'API OpenAI Whisper."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise Exception("La clé API OpenAI n'est pas configurée dans le fichier .env.")
+
+    client = openai.OpenAI(api_key=api_key)
+
+    with open(filename, "rb") as audio_file:
+        response = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file
+        )
+    return response.text
+
 def transcribe_and_copy(filename):
     global google_credentials, visualizer_window, transcription_history
     try:
-        # Vérification des credentials
-        if google_credentials is None:
-            logging.error("Les credentials Google Cloud ne sont pas initialisés.")
-            raise Exception("Credentials not initialized")
+        provider = user_settings.get("transcription_provider", "Google")
+        text = ""
+
+        if provider == "Google":
+            # Vérification des credentials
+            if google_credentials is None:
+                logging.error("Les credentials Google Cloud ne sont pas initialisés.")
+                raise Exception("Credentials not initialized")
+            
+            logging.info(f"Utilisation des credentials pour le projet: {google_credentials.project_id}")
+            client = speech.SpeechClient(credentials=google_credentials)
+            with open(filename, "rb") as audio_file:
+                content = audio_file.read()
+            audio = speech.RecognitionAudio(content=content)
+            recog_config = speech.RecognitionConfig(
+                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                sample_rate_hertz=SAMPLE_RATE,
+                language_code="fr-FR",
+                enable_automatic_punctuation=True,
+                model="latest_long"
+            )
+            logging.info("Envoi de l'audio à Google Cloud Speech (mode dictée)...")
+            response = client.recognize(config=recog_config, audio=audio)
+            if not response.results:
+                logging.warning("Aucun texte n'a pu être transcrit.")
+                raise Exception("No text transcribed")
+            text = response.results[0].alternatives[0].transcript
         
-        logging.info(f"Utilisation des credentials pour le projet: {google_credentials.project_id}")
-        client = speech.SpeechClient(credentials=google_credentials)
-        with open(filename, "rb") as audio_file:
-            content = audio_file.read()
-        audio = speech.RecognitionAudio(content=content)
-        recog_config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=SAMPLE_RATE,
-            language_code="fr-FR",
-            enable_automatic_punctuation=True,
-            model="latest_long"
-        )
-        logging.info("Envoi de l'audio à Google Cloud Speech (mode dictée)...")
-        response = client.recognize(config=recog_config, audio=audio)
-        if not response.results:
-            logging.warning("Aucun texte n'a pu être transcrit.")
-            raise Exception("No text transcribed")
-        text = response.results[0].alternatives[0].transcript
+        elif provider == "OpenAI":
+            logging.info("Envoi de l'audio à OpenAI Whisper...")
+            text = transcribe_with_openai(filename)
+
+        else:
+            raise Exception(f"Fournisseur de transcription non valide : {provider}")
+
         logging.info(f"Texte transcrit: {text}")
         pyperclip.copy(text)
         logging.info("Texte copié dans le presse-papiers !")
@@ -768,7 +806,7 @@ def update_and_restart_hotkeys(new_config):
     for key, value in new_config.items():
         if key in ['record_hotkey', 'open_window_hotkey']:
             system_params[key] = value
-        elif key in ['enable_sounds', 'paste_at_cursor']:
+        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider']:
             user_params[key] = value
         else:
             logging.warning(f"Paramètre inconnu: {key}")
@@ -849,8 +887,7 @@ def open_interface():
             lambda: visualizer_window.create_main_interface_window(
                 history=transcription_history, 
                 current_config=config, 
-                save_callback=update_and_restart_hotkeys,
-                user_settings=user_settings))
+                save_callback=update_and_restart_hotkeys))
     else:
         logging.warning("La fenêtre du visualiseur n'est pas encore initialisée.")
 
@@ -972,9 +1009,17 @@ def main():
         pystray.MenuItem('Ouvrir', open_interface),
         pystray.MenuItem('Quitter', on_quit)
     )
+    icon_path = os.path.join(script_dir, 'voice_tool_icon.ico')
+    try:
+        icon_image = Image.open(icon_path)
+    except Exception as e:
+        logging.error(f"Impossible de charger l'icône depuis {icon_path}: {e}")
+        # Utiliser une icône de secours
+        icon_image = create_icon_pystray('white', 'gray')
+
     icon_pystray = pystray.Icon(
         'VoiceTool',
-        icon=create_icon_pystray('white', 'gray'), 
+        icon=icon_image,
         title='Voice Tool (Ctrl+Alt+S) - Google Cloud',
         menu=menu
     )
