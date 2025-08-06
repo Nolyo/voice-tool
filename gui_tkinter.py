@@ -323,15 +323,9 @@ class VisualizerWindowTkinter:
                           "Êtes-vous sûr de vouloir fermer complètement Voice Tool ?\n\nL'application se fermera et ne fonctionnera plus en arrière-plan."):
             logging.info("Fermeture complète de l'application demandée depuis l'interface")
             
-            # Appeler directement la fonction on_quit qui fait tout le nettoyage
+            # Utiliser la fonction spéciale pour fermeture depuis GUI
             import main
-            if main.global_icon_pystray:
-                # Utiliser la fonction on_quit existante qui gère proprement la fermeture
-                main.on_quit(main.global_icon_pystray, None)
-            else:
-                # Fallback si l'icône n'est pas disponible
-                import sys
-                sys.exit(0)
+            main.quit_from_gui()
 
     def _on_history_double_click(self, event):
         """Copie automatiquement l'élément sur lequel on double-clique."""
@@ -540,15 +534,19 @@ class VisualizerWindowTkinter:
             """Sauvegarde automatique des paramètres utilisateur (paste_at_cursor, enable_sounds, auto_start)"""
             try:
                 import main
-                # Convertir la valeur d'affichage en valeur API pour transcription_provider
+                # Convertir les valeurs d'affichage en valeurs API
                 display_provider = transcription_provider_var.get()
                 api_provider = provider_display_to_api.get(display_provider, "Google")
+                
+                display_language = language_var.get()
+                api_language = language_display_to_api.get(display_language, "fr-FR")
                 
                 user_config = {
                     "enable_sounds": sounds_var.get(),
                     "paste_at_cursor": paste_var.get(),
                     "auto_start": auto_start_var.get(),
-                    "transcription_provider": api_provider
+                    "transcription_provider": api_provider,
+                    "language": api_language
                 }
                 
                 # Gérer le démarrage automatique si nécessaire
@@ -631,27 +629,53 @@ class VisualizerWindowTkinter:
         
         tk.Label(transcription_frame, text="🤖 Service de Transcription", fg="#9C27B0", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
 
-        # Mapping entre affichage UI et valeurs API
+        # Mapping entre affichage UI et valeurs API pour providers
         provider_display_to_api = {
             "Google": "Google",
             "OpenAI Whisper (recommandé)": "OpenAI"
         }
         provider_api_to_display = {v: k for k, v in provider_display_to_api.items()}
 
+        # Mapping entre affichage UI et valeurs API pour langues
+        language_display_to_api = {
+            "🇫🇷 Français": "fr-FR",
+            "🇺🇸 English": "en-US",
+            "🇪🇸 Español": "es-ES",
+            "🇩🇪 Deutsch": "de-DE",
+            "🇮🇹 Italiano": "it-IT",
+            "🇵🇹 Português": "pt-PT",
+            "🇳🇱 Nederlands": "nl-NL"
+        }
+        language_api_to_display = {v: k for k, v in language_display_to_api.items()}
+
         transcription_provider_var = tk.StringVar()
+        language_var = tk.StringVar()
 
         # Charger la configuration du fournisseur et convertir pour l'affichage
         current_api_provider = user_settings.get("transcription_provider", "Google") if user_settings and "transcription_provider" in user_settings else "Google"
         current_display_provider = provider_api_to_display.get(current_api_provider, "Google")
         transcription_provider_var.set(current_display_provider)
 
-        # Créer le menu déroulant
+        # Charger la configuration de langue et convertir pour l'affichage
+        current_api_language = user_settings.get("language", "fr-FR") if user_settings and "language" in user_settings else "fr-FR"
+        current_display_language = language_api_to_display.get(current_api_language, "🇫🇷 Français")
+        language_var.set(current_display_language)
+
+        # Créer le menu déroulant pour le fournisseur
         tk.Label(transcription_frame, text="Fournisseur de service :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
         provider_menu = ttk.OptionMenu(transcription_frame, transcription_provider_var, current_display_provider, "Google", "OpenAI Whisper (recommandé)")
-        provider_menu.pack(anchor='w', fill=tk.X, pady=(0, 10))
+        provider_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
+
+        # Créer le menu déroulant pour la langue
+        tk.Label(transcription_frame, text="Langue de transcription :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
+        language_menu = ttk.OptionMenu(transcription_frame, language_var, current_display_language, 
+                                     "🇫🇷 Français", "🇺🇸 English", "🇪🇸 Español", "🇩🇪 Deutsch", 
+                                     "🇮🇹 Italiano", "🇵🇹 Português", "🇳🇱 Nederlands")
+        language_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
 
         # Ajouter la trace automatique pour la sauvegarde
         transcription_provider_var.trace_add("write", lambda *_: auto_save_user_setting())
+        language_var.trace_add("write", lambda *_: auto_save_user_setting())
         
         # === SECTION SYSTÈME (à droite) ===
         system_frame = tk.Frame(bottom_row_frame, bg="#2b2b2b")
@@ -709,9 +733,12 @@ class VisualizerWindowTkinter:
 
         # Fonction pour sauvegarder la configuration complète
         def save_settings():
-            # Convertir la valeur d'affichage en valeur API pour transcription_provider
+            # Convertir les valeurs d'affichage en valeurs API
             display_provider = transcription_provider_var.get()
             api_provider = provider_display_to_api.get(display_provider, "Google")
+            
+            display_language = language_var.get()
+            api_language = language_display_to_api.get(display_language, "fr-FR")
             
             new_config = {
                 "record_hotkey": record_hotkey_entry.get().strip(),
@@ -719,7 +746,8 @@ class VisualizerWindowTkinter:
                 "enable_sounds": sounds_var.get(),
                 "paste_at_cursor": paste_var.get(),
                 "auto_start": auto_start_var.get(),
-                "transcription_provider": api_provider
+                "transcription_provider": api_provider,
+                "language": api_language
             }
             if save_callback:
                 try:

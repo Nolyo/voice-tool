@@ -294,7 +294,8 @@ def get_default_user_settings():
         "enable_sounds": True,
         "paste_at_cursor": False,
         "auto_start": False,
-        "transcription_provider": "Google"
+        "transcription_provider": "Google",
+        "language": "fr-FR"
     }
 
 def load_user_settings():
@@ -620,7 +621,7 @@ def paste_to_cursor():
     except Exception as e:
         logging.error(f"Impossible d'envoyer la commande de collage: {e}")
 
-def transcribe_with_openai(filename):
+def transcribe_with_openai(filename, language=None):
     """Transcrire l'audio avec l'API OpenAI Whisper."""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -628,10 +629,26 @@ def transcribe_with_openai(filename):
 
     client = openai.OpenAI(api_key=api_key)
 
+    # Convertir le code langue pour OpenAI (format ISO 639-1)
+    language_mapping = {
+        "fr-FR": "fr",
+        "en-US": "en", 
+        "es-ES": "es",
+        "de-DE": "de",
+        "it-IT": "it",
+        "pt-PT": "pt",
+        "nl-NL": "nl"
+    }
+    
+    whisper_language = language_mapping.get(language, "fr") if language else "fr"
+    
+    logging.info(f"OpenAI Whisper - Langue configurée: {whisper_language}")
+
     with open(filename, "rb") as audio_file:
         response = client.audio.transcriptions.create(
             model="whisper-1",
-            file=audio_file
+            file=audio_file,
+            language=whisper_language
         )
     return response.text
 
@@ -658,7 +675,11 @@ def transcribe_and_copy(filename):
                 logging.error("Les credentials Google Cloud ne sont pas initialisés.")
                 raise Exception("Credentials not initialized")
             
+            # Récupérer la langue configurée
+            selected_language = current_user_settings.get("language", "fr-FR")
+            
             logging.info(f"Utilisation des credentials pour le projet: {google_credentials.project_id}")
+            logging.info(f"Langue de transcription: {selected_language}")
             client = speech.SpeechClient(credentials=google_credentials)
             with open(filename, "rb") as audio_file:
                 content = audio_file.read()
@@ -666,11 +687,11 @@ def transcribe_and_copy(filename):
             recog_config = speech.RecognitionConfig(
                 encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
                 sample_rate_hertz=SAMPLE_RATE,
-                language_code="fr-FR",
+                language_code=selected_language,
                 enable_automatic_punctuation=True,
                 model="latest_long"
             )
-            logging.info("Envoi de l'audio à Google Cloud Speech (mode dictée)...")
+            logging.info(f"Envoi de l'audio à Google Cloud Speech (langue: {selected_language})...")
             response = client.recognize(config=recog_config, audio=audio)
             if not response.results:
                 logging.warning("Aucun texte n'a pu être transcrit.")
@@ -678,8 +699,10 @@ def transcribe_and_copy(filename):
             text = response.results[0].alternatives[0].transcript
         
         elif provider == "OpenAI":
-            logging.info("Envoi de l'audio à OpenAI Whisper...")
-            text = transcribe_with_openai(filename)
+            # Récupérer la langue configurée
+            selected_language = current_user_settings.get("language", "fr-FR")
+            logging.info(f"Envoi de l'audio à OpenAI Whisper (langue: {selected_language})...")
+            text = transcribe_with_openai(filename, selected_language)
 
         else:
             raise Exception(f"Fournisseur de transcription non valide : {provider}")
@@ -837,7 +860,7 @@ def update_and_restart_hotkeys(new_config):
     for key, value in new_config.items():
         if key in ['record_hotkey', 'open_window_hotkey']:
             system_params[key] = value
-        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider']:
+        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language']:
             user_params[key] = value
         else:
             logging.warning(f"Paramètre inconnu: {key}")
@@ -890,6 +913,46 @@ def setup_hotkey(icon_pystray):
     hotkey_listener = keyboard.GlobalHotKeys(hotkey_map)
     hotkey_listener.start()
     logging.info(f"Raccourcis clavier activés : {list(hotkey_map.keys())}")
+
+def quit_from_gui():
+    """Ferme l'application depuis l'interface GUI (fermeture synchrone)."""
+    global hotkey_listener, visualizer_window, global_icon_pystray, audio_stream
+    logging.info("Arrêt de l'application depuis l'interface GUI...")
+    
+    # Arrêter d'abord les services
+    if hotkey_listener:
+        hotkey_listener.stop()
+    if audio_stream:
+        audio_stream.close()
+    
+    # Fermer Tkinter de façon synchrone (on est déjà dans le thread Tkinter)
+    if visualizer_window:
+        try:
+            visualizer_window.close()
+        except:
+            pass
+    
+    # Libérer le verrou d'instance unique
+    release_lock()
+    
+    # Arrêter l'icône pystray en dernier avec un délai pour éviter le zombie
+    if global_icon_pystray:
+        # Utiliser un thread séparé pour arrêter l'icône avec un petit délai
+        import threading
+        def stop_icon():
+            import time
+            time.sleep(0.1)  # Petit délai pour que Tkinter se ferme complètement
+            try:
+                global_icon_pystray.stop()
+            except:
+                pass
+        
+        threading.Thread(target=stop_icon, daemon=True).start()
+    
+    # Forcer la sortie du processus
+    import sys
+    import os
+    os._exit(0)
 
 def on_quit(icon_pystray, item):
     global hotkey_listener, visualizer_window
