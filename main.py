@@ -259,6 +259,13 @@ def add_to_transcription_history(text):
 
 # --- Fonctions de gestion des paramètres utilisateur ---
 
+def get_default_user_settings():
+    """Retourne les paramètres utilisateur par défaut."""
+    return {
+        "enable_sounds": True,
+        "paste_at_cursor": False
+    }
+
 def load_user_settings():
     """Charge les paramètres utilisateur depuis le fichier JSON dans AppData."""
     try:
@@ -267,17 +274,23 @@ def load_user_settings():
                 data = json.load(f)
                 # Valider la structure du fichier
                 if isinstance(data, dict) and 'settings' in data:
+                    # Fusionner avec les defaults pour garantir toutes les clés
+                    defaults = get_default_user_settings()
+                    settings = {**defaults, **data['settings']}
                     logging.info("Paramètres utilisateur chargés")
-                    return data['settings']
+                    return settings
                 else:
-                    logging.warning("Format de paramètres invalide, création d'un nouveau fichier")
-                    return {}
+                    logging.warning("Format de paramètres invalide, utilisation des valeurs par défaut")
+                    return get_default_user_settings()
         else:
-            logging.info("Aucun fichier de paramètres utilisateur trouvé, création d'un nouveau")
-            return {}
+            logging.info("Aucun fichier de paramètres utilisateur trouvé, initialisation avec valeurs par défaut")
+            # Créer le fichier avec les valeurs par défaut
+            defaults = get_default_user_settings()
+            save_user_settings(defaults)
+            return defaults
     except Exception as e:
         logging.error(f"Erreur lors du chargement des paramètres utilisateur: {e}")
-        return {}
+        return get_default_user_settings()
 
 def save_user_settings(settings):
     """Sauvegarde les paramètres utilisateur dans le fichier JSON dans AppData."""
@@ -300,11 +313,33 @@ def save_user_settings(settings):
         logging.error(f"Erreur lors de la sauvegarde des paramètres utilisateur: {e}")
         return False
 
+def migrate_user_settings(user_params):
+    """Migre les anciens paramètres utilisateur depuis config.json vers AppData."""
+    try:
+        # Charger les paramètres utilisateur existants
+        current_user_settings = load_user_settings()
+        
+        # Fusionner avec les paramètres à migrer (priorité aux existants)
+        migrated_settings = {**user_params, **current_user_settings}
+        
+        # Sauvegarder dans AppData
+        save_user_settings(migrated_settings)
+        
+        logging.info(f"Paramètres utilisateur migrés: {list(user_params.keys())}")
+        return True
+    except Exception as e:
+        logging.error(f"Erreur lors de la migration des paramètres utilisateur: {e}")
+        return False
+
 def get_setting(key, default=None):
-    """Récupère un paramètre utilisateur avec fallback sur la config locale puis la valeur par défaut."""
-    # Toujours recharger depuis le fichier pour éviter les problèmes de sync entre threads
-    current_user_settings = load_user_settings()
-    return current_user_settings.get(key, config.get(key, default))
+    """Récupère un paramètre utilisateur depuis AppData ou un paramètre système depuis config."""
+    # Pour les paramètres utilisateur, toujours charger depuis AppData
+    if key in ['enable_sounds', 'paste_at_cursor']:
+        current_user_settings = load_user_settings()
+        return current_user_settings.get(key, default)
+    
+    # Pour les paramètres système, utiliser config.json
+    return config.get(key, default)
 
 # --- Fonctions de génération de sons ---
 
@@ -413,28 +448,53 @@ def play_sound_async(sound_path):
 # --- Fonctions de l'application ---
 
 def load_config():
-    """Charge la configuration depuis config.json ou la crée avec des valeurs par défaut."""
+    """Charge la configuration système depuis config.json (hotkeys seulement)."""
     global config
-    defaults = {
+    # Paramètres SYSTÈME seulement (hotkeys et config technique)
+    system_defaults = {
         "record_hotkey": "<ctrl>+<alt>+s",
-        "open_window_hotkey": "<ctrl>+<alt>+o",
-        "enable_sounds": True,
-        "paste_at_cursor": False
+        "open_window_hotkey": "<ctrl>+<alt>+o"
     }
+    
     try:
         if not os.path.exists(CONFIG_FILE):
-            logging.info(f"Fichier de configuration non trouvé, création de {CONFIG_FILE} avec les valeurs par défaut.")
+            logging.info(f"Fichier de configuration système non trouvé, création de {CONFIG_FILE}")
             with open(CONFIG_FILE, 'w') as f:
-                json.dump(defaults, f, indent=4)
-            config = defaults
+                json.dump(system_defaults, f, indent=4)
+            config = system_defaults
         else:
             with open(CONFIG_FILE, 'r') as f:
                 loaded = json.load(f)
-                # Fusionner avec les valeurs par défaut pour garantir les nouvelles clés
-                config = {**defaults, **loaded}
+                
+                # Migration : déplacer les anciens paramètres utilisateur vers AppData
+                user_params_to_migrate = {}
+                system_params = {}
+                
+                for key, value in loaded.items():
+                    if key in ['enable_sounds', 'paste_at_cursor']:
+                        # Paramètre utilisateur à migrer
+                        user_params_to_migrate[key] = value
+                        logging.info(f"Migration du paramètre utilisateur: {key} = {value}")
+                    else:
+                        # Paramètre système à conserver
+                        system_params[key] = value
+                
+                # Migrer les paramètres utilisateur vers AppData si nécessaire
+                if user_params_to_migrate:
+                    migrate_user_settings(user_params_to_migrate)
+                    # Nettoyer config.json en gardant seulement les paramètres système
+                    clean_config = {**system_defaults, **system_params}
+                    with open(CONFIG_FILE, 'w') as f:
+                        json.dump(clean_config, f, indent=4)
+                    logging.info("config.json nettoyé - paramètres utilisateur migrés vers AppData")
+                    config = clean_config
+                else:
+                    # Fusionner avec les valeurs par défaut
+                    config = {**system_defaults, **system_params}
+                    
     except Exception as e:
         logging.error(f"Erreur lors du chargement de la configuration : {e}")
-        config = defaults
+        config = system_defaults
 
 
 def get_google_credentials():
@@ -698,24 +758,49 @@ def toggle_recording_from_gui():
     toggle_recording(global_icon_pystray)
 
 def update_and_restart_hotkeys(new_config):
-    """Met à jour la configuration, la sauvegarde et redémarre l'écoute des raccourcis."""
+    """Met à jour la configuration système et utilisateur selon le type de paramètre."""
     global config, user_settings, global_icon_pystray
     
-    # Sauvegarder TOUS les paramètres dans AppData (comme l'historique)
-    user_settings.update(new_config)
-    save_user_settings(user_settings)
+    # Séparer les paramètres système des paramètres utilisateur
+    system_params = {}
+    user_params = {}
     
-    # Aussi sauvegarder dans config.json pour compatibilité
-    config.update(new_config)
-    try:
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(config, f, indent=4)
-        logging.info(f"Configuration sauvegardée dans {CONFIG_FILE}")
-    except Exception as e:
-        logging.error(f"Erreur lors de la sauvegarde de la configuration : {e}")
+    for key, value in new_config.items():
+        if key in ['record_hotkey', 'open_window_hotkey']:
+            system_params[key] = value
+        elif key in ['enable_sounds', 'paste_at_cursor']:
+            user_params[key] = value
+        else:
+            logging.warning(f"Paramètre inconnu: {key}")
     
-    if global_icon_pystray:
+    # Sauvegarder les paramètres utilisateur dans AppData
+    if user_params:
+        user_settings.update(user_params)
+        save_user_settings(user_settings)
+        logging.info(f"Paramètres utilisateur sauvegardés: {list(user_params.keys())}")
+    
+    # Sauvegarder les paramètres système dans config.json
+    if system_params:
+        config.update(system_params)
+        try:
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(config, f, indent=4)
+            logging.info(f"Paramètres système sauvegardés: {list(system_params.keys())}")
+        except Exception as e:
+            logging.error(f"Erreur lors de la sauvegarde des paramètres système : {e}")
+    
+    # Redémarrer les hotkeys seulement si les raccourcis ont changé
+    if system_params and global_icon_pystray:
         setup_hotkey(global_icon_pystray)
+        logging.info("Raccourcis clavier redémarrés")
+    
+    # Retourner les paramètres effectivement sauvegardés pour mise à jour de l'interface
+    return {
+        'system_params': system_params,
+        'user_params': user_params,
+        'current_config': config,
+        'current_user_settings': user_settings
+    }
 
 def setup_hotkey(icon_pystray):
     global hotkey_listener, config

@@ -366,7 +366,7 @@ class VisualizerWindowTkinter:
 
         self.main_window = tk.Toplevel(self.root)
         self.main_window.title("Voice Tool")
-        self.main_window.geometry("800x500")
+        self.main_window.geometry("800x600")  # Augmenté de 100px pour voir le bouton Sauvegarder
         
         # Définir l'icône personnalisée
         self.set_window_icon(self.main_window)
@@ -428,9 +428,13 @@ class VisualizerWindowTkinter:
         tk.Label(shortcut_frame, text="Pour démarrer/arrêter l'enregistrement", fg="white", bg="#1e1e1e", font=("Arial", 10)).pack()
         
         # Afficher le raccourci configuré
-        import main
-        current_shortcut = main.config.get('record_hotkey', '<ctrl>+<alt>+s')
-        tk.Label(shortcut_frame, text=f"Appuyez sur {current_shortcut}", fg="#4ECDC4", bg="#1e1e1e", font=("Arial", 11, "bold")).pack(pady=(2,8))
+        if current_config:
+            current_shortcut = current_config.get('record_hotkey', '<ctrl>+<alt>+s')
+        else:
+            import main
+            current_shortcut = main.config.get('record_hotkey', '<ctrl>+<alt>+s')
+        shortcut_label = tk.Label(shortcut_frame, text=f"Appuyez sur {current_shortcut}", fg="#4ECDC4", bg="#1e1e1e", font=("Arial", 11, "bold"))
+        shortcut_label.pack(pady=(2,8))
         paned_window.add(history_frame, width=560)  # 70% de 800px = 560px
         # Panneau de droite : Logs
         log_frame = tk.Frame(paned_window, bg="#2b2b2b"); log_frame.pack(fill=tk.BOTH, expand=True)
@@ -553,10 +557,36 @@ class VisualizerWindowTkinter:
                 "paste_at_cursor": paste_var.get()
             }
             if save_callback:
-                save_callback(new_config)
-                # Feedback visuel de sauvegarde
-                save_button.config(text="✓ Sauvegardé !", bg="#28a745")
-                self.main_window.after(2000, lambda: save_button.config(text="Sauvegarder", bg="#0078d7"))
+                try:
+                    # Appeler le callback et récupérer les paramètres sauvegardés
+                    result = save_callback(new_config)
+                    if result and isinstance(result, dict):
+                        # Mettre à jour les champs avec les valeurs effectivement sauvegardées
+                        current_config = result.get('current_config', {})
+                        current_user_settings = result.get('current_user_settings', {})
+                        
+                        # Recharger les raccourcis depuis la config système
+                        record_hotkey_entry.delete(0, tk.END)
+                        record_hotkey_entry.insert(0, current_config.get("record_hotkey", ""))
+                        
+                        open_hotkey_entry.delete(0, tk.END)
+                        open_hotkey_entry.insert(0, current_config.get("open_window_hotkey", ""))
+                        
+                        # Mettre à jour l'affichage du raccourci dans la fenêtre principale
+                        new_shortcut = current_config.get("record_hotkey", "<ctrl>+<alt>+s")
+                        shortcut_label.config(text=f"Appuyez sur {new_shortcut}")
+                        
+                        logging.info("Interface mise à jour avec les paramètres sauvegardés")
+                    
+                    # Feedback visuel de sauvegarde
+                    save_button.config(text="✓ Sauvegardé !", bg="#28a745")
+                    self.main_window.after(2000, lambda: save_button.config(text="Sauvegarder", bg="#0078d7"))
+                    
+                except Exception as e:
+                    logging.error(f"Erreur lors de la sauvegarde: {e}")
+                    # Feedback d'erreur
+                    save_button.config(text="❌ Erreur", bg="#dc3545")
+                    self.main_window.after(2000, lambda: save_button.config(text="Sauvegarder", bg="#0078d7"))
 
         # Bouton de sauvegarde
         save_button = tk.Button(settings_frame, text="Sauvegarder", command=save_settings, 
