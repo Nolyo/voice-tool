@@ -803,13 +803,10 @@ class VisualizerWindowTkinter:
         notebook = ttk.Notebook(self.main_window)
         notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # --- Onglet 1: Historique & Logs ---
-        main_panel_frame = tk.Frame(notebook, bg="#2b2b2b")
-        notebook.add(main_panel_frame, text='  Historique & Logs  ')
-        paned_window = tk.PanedWindow(main_panel_frame, orient=tk.HORIZONTAL, sashrelief=tk.RAISED, bg="#3c3c3c")
-        paned_window.pack(fill=tk.BOTH, expand=True)
-        # Panneau de gauche : Historique
-        history_frame = tk.Frame(paned_window, bg="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
+        # --- Onglet 1: Historique ---
+        history_tab = tk.Frame(notebook, bg="#2b2b2b")
+        notebook.add(history_tab, text='  Historique  ')
+        history_frame = tk.Frame(history_tab, bg="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
         tk.Label(history_frame, text="Historique des transcriptions", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 10))
         listbox_frame = tk.Frame(history_frame); listbox_frame.pack(fill=tk.BOTH, expand=True, padx=5)
         history_scrollbar = tk.Scrollbar(listbox_frame); history_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -879,16 +876,7 @@ class VisualizerWindowTkinter:
             current_shortcut = main.config.get('record_hotkey', '<ctrl>+<alt>+s')
         shortcut_label = tk.Label(shortcut_frame, text=f"Appuyez sur {current_shortcut}", fg="#4ECDC4", bg="#1e1e1e", font=("Arial", 11, "bold"))
         shortcut_label.pack(pady=(2,8))
-        paned_window.add(history_frame, width=560)  # 70% de 800px = 560px
-        # Panneau de droite : Logs
-        log_frame = tk.Frame(paned_window, bg="#2b2b2b"); log_frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(log_frame, text="Logs de l'application", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 10))
-        text_frame = tk.Frame(log_frame); text_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0,5))
-        log_scrollbar = tk.Scrollbar(text_frame); log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.log_text_widget = tk.Text(text_frame, wrap=tk.WORD, state='disabled', yscrollcommand=log_scrollbar.set, bg="#1e1e1e", fg="white", font=("Consolas", 10), relief=tk.FLAT, borderwidth=0, highlightthickness=0)
-        self.log_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        log_scrollbar.config(command=self.log_text_widget.yview)
-        paned_window.add(log_frame)
+        # Fin Onglet Historique
 
         # --- Onglet 2: Paramètres ---
         settings_frame = tk.Frame(notebook, bg="#2b2b2b", padx=20, pady=20)
@@ -1197,6 +1185,16 @@ class VisualizerWindowTkinter:
                                activebackground="#005a9e", activeforeground="white",
                                font=("Arial", 10, "bold"))
         save_button.pack(pady=20, padx=5, fill=tk.X)
+
+        # --- Onglet 3: Logs --- (ajouté après Paramètres)
+        logs_tab = tk.Frame(notebook, bg="#2b2b2b")
+        notebook.add(logs_tab, text='  Logs  ')
+        tk.Label(logs_tab, text="Logs de l'application", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 10))
+        text_frame = tk.Frame(logs_tab); text_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0,5))
+        log_scrollbar = tk.Scrollbar(text_frame); log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.log_text_widget = tk.Text(text_frame, wrap=tk.WORD, state='disabled', yscrollcommand=log_scrollbar.set, bg="#1e1e1e", fg="white", font=("Consolas", 10), relief=tk.FLAT, borderwidth=0, highlightthickness=0)
+        self.log_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        log_scrollbar.config(command=self.log_text_widget.yview)
 
         # S'assurer que la référence est nettoyée à la fermeture de la fenêtre
         self.main_window.protocol("WM_DELETE_WINDOW", lambda: (self.main_window.destroy(), setattr(self, 'main_window', None), setattr(self, 'log_text_widget', None), setattr(self, 'history_listbox', None), setattr(self, 'record_button', None)))
