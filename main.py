@@ -25,6 +25,7 @@ from voice_tool import settings as vt_settings
 from voice_tool import sounds as vt_sounds
 from voice_tool import lock as vt_lock
 from voice_tool import transcription as vt_transcription
+from voice_tool import formatting as vt_formatting
 setproctitle.setproctitle("Voice Tool")
 
 # Configuration spécifique Windows pour l'identification de l'application dans la Taskbar
@@ -159,7 +160,14 @@ def migrate_user_settings(user_params):
 
 
 def get_setting(key, default=None):
-    if key in ["enable_sounds", "paste_at_cursor", "auto_start", "transcription_provider", "language"]:
+    if key in [
+        "enable_sounds",
+        "paste_at_cursor",
+        "auto_start",
+        "transcription_provider",
+        "language",
+        "smart_formatting",
+    ]:
         return vt_settings.load_user_settings().get(key, default)
     return config.get(key, default)
 
@@ -353,6 +361,13 @@ def transcribe_and_copy(filename):
         else:
             raise Exception(f"Fournisseur de transcription non valide : {provider}")
 
+        # Formatage intelligent si activé
+        try:
+            if get_setting("smart_formatting", True):
+                text = vt_formatting.smart_format_text(text)
+        except Exception as fmt_e:
+            logging.error(f"Erreur formatage intelligent: {fmt_e}")
+
         logging.info(f"Texte transcrit: {text}")
         pyperclip.copy(text)
         logging.info("Texte copié dans le presse-papiers !")
@@ -509,7 +524,7 @@ def update_and_restart_hotkeys(new_config):
     for key, value in new_config.items():
         if key in ['record_hotkey', 'open_window_hotkey']:
             system_params[key] = value
-        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language']:
+        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language', 'smart_formatting']:
             user_params[key] = value
         else:
             logging.warning(f"Paramètre inconnu: {key}")
