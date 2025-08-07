@@ -60,6 +60,7 @@ def save_system_config(config: Dict[str, Any]) -> bool:
     try:
         with open(config_path, "w") as f:
             json.dump(config, f, indent=4)
+        logging.info(f"Paramètres système sauvegardés → {config_path} : {config}")
         return True
     except Exception as exc:
         logging.error(f"Erreur lors de la sauvegarde de la configuration: {exc}")

@@ -1099,6 +1099,11 @@ class VisualizerWindowTkinter:
         open_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         tk.Button(open_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(open_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
         if current_config: open_hotkey_entry.insert(0, current_config.get("open_window_hotkey", ""))
+
+        # Références pour auto-application des hotkeys et callback de sauvegarde
+        self._record_hotkey_entry = record_hotkey_entry
+        self._open_hotkey_entry = open_hotkey_entry
+        self._settings_save_callback = save_callback
         
         # Séparateur
         separator2 = tk.Frame(settings_frame, height=1, bg="#555555")
@@ -1259,6 +1264,19 @@ class VisualizerWindowTkinter:
                 target_entry.delete(0, tk.END)
                 target_entry.insert(0, combo)
                 capture.destroy()
+                try:
+                    if hasattr(self, '_settings_save_callback') and self._settings_save_callback:
+                        record_val = self._record_hotkey_entry.get().strip() if hasattr(self, '_record_hotkey_entry') else ""
+                        open_val = self._open_hotkey_entry.get().strip() if hasattr(self, '_open_hotkey_entry') else ""
+                        new_config = {}
+                        if record_val:
+                            new_config['record_hotkey'] = record_val
+                        if open_val:
+                            new_config['open_window_hotkey'] = open_val
+                        if new_config:
+                            self._settings_save_callback(new_config)
+                except Exception:
+                    pass
 
         preview = tk.Label(capture, text="", fg="#4ECDC4", bg="#2b2b2b", font=("Consolas", 12, "bold"))
         preview.pack(pady=(0, 12))
