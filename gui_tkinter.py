@@ -874,6 +874,7 @@ class VisualizerWindowTkinter:
         sounds_var = tk.BooleanVar()
         paste_var = tk.BooleanVar()
         auto_start_var = tk.BooleanVar()
+        smart_format_var = tk.BooleanVar()
         
         # Fonction pour gérer le démarrage automatique Windows
         def manage_auto_start(enable):
@@ -932,7 +933,8 @@ class VisualizerWindowTkinter:
                     "paste_at_cursor": paste_var.get(),
                     "auto_start": auto_start_var.get(),
                     "transcription_provider": api_provider,
-                    "language": api_language
+                    "language": api_language,
+                    "smart_formatting": smart_format_var.get(),
                 }
                 
                 # Gérer le démarrage automatique si nécessaire
@@ -1000,6 +1002,29 @@ class VisualizerWindowTkinter:
                                      selectcolor="#3c3c3c", activebackground="#2b2b2b", 
                                      activeforeground="white")
         paste_check.pack(anchor='w', pady=(0, 15))
+
+        # Toggle Formatage intelligent
+        try:
+            if user_settings and "smart_formatting" in user_settings:
+                smart_format_var.set(user_settings["smart_formatting"])
+            else:
+                smart_format_var.set(True)
+        except Exception:
+            smart_format_var.set(True)
+        smart_format_check = tk.Checkbutton(
+            text_frame,
+            text="Activer le formatage intelligent (ponctuation, majuscule, espaces)",
+            variable=smart_format_var,
+            command=auto_save_user_setting,
+            fg="white",
+            bg="#2b2b2b",
+            wraplength=350,
+            justify=tk.LEFT,
+            selectcolor="#3c3c3c",
+            activebackground="#2b2b2b",
+            activeforeground="white",
+        )
+        smart_format_check.pack(anchor='w', pady=(0, 15))
         
         # Séparateur
         separator1 = tk.Frame(settings_frame, height=1, bg="#555555")
@@ -1144,7 +1169,8 @@ class VisualizerWindowTkinter:
                 "paste_at_cursor": paste_var.get(),
                 "auto_start": auto_start_var.get(),
                 "transcription_provider": api_provider,
-                "language": api_language
+                "language": api_language,
+                "smart_formatting": smart_format_var.get(),
             }
             if save_callback:
                 try:
