@@ -1084,14 +1084,20 @@ class VisualizerWindowTkinter:
         
         # Raccourci Enregistrement
         tk.Label(settings_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        record_hotkey_entry = tk.Entry(settings_frame, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
-        record_hotkey_entry.pack(fill=tk.X, pady=(0, 15))
+        record_hotkey_row = tk.Frame(settings_frame, bg="#2b2b2b")
+        record_hotkey_row.pack(fill=tk.X, pady=(0, 15))
+        record_hotkey_entry = tk.Entry(record_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        record_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Button(record_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(record_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
         if current_config: record_hotkey_entry.insert(0, current_config.get("record_hotkey", ""))
 
         # Raccourci Ouvrir Fenêtre  
         tk.Label(settings_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        open_hotkey_entry = tk.Entry(settings_frame, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
-        open_hotkey_entry.pack(fill=tk.X, pady=(0, 15))
+        open_hotkey_row = tk.Frame(settings_frame, bg="#2b2b2b")
+        open_hotkey_row.pack(fill=tk.X, pady=(0, 15))
+        open_hotkey_entry = tk.Entry(open_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        open_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Button(open_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(open_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
         if current_config: open_hotkey_entry.insert(0, current_config.get("open_window_hotkey", ""))
         
         # Séparateur
@@ -1185,6 +1191,83 @@ class VisualizerWindowTkinter:
         log_scrollbar.config(command=self.log_text_widget.yview)
 
     # === Utilitaires Historique & Recherche ===
+    def _open_hotkey_capture(self, target_entry: tk.Entry):
+        """Ouvre une petite fenêtre modale pour capturer une combinaison de touches et la formater."""
+        capture = tk.Toplevel(self.root)
+        capture.title("Définir un raccourci")
+        capture.configure(bg="#2b2b2b")
+        capture.resizable(False, False)
+        capture.grab_set()
+        tk.Label(capture, text="Appuyez sur la combinaison souhaitée…", fg="white", bg="#2b2b2b", font=("Arial", 10, "bold")).pack(padx=20, pady=15)
+        info = tk.Label(capture, text="Ex: Ctrl+Alt+S", fg="#bbbbbb", bg="#2b2b2b")
+        info.pack(pady=(0, 8))
+
+        pressed = set()
+
+        def to_display_combo(keys: set) -> str:
+            order = ["<ctrl>", "<alt>", "<shift>", "<cmd>"]
+            mods = []
+            key = None
+            for m in order:
+                if m in keys:
+                    mods.append(m)
+            # any non-mod key (single char or <fX> etc.)
+            others = [k for k in keys if k not in order]
+            if others:
+                # take first determinstically
+                key = sorted(others)[0]
+            parts = mods + ([key] if key else [])
+            return "+".join(parts) if parts else ""
+
+        def normalize_key(event_keysym: str) -> str:
+            ks = event_keysym.lower()
+            mapping = {
+                "control_l": "<ctrl>",
+                "control_r": "<ctrl>",
+                "alt_l": "<alt>",
+                "alt_r": "<alt>",
+                "shift_l": "<shift>",
+                "shift_r": "<shift>",
+                "super_l": "<cmd>",
+                "super_r": "<cmd>",
+                "meta_l": "<cmd>",
+                "meta_r": "<cmd>",
+                "return": "<enter>",
+                "escape": "<esc>",
+                "space": "<space>",
+                "tab": "<tab>",
+            }
+            if ks in mapping:
+                return mapping[ks]
+            # Function keys
+            if ks.startswith("f") and ks[1:].isdigit():
+                return f"<{ks}>"
+            # Single alphanum
+            if len(ks) == 1:
+                return ks
+            return f"<{ks}>"
+
+        def on_key_press(event):
+            k = normalize_key(event.keysym)
+            pressed.add(k)
+            preview.config(text=to_display_combo(pressed))
+
+        def on_key_release(event):
+            # Sur release, valider si on a au moins une touche
+            combo = to_display_combo(pressed)
+            if combo:
+                target_entry.delete(0, tk.END)
+                target_entry.insert(0, combo)
+                capture.destroy()
+
+        preview = tk.Label(capture, text="", fg="#4ECDC4", bg="#2b2b2b", font=("Consolas", 12, "bold"))
+        preview.pack(pady=(0, 12))
+        tk.Button(capture, text="Annuler", command=capture.destroy, bg="#6c757d", fg="white", relief=tk.FLAT).pack(pady=(0, 12))
+
+        capture.bind("<KeyPress>", on_key_press)
+        capture.bind("<KeyRelease>", on_key_release)
+        capture.focus_force()
+
     def _history_to_display_and_actual(self, obj):
         if isinstance(obj, dict):
             return f"[{obj.get('timestamp', '')}] {obj.get('text', '')}", obj.get('text', '')
