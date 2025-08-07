@@ -15,6 +15,7 @@ def default_user_settings() -> Dict[str, Any]:
         "transcription_provider": "Google",
         "language": "fr-FR",
         "smart_formatting": True,
+        "input_device_index": None,
     }
 
 

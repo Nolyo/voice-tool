@@ -441,7 +441,12 @@ def toggle_recording(icon_pystray):
             visualizer_window.root.after(0, visualizer_window.set_mode, "recording")
         
         audio_frames = []
-        audio_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='int16', callback=audio_callback)
+        # Utiliser le périphérique d'entrée choisi si disponible
+        try:
+            input_device_index = get_setting("input_device_index", None)
+        except Exception:
+            input_device_index = None
+        audio_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='int16', callback=audio_callback, device=input_device_index)
         audio_stream.start()
 
     else:

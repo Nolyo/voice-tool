@@ -9,6 +9,7 @@ import pyperclip
 import os
 import platform
 from PIL import ImageTk, Image
+import sounddevice as sd
 
 logging.basicConfig(level=logging.INFO)
 
@@ -976,6 +977,67 @@ class VisualizerWindowTkinter:
                                      activeforeground="white")
         sounds_check.pack(anchor='w', pady=(0, 15))
 
+        # Liste des périphériques audio d'entrée
+        devices = []
+        try:
+            sd_devices = sd.query_devices()
+            for idx, dev in enumerate(sd_devices):
+                if dev.get('max_input_channels', 0) > 0:
+                    name = dev.get('name', f"Device {idx}")
+                    host = dev.get('hostapi', None)
+                    label = f"[{idx}] {name}" if host is None else f"[{idx}] {name}"
+                    devices.append((idx, label))
+        except Exception as e:
+            logging.error(f"Erreur lors de l'énumération des périphériques: {e}")
+            devices = []
+
+        tk.Label(audio_frame, text="Microphone d'entrée :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
+        mic_var = tk.StringVar()
+        # Valeur par défaut depuis user_settings
+        default_input_index = None
+        try:
+            default_input_index = user_settings.get("input_device_index", None) if user_settings else None
+        except Exception:
+            default_input_index = None
+
+        # Construire la liste visible
+        mic_choices = [label for _, label in devices]
+        if not mic_choices:
+            mic_choices = ["(aucun périphérique d'entrée disponible)"]
+
+        # Déterminer la sélection initiale
+        initial_choice = None
+        if default_input_index is not None:
+            for idx, label in devices:
+                if idx == default_input_index:
+                    initial_choice = label
+                    break
+        if initial_choice is None and mic_choices:
+            initial_choice = mic_choices[0]
+        mic_var.set(initial_choice)
+
+        def on_mic_changed(*_):
+            # Mapper le label sélectionné vers l'index
+            selected_label = mic_var.get()
+            selected_index = None
+            for idx, label in devices:
+                if label == selected_label:
+                    selected_index = idx
+                    break
+            # Sauvegarder dans les préférences
+            try:
+                import main
+                main.update_and_restart_hotkeys({"input_device_index": selected_index})
+                # Aussi persister via auto-save utilisateur
+                main.user_settings.update({"input_device_index": selected_index})
+                main.save_user_settings(main.user_settings)
+                logging.info(f"Périphérique d'entrée sélectionné: {selected_label} -> index {selected_index}")
+            except Exception as e:
+                logging.error(f"Erreur sauvegarde périphérique: {e}")
+
+        mic_menu = ttk.OptionMenu(audio_frame, mic_var, initial_choice, *mic_choices, command=lambda *_: on_mic_changed())
+        mic_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
+
         # === SECTION TEXTE (à droite) ===
         text_frame = tk.Frame(top_row_frame, bg="#2b2b2b")
         text_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
@@ -1171,6 +1233,8 @@ class VisualizerWindowTkinter:
                 "transcription_provider": api_provider,
                 "language": api_language,
                 "smart_formatting": smart_format_var.get(),
+                # ajouter aussi l'index micro courant si liste disponible
+                **({"input_device_index": next((idx for idx, label in devices if label == mic_var.get()), None)} if 'devices' in locals() else {}),
             }
             if save_callback:
                 try:
