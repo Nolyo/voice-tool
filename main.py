@@ -11,17 +11,20 @@ import numpy as np
 import os
 import sys
 import subprocess
-from dotenv import load_dotenv
 import json
 import pyperclip
 import time
-import tempfile
 import platform
-import math
-import wave
-import struct
 import setproctitle
-import openai
+
+# Modules refactorisés
+from voice_tool import config_manager
+from voice_tool import paths as vt_paths
+from voice_tool import history as vt_history
+from voice_tool import settings as vt_settings
+from voice_tool import sounds as vt_sounds
+from voice_tool import lock as vt_lock
+from voice_tool import transcription as vt_transcription
 setproctitle.setproctitle("Voice Tool")
 
 # Configuration spécifique Windows pour l'identification de l'application dans la Taskbar
@@ -46,47 +49,27 @@ if platform.system() != 'Windows':
 else:
     import msvcrt
 
-# Importations spécifiques à Google Cloud
-from google.cloud import speech
-from google.oauth2 import service_account
-
 # Importations pour l'interface graphique (Tkinter)
 from gui_tkinter import VisualizerWindowTkinter # Notre fenêtre de visualiseur Tkinter
 
-# Charger les variables d'environnement depuis le fichier .env
-# Utilise le chemin absolu pour être sûr de charger le bon fichier
+# Charger les variables d'environnement depuis la racine du projet
 script_dir = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.join(script_dir, '.env')
-load_dotenv(env_path)
+config_manager.load_env_from_project_root()
 
 # --- Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-CONFIG_FILE = "config.json"
 SAMPLE_RATE = 44100
 OUTPUT_FILENAME = "recording.wav"
 
-def get_app_data_dir():
-    """Retourne le répertoire AppData pour Voice Tool."""
-    if platform.system() == 'Windows':
-        appdata = os.getenv('APPDATA', os.path.expanduser('~'))
-        app_dir = os.path.join(appdata, 'VoiceTool')
-    else:
-        # Sur Linux/Mac, utiliser ~/.config/VoiceTool
-        app_dir = os.path.join(os.path.expanduser('~'), '.config', 'VoiceTool')
-    
-    # Créer le répertoire s'il n'existe pas
-    os.makedirs(app_dir, exist_ok=True)
-    return app_dir
-
-# Chemins vers les fichiers de données
-APP_DATA_DIR = get_app_data_dir()
-HISTORY_FILE = os.path.join(APP_DATA_DIR, 'transcription_history.json')
-SOUNDS_DIR = os.path.join(APP_DATA_DIR, 'sounds')
-USER_SETTINGS_FILE = os.path.join(APP_DATA_DIR, 'user_settings.json')
+# Chemins vers les fichiers de données (exposés pour compatibilité)
+APP_DATA_DIR = vt_paths.APP_DATA_DIR
+HISTORY_FILE = vt_paths.HISTORY_FILE
+SOUNDS_DIR = vt_paths.SOUNDS_DIR
+USER_SETTINGS_FILE = vt_paths.USER_SETTINGS_FILE
 
 # --- Variables globales ---
-config = {} # Contiendra la configuration chargée depuis config.json
-user_settings = {} # Contiendra les paramètres utilisateur sauvegardés dans AppData
+config = {}  # Contiendra la configuration système
+user_settings = {}  # Contiendra les paramètres utilisateur sauvegardés dans AppData
 is_recording = False
 hotkey_listener = None
 audio_stream = None
@@ -98,10 +81,7 @@ global_icon_pystray = None # Pour accéder à l'icône depuis d'autres fonctions
 # Variables globales pour la GUI Tkinter
 visualizer_window = None
 
-# Variables pour la gestion d'instance unique
-lock_file = None
-LOCK_FILE_PATH = os.path.join(tempfile.gettempdir(), 'voice_tool.lock')
-COMMAND_FILE_PATH = os.path.join(tempfile.gettempdir(), 'voice_tool_command.txt')
+# Gestion d'instance unique via module vt_lock
 
 # Variables pour les sons
 sound_paths = None
@@ -118,364 +98,78 @@ class GuiLoggingHandler(logging.Handler):
             log_entry = self.format(record)
             self.gui_window.add_log_message(log_entry)
 
-# --- Fonctions de gestion d'instance unique ---
-
+# --- Wrappers de gestion d'instance (compatibilité pour gui_tkinter) ---
 def acquire_lock():
-    """Tente d'acquérir le verrou d'instance unique. Retourne True si réussi, False sinon."""
-    global lock_file
-    try:
-        if platform.system() == 'Windows':
-            # Sur Windows, on utilise un fichier simple avec gestion d'exception
-            if os.path.exists(LOCK_FILE_PATH):
-                # Vérifier si le processus est encore actif
-                try:
-                    with open(LOCK_FILE_PATH, 'r') as f:
-                        pid = int(f.read().strip())
-                    # Essayer de vérifier si le processus existe encore
-                    os.kill(pid, 0)  # Signal 0 ne tue pas mais vérifie l'existence
-                    return False  # Le processus existe encore
-                except (OSError, ValueError, ProcessLookupError):
-                    # Le processus n'existe plus, on peut prendre le verrou
-                    os.remove(LOCK_FILE_PATH)
-            
-            lock_file = open(LOCK_FILE_PATH, 'w')
-            lock_file.write(str(os.getpid()))
-            lock_file.flush()
-            return True
-        else:
-            # Sur Unix/Linux, on utilise fcntl
-            lock_file = open(LOCK_FILE_PATH, 'w')
-            fcntl.lockf(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            lock_file.write(str(os.getpid()))
-            lock_file.flush()
-            return True
-    except (IOError, OSError):
-        if lock_file:
-            lock_file.close()
-            lock_file = None
-        return False
+    return vt_lock.acquire_lock()
+
 
 def release_lock():
-    """Libère le verrou d'instance unique."""
-    global lock_file
-    if lock_file:
-        try:
-            if platform.system() == 'Windows':
-                lock_file.close()
-                os.remove(LOCK_FILE_PATH)
-            else:
-                fcntl.lockf(lock_file, fcntl.LOCK_UN)
-                lock_file.close()
-                os.remove(LOCK_FILE_PATH)
-        except (IOError, OSError):
-            pass
-        lock_file = None
+    return vt_lock.release_lock()
+
 
 def send_command_to_existing_instance(command):
-    """Envoie une commande à l'instance existante via un fichier temporaire."""
-    try:
-        with open(COMMAND_FILE_PATH, 'w') as f:
-            f.write(command)
-        return True
-    except (IOError, OSError):
-        return False
+    return vt_lock.send_command_to_existing_instance(command)
 
-def check_for_commands():
-    """Vérifie s'il y a des commandes en attente et les exécute."""
-    try:
-        if os.path.exists(COMMAND_FILE_PATH):
-            with open(COMMAND_FILE_PATH, 'r') as f:
-                command = f.read().strip()
-            os.remove(COMMAND_FILE_PATH)
-            
-            if command == 'open_window':
-                logging.info("Commande reçue: ouverture de la fenêtre principale")
-                open_interface()
-                return True
-    except (IOError, OSError):
-        pass
-    return False
 
 def start_command_monitor():
-    """Démarre le monitoring des commandes dans un thread séparé."""
-    def monitor_loop():
-        while True:
-            try:
-                check_for_commands()
-                time.sleep(0.5)  # Vérification toutes les 500ms
-            except Exception as e:
-                logging.error(f"Erreur dans le monitoring des commandes: {e}")
-                time.sleep(1)
-    
-    monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
-    monitor_thread.start()
-    logging.info("Monitoring des commandes démarré")
+    vt_lock.start_command_monitor(open_interface)
 
-# --- Fonctions de gestion de l'historique ---
-
+# --- Historique (wrappers) ---
 def load_transcription_history():
-    """Charge l'historique des transcriptions depuis le fichier JSON."""
-    try:
-        if os.path.exists(HISTORY_FILE):
-            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                # Valider la structure du fichier
-                if isinstance(data, dict) and 'transcriptions' in data:
-                    logging.info(f"Historique chargé: {len(data['transcriptions'])} transcriptions")
-                    return data['transcriptions']
-                else:
-                    logging.warning("Format d'historique invalide, création d'un nouveau fichier")
-                    return []
-        else:
-            logging.info("Aucun fichier d'historique trouvé, création d'un nouveau")
-            return []
-    except Exception as e:
-        logging.error(f"Erreur lors du chargement de l'historique: {e}")
-        return []
+    return vt_history.load_transcription_history()
+
 
 def save_transcription_history(transcriptions):
-    """Sauvegarde l'historique des transcriptions dans le fichier JSON."""
-    try:
-        history_data = {
-            'version': '1.0',
-            'created': time.strftime('%Y-%m-%d %H:%M:%S'),
-            'transcriptions': transcriptions
-        }
-        
-        # Créer le répertoire si nécessaire
-        os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
-        
-        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(history_data, f, ensure_ascii=False, indent=2)
-        
-        logging.info(f"Historique sauvegardé: {len(transcriptions)} transcriptions")
-        return True
-    except Exception as e:
-        logging.error(f"Erreur lors de la sauvegarde de l'historique: {e}")
-        return False
+    return vt_history.save_transcription_history(transcriptions)
+
 
 def add_to_transcription_history(text):
-    """Ajoute une nouvelle transcription à l'historique et la sauvegarde."""
     global transcription_history
-    
-    # Créer un nouvel élément d'historique avec métadonnées
-    history_item = {
-        'text': text,
-        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-        'date': time.strftime('%Y-%m-%d')
-    }
-    
-    transcription_history.append(history_item)
-    
-    # Limiter l'historique à 1000 éléments maximum
-    if len(transcription_history) > 1000:
-        transcription_history = transcription_history[-1000:]
-    
-    # Sauvegarder immédiatement
-    save_transcription_history(transcription_history)
-    
-    return history_item
+    item = vt_history.add_to_transcription_history(transcription_history, text)
+    return item
+
 
 def clear_all_transcription_history():
-    """Efface tout l'historique des transcriptions."""
     global transcription_history
-    # Effacer directement dans le fichier pour être sûr
-    empty_list = []
-    save_transcription_history(empty_list)
-    # Mettre à jour la variable globale
-    transcription_history = empty_list
+    transcription_history = []
+    vt_history.save_transcription_history(transcription_history)
     logging.info("Historique des transcriptions complètement effacé")
 
 # --- Fonctions de gestion des paramètres utilisateur ---
 
-def get_default_user_settings():
-    """Retourne les paramètres utilisateur par défaut."""
-    return {
-        "enable_sounds": True,
-        "paste_at_cursor": False,
-        "auto_start": False,
-        "transcription_provider": "Google",
-        "language": "fr-FR"
-    }
-
+# --- Paramètres utilisateur (wrappers) ---
 def load_user_settings():
-    """Charge les paramètres utilisateur depuis le fichier JSON dans AppData."""
-    try:
-        if os.path.exists(USER_SETTINGS_FILE):
-            with open(USER_SETTINGS_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                # Valider la structure du fichier
-                if isinstance(data, dict) and 'settings' in data:
-                    # Fusionner avec les defaults pour garantir toutes les clés
-                    defaults = get_default_user_settings()
-                    settings = {**defaults, **data['settings']}
-                    logging.info("Paramètres utilisateur chargés")
-                    return settings
-                else:
-                    logging.warning("Format de paramètres invalide, utilisation des valeurs par défaut")
-                    return get_default_user_settings()
-        else:
-            logging.info("Aucun fichier de paramètres utilisateur trouvé, initialisation avec valeurs par défaut")
-            # Créer le fichier avec les valeurs par défaut
-            defaults = get_default_user_settings()
-            save_user_settings(defaults)
-            return defaults
-    except Exception as e:
-        logging.error(f"Erreur lors du chargement des paramètres utilisateur: {e}")
-        return get_default_user_settings()
+    return vt_settings.load_user_settings()
+
 
 def save_user_settings(settings):
-    """Sauvegarde les paramètres utilisateur dans le fichier JSON dans AppData."""
-    try:
-        settings_data = {
-            'version': '1.0',
-            'created': time.strftime('%Y-%m-%d %H:%M:%S'),
-            'settings': settings
-        }
-        
-        # Créer le répertoire si nécessaire
-        os.makedirs(os.path.dirname(USER_SETTINGS_FILE), exist_ok=True)
-        
-        with open(USER_SETTINGS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(settings_data, f, ensure_ascii=False, indent=2)
-        
-        logging.info("Paramètres utilisateur sauvegardés")
-        return True
-    except Exception as e:
-        logging.error(f"Erreur lors de la sauvegarde des paramètres utilisateur: {e}")
-        return False
+    return vt_settings.save_user_settings(settings)
+
 
 def migrate_user_settings(user_params):
-    """Migre les anciens paramètres utilisateur depuis config.json vers AppData."""
     try:
-        # Charger les paramètres utilisateur existants
-        current_user_settings = load_user_settings()
-        
-        # Fusionner avec les paramètres à migrer (priorité aux existants)
-        migrated_settings = {**user_params, **current_user_settings}
-        
-        # Sauvegarder dans AppData
-        save_user_settings(migrated_settings)
-        
+        current_user_settings = vt_settings.load_user_settings()
+        migrated = {**user_params, **current_user_settings}
+        vt_settings.save_user_settings(migrated)
         logging.info(f"Paramètres utilisateur migrés: {list(user_params.keys())}")
         return True
     except Exception as e:
         logging.error(f"Erreur lors de la migration des paramètres utilisateur: {e}")
         return False
 
+
 def get_setting(key, default=None):
-    """Récupère un paramètre utilisateur depuis AppData ou un paramètre système depuis config."""
-    # Pour les paramètres utilisateur, toujours charger depuis AppData
-    if key in ['enable_sounds', 'paste_at_cursor', 'auto_start']:
-        current_user_settings = load_user_settings()
-        return current_user_settings.get(key, default)
-    
-    # Pour les paramètres système, utiliser config.json
+    if key in ["enable_sounds", "paste_at_cursor", "auto_start", "transcription_provider", "language"]:
+        return vt_settings.load_user_settings().get(key, default)
     return config.get(key, default)
 
-# --- Fonctions de génération de sons ---
-
-def generate_sound_wave(frequency, duration, sample_rate=44100, amplitude=0.02):
-    """Génère une onde sonore sinusoïdale."""
-    frames = int(duration * sample_rate)
-    wave_data = []
-    for i in range(frames):
-        value = amplitude * math.sin(2 * math.pi * frequency * i / sample_rate)
-        wave_data.append(int(value * 32767))  # Convertir en 16-bit
-    return wave_data
-
-def generate_sweep_sound(start_freq, end_freq, duration, sample_rate=44100, amplitude=0.02):
-    """Génère un son avec balayage de fréquence (sweep)."""
-    frames = int(duration * sample_rate)
-    wave_data = []
-    for i in range(frames):
-        # Interpolation linéaire de la fréquence
-        progress = i / frames
-        frequency = start_freq + (end_freq - start_freq) * progress
-        value = amplitude * math.sin(2 * math.pi * frequency * i / sample_rate)
-        wave_data.append(int(value * 32767))
-    return wave_data
-
+# --- Sons (wrappers) ---
 def create_sound_files():
-    """Crée les fichiers audio pour les différents événements."""
-    try:
-        os.makedirs(SOUNDS_DIR, exist_ok=True)
-        
-        # Supprimer les anciens fichiers pour forcer la régénération avec le nouveau volume
-        old_files = ['start_recording.wav', 'stop_recording.wav', 'success.wav']
-        for old_file in old_files:
-            old_path = os.path.join(SOUNDS_DIR, old_file)
-            if os.path.exists(old_path):
-                os.remove(old_path)
-                logging.info(f"Ancien fichier supprimé: {old_file}")
-        
-        # Son montant (démarrage enregistrement) : 400Hz -> 800Hz
-        start_sound = generate_sweep_sound(400, 800, 0.3)
-        start_path = os.path.join(SOUNDS_DIR, 'start_recording.wav')
-        save_wave_file(start_path, start_sound)
-        
-        # Son descendant (arrêt enregistrement) : 800Hz -> 400Hz
-        stop_sound = generate_sweep_sound(800, 400, 0.3)
-        stop_path = os.path.join(SOUNDS_DIR, 'stop_recording.wav')
-        save_wave_file(stop_path, stop_sound)
-        
-        # Son de validation (succès) : deux tons courts
-        success_sound = []
-        # Premier ton
-        success_sound.extend(generate_sound_wave(880, 0.1))  # A5
-        # Petit silence
-        success_sound.extend([0] * int(0.05 * 44100))
-        # Deuxième ton plus aigu
-        success_sound.extend(generate_sound_wave(1108, 0.15))  # C#6
-        
-        success_path = os.path.join(SOUNDS_DIR, 'success.wav')
-        save_wave_file(success_path, success_sound)
-        
-        logging.info("Fichiers audio créés avec succès")
-        return {
-            'start': start_path,
-            'stop': stop_path,
-            'success': success_path
-        }
-        
-    except Exception as e:
-        logging.error(f"Erreur lors de la création des sons: {e}")
-        return None
+    return vt_sounds.create_sound_files()
 
-def save_wave_file(filepath, wave_data, sample_rate=44100):
-    """Sauvegarde les données audio en fichier WAV."""
-    with wave.open(filepath, 'w') as wav_file:
-        wav_file.setnchannels(1)  # Mono
-        wav_file.setsampwidth(2)  # 16-bit
-        wav_file.setframerate(sample_rate)
-        
-        # Convertir en bytes
-        wave_bytes = struct.pack('<' + 'h' * len(wave_data), *wave_data)
-        wav_file.writeframes(wave_bytes)
 
 def play_sound_async(sound_path):
-    """Joue un son de manière asynchrone selon l'OS."""
-    # Vérifier si les sons sont activés
-    if not get_setting('enable_sounds', True):
-        return
-        
-    if not sound_path or not os.path.exists(sound_path):
-        return
-    
-    def play():
-        try:
-            if platform.system() == 'Windows':
-                import winsound
-                winsound.PlaySound(sound_path, winsound.SND_FILENAME | winsound.SND_ASYNC)
-            elif platform.system() == 'Darwin':  # macOS
-                os.system(f'afplay "{sound_path}" &')
-            else:  # Linux
-                os.system(f'aplay "{sound_path}" > /dev/null 2>&1 &')
-        except Exception as e:
-            logging.error(f"Erreur lors de la lecture du son: {e}")
-    
-    # Jouer dans un thread séparé pour ne pas bloquer
-    threading.Thread(target=play, daemon=True).start()
+    return vt_sounds.play_sound_async(sound_path)
 
 # --- Fonctions de l'application ---
 
@@ -622,35 +316,7 @@ def paste_to_cursor():
         logging.error(f"Impossible d'envoyer la commande de collage: {e}")
 
 def transcribe_with_openai(filename, language=None):
-    """Transcrire l'audio avec l'API OpenAI Whisper."""
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise Exception("La clé API OpenAI n'est pas configurée dans le fichier .env.")
-
-    client = openai.OpenAI(api_key=api_key)
-
-    # Convertir le code langue pour OpenAI (format ISO 639-1)
-    language_mapping = {
-        "fr-FR": "fr",
-        "en-US": "en", 
-        "es-ES": "es",
-        "de-DE": "de",
-        "it-IT": "it",
-        "pt-PT": "pt",
-        "nl-NL": "nl"
-    }
-    
-    whisper_language = language_mapping.get(language, "fr") if language else "fr"
-    
-    logging.info(f"OpenAI Whisper - Langue configurée: {whisper_language}")
-
-    with open(filename, "rb") as audio_file:
-        response = client.audio.transcriptions.create(
-            model="whisper-1",
-            file=audio_file,
-            language=whisper_language
-        )
-    return response.text
+    return vt_transcription.transcribe_with_openai(filename, language)
 
 def transcribe_and_copy(filename):
     global google_credentials, visualizer_window, transcription_history
@@ -670,33 +336,13 @@ def transcribe_and_copy(filename):
         text = ""
 
         if provider == "Google":
-            # Vérification des credentials
             if google_credentials is None:
                 logging.error("Les credentials Google Cloud ne sont pas initialisés.")
                 raise Exception("Credentials not initialized")
-            
-            # Récupérer la langue configurée
             selected_language = current_user_settings.get("language", "fr-FR")
-            
-            logging.info(f"Utilisation des credentials pour le projet: {google_credentials.project_id}")
-            logging.info(f"Langue de transcription: {selected_language}")
-            client = speech.SpeechClient(credentials=google_credentials)
-            with open(filename, "rb") as audio_file:
-                content = audio_file.read()
-            audio = speech.RecognitionAudio(content=content)
-            recog_config = speech.RecognitionConfig(
-                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-                sample_rate_hertz=SAMPLE_RATE,
-                language_code=selected_language,
-                enable_automatic_punctuation=True,
-                model="latest_long"
+            text = vt_transcription.transcribe_with_google(
+                filename, SAMPLE_RATE, selected_language, google_credentials
             )
-            logging.info(f"Envoi de l'audio à Google Cloud Speech (langue: {selected_language})...")
-            response = client.recognize(config=recog_config, audio=audio)
-            if not response.results:
-                logging.warning("Aucun texte n'a pu être transcrit.")
-                raise Exception("No text transcribed")
-            text = response.results[0].alternatives[0].transcript
         
         elif provider == "OpenAI":
             # Récupérer la langue configurée
@@ -872,12 +518,8 @@ def update_and_restart_hotkeys(new_config):
     # Sauvegarder les paramètres système dans config.json
     if system_params:
         config.update(system_params)
-        try:
-            with open(CONFIG_FILE, 'w') as f:
-                json.dump(config, f, indent=4)
-            logging.info(f"Paramètres système sauvegardés: {list(system_params.keys())}")
-        except Exception as e:
-            logging.error(f"Erreur lors de la sauvegarde des paramètres système : {e}")
+        if not config_manager.save_system_config(config):
+            logging.error("Erreur lors de la sauvegarde des paramètres système")
     
     # Redémarrer les hotkeys seulement si les raccourcis ont changé
     if system_params and global_icon_pystray:
@@ -1043,7 +685,9 @@ def main():
         log_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'voice_tool.log')
         logging.basicConfig(filename=log_file_path, filemode='a', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    load_config() # Charge la configuration au démarrage
+    # Charger la configuration système
+    global config
+    config = config_manager.load_system_config()
     
     # Charger les paramètres utilisateur
     global transcription_history, sound_paths, user_settings
@@ -1061,7 +705,8 @@ def main():
     logging.info(f"PROJECT_ID chargé: {'Oui' if os.getenv('PROJECT_ID') else 'Non'}")
     logging.info(f"Répertoire AppData: {APP_DATA_DIR}")
     
-    google_credentials = get_google_credentials()
+    # Crédentials Google depuis l'environnement
+    google_credentials = vt_transcription.get_google_credentials_from_env()
     if not google_credentials:
         return
 
