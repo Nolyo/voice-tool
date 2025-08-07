@@ -26,6 +26,11 @@ class VisualizerWindowTkinter:
         self.main_window = None # Pour garder une référence à la fenêtre principale
         self.log_text_widget = None # Pour le widget qui affichera les logs
         self.history_listbox = None # Pour la Listbox de l'historique
+        # Recherche et gestion d'historique (filtrage)
+        self.history_search_var = tk.StringVar()
+        self._search_after_id = None
+        self._history_master = []  # liste des items d'historique (objets d'origine)
+        self._filtered_history_items = []  # vue filtrée courante
         
         self.window = tk.Toplevel(self.root)
         self.window.title("Voice Tool - Visualizer")  # Titre pour la fenêtre de visualisation
@@ -431,25 +436,9 @@ class VisualizerWindowTkinter:
         """Ajoute une nouvelle transcription à la Listbox de l'historique, de manière thread-safe."""
         if self.history_listbox and self.history_listbox.winfo_exists():
             def insert_item():
-                # Gérer à la fois l'ancien format (string) et le nouveau (dict)
-                if isinstance(history_item, dict):
-                    display_text = f"[{history_item['timestamp']}] {history_item['text']}"
-                    actual_text = history_item['text']
-                else:
-                    # Rétrocompatibilité avec l'ancien format
-                    display_text = str(history_item)
-                    actual_text = str(history_item)
-                
-                # Stocker le texte réel dans une structure de données associée
-                index = self.history_listbox.size()
-                self.history_listbox.insert(tk.END, display_text)
-                
-                # Stocker le texte réel pour la copie (utilise un attribut personnalisé)
-                if not hasattr(self.history_listbox, 'text_data'):
-                    self.history_listbox.text_data = {}
-                self.history_listbox.text_data[index] = actual_text
-                
-                self.history_listbox.see(tk.END) # Faire défiler jusqu'au nouvel élément
+                # Ajouter à la liste maître puis re-filtrer pour cohérence avec la vue
+                self._history_master.append(history_item)
+                self._apply_history_filter()
             self.root.after(0, insert_item)
 
     def _copy_history_selection(self):
@@ -493,31 +482,39 @@ class VisualizerWindowTkinter:
             return
         
         selected_index = selected_indices[0]
-        
+        # Récupérer l'objet d'historique correspondant dans la vue filtrée
+        if selected_index >= len(self._filtered_history_items):
+            return
+        history_obj = self._filtered_history_items[selected_index]
+
         # Confirmer la suppression
         import tkinter.messagebox as msgbox
         if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer cette transcription ?"):
-            # Supprimer de la listbox
-            self.history_listbox.delete(selected_index)
-            
-            # Supprimer des données associées
-            if hasattr(self.history_listbox, 'text_data') and selected_index in self.history_listbox.text_data:
-                del self.history_listbox.text_data[selected_index]
-                
-                # Réorganiser les indices
-                new_text_data = {}
-                for old_idx, text in self.history_listbox.text_data.items():
-                    if old_idx > selected_index:
-                        new_text_data[old_idx - 1] = text
-                    else:
-                        new_text_data[old_idx] = text
-                self.history_listbox.text_data = new_text_data
-            
             # Supprimer de l'historique global et sauvegarder
             import main
-            if selected_index < len(main.transcription_history):
-                deleted_item = main.transcription_history.pop(selected_index)
+            # Trouver l'élément à supprimer en s'appuyant sur l'objet (dict/str)
+            deleted_item = None
+            if isinstance(history_obj, dict):
+                # Chercher par timestamp+text si possible
+                for i, it in enumerate(list(main.transcription_history)):
+                    if isinstance(it, dict) and it.get('timestamp') == history_obj.get('timestamp') and it.get('text') == history_obj.get('text'):
+                        deleted_item = main.transcription_history.pop(i)
+                        break
+            else:
+                # Fallback pour ancien format (string): supprimer la première occurrence égale
+                for i, it in enumerate(list(main.transcription_history)):
+                    if not isinstance(it, dict) and str(it) == str(history_obj):
+                        deleted_item = main.transcription_history.pop(i)
+                        break
+
+            if deleted_item is not None:
                 main.save_transcription_history(main.transcription_history)
+                # Mettre à jour la liste maître et la vue filtrée
+                try:
+                    self._history_master.remove(history_obj)
+                except ValueError:
+                    pass
+                self._apply_history_filter()
                 logging.info(f"Transcription supprimée : '{str(deleted_item)[:40]}...'")
 
     def _quit_application(self):
@@ -573,6 +570,9 @@ class VisualizerWindowTkinter:
                     # Nettoyer aussi les données associées
                     if hasattr(self.history_listbox, 'text_data'):
                         self.history_listbox.text_data = {}
+                # Nettoyer les structures locales
+                self._history_master = []
+                self._filtered_history_items = []
                 logging.info("Tout l'historique a été effacé.")
                 msgbox.showinfo("Succès", "L'historique a été complètement effacé.")
             except Exception as e:
@@ -749,25 +749,9 @@ class VisualizerWindowTkinter:
             return
         
         import main
-        
-        # Vider la listbox
-        self.history_listbox.delete(0, tk.END)
-        if hasattr(self.history_listbox, 'text_data'):
-            self.history_listbox.text_data = {}
-        
-        # Recharger l'historique
-        for index, item in enumerate(main.transcription_history):
-            if isinstance(item, dict):
-                display_text = f"[{item['timestamp']}] {item['text']}"
-                actual_text = item['text']
-            else:
-                display_text = str(item)
-                actual_text = str(item)
-            
-            self.history_listbox.insert(tk.END, display_text)
-            if not hasattr(self.history_listbox, 'text_data'):
-                self.history_listbox.text_data = {}
-            self.history_listbox.text_data[index] = actual_text
+        # Mettre à jour la liste maître depuis la source et re-filtrer
+        self._history_master = list(main.transcription_history)
+        self._apply_history_filter()
 
 
     def create_main_interface_window(self, history=None, current_config=None, save_callback=None):
@@ -808,6 +792,15 @@ class VisualizerWindowTkinter:
         notebook.add(history_tab, text='  Historique  ')
         history_frame = tk.Frame(history_tab, bg="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
         tk.Label(history_frame, text="Historique des transcriptions", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 10))
+
+        # Barre de recherche
+        search_frame = tk.Frame(history_frame, bg="#2b2b2b")
+        search_frame.pack(fill=tk.X, padx=5, pady=(0, 10))
+        tk.Label(search_frame, text="Rechercher:", fg="white", bg="#2b2b2b").pack(side=tk.LEFT, padx=(0, 8))
+        search_entry = tk.Entry(search_frame, textvariable=self.history_search_var, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        clear_btn = tk.Button(search_frame, text="Effacer", command=lambda: self._clear_search(), bg="#6c757d", fg="white", relief=tk.FLAT)
+        clear_btn.pack(side=tk.LEFT, padx=(8, 0))
         listbox_frame = tk.Frame(history_frame); listbox_frame.pack(fill=tk.BOTH, expand=True, padx=5)
         history_scrollbar = tk.Scrollbar(listbox_frame); history_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.history_listbox = tk.Listbox(listbox_frame, yscrollcommand=history_scrollbar.set, bg="#3c3c3c", fg="white", selectbackground="#0078d7", relief=tk.FLAT, borderwidth=0, highlightthickness=0, exportselection=False)
@@ -817,20 +810,15 @@ class VisualizerWindowTkinter:
         # Événements pour la listbox de l'historique
         self.history_listbox.bind("<Double-Button-1>", self._on_history_double_click)
         self.history_listbox.bind("<Button-3>", self._on_history_right_click)  # Clic droit
-        # Charger l'historique avec support du nouveau format
-        if history:
-            self.history_listbox.text_data = {}
-            for index, item in enumerate(history):
-                if isinstance(item, dict):
-                    display_text = f"[{item['timestamp']}] {item['text']}"
-                    actual_text = item['text']
-                else:
-                    # Rétrocompatibilité avec l'ancien format
-                    display_text = str(item)
-                    actual_text = str(item)
-                
-                self.history_listbox.insert(tk.END, display_text)
-                self.history_listbox.text_data[index] = actual_text
+        # Charger l'historique dans la liste maître et rendre la vue (filtrée)
+        self._history_master = list(history) if history else []
+        self._apply_history_filter()
+
+        # Déclencher le filtrage à la saisie (avec debounce)
+        try:
+            self.history_search_var.trace_add("write", lambda *_: self._on_search_changed())
+        except Exception:
+            pass
         
         # Indication pour les interactions avec l'historique
         help_frame = tk.Frame(history_frame, bg="#2b2b2b")
@@ -1195,6 +1183,52 @@ class VisualizerWindowTkinter:
         self.log_text_widget = tk.Text(text_frame, wrap=tk.WORD, state='disabled', yscrollcommand=log_scrollbar.set, bg="#1e1e1e", fg="white", font=("Consolas", 10), relief=tk.FLAT, borderwidth=0, highlightthickness=0)
         self.log_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         log_scrollbar.config(command=self.log_text_widget.yview)
+
+    # === Utilitaires Historique & Recherche ===
+    def _history_to_display_and_actual(self, obj):
+        if isinstance(obj, dict):
+            return f"[{obj.get('timestamp', '')}] {obj.get('text', '')}", obj.get('text', '')
+        else:
+            s = str(obj)
+            return s, s
+
+    def _render_history_list(self, items):
+        # Vider la listbox
+        self.history_listbox.delete(0, tk.END)
+        if not hasattr(self.history_listbox, 'text_data'):
+            self.history_listbox.text_data = {}
+        else:
+            self.history_listbox.text_data = {}
+
+        for index, item in enumerate(items):
+            display_text, actual_text = self._history_to_display_and_actual(item)
+            self.history_listbox.insert(tk.END, display_text)
+            self.history_listbox.text_data[index] = actual_text
+        self._filtered_history_items = list(items)
+
+    def _apply_history_filter(self):
+        query = (self.history_search_var.get() or "").strip().lower()
+        if not query:
+            self._render_history_list(self._history_master)
+            return
+        filtered = []
+        for item in self._history_master:
+            display_text, actual_text = self._history_to_display_and_actual(item)
+            if query in display_text.lower() or query in actual_text.lower():
+                filtered.append(item)
+        self._render_history_list(filtered)
+
+    def _on_search_changed(self):
+        # Debounce pour éviter de re-filtrer trop souvent
+        if self._search_after_id is not None:
+            try:
+                self.root.after_cancel(self._search_after_id)
+            except Exception:
+                pass
+        self._search_after_id = self.root.after(150, self._apply_history_filter)
+
+    def _clear_search(self):
+        self.history_search_var.set("")
 
         # S'assurer que la référence est nettoyée à la fermeture de la fenêtre
         self.main_window.protocol("WM_DELETE_WINDOW", lambda: (self.main_window.destroy(), setattr(self, 'main_window', None), setattr(self, 'log_text_widget', None), setattr(self, 'history_listbox', None), setattr(self, 'record_button', None)))
