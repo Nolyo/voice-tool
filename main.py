@@ -372,14 +372,20 @@ def transcribe_and_copy(filename):
             # Planifie l'ajout dans le thread de la GUI pour éviter les conflits
             visualizer_window.root.after(0, visualizer_window.add_transcription_to_history, history_item)
         
-        # Notification visuelle via la fenêtre GUI (toujours affichée maintenant)
-        if visualizer_window and hasattr(visualizer_window, 'show_status'):
-            visualizer_window.show_status("success")
+        # Notification visuelle via la fenêtre GUI (planifiée dans le thread Tkinter)
+        try:
+            if visualizer_window and hasattr(visualizer_window, 'root'):
+                visualizer_window.root.after(0, visualizer_window.show_status, "success")
+        except Exception as e:
+            logging.error(f"Erreur lors de l'affichage du statut success: {e}")
 
     except Exception as e:
         logging.error(f"Erreur lors de la transcription/copie : {e}")
-        if visualizer_window and hasattr(visualizer_window, 'show_status'):
-            visualizer_window.show_status("error")
+        try:
+            if visualizer_window and hasattr(visualizer_window, 'root'):
+                visualizer_window.root.after(0, visualizer_window.show_status, "error")
+        except Exception as e2:
+            logging.error(f"Erreur lors de l'affichage du statut error: {e2}")
 
 # Plus besoin de la fonction transcription spécialisée - on utilise la standard
 
@@ -395,8 +401,8 @@ def audio_callback(indata, frames, time, status):
         rms_scaled = rms * 200 
         
         # Mise à jour du visualiseur Tkinter (doit être fait dans le thread Tkinter)
-        if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-            visualizer_window.window.after(0, visualizer_window.update_visualizer, rms_scaled)
+        if visualizer_window and hasattr(visualizer_window, 'root'):
+            visualizer_window.root.after(0, visualizer_window.update_visualizer, rms_scaled)
 
 # Plus besoin du callback spécialisé - on utilise le standard
 
@@ -415,9 +421,9 @@ def toggle_recording(icon_pystray):
         # Note: visualizer_window sera initialisé par le thread principal
         
         # Afficher la fenêtre de visualisation si disponible
-        if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-            visualizer_window.window.after(0, visualizer_window.show) # Affiche la fenêtre
-            visualizer_window.window.after(0, visualizer_window.set_mode, "recording") # Passe en mode enregistrement
+        if visualizer_window and hasattr(visualizer_window, 'root'):
+            visualizer_window.root.after(0, visualizer_window.show)
+            visualizer_window.root.after(0, visualizer_window.set_mode, "recording")
         
         audio_frames = []
         audio_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='int16', callback=audio_callback)
@@ -447,9 +453,8 @@ def toggle_recording(icon_pystray):
         
         # Vérifier que visualizer_window est bien initialisé
         try:
-            if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-                visualizer_window.window.after(0, visualizer_window.set_mode, "processing") # Passe en mode traitement
-                # Ne plus cacher la fenêtre - elle restera visible en mode traitement
+            if visualizer_window and hasattr(visualizer_window, 'root'):
+                visualizer_window.root.after(0, visualizer_window.set_mode, "processing")
                 logging.info("Interface de visualisation mise à jour - mode traitement activé")
         except Exception as e:
             logging.error(f"Erreur lors de la mise à jour de l'interface: {e}")
