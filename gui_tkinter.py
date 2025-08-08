@@ -10,6 +10,7 @@ import os
 import platform
 from PIL import ImageTk, Image
 import sounddevice as sd
+import traceback
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,6 +24,18 @@ class VisualizerWindowTkinter:
         # Appliquer l'icône à la fenêtre root
         if self.icon_path:
             self.set_window_icon(self.root)
+
+        # Hook global pour capturer et loguer toute exception Tkinter
+        def _report_callback_exception(exc, val, tb):
+            try:
+                logging.error("Exception Tkinter:")
+                logging.error("".join(traceback.format_exception(exc, val, tb)))
+            except Exception:
+                pass
+        try:
+            self.root.report_callback_exception = _report_callback_exception
+        except Exception:
+            pass
         
         self.main_window = None # Pour garder une référence à la fenêtre principale
         self.log_text_widget = None # Pour le widget qui affichera les logs
@@ -77,6 +90,11 @@ class VisualizerWindowTkinter:
         # Désactiver les liaisons implicites lourdes (scroll) qui peuvent bloquer le thread UI
         try:
             self.canvas.unbind_all("<MouseWheel>")
+        except Exception:
+            pass
+        # Empêcher tout focus clavier sur la fenêtre du visualizer
+        try:
+            self.window.attributes("-disabled", True)
         except Exception:
             pass
 
@@ -294,18 +312,33 @@ class VisualizerWindowTkinter:
 
 
     def set_mode(self, mode):
-        logging.info(f"GUI Tkinter: Changement de mode vers: {mode}")
-        self.current_mode = mode
-        if mode == "recording":
-            # Simplement dessiner le visualiseur - pas de gestion complexe des layers
-            self.draw_visualizer()
-        elif mode == "processing":
-            # Effacer le canvas et dessiner une interface de traitement professionnelle
-            self.canvas.delete("all")
-            self._draw_processing_interface()
-        else: # idle mode
-            # Mode idle - rien de spécial à faire
-            pass
+        try:
+            logging.info(f"GUI Tkinter: Changement de mode vers: {mode}")
+            self.current_mode = mode
+            if not self.canvas or not self.canvas.winfo_exists():
+                return
+            if mode == "recording":
+                self.draw_visualizer()
+            elif mode == "processing":
+                # Mode processing sûr: dessin minimal si la fenêtre principale est ouverte
+                self.canvas.delete("all")
+                try:
+                    if self.main_window and self.main_window.winfo_exists():
+                        # Rendu minimaliste (éviter opérations graphiques lourdes)
+                        cw = self.canvas.winfo_width(); ch = self.canvas.winfo_height()
+                        self.canvas.create_rectangle(0, 0, cw, ch, fill='#1C1C1C', outline='')
+                        self.canvas.create_text(cw//2, ch//2, text="Traitement…", fill='#4ECDC4', font=('Arial', 10, 'bold'))
+                    else:
+                        self._draw_processing_interface()
+                except Exception:
+                    # Fallback minimal
+                    cw = self.canvas.winfo_width(); ch = self.canvas.winfo_height()
+                    self.canvas.create_rectangle(0, 0, cw, ch, fill='#1C1C1C', outline='')
+                    self.canvas.create_text(cw//2, ch//2, text="Traitement…", fill='#4ECDC4', font=('Arial', 10, 'bold'))
+            else:  # idle mode
+                pass
+        except Exception as e:
+            logging.error(f"Erreur set_mode('{mode}'): {e}")
 
     def show_status(self, status_type):
         if status_type == "success":
@@ -492,7 +525,7 @@ class VisualizerWindowTkinter:
         if selected_index >= len(self._filtered_history_items):
             return
         history_obj = self._filtered_history_items[selected_index]
-
+        
         # Confirmer la suppression
         import tkinter.messagebox as msgbox
         if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer cette transcription ?"):
@@ -570,6 +603,23 @@ class VisualizerWindowTkinter:
             try:
                 import main
                 main.clear_all_transcription_history()
+                # Effacer également les fichiers audio associés
+                try:
+                    from voice_tool.paths import RECORDINGS_DIR
+                    import os
+                    count = 0
+                    if os.path.isdir(RECORDINGS_DIR):
+                        for name in os.listdir(RECORDINGS_DIR):
+                            if name.lower().endswith('.wav'):
+                                full = os.path.join(RECORDINGS_DIR, name)
+                                try:
+                                    os.remove(full)
+                                    count += 1
+                                except Exception as e:
+                                    logging.error(f"Suppression audio échouée: {e}")
+                    logging.info(f"Tous les enregistrements audio supprimés ({count})")
+                except Exception as e:
+                    logging.error(f"Nettoyage des enregistrements échoué: {e}")
                 # Effacer la listbox dans l'interface
                 if self.history_listbox:
                     self.history_listbox.delete(0, tk.END)
@@ -855,6 +905,15 @@ class VisualizerWindowTkinter:
                   relief=tk.FLAT, activebackground="#c82333", activeforeground="white",
                   font=("Arial", 8, "bold")).pack(side=tk.LEFT)
         
+        # Avertissement si auto-paste actif
+        try:
+            import main
+            if main.get_setting('paste_at_cursor', False):
+                warn = tk.Label(history_frame, text="Astuce: l'option 'Insérer automatiquement au curseur' est active. Évitez de donner le focus à cette fenêtre si vous ne voulez pas y coller.", fg="#ffc107", bg="#2b2b2b", font=("Arial", 9))
+                warn.pack(pady=(8,0), padx=5, anchor='w')
+        except Exception:
+            pass
+        
         # Message informatif pour le raccourci d'enregistrement
         shortcut_frame = tk.Frame(history_frame, bg="#1e1e1e", relief=tk.RAISED, bd=1)
         shortcut_frame.pack(pady=(10,10), padx=5, fill=tk.X)
@@ -980,7 +1039,7 @@ class VisualizerWindowTkinter:
         left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 8))
         right_col = tk.Frame(two_cols, bg="#2b2b2b")
         right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(8, 0))
-
+        
         # === SECTION AUDIO (à gauche) ===
         audio_card, audio_frame = create_card(left_col, "🔊 Audio")
         audio_card.pack(fill=tk.BOTH, expand=True, pady=(0, 16))
@@ -1099,7 +1158,7 @@ class VisualizerWindowTkinter:
                                      selectcolor="#3c3c3c", activebackground="#2b2b2b", 
                                      activeforeground="white")
         paste_check.pack(anchor='w', pady=(0, 15))
-
+        
         # Toggle Formatage intelligent
         try:
             if user_settings and "smart_formatting" in user_settings:
@@ -1184,6 +1243,25 @@ class VisualizerWindowTkinter:
                                          selectcolor="#3c3c3c", activebackground="#2b2b2b", 
                                          activeforeground="white")
         auto_start_check.pack(anchor='w', pady=(0, 15))
+
+        # Rétention enregistrements (garder N derniers)
+        tk.Label(system_frame, text="Conserver les N derniers enregistrements (WAV) :", fg="white", bg="#2b2b2b").pack(anchor='w')
+        keep_last_var = tk.IntVar()
+        try:
+            import main
+            keep_last_var.set(main.load_user_settings().get("recordings_keep_last", 25))
+        except Exception:
+            keep_last_var.set(25)
+        keep_last_spin = tk.Spinbox(system_frame, from_=0, to=1000, textvariable=keep_last_var, width=6, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        keep_last_spin.pack(anchor='w', pady=(2, 10))
+        def on_keep_last_changed(*_):
+            try:
+                import main
+                val = int(keep_last_var.get())
+                main.update_and_restart_hotkeys({"recordings_keep_last": val})
+            except Exception as e:
+                logging.error(f"Sauvegarde recordings_keep_last échouée: {e}")
+        keep_last_var.trace_add("write", lambda *_: on_keep_last_changed())
         
         # === SECTION RACCOURCIS ===
         shortcuts_card, shortcuts_frame = create_card(settings_frame, "⌨️ Raccourcis & modes d'enregistrement")
@@ -1395,7 +1473,30 @@ class VisualizerWindowTkinter:
         # --- Onglet 3: Logs --- (ajouté après Paramètres)
         logs_tab = tk.Frame(notebook, bg="#2b2b2b")
         notebook.add(logs_tab, text='  Logs  ')
-        tk.Label(logs_tab, text="Logs de l'application", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 10))
+        tk.Label(logs_tab, text="Logs de l'application", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 4))
+        # Bandeau chemin du fichier log + bouton ouvrir
+        path_frame = tk.Frame(logs_tab, bg="#2b2b2b")
+        path_frame.pack(fill=tk.X, padx=5, pady=(0,6))
+        try:
+            import main
+            log_path = os.path.join(os.path.dirname(os.path.abspath(main.__file__)), 'voice_tool.log')
+            tk.Label(path_frame, text=f"Fichier: {log_path}", fg="#aaaaaa", bg="#2b2b2b", font=("Consolas", 8)).pack(side=tk.LEFT)
+            def _open_log_file():
+                try:
+                    if os.path.exists(log_path):
+                        if platform.system() == 'Windows':
+                            os.startfile(log_path)  # type: ignore
+                        elif platform.system() == 'Darwin':
+                            os.system(f"open '{log_path}'")
+                        else:
+                            os.system(f"xdg-open '{log_path}'")
+                    else:
+                        logging.error("Fichier de log introuvable")
+                except Exception as e:
+                    logging.error(f"Impossible d'ouvrir le fichier de log: {e}")
+            tk.Button(path_frame, text="Ouvrir", command=_open_log_file, bg="#007bff", fg="white", relief=tk.FLAT).pack(side=tk.RIGHT)
+        except Exception:
+            pass
         text_frame = tk.Frame(logs_tab); text_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0,5))
         log_scrollbar = tk.Scrollbar(text_frame); log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.log_text_widget = tk.Text(text_frame, wrap=tk.WORD, state='disabled', yscrollcommand=log_scrollbar.set, bg="#1e1e1e", fg="white", font=("Consolas", 10), relief=tk.FLAT, borderwidth=0, highlightthickness=0)

@@ -1,6 +1,7 @@
 
 
 import logging
+import logging.handlers
 import sounddevice as sd
 import scipy.io.wavfile as wav
 from pynput import keyboard
@@ -17,6 +18,9 @@ import time
 import platform
 import setproctitle
 from queue import SimpleQueue, Empty
+from threading import Lock, Thread
+import faulthandler
+import atexit
 
 # Modules refactorisés
 from voice_tool import config_manager
@@ -56,10 +60,93 @@ from gui_tkinter import VisualizerWindowTkinter # Notre fenêtre de visualiseur 
 
 # Charger les variables d'environnement depuis la racine du projet
 script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# --- Journalisation persistante & diagnostics très précoces ---
+LOG_FILE_PATH = os.path.join(script_dir, 'voice_tool.log')
+CRASH_LOG_PATH = os.path.join(script_dir, 'voice_tool_crash.log')
+_crash_fp = None
+
+def _initialize_persistent_logging() -> None:
+    global _crash_fp
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+
+    # Éviter les doublons si ré-initialisation
+    has_file = any(isinstance(h, logging.handlers.RotatingFileHandler) and getattr(h, 'name', '') == 'voice_tool_file' for h in root_logger.handlers)
+    if not has_file:
+        try:
+            file_handler = logging.handlers.RotatingFileHandler(
+                LOG_FILE_PATH, maxBytes=5 * 1024 * 1024, backupCount=2, encoding='utf-8'
+            )
+            file_handler.name = 'voice_tool_file'
+            file_handler.setLevel(logging.DEBUG)
+            file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            root_logger.addHandler(file_handler)
+        except Exception:
+            pass
+
+    # Capturer les warnings python
+    try:
+        logging.captureWarnings(True)
+    except Exception:
+        pass
+
+    # faulthandler pour dumps de crash
+    try:
+        if _crash_fp is None:
+            _crash_fp = open(CRASH_LOG_PATH, 'a', buffering=1, encoding='utf-8')
+        try:
+            faulthandler.enable(file=_crash_fp)  # ne couvre pas tous les crashs Windows, mais utile
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    # Hooks d'exception globaux
+    try:
+        _orig_excepthook = sys.excepthook
+        def _log_excepthook(exc_type, exc, tb):
+            try:
+                logging.error("Exception non interceptée:", exc_info=(exc_type, exc, tb))
+            finally:
+                try:
+                    _orig_excepthook(exc_type, exc, tb)
+                except Exception:
+                    pass
+        sys.excepthook = _log_excepthook
+    except Exception:
+        pass
+
+    try:
+        # Python 3.8+
+        def _thread_excepthook(args):
+            try:
+                logging.error(f"Exception thread {getattr(args, 'thread', None)}:", exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
+            except Exception:
+                pass
+        if hasattr(threading, 'excepthook'):
+            threading.excepthook = _thread_excepthook
+    except Exception:
+        pass
+
+    # Log de sortie de processus
+    try:
+        @atexit.register
+        def _on_exit():
+            logging.info("[EXIT] Process Voice Tool terminé")
+            try:
+                if _crash_fp and not _crash_fp.closed:
+                    _crash_fp.flush()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+_initialize_persistent_logging()
+
 config_manager.load_env_from_project_root()
 
 # --- Configuration ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 SAMPLE_RATE = 44100
 OUTPUT_FILENAME = "recording.wav"
 
@@ -67,6 +154,7 @@ OUTPUT_FILENAME = "recording.wav"
 APP_DATA_DIR = vt_paths.APP_DATA_DIR
 HISTORY_FILE = vt_paths.HISTORY_FILE
 SOUNDS_DIR = vt_paths.SOUNDS_DIR
+RECORDINGS_DIR = vt_paths.RECORDINGS_DIR
 USER_SETTINGS_FILE = vt_paths.USER_SETTINGS_FILE
 
 # --- Variables globales ---
@@ -76,7 +164,9 @@ is_recording = False
 hotkey_listener = None
 ptt_listener = None
 audio_stream = None
+audio_stream_device_index = None
 audio_frames = []
+audio_frames_lock = Lock()
 google_credentials = None
 transcription_history = [] # Historique des transcriptions réussies
 global_icon_pystray = None # Pour accéder à l'icône depuis d'autres fonctions
@@ -84,6 +174,9 @@ global_icon_pystray = None # Pour accéder à l'icône depuis d'autres fonctions
 # Variables globales pour la GUI Tkinter
 visualizer_window = None
 visualizer_queue: SimpleQueue = SimpleQueue()
+processing_queue: SimpleQueue = SimpleQueue()
+processing_worker_thread: Thread | None = None
+visualizer_poll_started = False
 
 # Gestion d'instance unique via module vt_lock
 
@@ -327,12 +420,23 @@ def paste_to_cursor():
     except Exception as e:
         logging.error(f"Impossible d'envoyer la commande de collage: {e}")
 
+def log_checkpoint(tag: str) -> None:
+    try:
+        logging.info(f"[CHK] {tag}")
+    except Exception:
+        pass
+
+def trace_breadcrumb(tag: str) -> None:
+    # Alias sémantique
+    log_checkpoint(tag)
+
 def transcribe_with_openai(filename, language=None):
     return vt_transcription.transcribe_with_openai(filename, language)
 
 def transcribe_and_copy(filename):
     global google_credentials, visualizer_window, transcription_history
     try:
+        logging.info("Début transcribe_and_copy")
         # Recharger les user_settings pour avoir la version la plus récente
         current_user_settings = load_user_settings()
         provider_raw = current_user_settings.get("transcription_provider", "Google")
@@ -377,15 +481,30 @@ def transcribe_and_copy(filename):
         logging.info("Texte copié dans le presse-papiers !")
         # Coller automatiquement au curseur si l'option est activée
         if get_setting('paste_at_cursor', False):
-            # Laisser un court délai pour que l'appli cible reprenne le focus
-            time.sleep(0.12)
-            paste_to_cursor()
+            # Éviter de coller dans l'UI Tk elle-même
+            try:
+                import tkinter as _tk
+                if visualizer_window and visualizer_window.root:
+                    focused = visualizer_window.root.focus_get()
+                    if focused is not None:
+                        logging.info("Focus sur UI Voice Tool détecté: skip auto-paste")
+                    else:
+                        time.sleep(0.12)
+                        paste_to_cursor()
+                else:
+                    time.sleep(0.12)
+                    paste_to_cursor()
+            except Exception:
+                time.sleep(0.12)
+                paste_to_cursor()
         
         # Jouer le son de succès
         if sound_paths and 'success' in sound_paths:
             play_sound_async(sound_paths['success'])
 
         # Ajout à l'historique avec sauvegarde automatique
+        # Si le texte provient d'un fichier wav récent, on pourrait passer le chemin audio.
+        # Ici, on ne l'a pas au moment de la transcription asynchrone. Option: détecter via param supplémentaire si besoin.
         history_item = add_to_transcription_history(text)
         if visualizer_window and visualizer_window.main_window and visualizer_window.main_window.winfo_exists():
             # Planifie l'ajout dans le thread de la GUI pour éviter les conflits
@@ -401,6 +520,11 @@ def transcribe_and_copy(filename):
     except Exception as e:
         logging.error(f"Erreur lors de la transcription/copie : {e}")
         try:
+            import traceback as _tb
+            logging.error("".join(_tb.format_exception(type(e), e, e.__traceback__)))
+        except Exception:
+            pass
+        try:
             if visualizer_window and hasattr(visualizer_window, 'root'):
                 visualizer_window.root.after(0, visualizer_window.show_status, "error")
         except Exception as e2:
@@ -409,11 +533,16 @@ def transcribe_and_copy(filename):
 # Plus besoin de la fonction transcription spécialisée - on utilise la standard
 
 def audio_callback(indata, frames, time, status):
-    global visualizer_window
+    global visualizer_window, is_recording
     if status:
         logging.warning(status)
-    audio_frames.append(indata.copy())
-    if indata.size > 0:
+    try:
+        if is_recording:
+            with audio_frames_lock:
+                audio_frames.append(indata.copy())
+    except Exception:
+        pass
+    if is_recording and indata.size > 0:
         mean_square = np.mean(indata**2)
         if mean_square < 0: mean_square = 0
         rms = np.sqrt(mean_square) / 32768.0
@@ -448,6 +577,129 @@ def _poll_visualizer_levels():
     except Exception:
         pass
 
+def _processing_worker():
+    global processing_worker_thread
+    logging.info("Worker de traitement audio démarré")
+    while True:
+        try:
+            frames_copy = processing_queue.get()
+            if frames_copy is None:
+                continue
+            try:
+                n = len(frames_copy)
+            except Exception:
+                n = -1
+            try:
+                if not isinstance(frames_copy, list) or n <= 0:
+                    logging.warning("Aucun frame à traiter dans la tâche")
+                    continue
+                logging.info(f"Concaténation de {n} frames audio (worker)...")
+                recording_data = np.concatenate(frames_copy, axis=0)
+                # Nom de fichier unique dans AppData/recordings
+                ts = time.strftime('%Y%m%d_%H%M%S')
+                os.makedirs(RECORDINGS_DIR, exist_ok=True)
+                out_path = os.path.join(RECORDINGS_DIR, f"recording_{ts}.wav")
+                wav.write(out_path, SAMPLE_RATE, recording_data)
+                logging.info(f"Fichier sauvegardé: {out_path}")
+
+                # Rétention: conserver N derniers
+                try:
+                    keep_last = vt_settings.load_user_settings().get("recordings_keep_last", 25)
+                    files = []
+                    for name in os.listdir(RECORDINGS_DIR):
+                        if name.lower().endswith('.wav'):
+                            full = os.path.join(RECORDINGS_DIR, name)
+                            try:
+                                mtime = os.path.getmtime(full)
+                            except Exception:
+                                mtime = 0
+                            files.append((mtime, full))
+                    files.sort(reverse=True)
+                    for _, path in files[keep_last:]:
+                        try:
+                            os.remove(path)
+                            logging.info(f"Recording supprimé (rétention): {path}")
+                        except Exception as de:
+                            logging.error(f"Suppression recording échouée: {de}")
+                except Exception as re:
+                    logging.error(f"Nettoyage rétention recordings: {re}")
+
+                # Lancer la transcription
+                logging.info("Lancement de la transcription (worker)...")
+                Thread(target=transcribe_and_copy, args=(out_path,), daemon=True).start()
+            except Exception as e:
+                logging.error(f"Erreur worker traitement: {e}")
+                try:
+                    import traceback as _tb
+                    logging.error("".join(_tb.format_exception(type(e), e, e.__traceback__)))
+                except Exception:
+                    pass
+        except Exception as e:
+            logging.error(f"Erreur boucle worker: {e}")
+            time.sleep(0.1)
+
+def _ensure_processing_worker_started():
+    global processing_worker_thread
+    if processing_worker_thread is None or not processing_worker_thread.is_alive():
+        processing_worker_thread = Thread(target=_processing_worker, daemon=True)
+        processing_worker_thread.start()
+
+def _ensure_audio_stream_started():
+    """Démarre et conserve un unique InputStream pour toute la durée de vie de l'app.
+    On n'arrête/ferme plus le stream à chaque enregistrement pour éviter les crashs PortAudio sous Windows
+    quand la fenêtre principale Tkinter est ouverte.
+    """
+    global audio_stream, audio_stream_device_index
+    if audio_stream is not None:
+        return
+    try:
+        def _sanitize_input_device_index():
+            try:
+                idx = get_setting("input_device_index", None)
+            except Exception:
+                idx = None
+            try:
+                import sounddevice as _sd
+                devs = _sd.query_devices()
+                if not isinstance(idx, int):
+                    return None
+                if idx < 0 or idx >= len(devs):
+                    return None
+                if devs[idx].get('max_input_channels', 0) <= 0:
+                    return None
+                return idx
+            except Exception:
+                return None
+
+        input_device_index = _sanitize_input_device_index()
+        audio_stream_device_index = input_device_index
+        trace_breadcrumb("before_stream_start")
+        audio_stream = sd.InputStream(
+            samplerate=SAMPLE_RATE,
+            channels=1,
+            dtype='int16',
+            callback=audio_callback,
+            device=input_device_index
+        )
+        audio_stream.start()
+        trace_breadcrumb("after_stream_start")
+        logging.info("InputStream démarré (persistant)")
+        # Démarrer le poll du visualizer si la fenêtre existe
+        try:
+            global visualizer_poll_started
+            if visualizer_window and hasattr(visualizer_window, 'root') and not visualizer_poll_started:
+                visualizer_poll_started = True
+                visualizer_window.root.after(0, _poll_visualizer_levels)
+        except Exception:
+            pass
+    except Exception as e:
+        logging.error(f"Erreur démarrage InputStream: {e}")
+        try:
+            import traceback as _tb
+            logging.error("".join(_tb.format_exception(type(e), e, e.__traceback__)))
+        except Exception:
+            pass
+
 # Plus besoin du callback spécialisé - on utilise le standard
 
 def toggle_recording(icon_pystray):
@@ -469,26 +721,17 @@ def toggle_recording(icon_pystray):
             visualizer_window.root.after(0, visualizer_window.show)
             visualizer_window.root.after(0, visualizer_window.set_mode, "recording")
         
-        audio_frames = []
-        # Utiliser le périphérique d'entrée choisi si disponible
-        try:
-            input_device_index = get_setting("input_device_index", None)
-        except Exception:
-            input_device_index = None
+        # Nettoyer les frames précédentes
+        with audio_frames_lock:
+            audio_frames.clear()
         # Réinitialiser le throttling du visualiseur au démarrage
         try:
             import time as _t
             last_visualizer_update_ts = _t.monotonic()
         except Exception:
             last_visualizer_update_ts = 0.0
-        audio_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='int16', callback=audio_callback, device=input_device_index)
-        audio_stream.start()
-        # Démarrer le poll du visualizer si la fenêtre existe
-        try:
-            if visualizer_window and hasattr(visualizer_window, 'root'):
-                visualizer_window.root.after(0, _poll_visualizer_levels)
-        except Exception:
-            pass
+        # S'assurer que le stream audio persistant est démarré
+        _ensure_audio_stream_started()
 
     else:
         logging.info("Arrêt de l'enregistrement...")
@@ -497,47 +740,38 @@ def toggle_recording(icon_pystray):
         if sound_paths and 'stop' in sound_paths:
             play_sound_async(sound_paths['stop'])
         
-        # Vérification et arrêt sécurisé de l'audio stream
-        if not audio_stream:
-            logging.warning("Aucun stream audio à arrêter")
-            return
-            
-        try:
-            logging.info("Arrêt du stream audio...")
-            audio_stream.stop()
-            audio_stream.close()
-            audio_stream = None  # Réinitialiser la variable
-            logging.info("Stream audio fermé avec succès")
-        except Exception as e:
-            logging.error(f"Erreur lors de la fermeture du stream audio: {e}")
-            audio_stream = None  # Réinitialiser même en cas d'erreur
+        # Ne plus arrêter/fermer le stream ici: on le garde persistant pour éviter les crashs
+        trace_breadcrumb("skip_stream_close_persistent_mode")
         
-        # Vérifier que visualizer_window est bien initialisé
+        # 1) Snapshot + envoi au worker (avant UI)
+        try:
+            log_checkpoint("before_frames_snapshot")
+            with audio_frames_lock:
+                frames_copy2 = list(audio_frames)
+                audio_frames.clear()
+            log_checkpoint("after_frames_snapshot")
+            if len(frames_copy2) == 0:
+                logging.warning("Aucune donnée audio à sauvegarder")
+            else:
+                _ensure_processing_worker_started()
+                processing_queue.put(frames_copy2)
+                logging.info(f"Tâche de traitement audio envoyée au worker (frames={len(frames_copy2)})")
+                log_checkpoint("after_put_to_worker")
+        except Exception as e:
+            logging.error(f"Erreur lors de l'envoi au worker: {e}")
+
+        # 2) Mise à jour UI (après une micro-latence)
         try:
             if visualizer_window and hasattr(visualizer_window, 'root'):
-                visualizer_window.root.after(0, visualizer_window.set_mode, "processing")
+                log_checkpoint("before_set_mode_processing")
+                # petit délai pour laisser PortAudio/threads se stabiliser
+                visualizer_window.root.after(50, visualizer_window.set_mode, "processing")
                 logging.info("Interface de visualisation mise à jour - mode traitement activé")
+                log_checkpoint("after_set_mode_processing_sched")
         except Exception as e:
             logging.error(f"Erreur lors de la mise à jour de l'interface: {e}")
 
-        # Sauvegarde sécurisée des données audio
-        try:
-            if len(audio_frames) == 0:
-                logging.warning("Aucune donnée audio à sauvegarder")
-                return
-                
-            logging.info(f"Concaténation de {len(audio_frames)} frames audio...")
-            recording_data = np.concatenate(audio_frames, axis=0)
-            wav.write(OUTPUT_FILENAME, SAMPLE_RATE, recording_data)
-            logging.info(f"Fichier sauvegardé: {OUTPUT_FILENAME}")
-
-            # Lancement de la transcription dans un thread séparé
-            logging.info("Lancement de la transcription...")
-            threading.Thread(target=transcribe_and_copy, args=(OUTPUT_FILENAME,)).start()
-            logging.info("Thread de transcription démarré - Prêt pour un nouvel enregistrement.")
-            
-        except Exception as e:
-            logging.error(f"Erreur lors de la sauvegarde ou de la transcription: {e}")
+        log_checkpoint("end_toggle_stop")
 
 def toggle_recording_with_gui(icon_pystray, gui_instance):
     """Version de toggle_recording qui utilise l'instance GUI fournie."""
@@ -571,7 +805,7 @@ def update_and_restart_hotkeys(new_config):
         if key in ['record_hotkey', 'open_window_hotkey']:
             user_params[key] = value
             hotkey_changed = True
-        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language', 'smart_formatting', 'input_device_index', 'record_mode', 'ptt_hotkey']:
+        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language', 'smart_formatting', 'input_device_index', 'record_mode', 'ptt_hotkey', 'recordings_keep_last']:
             user_params[key] = value
             if key in ['record_mode', 'ptt_hotkey']:
                 hotkey_changed = True
@@ -816,13 +1050,16 @@ def main():
             print(f"Erreur lors du lancement en arrière-plan : {e}")
             sys.exit(1)
 
-    # --- Configuration du logging ---
+    # --- Configuration du logging complémentaire ---
+    # Ajouter un handler console si en mode console (sans modifier le file handler déjà actif)
     if is_console_mode:
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    else:
-        # Pour le processus en arrière-plan, on logue dans un fichier
-        log_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'voice_tool.log')
-        logging.basicConfig(filename=log_file_path, filemode='a', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        root_logger = logging.getLogger()
+        has_console = any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler) for h in root_logger.handlers)
+        if not has_console:
+            sh = logging.StreamHandler()
+            sh.setLevel(logging.INFO)
+            sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            root_logger.addHandler(sh)
 
     # Charger la configuration système (peut être vide, non bloquant)
     global config
@@ -878,6 +1115,12 @@ def main():
         setup_hotkey(global_icon_pystray)
     else:
         logging.warning("Icône pystray non initialisée à temps; les hotkeys seront configurés plus tard.")
+
+    # Démarrer le stream audio persistant tôt dans la vie du processus (thread principal)
+    try:
+        _ensure_audio_stream_started()
+    except Exception as e:
+        logging.error(f"Échec du démarrage initial de l'InputStream: {e}")
 
     # Lancer la boucle principale Tkinter (thread principal)
     visualizer_window.run()

@@ -50,6 +50,8 @@ def default_user_settings() -> Dict[str, Any]:
         "open_window_hotkey": "<ctrl>+<alt>+o",
         "record_mode": "toggle",  # 'toggle' ou 'ptt'
         "ptt_hotkey": "<ctrl>+<shift>+<space>",
+        # Rétention des enregistrements
+        "recordings_keep_last": 25,
     }
 
 

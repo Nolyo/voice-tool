@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from .paths import HISTORY_FILE
 
@@ -39,12 +39,14 @@ def save_transcription_history(transcriptions: List[Dict[str, Any]]) -> bool:
         return False
 
 
-def add_to_transcription_history(current_history: List[Dict[str, Any]], text: str) -> Dict[str, Any]:
-    item = {
+def add_to_transcription_history(current_history: List[Dict[str, Any]], text: str, audio_path: Optional[str] = None) -> Dict[str, Any]:
+    item: Dict[str, Any] = {
         "text": text,
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "date": time.strftime("%Y-%m-%d"),
     }
+    if audio_path:
+        item["audio_path"] = audio_path
     current_history.append(item)
     if len(current_history) > 1000:
         current_history[:] = current_history[-1000:]

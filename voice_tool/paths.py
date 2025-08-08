@@ -16,5 +16,7 @@ APP_DATA_DIR = get_app_data_dir()
 HISTORY_FILE = os.path.join(APP_DATA_DIR, "transcription_history.json")
 SOUNDS_DIR = os.path.join(APP_DATA_DIR, "sounds")
 USER_SETTINGS_FILE = os.path.join(APP_DATA_DIR, "user_settings.json")
+RECORDINGS_DIR = os.path.join(APP_DATA_DIR, "recordings")
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
 
