@@ -7,6 +7,36 @@ from typing import Dict, Any
 from .paths import USER_SETTINGS_FILE
 
 
+def _project_root() -> str:
+    # dossier parent du paquet voice_tool
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+
+
+def _load_template_settings_if_any() -> Dict[str, Any] | None:
+    """Charge un template JSON de paramètres s'il existe à la racine du projet.
+
+    Formats acceptés:
+    - { "settings": { ... } }
+    - { ... } (dict direct des réglages)
+    """
+    candidates = [
+        os.path.join(_project_root(), "user_settings.template.json"),
+        os.path.join(_project_root(), "voice_tool_user_settings.template.json"),
+    ]
+    for path in candidates:
+        try:
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    if "settings" in data and isinstance(data["settings"], dict):
+                        return data["settings"]
+                    return data
+        except Exception as exc:
+            logging.error(f"Erreur lecture template paramètres: {path} -> {exc}")
+    return None
+
+
 def default_user_settings() -> Dict[str, Any]:
     return {
         "enable_sounds": True,
@@ -31,8 +61,12 @@ def load_user_settings() -> Dict[str, Any]:
                     settings = {**defaults, **data["settings"]}
                     return settings
                 return default_user_settings()
-        # init file with defaults
-        settings = default_user_settings()
+        # Première exécution: tenter un template puis fallback sur defaults
+        template_settings = _load_template_settings_if_any()
+        if isinstance(template_settings, dict):
+            settings = {**default_user_settings(), **template_settings}
+        else:
+            settings = default_user_settings()
         save_user_settings(settings)
         return settings
     except Exception as exc:

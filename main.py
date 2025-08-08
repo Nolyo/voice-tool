@@ -710,7 +710,7 @@ def main():
         log_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'voice_tool.log')
         logging.basicConfig(filename=log_file_path, filemode='a', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    # Charger la configuration système
+    # Charger la configuration système (peut être vide, non bloquant)
     global config
     config = config_manager.load_system_config()
     

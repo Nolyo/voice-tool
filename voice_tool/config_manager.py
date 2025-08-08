@@ -22,8 +22,10 @@ def load_env_from_project_root() -> None:
 
 @dataclass
 class SystemConfig:
-    record_hotkey: str = "<ctrl>+<alt>+s"
-    open_window_hotkey: str = "<ctrl>+<alt>+o"
+    # Les hotkeys ont migré vers les User Settings (AppData)
+    # On conserve des défauts vides pour garder la structure si besoin
+    record_hotkey: str = ""
+    open_window_hotkey: str = ""
 
 
 CONFIG_FILE_NAME = "config.json"
@@ -38,9 +40,8 @@ def load_system_config() -> Dict[str, Any]:
 
     try:
         if not os.path.exists(config_path):
-            logging.info(f"Fichier de configuration système non trouvé, création de {CONFIG_FILE_NAME}")
-            with open(config_path, "w") as f:
-                json.dump(defaults, f, indent=4)
+            # Ne plus créer automatiquement: l'app peut fonctionner sans config.json
+            logging.info("Aucun fichier de configuration système trouvé (ce n'est pas bloquant)")
             return dict(defaults)
         else:
             with open(config_path, "r") as f:
