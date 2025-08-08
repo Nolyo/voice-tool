@@ -895,7 +895,10 @@ class VisualizerWindowTkinter:
                         foreground="white",
                         relief=tk.FLAT)
 
-        table_frame = tk.Frame(history_frame, bg="#2b2b2b")
+        # Conteneur avec légère bordure pour un rendu plus "carte"
+        table_frame = tk.Frame(history_frame, bg="#2b2b2b",
+                               highlightthickness=1, highlightbackground="#3c3c3c",
+                               bd=0, relief=tk.FLAT)
         table_frame.pack(fill=tk.BOTH, expand=True, padx=5)
         yscroll = tk.Scrollbar(table_frame)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -910,6 +913,13 @@ class VisualizerWindowTkinter:
         self.history_tree.column("time", width=110, minwidth=90, anchor=tk.W, stretch=False)
         # Colonne texte occupe l'espace restant
         self.history_tree.column("text", width=400, minwidth=200, anchor=tk.W, stretch=True)
+
+        # Tags pour zébrage des lignes
+        try:
+            self.history_tree.tag_configure('oddrow', background='#2a2a2a')
+            self.history_tree.tag_configure('evenrow', background='#2f2f2f')
+        except Exception:
+            pass
         self.history_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscroll.config(command=self.history_tree.yview)
         
@@ -1671,14 +1681,18 @@ class VisualizerWindowTkinter:
         self._tree_id_to_obj = {}
         # Afficher les plus récents en premier
         items_to_display = list(items)[::-1]
-        for item in items_to_display:
-            display_text, actual_text = self._history_to_display_and_actual(item)
-            # On sépare en deux colonnes: date/heure + texte
-            # Extraire la date/heure si présent dans dict
+        for idx, item in enumerate(items_to_display):
+            # Construire colonnes: date/heure + texte SANS redonder la date/heure dans le texte
             time_col = ""
+            text_col = ""
             if isinstance(item, dict):
                 time_col = item.get('timestamp', item.get('date', ''))
-            iid = self.history_tree.insert("", tk.END, values=(time_col, display_text))
+                text_col = item.get('text', '')
+            else:
+                # Ancien format: tout en texte
+                text_col = str(item)
+            tag = 'evenrow' if (idx % 2 == 0) else 'oddrow'
+            iid = self.history_tree.insert("", tk.END, values=(time_col, text_col), tags=(tag,))
             self._tree_id_to_obj[iid] = item
         self._filtered_history_items = list(items_to_display)
         # Mettre à jour le compteur
