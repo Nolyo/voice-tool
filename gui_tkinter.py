@@ -909,8 +909,8 @@ class VisualizerWindowTkinter:
                                          style="VT.Treeview")
         self.history_tree.heading("time", text="Date/Heure")
         self.history_tree.heading("text", text="Texte")
-        # Colonne date/heure plus compacte
-        self.history_tree.column("time", width=110, minwidth=90, anchor=tk.W, stretch=False)
+        # Colonne date/heure légèrement plus large pour créer un espace visuel
+        self.history_tree.column("time", width=140, minwidth=110, anchor=tk.W, stretch=False)
         # Colonne texte occupe l'espace restant
         self.history_tree.column("text", width=400, minwidth=200, anchor=tk.W, stretch=True)
 
