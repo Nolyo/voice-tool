@@ -114,6 +114,36 @@ Notes:
 
 ---
 
+## 🛠️ CI/CD (GitHub Actions)
+
+This repo ships with two GitHub Actions workflows:
+
+- `CI` (`.github/workflows/ci.yml`):
+  - Lints with Ruff + Black (Ubuntu)
+  - Builds the Windows one‑file EXE with PyInstaller and uploads it as a build artifact
+
+- `Release` (`.github/workflows/release.yml`):
+  - Triggers on tags matching `v*` (e.g. `v1.2.3`)
+  - Builds the Windows EXE, zips it with basic docs, generates SHA256 checksum
+  - Publishes a GitHub Release with the ZIP attached
+
+### How to cut a release
+
+1. Ensure `mep` or `main` has your latest commits
+2. Create and push a tag:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+3. The Release workflow will publish `Voice-Tool-v1.0.0-windows-x64.zip`
+
+Optional improvements (future):
+- Add code signing (Windows `signtool`) using a certificate stored in GitHub Secrets
+- Add Linux/macOS builds via a matrix (PyInstaller per OS)
+- Auto‑changelog generation (e.g. Release Please or conventional commits)
+
+---
+
 ## ☁️ Google Cloud Setup
 
 ### Step 1: Create Google Cloud Project
