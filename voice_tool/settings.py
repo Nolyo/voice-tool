@@ -80,10 +80,27 @@ def load_user_settings() -> Dict[str, Any]:
 
 def save_user_settings(settings: Dict[str, Any]) -> bool:
     try:
+        # Charger l'existant sans passer par load_user_settings (éviter récursion 1ère exécution)
+        existing: Dict[str, Any] = {}
+        if os.path.exists(USER_SETTINGS_FILE):
+            try:
+                with open(USER_SETTINGS_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict) and isinstance(data.get("settings"), dict):
+                    existing = data["settings"]
+            except Exception:
+                existing = {}
+        else:
+            # Si le fichier n'existe pas encore, partir des valeurs par défaut
+            existing = default_user_settings()
+
+        # Fusion non-destructive: priorité aux nouvelles valeurs
+        merged = {**existing, **settings}
+
         settings_data = {
             "version": "1.0",
             "created": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "settings": settings,
+            "settings": merged,
         }
         os.makedirs(os.path.dirname(USER_SETTINGS_FILE), exist_ok=True)
         with open(USER_SETTINGS_FILE, "w", encoding="utf-8") as f:
