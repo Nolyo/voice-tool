@@ -1,12 +1,12 @@
 # Voice Tool 🎤
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Speech--to--Text-4285F4)](https://cloud.google.com/speech-to-text)
 
 **AI-powered voice transcription tool with global hotkeys and real-time audio visualization**
 
-Voice Tool is a modern desktop application that transforms speech into text using Google Cloud Speech-to-Text API. Built with a focus on productivity, it features global hotkeys, real-time audio visualization, and seamless integration with your workflow.
+Voice Tool is a modern desktop application that transforms speech into text using Google Cloud Speech-to-Text API (and optionally OpenAI Whisper). Built with a focus on productivity, it features configurable global hotkeys (toggle/PTT), real-time audio visualization, and seamless integration with your workflow.
 
 ---
 
@@ -16,14 +16,15 @@ Voice Tool was developed through **vibe-coding** sessions using [Claude Code](ht
 
 ### Key Features
 
-🎯 **Global Hotkeys** - Record from anywhere with `Ctrl+Alt+S`  
+🎯 **Configurable Global Hotkeys** - Toggle or Push‑to‑talk modes (defaults: `Ctrl+Alt+S` toggle, `Ctrl+Shift+Space` PTT)  
 📊 **Real-time Visualizer** - Beautiful audio level visualization during recording  
 📋 **Smart Clipboard** - Automatic copy to clipboard with optional cursor pasting  
 🎨 **Modern UI** - Clean, intuitive interface with system tray integration  
 📚 **Persistent History** - All transcriptions saved with timestamps  
 ⚙️ **User Settings** - Customizable preferences stored in AppData  
-🔊 **Audio Feedback** - Subtle sound cues for recording start/stop  
+🔊 **Audio Feedback** - Packaged WAV assets; fallback generation in AppData  
 💼 **Background Operation** - Runs silently in the system tray  
+🪟 **Windows One‑File EXE** - Single executable for distribution, with `--debug` mode and splash screen  
 
 ---
 
@@ -57,13 +58,58 @@ Voice Tool was developed through **vibe-coding** sessions using [Claude Code](ht
    # Edit .env with your actual values
    ```
 
-5. **Launch the application**
+5. **Launch the application (development)**
    ```bash
    # Console mode (for development/testing)
    python main.py --console
    
-   # Background mode (production)
-   python main.py
+    # Background mode
+    python main.py
+
+---
+
+## 📦 Production (Windows, one‑file EXE)
+
+### End‑user usage
+
+1) Place your `.env` next to `Voice Tool.exe` (or in `%APPDATA%\VoiceTool\.env`).  
+2) Double‑click `Voice Tool.exe`. The app runs in the tray (right‑click the icon for menu).  
+3) Optional debug: run with `--debug` to see verbose logs and open the UI directly:  
+   `"C:\\path\\to\\Voice Tool.exe" --debug`
+
+Environment lookup priority (first found wins; files are only read, never written):
+- `--env <path>` (CLI override)
+- `.env` in the executable directory
+- `%APPDATA%\\VoiceTool\\.env`
+- System environment variables
+- `.env` at project root (development only)
+
+Google credentials fallback: if detailed vars are missing, you can set  
+`GOOGLE_APPLICATION_CREDENTIALS=C:\\path\\to\\service-account.json`  
+to load the full JSON directly.
+
+Logs and data are in `%APPDATA%\\VoiceTool` (`voice_tool.log`, `user_settings.json`, `recordings/`, `sounds/`).
+
+### Building the EXE (maintainers)
+
+From `C:\\voice-tool` with a fresh virtualenv and dependencies installed:
+
+- Using Makefile:
+  ```powershell
+  make build-exe
+  ```
+- Or directly with PyInstaller:
+  ```powershell
+  .\\.venv\\Scripts\\python.exe -m PyInstaller --clean --noconfirm packaging/pyinstaller/voice_tool.spec
+  ```
+- Output: `dist\\Voice Tool.exe` (one‑file). Prefer `--distpath bin` to output to `bin\\`:
+  ```powershell
+  .\\.venv\\Scripts\\python.exe -m PyInstaller --clean --noconfirm --distpath bin packaging/pyinstaller/voice_tool.spec
+  ```
+
+Notes:
+- Spec file: `packaging/pyinstaller/voice_tool.spec` (no reliance on `__file__` at runtime).  
+- Assets `voice_tool/assets/sounds/*.wav` are included and copied to AppData if needed.
    ```
 
 ---
@@ -121,7 +167,9 @@ CLIENT_ID=your-client-id-here
 
 ### Environment Variables (.env)
 
-Create a `.env` file in the project root:
+Development: create a `.env` in the project root.  
+Production: place `.env` next to the EXE or in `%APPDATA%\\VoiceTool\\.env`.  
+CLI override any location with `--env C:\\path\\to\\.env`.
 
 ```env
 # Google Cloud Speech-to-Text Configuration
@@ -132,20 +180,22 @@ CLIENT_EMAIL=your-service-account-email@project.iam.gserviceaccount.com
 CLIENT_ID=your-client-id-from-json-file
 ```
 
-### System Settings (config.json)
+Or provide only a service account JSON in production:
 
-Technical/system settings stored in `config.json` (project root):
-
-```json
-{
-  "record_hotkey": "<ctrl>+<alt>+s",
-  "open_window_hotkey": "<ctrl>+<alt>+o"
-}
+```env
+GOOGLE_APPLICATION_CREDENTIALS=C:\\Users\\You\\Documents\\voice-tool-sa.json
 ```
 
-**System settings include**:
-- Global keyboard shortcuts
-- Technical configuration parameters
+OpenAI Whisper (optional alternative provider):
+
+```env
+OPENAI_API_KEY=sk-...your_key...
+```
+
+### System Settings (config.json, optional)
+
+System config at the project root is optional and not auto‑created in production.  
+Global hotkeys and user options have migrated to user settings (see below).
 
 ### User Preferences (AppData)
 
@@ -164,10 +214,11 @@ Personal preferences automatically saved to:
 }
 ```
 
-**User preferences include**:
-- Interface sounds on/off
-- Auto-paste to cursor behavior
-- Future customization options
+**User preferences include** (non‑exhaustive):
+- `enable_sounds`, `paste_at_cursor`, `smart_formatting`
+- `transcription_provider` (`Google` or `OpenAI`), `language` (e.g. `fr-FR`)
+- `record_mode` (`toggle` or `ptt`), `record_hotkey`, `ptt_hotkey`, `open_window_hotkey`
+- `input_device_index`, `recordings_keep_last`
 
 > **Migration**: If you have an existing installation, user preferences will be automatically migrated from `config.json` to AppData on first launch.
 
@@ -177,11 +228,12 @@ Personal preferences automatically saved to:
 
 ### Launching the Application
 
-**Option 1: Using Batch Files (Windows)**
-- **Background Mode**: Double-click `Voice Tool (Background).bat`
-- **Console Mode**: Double-click `Voice Tool (Console).bat`
+**Production (EXE)**
 
-**Option 2: Command Line**
+- Double‑click `Voice Tool.exe` (runs in tray).  
+- Optional: `"C:\\path\\to\\Voice Tool.exe" --debug` to open UI and show verbose logs.
+
+**Development (Python)**
 ```bash
 # Background mode (silent)
 python main.py
@@ -194,8 +246,12 @@ python main.py --console
 
 | Hotkey | Action |
 |--------|--------|
-| `Ctrl+Alt+S` | Start/Stop recording |
+| `Ctrl+Alt+S` | Start/Stop recording (Toggle mode) |
+| `Ctrl+Shift+Space` | Push‑to‑talk (while held), when PTT mode is selected |
 | `Ctrl+Alt+O` | Open main interface |
+
+Notes:
+- Recording mode (Toggle/PTT) and all hotkeys are configurable in Settings.
 
 ### Interface
 
@@ -232,38 +288,10 @@ voice-tool/
 
 ## 🪟 Windows Integration
 
-### Batch Files
+### System Tray & Startup
 
-The project includes pre-configured batch files for easy launching:
-
-**`Voice Tool (Background).bat`**
-```batch
-@echo off
-powershell -WindowStyle Hidden -Command "Set-Location '\\wsl$\Ubuntu\home\nolyo\www\voice-tool'; python main.py"
-```
-
-**`Voice Tool (Console).bat`**  
-```batch
-@echo off
-powershell -Command "Set-Location '\\wsl$\Ubuntu\home\nolyo\www\voice-tool'; python main.py --console"
-pause
-```
-
-### System-wide Access
-
-To launch Voice Tool from anywhere in Windows:
-
-1. **Copy batch files** to a folder in your PATH (e.g., `C:\Tools\`)
-2. **Update paths** in batch files to match your installation
-3. **Create shortcuts** on Desktop or in Start Menu
-4. **Add to startup** for automatic launch
-
-### Auto-start Setup
-
-Add to Windows startup:
-1. Press `Win+R`, type `shell:startup`
-2. Copy `Voice Tool (Background).bat` to the startup folder
-3. Voice Tool will launch automatically on Windows boot
+- The app runs in the Windows system tray. Right‑click the tray icon for: Open, Open logs folder, Quit.  
+- To auto‑start with Windows, create a shortcut to the EXE in `shell:startup`. An installer (Inno Setup) will provide this option later.
 
 ---
 
@@ -291,14 +319,12 @@ Add to Windows startup:
 - Check internet connection
 - Verify microphone is not muted
 
-### Debug Mode
+### Debug & Logs
 
-Run in console mode to see detailed logs:
-```bash
-python main.py --console
-```
+Production: `"C:\\path\\to\\Voice Tool.exe" --debug`  
+Development: `python main.py --console`
 
-Logs are also written to `voice_tool.log` in background mode.
+Logs: `%APPDATA%\\VoiceTool\\voice_tool.log` (tray menu → Open logs folder).
 
 ---
 
