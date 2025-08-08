@@ -936,6 +936,9 @@ class VisualizerWindowTkinter:
                     "transcription_provider": api_provider,
                     "language": api_language,
                     "smart_formatting": smart_format_var.get(),
+                    "record_mode": record_mode_var.get(),
+                    # si PTT, on sauvegarde à chaque changement de mode
+                    **({"ptt_hotkey": ptt_hotkey_entry.get().strip()} if 'ptt_hotkey_entry' in locals() and record_mode_var.get()=="ptt" else {}),
                 }
                 
                 # Gérer le démarrage automatique si nécessaire
@@ -1429,11 +1432,14 @@ class VisualizerWindowTkinter:
                     if hasattr(self, '_settings_save_callback') and self._settings_save_callback:
                         record_val = self._record_hotkey_entry.get().strip() if hasattr(self, '_record_hotkey_entry') else ""
                         open_val = self._open_hotkey_entry.get().strip() if hasattr(self, '_open_hotkey_entry') else ""
+                        ptt_val = self._ptt_hotkey_entry.get().strip() if hasattr(self, '_ptt_hotkey_entry') and self._ptt_hotkey_entry else ""
                         new_config = {}
                         if record_val:
                             new_config['record_hotkey'] = record_val
                         if open_val:
                             new_config['open_window_hotkey'] = open_val
+                        if target_entry is self._ptt_hotkey_entry and ptt_val:
+                            new_config['ptt_hotkey'] = ptt_val
                         if new_config:
                             self._settings_save_callback(new_config)
                 except Exception:

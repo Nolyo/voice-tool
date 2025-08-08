@@ -531,8 +531,10 @@ def update_and_restart_hotkeys(new_config):
         if key in ['record_hotkey', 'open_window_hotkey']:
             user_params[key] = value
             hotkey_changed = True
-        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language', 'smart_formatting', 'input_device_index']:
+        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language', 'smart_formatting', 'input_device_index', 'record_mode', 'ptt_hotkey']:
             user_params[key] = value
+            if key in ['record_mode', 'ptt_hotkey']:
+                hotkey_changed = True
         else:
             logging.warning(f"Paramètre inconnu: {key}")
     
