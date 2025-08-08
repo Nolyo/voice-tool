@@ -16,6 +16,8 @@ def default_user_settings() -> Dict[str, Any]:
         "language": "fr-FR",
         "smart_formatting": True,
         "input_device_index": None,
+        "record_hotkey": "<ctrl>+<alt>+s",
+        "open_window_hotkey": "<ctrl>+<alt>+o",
     }
 
 

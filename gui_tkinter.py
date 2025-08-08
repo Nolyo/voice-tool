@@ -1191,7 +1191,12 @@ class VisualizerWindowTkinter:
         record_hotkey_entry = tk.Entry(record_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
         record_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         tk.Button(record_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(record_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
-        if current_config: record_hotkey_entry.insert(0, current_config.get("record_hotkey", ""))
+        # Charger depuis AppData
+        try:
+            import main
+            record_hotkey_entry.insert(0, main.user_settings.get("record_hotkey", "<ctrl>+<alt>+s"))
+        except Exception:
+            pass
 
         # Raccourci Ouvrir Fenêtre  
         tk.Label(settings_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
@@ -1200,7 +1205,11 @@ class VisualizerWindowTkinter:
         open_hotkey_entry = tk.Entry(open_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
         open_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         tk.Button(open_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(open_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
-        if current_config: open_hotkey_entry.insert(0, current_config.get("open_window_hotkey", ""))
+        try:
+            import main
+            open_hotkey_entry.insert(0, main.user_settings.get("open_window_hotkey", "<ctrl>+<alt>+o"))
+        except Exception:
+            pass
 
         # Références pour auto-application des hotkeys et callback de sauvegarde
         self._record_hotkey_entry = record_hotkey_entry
@@ -1260,15 +1269,15 @@ class VisualizerWindowTkinter:
                         current_config = result.get('current_config', {})
                         current_user_settings = result.get('current_user_settings', {})
                         
-                        # Recharger les raccourcis depuis la config système
+                        # Recharger les raccourcis depuis AppData
                         record_hotkey_entry.delete(0, tk.END)
-                        record_hotkey_entry.insert(0, current_config.get("record_hotkey", ""))
+                        record_hotkey_entry.insert(0, current_user_settings.get("record_hotkey", "<ctrl>+<alt>+s"))
                         
                         open_hotkey_entry.delete(0, tk.END)
-                        open_hotkey_entry.insert(0, current_config.get("open_window_hotkey", ""))
+                        open_hotkey_entry.insert(0, current_user_settings.get("open_window_hotkey", "<ctrl>+<alt>+o"))
                         
                         # Mettre à jour l'affichage du raccourci dans la fenêtre principale
-                        new_shortcut = current_config.get("record_hotkey", "<ctrl>+<alt>+s")
+                        new_shortcut = current_user_settings.get("record_hotkey", "<ctrl>+<alt>+s")
                         shortcut_label.config(text=f"Appuyez sur {new_shortcut}")
                         
                         logging.info("Interface mise à jour avec les paramètres sauvegardés")

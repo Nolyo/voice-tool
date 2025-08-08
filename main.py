@@ -520,39 +520,36 @@ def toggle_recording_from_gui():
     toggle_recording(global_icon_pystray)
 
 def update_and_restart_hotkeys(new_config):
-    """Met à jour la configuration système et utilisateur selon le type de paramètre."""
+    """Met à jour la configuration (hotkeys dans AppData) et redémarre si besoin."""
     global config, user_settings, global_icon_pystray
     
-    # Séparer les paramètres système des paramètres utilisateur
     system_params = {}
     user_params = {}
+    hotkey_changed = False
     
     for key, value in new_config.items():
         if key in ['record_hotkey', 'open_window_hotkey']:
-            system_params[key] = value
+            user_params[key] = value
+            hotkey_changed = True
         elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language', 'smart_formatting', 'input_device_index']:
             user_params[key] = value
         else:
             logging.warning(f"Paramètre inconnu: {key}")
     
-    # Sauvegarder les paramètres utilisateur dans AppData
     if user_params:
         user_settings.update(user_params)
         save_user_settings(user_settings)
         logging.info(f"Paramètres utilisateur sauvegardés: {list(user_params.keys())}")
     
-    # Sauvegarder les paramètres système dans config.json
     if system_params:
         config.update(system_params)
         if not config_manager.save_system_config(config):
             logging.error("Erreur lors de la sauvegarde des paramètres système")
     
-    # Redémarrer les hotkeys seulement si les raccourcis ont changé
-    if system_params and global_icon_pystray:
+    if hotkey_changed and global_icon_pystray:
         setup_hotkey(global_icon_pystray)
         logging.info("Raccourcis clavier redémarrés")
     
-    # Retourner les paramètres effectivement sauvegardés pour mise à jour de l'interface
     return {
         'system_params': system_params,
         'user_params': user_params,
@@ -566,8 +563,10 @@ def setup_hotkey(icon_pystray):
         hotkey_listener.stop()
 
     hotkey_map = {}
-    record_key = config.get('record_hotkey')
-    open_key = config.get('open_window_hotkey')
+    # Lire depuis AppData désormais
+    current_user_settings = vt_settings.load_user_settings()
+    record_key = current_user_settings.get('record_hotkey')
+    open_key = current_user_settings.get('open_window_hotkey')
 
     if record_key: hotkey_map[record_key] = lambda: toggle_recording(icon_pystray)
     if open_key: hotkey_map[open_key] = open_interface
