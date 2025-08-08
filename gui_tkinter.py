@@ -74,6 +74,11 @@ class VisualizerWindowTkinter:
         # Canvas pour le visualiseur
         self.canvas = tk.Canvas(self.window, width=300, height=60, bg='#1C1C1C', highlightthickness=0)
         self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        # Désactiver les liaisons implicites lourdes (scroll) qui peuvent bloquer le thread UI
+        try:
+            self.canvas.unbind_all("<MouseWheel>")
+        except Exception:
+            pass
 
         # Label pour les statuts (Succès, Erreur, etc.)
         self.status_label = tk.Label(self.window, text="", fg="#1C1C1C", bg="white", font=("Arial", 12, "bold"))

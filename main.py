@@ -82,6 +82,8 @@ global_icon_pystray = None # Pour accéder à l'icône depuis d'autres fonctions
 
 # Variables globales pour la GUI Tkinter
 visualizer_window = None
+last_visualizer_update_ts = 0.0
+VISUALIZER_UPDATE_INTERVAL_S = 1.0 / 30.0  # limiter à ~30 FPS
 
 # Gestion d'instance unique via module vt_lock
 
@@ -417,14 +419,22 @@ def audio_callback(indata, frames, time, status):
         rms = np.sqrt(mean_square) / 32768.0
         rms_scaled = rms * 200 
         
-        # Mise à jour du visualiseur Tkinter (doit être fait dans le thread Tkinter)
-        if visualizer_window and hasattr(visualizer_window, 'root'):
-            visualizer_window.root.after(0, visualizer_window.update_visualizer, rms_scaled)
+        # Mise à jour du visualiseur Tkinter (doit être fait dans le thread Tkinter) avec throttling
+        try:
+            import time as _t
+            now = _t.monotonic()
+            global last_visualizer_update_ts
+            if now - last_visualizer_update_ts >= VISUALIZER_UPDATE_INTERVAL_S:
+                last_visualizer_update_ts = now
+                if visualizer_window and hasattr(visualizer_window, 'root'):
+                    visualizer_window.root.after(0, visualizer_window.update_visualizer, rms_scaled)
+        except Exception:
+            pass
 
 # Plus besoin du callback spécialisé - on utilise le standard
 
 def toggle_recording(icon_pystray):
-    global is_recording, audio_stream, audio_frames, visualizer_window
+    global is_recording, audio_stream, audio_frames, visualizer_window, last_visualizer_update_ts
 
     is_recording = not is_recording
 
@@ -448,6 +458,12 @@ def toggle_recording(icon_pystray):
             input_device_index = get_setting("input_device_index", None)
         except Exception:
             input_device_index = None
+        # Réinitialiser le throttling du visualiseur au démarrage
+        try:
+            import time as _t
+            last_visualizer_update_ts = _t.monotonic()
+        except Exception:
+            last_visualizer_update_ts = 0.0
         audio_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='int16', callback=audio_callback, device=input_device_index)
         audio_stream.start()
 
