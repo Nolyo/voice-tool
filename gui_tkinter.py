@@ -847,7 +847,10 @@ class VisualizerWindowTkinter:
         history_tab = tk.Frame(notebook, bg="#2b2b2b")
         notebook.add(history_tab, text='  Historique  ')
         history_frame = tk.Frame(history_tab, bg="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(history_frame, text="Historique des transcriptions", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 10))
+        tk.Label(history_frame, text="Historique des transcriptions", fg="white", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(pady=(6, 4))
+        # Compteur d'éléments / résultats
+        self.history_count_label = tk.Label(history_frame, text="", fg="#aaaaaa", bg="#2b2b2b", font=("Arial", 9))
+        self.history_count_label.pack(pady=(0, 8))
 
         # Barre de recherche
         search_frame = tk.Frame(history_frame, bg="#2b2b2b")
@@ -875,6 +878,8 @@ class VisualizerWindowTkinter:
             self.history_search_var.trace_add("write", lambda *_: self._on_search_changed())
         except Exception:
             pass
+        # État "aucun résultat"
+        self.history_empty_label = tk.Label(history_frame, text="Aucun résultat", fg="#888888", bg="#2b2b2b", font=("Arial", 10))
         
         # Indication pour les interactions avec l'historique
         help_frame = tk.Frame(history_frame, bg="#2b2b2b")
@@ -1616,17 +1621,39 @@ class VisualizerWindowTkinter:
             self.history_listbox.text_data = {}
         else:
             self.history_listbox.text_data = {}
-
-        for index, item in enumerate(items):
+        # Afficher les plus récents en premier
+        items_to_display = list(items)[::-1]
+        for index, item in enumerate(items_to_display):
             display_text, actual_text = self._history_to_display_and_actual(item)
             self.history_listbox.insert(tk.END, display_text)
             self.history_listbox.text_data[index] = actual_text
-        self._filtered_history_items = list(items)
+        self._filtered_history_items = list(items_to_display)
+        # Mettre à jour le compteur
+        try:
+            total = len(self._history_master)
+            filtered = len(items_to_display)
+            query = (self.history_search_var.get() or "").strip()
+            if query:
+                txt = f"{filtered} résultat(s) sur {total}"
+            else:
+                txt = f"{total} élément(s)"
+            if hasattr(self, 'history_count_label') and self.history_count_label:
+                self.history_count_label.config(text=txt)
+        except Exception:
+            pass
 
     def _apply_history_filter(self):
         query = (self.history_search_var.get() or "").strip().lower()
         if not query:
             self._render_history_list(self._history_master)
+            # gérer label vide
+            try:
+                if len(self._history_master) == 0:
+                    self.history_empty_label.pack(pady=(10,0))
+                else:
+                    self.history_empty_label.pack_forget()
+            except Exception:
+                pass
             return
         filtered = []
         for item in self._history_master:
@@ -1634,6 +1661,14 @@ class VisualizerWindowTkinter:
             if query in display_text.lower() or query in actual_text.lower():
                 filtered.append(item)
         self._render_history_list(filtered)
+        # gérer label vide
+        try:
+            if len(filtered) == 0:
+                self.history_empty_label.pack(pady=(10,0))
+            else:
+                self.history_empty_label.pack_forget()
+        except Exception:
+            pass
 
     def _on_search_changed(self):
         # Debounce pour éviter de re-filtrer trop souvent
