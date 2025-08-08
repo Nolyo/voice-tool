@@ -873,7 +873,7 @@ class VisualizerWindowTkinter:
         # Fin Onglet Historique
 
         # --- Onglet 2: Paramètres ---
-        settings_frame = tk.Frame(notebook, bg="#2b2b2b", padx=20, pady=20)
+        settings_frame = tk.Frame(notebook, bg="#2b2b2b", padx=16, pady=16)
         notebook.add(settings_frame, text='  Paramètres  ')
         
         # Définir les variables AVANT la fonction
@@ -959,17 +959,26 @@ class VisualizerWindowTkinter:
             except Exception as e:
                 logging.error(f"Erreur auto-save: {e}")
 
+        # === Helpers UI ===
+        def create_card(parent, title_text):
+            card = tk.Frame(parent, bg="#1f1f1f", highlightthickness=1, highlightbackground="#3c3c3c")
+            header = tk.Label(card, text=title_text, fg="white", bg="#1f1f1f", font=("Arial", 12, "bold"))
+            header.pack(anchor='w', padx=12, pady=(10, 6))
+            body = tk.Frame(card, bg="#1f1f1f")
+            body.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
+            return card, body
+
         # === LAYOUT 2x2 POUR LES SECTIONS ===
-        
-        # Frame pour la première ligne (Audio + Texte)
-        top_row_frame = tk.Frame(settings_frame, bg="#2b2b2b")
-        top_row_frame.pack(fill=tk.X, pady=(0, 20))
-        
+        two_cols = tk.Frame(settings_frame, bg="#2b2b2b")
+        two_cols.pack(fill=tk.X)
+        left_col = tk.Frame(two_cols, bg="#2b2b2b")
+        left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 8))
+        right_col = tk.Frame(two_cols, bg="#2b2b2b")
+        right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(8, 0))
+
         # === SECTION AUDIO (à gauche) ===
-        audio_frame = tk.Frame(top_row_frame, bg="#2b2b2b")
-        audio_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-        
-        tk.Label(audio_frame, text="🔊 Audio", fg="#4CAF50", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        audio_card, audio_frame = create_card(left_col, "🔊 Audio")
+        audio_card.pack(fill=tk.BOTH, expand=True, pady=(0, 16))
         
         # Charger depuis les paramètres utilisateur passés en paramètre
         if user_settings and "enable_sounds" in user_settings:
@@ -1061,11 +1070,9 @@ class VisualizerWindowTkinter:
         mic_menu = ttk.OptionMenu(audio_frame, mic_var, initial_choice, *mic_choices, command=lambda *_: on_mic_changed())
         mic_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
 
-        # === SECTION TEXTE (à droite) ===
-        text_frame = tk.Frame(top_row_frame, bg="#2b2b2b")
-        text_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
-        
-        tk.Label(text_frame, text="📝 Texte", fg="#E0A800", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        # === SECTION TEXTE (à gauche, sous Audio) ===
+        text_card, text_frame = create_card(left_col, "📝 Texte")
+        text_card.pack(fill=tk.BOTH, expand=True)
         
         # Charger depuis les paramètres utilisateur passés en paramètre
         if user_settings and "paste_at_cursor" in user_settings:
@@ -1111,19 +1118,9 @@ class VisualizerWindowTkinter:
         )
         smart_format_check.pack(anchor='w', pady=(0, 15))
         
-        # Séparateur
-        separator1 = tk.Frame(settings_frame, height=1, bg="#555555")
-        separator1.pack(fill=tk.X, pady=(0, 20))
-
-        # Frame pour la deuxième ligne (Service + Système)
-        bottom_row_frame = tk.Frame(settings_frame, bg="#2b2b2b")
-        bottom_row_frame.pack(fill=tk.X, pady=(0, 20))
-        
-        # === SECTION TRANSCRIPTION (à gauche) ===
-        transcription_frame = tk.Frame(bottom_row_frame, bg="#2b2b2b")
-        transcription_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-        
-        tk.Label(transcription_frame, text="🤖 Service de Transcription", fg="#9C27B0", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        # === SECTION TRANSCRIPTION (à droite, en haut) ===
+        transcription_card, transcription_frame = create_card(right_col, "🤖 Service de Transcription")
+        transcription_card.pack(fill=tk.BOTH, expand=True, pady=(0, 16))
 
         # Mapping entre affichage UI et valeurs API pour providers
         provider_display_to_api = {
@@ -1173,11 +1170,9 @@ class VisualizerWindowTkinter:
         transcription_provider_var.trace_add("write", lambda *_: auto_save_user_setting())
         language_var.trace_add("write", lambda *_: auto_save_user_setting())
         
-        # === SECTION SYSTÈME (à droite) ===
-        system_frame = tk.Frame(bottom_row_frame, bg="#2b2b2b")
-        system_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
-        
-        tk.Label(system_frame, text="💻 Système", fg="#FF6B6B", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        # === SECTION SYSTÈME (à droite, sous Transcription) ===
+        system_card, system_frame = create_card(right_col, "💻 Système")
+        system_card.pack(fill=tk.BOTH, expand=True)
         auto_start_check = tk.Checkbutton(system_frame, text="Démarrer automatiquement avec Windows", 
                                          variable=auto_start_var, command=auto_save_user_setting,
                                          fg="white", bg="#2b2b2b", 
@@ -1185,17 +1180,14 @@ class VisualizerWindowTkinter:
                                          activeforeground="white")
         auto_start_check.pack(anchor='w', pady=(0, 15))
         
-        # Séparateur
-        separator1b = tk.Frame(settings_frame, height=1, bg="#555555")
-        separator1b.pack(fill=tk.X, pady=(0, 20))
-        
         # === SECTION RACCOURCIS ===
-        tk.Label(settings_frame, text="⌨️ Raccourcis & modes d'enregistrement", fg="#2196F3", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        shortcuts_card, shortcuts_frame = create_card(settings_frame, "⌨️ Raccourcis & modes d'enregistrement")
+        shortcuts_card.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
         
         # Mode d'enregistrement
-        mode_row = tk.Frame(settings_frame, bg="#2b2b2b")
+        mode_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
         mode_row.pack(fill=tk.X, pady=(0, 12))
-        tk.Label(mode_row, text="Mode d'enregistrement :", fg="white", bg="#2b2b2b").pack(anchor='w')
+        tk.Label(mode_row, text="Mode d'enregistrement :", fg="white", bg="#1f1f1f").pack(anchor='w')
         record_mode_var = tk.StringVar(value=(user_settings.get("record_mode", "toggle") if user_settings else "toggle"))
         def on_mode_changed():
             auto_save_user_setting()
@@ -1220,15 +1212,15 @@ class VisualizerWindowTkinter:
                     pass
             self.root.after(120, refresh_shortcut_label)
         mode_toggle = tk.Radiobutton(mode_row, text="Toggle (appuyer pour démarrer/arrêter)", value="toggle", variable=record_mode_var,
-                                     command=on_mode_changed, fg="white", bg="#2b2b2b", selectcolor="#3c3c3c", activebackground="#2b2b2b", activeforeground="white")
+                                     command=on_mode_changed, fg="white", bg="#1f1f1f", selectcolor="#3c3c3c", activebackground="#1f1f1f", activeforeground="white")
         mode_ptt = tk.Radiobutton(mode_row, text="Push‑to‑talk (enregistrer tant que la touche est maintenue)", value="ptt", variable=record_mode_var,
-                                   command=on_mode_changed, fg="white", bg="#2b2b2b", selectcolor="#3c3c3c", activebackground="#2b2b2b", activeforeground="white")
+                                   command=on_mode_changed, fg="white", bg="#1f1f1f", selectcolor="#3c3c3c", activebackground="#1f1f1f", activeforeground="white")
         mode_toggle.pack(anchor='w')
         mode_ptt.pack(anchor='w')
 
         # Raccourci Enregistrement (toggle)
-        tk.Label(settings_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        record_hotkey_row = tk.Frame(settings_frame, bg="#2b2b2b")
+        tk.Label(shortcuts_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
+        record_hotkey_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
         record_hotkey_row.pack(fill=tk.X, pady=(0, 15))
         record_hotkey_entry = tk.Entry(record_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
         record_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -1240,8 +1232,8 @@ class VisualizerWindowTkinter:
             pass
 
         # Raccourci Push‑to‑talk
-        ptt_row = tk.Frame(settings_frame, bg="#2b2b2b")
-        tk.Label(ptt_row, text="Raccourci Push‑to‑talk (maintenir) :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
+        ptt_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        tk.Label(ptt_row, text="Raccourci Push‑to‑talk (maintenir) :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
         ptt_hotkey_entry = tk.Entry(ptt_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
         ptt_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         tk.Button(ptt_row, text="Définir…", command=lambda: self._open_hotkey_capture(ptt_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
@@ -1253,8 +1245,8 @@ class VisualizerWindowTkinter:
         if (user_settings.get("record_mode", "toggle") if user_settings else "toggle") == "ptt":
             ptt_row.pack(fill=tk.X, pady=(0, 15))
         # Raccourci Ouvrir Fenêtre  
-        tk.Label(settings_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        open_hotkey_row = tk.Frame(settings_frame, bg="#2b2b2b")
+        tk.Label(shortcuts_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
+        open_hotkey_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
         open_hotkey_row.pack(fill=tk.X, pady=(0, 15))
         open_hotkey_entry = tk.Entry(open_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
         open_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -1272,15 +1264,11 @@ class VisualizerWindowTkinter:
         self._shortcut_label = shortcut_label
         self._record_mode_var = record_mode_var
         
-        # Séparateur
-        separator2 = tk.Frame(settings_frame, height=1, bg="#555555")
-        separator2.pack(fill=tk.X, pady=(0, 15))
-        
         # Aide pour les raccourcis (à la fin)
         help_text = "Modificateurs: <ctrl>, <alt>, <shift>, <cmd> (Mac)\nTouches spéciales: <space>, <tab>, <enter>, <esc>, <f1>-<f12>\nExemples: <ctrl>+<shift>+r, <alt>+<space>, <f9>"
-        help_label = tk.Label(settings_frame, text=help_text, fg="#888888", bg="#2b2b2b", 
+        help_label = tk.Label(shortcuts_frame, text=help_text, fg="#888888", bg="#1f1f1f", 
                              font=("Consolas", 8), justify=tk.LEFT)
-        help_label.pack(anchor='w', pady=(10, 10))
+        help_label.pack(anchor='w', pady=(6, 0))
         
         # Séparateur
         separator3 = tk.Frame(settings_frame, height=1, bg="#555555")
