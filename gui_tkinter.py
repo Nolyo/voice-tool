@@ -830,15 +830,28 @@ class VisualizerWindowTkinter:
 
         self.main_window = tk.Toplevel(self.root)
         self.main_window.title("Voice Tool")
-        self.main_window.geometry("800x700")  # Augmenté de 200px au total (600->700) pour cacher le bouton sauvegarder
+        # Ouvrir en plein écran (maximisé)
+        try:
+            self.main_window.state('zoomed')  # Windows
+        except Exception:
+            try:
+                self.main_window.attributes('-zoomed', True)  # Certains WM
+            except Exception:
+                # Fallback taille confortable
+                self.main_window.geometry("1200x800")
         
         # Définir l'icône personnalisée
         self.set_window_icon(self.main_window)
         
+        # Centrage seulement en fallback, sinon l'état zoomed ignore la géométrie
         self.main_window.update_idletasks()
-        x = self.root.winfo_screenwidth() // 2 - self.main_window.winfo_width() // 2
-        y = self.root.winfo_screenheight() // 2 - self.main_window.winfo_height() // 2
-        self.main_window.geometry(f"+{x}+{y}")
+        try:
+            if self.main_window.state() != 'zoomed':
+                x = self.root.winfo_screenwidth() // 2 - self.main_window.winfo_width() // 2
+                y = self.root.winfo_screenheight() // 2 - self.main_window.winfo_height() // 2
+                self.main_window.geometry(f"+{x}+{y}")
+        except Exception:
+            pass
         self.main_window.configure(bg="#2b2b2b")
 
         # --- Création des onglets ---
@@ -893,8 +906,10 @@ class VisualizerWindowTkinter:
                                          style="VT.Treeview")
         self.history_tree.heading("time", text="Date/Heure")
         self.history_tree.heading("text", text="Texte")
-        self.history_tree.column("time", width=150, anchor=tk.W)
-        self.history_tree.column("text", anchor=tk.W)
+        # Colonne date/heure plus compacte
+        self.history_tree.column("time", width=110, minwidth=90, anchor=tk.W, stretch=False)
+        # Colonne texte occupe l'espace restant
+        self.history_tree.column("text", width=400, minwidth=200, anchor=tk.W, stretch=True)
         self.history_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscroll.config(command=self.history_tree.yview)
         
