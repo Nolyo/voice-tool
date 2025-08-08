@@ -1,0 +1,14 @@
+{
+  "settings": {
+    "enable_sounds": true,
+    "paste_at_cursor": false,
+    "auto_start": false,
+    "transcription_provider": "Google",
+    "language": "fr-FR",
+    "smart_formatting": true,
+    "input_device_index": null,
+    "record_hotkey": "<ctrl>+<alt>+s",
+    "open_window_hotkey": "<ctrl>+<alt>+o"
+  }
+}
+
