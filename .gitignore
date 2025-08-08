@@ -2,3 +2,5 @@ recording.wav
 voice-tool-468111-*.json
 .env
 __pycache__/
+voice_tool.log
+voice_tool_crash.log

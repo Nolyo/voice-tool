@@ -1,6 +1,7 @@
 
 
 import logging
+import logging.handlers
 import sounddevice as sd
 import scipy.io.wavfile as wav
 from pynput import keyboard
@@ -11,17 +12,25 @@ import numpy as np
 import os
 import sys
 import subprocess
-from dotenv import load_dotenv
 import json
 import pyperclip
 import time
-import tempfile
 import platform
-import math
-import wave
-import struct
 import setproctitle
-import openai
+from queue import SimpleQueue, Empty
+from threading import Lock, Thread
+import faulthandler
+import atexit
+
+# Modules refactorisés
+from voice_tool import config_manager
+from voice_tool import paths as vt_paths
+from voice_tool import history as vt_history
+from voice_tool import settings as vt_settings
+from voice_tool import sounds as vt_sounds
+from voice_tool import lock as vt_lock
+from voice_tool import transcription as vt_transcription
+from voice_tool import formatting as vt_formatting
 setproctitle.setproctitle("Voice Tool")
 
 # Configuration spécifique Windows pour l'identification de l'application dans la Taskbar
@@ -46,62 +55,137 @@ if platform.system() != 'Windows':
 else:
     import msvcrt
 
-# Importations spécifiques à Google Cloud
-from google.cloud import speech
-from google.oauth2 import service_account
-
 # Importations pour l'interface graphique (Tkinter)
 from gui_tkinter import VisualizerWindowTkinter # Notre fenêtre de visualiseur Tkinter
 
-# Charger les variables d'environnement depuis le fichier .env
-# Utilise le chemin absolu pour être sûr de charger le bon fichier
+# Charger les variables d'environnement depuis la racine du projet
 script_dir = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.join(script_dir, '.env')
-load_dotenv(env_path)
+
+# --- Journalisation persistante & diagnostics très précoces ---
+try:
+    # Déplacer les logs dans AppData/VoiceTool
+    LOG_FILE_PATH = os.path.join(vt_paths.APP_DATA_DIR, 'voice_tool.log')
+except Exception:
+    LOG_FILE_PATH = os.path.join(script_dir, 'voice_tool.log')
+try:
+    CRASH_LOG_PATH = os.path.join(vt_paths.APP_DATA_DIR, 'voice_tool_crash.log')
+except Exception:
+    CRASH_LOG_PATH = os.path.join(script_dir, 'voice_tool_crash.log')
+_crash_fp = None
+
+def _initialize_persistent_logging() -> None:
+    global _crash_fp
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+
+    # Éviter les doublons si ré-initialisation
+    has_file = any(isinstance(h, logging.handlers.RotatingFileHandler) and getattr(h, 'name', '') == 'voice_tool_file' for h in root_logger.handlers)
+    if not has_file:
+        try:
+            file_handler = logging.handlers.RotatingFileHandler(
+                LOG_FILE_PATH, maxBytes=5 * 1024 * 1024, backupCount=2, encoding='utf-8'
+            )
+            file_handler.name = 'voice_tool_file'
+            file_handler.setLevel(logging.DEBUG)
+            file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            root_logger.addHandler(file_handler)
+        except Exception:
+            pass
+
+    # Capturer les warnings python
+    try:
+        logging.captureWarnings(True)
+    except Exception:
+        pass
+
+    # faulthandler pour dumps de crash
+    try:
+        if _crash_fp is None:
+            _crash_fp = open(CRASH_LOG_PATH, 'a', buffering=1, encoding='utf-8')
+        try:
+            faulthandler.enable(file=_crash_fp)  # ne couvre pas tous les crashs Windows, mais utile
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    # Hooks d'exception globaux
+    try:
+        _orig_excepthook = sys.excepthook
+        def _log_excepthook(exc_type, exc, tb):
+            try:
+                logging.error("Exception non interceptée:", exc_info=(exc_type, exc, tb))
+            finally:
+                try:
+                    _orig_excepthook(exc_type, exc, tb)
+                except Exception:
+                    pass
+        sys.excepthook = _log_excepthook
+    except Exception:
+        pass
+
+    try:
+        # Python 3.8+
+        def _thread_excepthook(args):
+            try:
+                logging.error(f"Exception thread {getattr(args, 'thread', None)}:", exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
+            except Exception:
+                pass
+        if hasattr(threading, 'excepthook'):
+            threading.excepthook = _thread_excepthook
+    except Exception:
+        pass
+
+    # Log de sortie de processus
+    try:
+        @atexit.register
+        def _on_exit():
+            logging.info("[EXIT] Process Voice Tool terminé")
+            try:
+                if _crash_fp and not _crash_fp.closed:
+                    _crash_fp.flush()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+_initialize_persistent_logging()
+
+config_manager.load_env_from_project_root()
 
 # --- Configuration ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-CONFIG_FILE = "config.json"
 SAMPLE_RATE = 44100
 OUTPUT_FILENAME = "recording.wav"
 
-def get_app_data_dir():
-    """Retourne le répertoire AppData pour Voice Tool."""
-    if platform.system() == 'Windows':
-        appdata = os.getenv('APPDATA', os.path.expanduser('~'))
-        app_dir = os.path.join(appdata, 'VoiceTool')
-    else:
-        # Sur Linux/Mac, utiliser ~/.config/VoiceTool
-        app_dir = os.path.join(os.path.expanduser('~'), '.config', 'VoiceTool')
-    
-    # Créer le répertoire s'il n'existe pas
-    os.makedirs(app_dir, exist_ok=True)
-    return app_dir
-
-# Chemins vers les fichiers de données
-APP_DATA_DIR = get_app_data_dir()
-HISTORY_FILE = os.path.join(APP_DATA_DIR, 'transcription_history.json')
-SOUNDS_DIR = os.path.join(APP_DATA_DIR, 'sounds')
-USER_SETTINGS_FILE = os.path.join(APP_DATA_DIR, 'user_settings.json')
+# Chemins vers les fichiers de données (exposés pour compatibilité)
+APP_DATA_DIR = vt_paths.APP_DATA_DIR
+HISTORY_FILE = vt_paths.HISTORY_FILE
+SOUNDS_DIR = vt_paths.SOUNDS_DIR
+RECORDINGS_DIR = vt_paths.RECORDINGS_DIR
+USER_SETTINGS_FILE = vt_paths.USER_SETTINGS_FILE
 
 # --- Variables globales ---
-config = {} # Contiendra la configuration chargée depuis config.json
-user_settings = {} # Contiendra les paramètres utilisateur sauvegardés dans AppData
+config = {}  # Contiendra la configuration système
+user_settings = {}  # Contiendra les paramètres utilisateur sauvegardés dans AppData
 is_recording = False
 hotkey_listener = None
+ptt_listener = None
 audio_stream = None
+audio_stream_device_index = None
 audio_frames = []
+audio_frames_lock = Lock()
 google_credentials = None
 transcription_history = [] # Historique des transcriptions réussies
 global_icon_pystray = None # Pour accéder à l'icône depuis d'autres fonctions
 
 # Variables globales pour la GUI Tkinter
 visualizer_window = None
+visualizer_queue: SimpleQueue = SimpleQueue()
+processing_queue: SimpleQueue = SimpleQueue()
+processing_worker_thread: Thread | None = None
+visualizer_poll_started = False
 
-# Variables pour la gestion d'instance unique
-lock_file = None
-LOCK_FILE_PATH = os.path.join(tempfile.gettempdir(), 'voice_tool.lock')
-COMMAND_FILE_PATH = os.path.join(tempfile.gettempdir(), 'voice_tool_command.txt')
+# Gestion d'instance unique via module vt_lock
 
 # Variables pour les sons
 sound_paths = None
@@ -118,364 +202,86 @@ class GuiLoggingHandler(logging.Handler):
             log_entry = self.format(record)
             self.gui_window.add_log_message(log_entry)
 
-# --- Fonctions de gestion d'instance unique ---
-
+# --- Wrappers de gestion d'instance (compatibilité pour gui_tkinter) ---
 def acquire_lock():
-    """Tente d'acquérir le verrou d'instance unique. Retourne True si réussi, False sinon."""
-    global lock_file
-    try:
-        if platform.system() == 'Windows':
-            # Sur Windows, on utilise un fichier simple avec gestion d'exception
-            if os.path.exists(LOCK_FILE_PATH):
-                # Vérifier si le processus est encore actif
-                try:
-                    with open(LOCK_FILE_PATH, 'r') as f:
-                        pid = int(f.read().strip())
-                    # Essayer de vérifier si le processus existe encore
-                    os.kill(pid, 0)  # Signal 0 ne tue pas mais vérifie l'existence
-                    return False  # Le processus existe encore
-                except (OSError, ValueError, ProcessLookupError):
-                    # Le processus n'existe plus, on peut prendre le verrou
-                    os.remove(LOCK_FILE_PATH)
-            
-            lock_file = open(LOCK_FILE_PATH, 'w')
-            lock_file.write(str(os.getpid()))
-            lock_file.flush()
-            return True
-        else:
-            # Sur Unix/Linux, on utilise fcntl
-            lock_file = open(LOCK_FILE_PATH, 'w')
-            fcntl.lockf(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            lock_file.write(str(os.getpid()))
-            lock_file.flush()
-            return True
-    except (IOError, OSError):
-        if lock_file:
-            lock_file.close()
-            lock_file = None
-        return False
+    return vt_lock.acquire_lock()
+
 
 def release_lock():
-    """Libère le verrou d'instance unique."""
-    global lock_file
-    if lock_file:
-        try:
-            if platform.system() == 'Windows':
-                lock_file.close()
-                os.remove(LOCK_FILE_PATH)
-            else:
-                fcntl.lockf(lock_file, fcntl.LOCK_UN)
-                lock_file.close()
-                os.remove(LOCK_FILE_PATH)
-        except (IOError, OSError):
-            pass
-        lock_file = None
+    return vt_lock.release_lock()
+
 
 def send_command_to_existing_instance(command):
-    """Envoie une commande à l'instance existante via un fichier temporaire."""
-    try:
-        with open(COMMAND_FILE_PATH, 'w') as f:
-            f.write(command)
-        return True
-    except (IOError, OSError):
-        return False
+    return vt_lock.send_command_to_existing_instance(command)
 
-def check_for_commands():
-    """Vérifie s'il y a des commandes en attente et les exécute."""
-    try:
-        if os.path.exists(COMMAND_FILE_PATH):
-            with open(COMMAND_FILE_PATH, 'r') as f:
-                command = f.read().strip()
-            os.remove(COMMAND_FILE_PATH)
-            
-            if command == 'open_window':
-                logging.info("Commande reçue: ouverture de la fenêtre principale")
-                open_interface()
-                return True
-    except (IOError, OSError):
-        pass
-    return False
 
 def start_command_monitor():
-    """Démarre le monitoring des commandes dans un thread séparé."""
-    def monitor_loop():
-        while True:
-            try:
-                check_for_commands()
-                time.sleep(0.5)  # Vérification toutes les 500ms
-            except Exception as e:
-                logging.error(f"Erreur dans le monitoring des commandes: {e}")
-                time.sleep(1)
-    
-    monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
-    monitor_thread.start()
-    logging.info("Monitoring des commandes démarré")
+    vt_lock.start_command_monitor(open_interface)
 
-# --- Fonctions de gestion de l'historique ---
-
+# --- Historique (wrappers) ---
 def load_transcription_history():
-    """Charge l'historique des transcriptions depuis le fichier JSON."""
-    try:
-        if os.path.exists(HISTORY_FILE):
-            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                # Valider la structure du fichier
-                if isinstance(data, dict) and 'transcriptions' in data:
-                    logging.info(f"Historique chargé: {len(data['transcriptions'])} transcriptions")
-                    return data['transcriptions']
-                else:
-                    logging.warning("Format d'historique invalide, création d'un nouveau fichier")
-                    return []
-        else:
-            logging.info("Aucun fichier d'historique trouvé, création d'un nouveau")
-            return []
-    except Exception as e:
-        logging.error(f"Erreur lors du chargement de l'historique: {e}")
-        return []
+    return vt_history.load_transcription_history()
+
 
 def save_transcription_history(transcriptions):
-    """Sauvegarde l'historique des transcriptions dans le fichier JSON."""
-    try:
-        history_data = {
-            'version': '1.0',
-            'created': time.strftime('%Y-%m-%d %H:%M:%S'),
-            'transcriptions': transcriptions
-        }
-        
-        # Créer le répertoire si nécessaire
-        os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
-        
-        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(history_data, f, ensure_ascii=False, indent=2)
-        
-        logging.info(f"Historique sauvegardé: {len(transcriptions)} transcriptions")
-        return True
-    except Exception as e:
-        logging.error(f"Erreur lors de la sauvegarde de l'historique: {e}")
-        return False
+    return vt_history.save_transcription_history(transcriptions)
+
 
 def add_to_transcription_history(text):
-    """Ajoute une nouvelle transcription à l'historique et la sauvegarde."""
     global transcription_history
-    
-    # Créer un nouvel élément d'historique avec métadonnées
-    history_item = {
-        'text': text,
-        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-        'date': time.strftime('%Y-%m-%d')
-    }
-    
-    transcription_history.append(history_item)
-    
-    # Limiter l'historique à 1000 éléments maximum
-    if len(transcription_history) > 1000:
-        transcription_history = transcription_history[-1000:]
-    
-    # Sauvegarder immédiatement
-    save_transcription_history(transcription_history)
-    
-    return history_item
+    item = vt_history.add_to_transcription_history(transcription_history, text)
+    return item
+
 
 def clear_all_transcription_history():
-    """Efface tout l'historique des transcriptions."""
     global transcription_history
-    # Effacer directement dans le fichier pour être sûr
-    empty_list = []
-    save_transcription_history(empty_list)
-    # Mettre à jour la variable globale
-    transcription_history = empty_list
+    transcription_history = []
+    vt_history.save_transcription_history(transcription_history)
     logging.info("Historique des transcriptions complètement effacé")
 
 # --- Fonctions de gestion des paramètres utilisateur ---
 
-def get_default_user_settings():
-    """Retourne les paramètres utilisateur par défaut."""
-    return {
-        "enable_sounds": True,
-        "paste_at_cursor": False,
-        "auto_start": False,
-        "transcription_provider": "Google",
-        "language": "fr-FR"
-    }
-
+# --- Paramètres utilisateur (wrappers) ---
 def load_user_settings():
-    """Charge les paramètres utilisateur depuis le fichier JSON dans AppData."""
-    try:
-        if os.path.exists(USER_SETTINGS_FILE):
-            with open(USER_SETTINGS_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                # Valider la structure du fichier
-                if isinstance(data, dict) and 'settings' in data:
-                    # Fusionner avec les defaults pour garantir toutes les clés
-                    defaults = get_default_user_settings()
-                    settings = {**defaults, **data['settings']}
-                    logging.info("Paramètres utilisateur chargés")
-                    return settings
-                else:
-                    logging.warning("Format de paramètres invalide, utilisation des valeurs par défaut")
-                    return get_default_user_settings()
-        else:
-            logging.info("Aucun fichier de paramètres utilisateur trouvé, initialisation avec valeurs par défaut")
-            # Créer le fichier avec les valeurs par défaut
-            defaults = get_default_user_settings()
-            save_user_settings(defaults)
-            return defaults
-    except Exception as e:
-        logging.error(f"Erreur lors du chargement des paramètres utilisateur: {e}")
-        return get_default_user_settings()
+    return vt_settings.load_user_settings()
+
 
 def save_user_settings(settings):
-    """Sauvegarde les paramètres utilisateur dans le fichier JSON dans AppData."""
-    try:
-        settings_data = {
-            'version': '1.0',
-            'created': time.strftime('%Y-%m-%d %H:%M:%S'),
-            'settings': settings
-        }
-        
-        # Créer le répertoire si nécessaire
-        os.makedirs(os.path.dirname(USER_SETTINGS_FILE), exist_ok=True)
-        
-        with open(USER_SETTINGS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(settings_data, f, ensure_ascii=False, indent=2)
-        
-        logging.info("Paramètres utilisateur sauvegardés")
-        return True
-    except Exception as e:
-        logging.error(f"Erreur lors de la sauvegarde des paramètres utilisateur: {e}")
-        return False
+    return vt_settings.save_user_settings(settings)
+
 
 def migrate_user_settings(user_params):
-    """Migre les anciens paramètres utilisateur depuis config.json vers AppData."""
     try:
-        # Charger les paramètres utilisateur existants
-        current_user_settings = load_user_settings()
-        
-        # Fusionner avec les paramètres à migrer (priorité aux existants)
-        migrated_settings = {**user_params, **current_user_settings}
-        
-        # Sauvegarder dans AppData
-        save_user_settings(migrated_settings)
-        
+        current_user_settings = vt_settings.load_user_settings()
+        migrated = {**user_params, **current_user_settings}
+        vt_settings.save_user_settings(migrated)
         logging.info(f"Paramètres utilisateur migrés: {list(user_params.keys())}")
         return True
     except Exception as e:
         logging.error(f"Erreur lors de la migration des paramètres utilisateur: {e}")
         return False
 
+
 def get_setting(key, default=None):
-    """Récupère un paramètre utilisateur depuis AppData ou un paramètre système depuis config."""
-    # Pour les paramètres utilisateur, toujours charger depuis AppData
-    if key in ['enable_sounds', 'paste_at_cursor', 'auto_start']:
-        current_user_settings = load_user_settings()
-        return current_user_settings.get(key, default)
-    
-    # Pour les paramètres système, utiliser config.json
+    if key in [
+        "enable_sounds",
+        "paste_at_cursor",
+        "auto_start",
+        "transcription_provider",
+        "language",
+        "smart_formatting",
+        "input_device_index",
+    ]:
+        return vt_settings.load_user_settings().get(key, default)
     return config.get(key, default)
 
-# --- Fonctions de génération de sons ---
-
-def generate_sound_wave(frequency, duration, sample_rate=44100, amplitude=0.02):
-    """Génère une onde sonore sinusoïdale."""
-    frames = int(duration * sample_rate)
-    wave_data = []
-    for i in range(frames):
-        value = amplitude * math.sin(2 * math.pi * frequency * i / sample_rate)
-        wave_data.append(int(value * 32767))  # Convertir en 16-bit
-    return wave_data
-
-def generate_sweep_sound(start_freq, end_freq, duration, sample_rate=44100, amplitude=0.02):
-    """Génère un son avec balayage de fréquence (sweep)."""
-    frames = int(duration * sample_rate)
-    wave_data = []
-    for i in range(frames):
-        # Interpolation linéaire de la fréquence
-        progress = i / frames
-        frequency = start_freq + (end_freq - start_freq) * progress
-        value = amplitude * math.sin(2 * math.pi * frequency * i / sample_rate)
-        wave_data.append(int(value * 32767))
-    return wave_data
-
+# --- Sons (wrappers) ---
 def create_sound_files():
-    """Crée les fichiers audio pour les différents événements."""
-    try:
-        os.makedirs(SOUNDS_DIR, exist_ok=True)
-        
-        # Supprimer les anciens fichiers pour forcer la régénération avec le nouveau volume
-        old_files = ['start_recording.wav', 'stop_recording.wav', 'success.wav']
-        for old_file in old_files:
-            old_path = os.path.join(SOUNDS_DIR, old_file)
-            if os.path.exists(old_path):
-                os.remove(old_path)
-                logging.info(f"Ancien fichier supprimé: {old_file}")
-        
-        # Son montant (démarrage enregistrement) : 400Hz -> 800Hz
-        start_sound = generate_sweep_sound(400, 800, 0.3)
-        start_path = os.path.join(SOUNDS_DIR, 'start_recording.wav')
-        save_wave_file(start_path, start_sound)
-        
-        # Son descendant (arrêt enregistrement) : 800Hz -> 400Hz
-        stop_sound = generate_sweep_sound(800, 400, 0.3)
-        stop_path = os.path.join(SOUNDS_DIR, 'stop_recording.wav')
-        save_wave_file(stop_path, stop_sound)
-        
-        # Son de validation (succès) : deux tons courts
-        success_sound = []
-        # Premier ton
-        success_sound.extend(generate_sound_wave(880, 0.1))  # A5
-        # Petit silence
-        success_sound.extend([0] * int(0.05 * 44100))
-        # Deuxième ton plus aigu
-        success_sound.extend(generate_sound_wave(1108, 0.15))  # C#6
-        
-        success_path = os.path.join(SOUNDS_DIR, 'success.wav')
-        save_wave_file(success_path, success_sound)
-        
-        logging.info("Fichiers audio créés avec succès")
-        return {
-            'start': start_path,
-            'stop': stop_path,
-            'success': success_path
-        }
-        
-    except Exception as e:
-        logging.error(f"Erreur lors de la création des sons: {e}")
-        return None
+    return vt_sounds.create_sound_files()
 
-def save_wave_file(filepath, wave_data, sample_rate=44100):
-    """Sauvegarde les données audio en fichier WAV."""
-    with wave.open(filepath, 'w') as wav_file:
-        wav_file.setnchannels(1)  # Mono
-        wav_file.setsampwidth(2)  # 16-bit
-        wav_file.setframerate(sample_rate)
-        
-        # Convertir en bytes
-        wave_bytes = struct.pack('<' + 'h' * len(wave_data), *wave_data)
-        wav_file.writeframes(wave_bytes)
 
 def play_sound_async(sound_path):
-    """Joue un son de manière asynchrone selon l'OS."""
-    # Vérifier si les sons sont activés
-    if not get_setting('enable_sounds', True):
-        return
-        
-    if not sound_path or not os.path.exists(sound_path):
-        return
-    
-    def play():
-        try:
-            if platform.system() == 'Windows':
-                import winsound
-                winsound.PlaySound(sound_path, winsound.SND_FILENAME | winsound.SND_ASYNC)
-            elif platform.system() == 'Darwin':  # macOS
-                os.system(f'afplay "{sound_path}" &')
-            else:  # Linux
-                os.system(f'aplay "{sound_path}" > /dev/null 2>&1 &')
-        except Exception as e:
-            logging.error(f"Erreur lors de la lecture du son: {e}")
-    
-    # Jouer dans un thread séparé pour ne pas bloquer
-    threading.Thread(target=play, daemon=True).start()
+    return vt_sounds.play_sound_async(sound_path)
 
 # --- Fonctions de l'application ---
 
@@ -621,40 +427,23 @@ def paste_to_cursor():
     except Exception as e:
         logging.error(f"Impossible d'envoyer la commande de collage: {e}")
 
+def log_checkpoint(tag: str) -> None:
+    try:
+        logging.info(f"[CHK] {tag}")
+    except Exception:
+        pass
+
+def trace_breadcrumb(tag: str) -> None:
+    # Alias sémantique
+    log_checkpoint(tag)
+
 def transcribe_with_openai(filename, language=None):
-    """Transcrire l'audio avec l'API OpenAI Whisper."""
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise Exception("La clé API OpenAI n'est pas configurée dans le fichier .env.")
-
-    client = openai.OpenAI(api_key=api_key)
-
-    # Convertir le code langue pour OpenAI (format ISO 639-1)
-    language_mapping = {
-        "fr-FR": "fr",
-        "en-US": "en", 
-        "es-ES": "es",
-        "de-DE": "de",
-        "it-IT": "it",
-        "pt-PT": "pt",
-        "nl-NL": "nl"
-    }
-    
-    whisper_language = language_mapping.get(language, "fr") if language else "fr"
-    
-    logging.info(f"OpenAI Whisper - Langue configurée: {whisper_language}")
-
-    with open(filename, "rb") as audio_file:
-        response = client.audio.transcriptions.create(
-            model="whisper-1",
-            file=audio_file,
-            language=whisper_language
-        )
-    return response.text
+    return vt_transcription.transcribe_with_openai(filename, language)
 
 def transcribe_and_copy(filename):
     global google_credentials, visualizer_window, transcription_history
     try:
+        logging.info("Début transcribe_and_copy")
         # Recharger les user_settings pour avoir la version la plus récente
         current_user_settings = load_user_settings()
         provider_raw = current_user_settings.get("transcription_provider", "Google")
@@ -670,33 +459,13 @@ def transcribe_and_copy(filename):
         text = ""
 
         if provider == "Google":
-            # Vérification des credentials
             if google_credentials is None:
                 logging.error("Les credentials Google Cloud ne sont pas initialisés.")
                 raise Exception("Credentials not initialized")
-            
-            # Récupérer la langue configurée
             selected_language = current_user_settings.get("language", "fr-FR")
-            
-            logging.info(f"Utilisation des credentials pour le projet: {google_credentials.project_id}")
-            logging.info(f"Langue de transcription: {selected_language}")
-            client = speech.SpeechClient(credentials=google_credentials)
-            with open(filename, "rb") as audio_file:
-                content = audio_file.read()
-            audio = speech.RecognitionAudio(content=content)
-            recog_config = speech.RecognitionConfig(
-                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-                sample_rate_hertz=SAMPLE_RATE,
-                language_code=selected_language,
-                enable_automatic_punctuation=True,
-                model="latest_long"
+            text = vt_transcription.transcribe_with_google(
+                filename, SAMPLE_RATE, selected_language, google_credentials
             )
-            logging.info(f"Envoi de l'audio à Google Cloud Speech (langue: {selected_language})...")
-            response = client.recognize(config=recog_config, audio=audio)
-            if not response.results:
-                logging.warning("Aucun texte n'a pu être transcrit.")
-                raise Exception("No text transcribed")
-            text = response.results[0].alternatives[0].transcript
         
         elif provider == "OpenAI":
             # Récupérer la langue configurée
@@ -707,55 +476,241 @@ def transcribe_and_copy(filename):
         else:
             raise Exception(f"Fournisseur de transcription non valide : {provider}")
 
+        # Formatage intelligent si activé
+        try:
+            if get_setting("smart_formatting", True):
+                text = vt_formatting.smart_format_text(text)
+        except Exception as fmt_e:
+            logging.error(f"Erreur formatage intelligent: {fmt_e}")
+
         logging.info(f"Texte transcrit: {text}")
         pyperclip.copy(text)
         logging.info("Texte copié dans le presse-papiers !")
         # Coller automatiquement au curseur si l'option est activée
         if get_setting('paste_at_cursor', False):
-            # Laisser un court délai pour que l'appli cible reprenne le focus
-            time.sleep(0.12)
-            paste_to_cursor()
+            # Éviter de coller dans l'UI Tk elle-même
+            try:
+                import tkinter as _tk
+                if visualizer_window and visualizer_window.root:
+                    focused = visualizer_window.root.focus_get()
+                    if focused is not None:
+                        logging.info("Focus sur UI Voice Tool détecté: skip auto-paste")
+                    else:
+                        time.sleep(0.12)
+                        paste_to_cursor()
+                else:
+                    time.sleep(0.12)
+                    paste_to_cursor()
+            except Exception:
+                time.sleep(0.12)
+                paste_to_cursor()
         
         # Jouer le son de succès
         if sound_paths and 'success' in sound_paths:
             play_sound_async(sound_paths['success'])
 
         # Ajout à l'historique avec sauvegarde automatique
+        # Si le texte provient d'un fichier wav récent, on pourrait passer le chemin audio.
+        # Ici, on ne l'a pas au moment de la transcription asynchrone. Option: détecter via param supplémentaire si besoin.
         history_item = add_to_transcription_history(text)
         if visualizer_window and visualizer_window.main_window and visualizer_window.main_window.winfo_exists():
             # Planifie l'ajout dans le thread de la GUI pour éviter les conflits
             visualizer_window.root.after(0, visualizer_window.add_transcription_to_history, history_item)
         
-        # Notification visuelle via la fenêtre GUI (toujours affichée maintenant)
-        if visualizer_window and hasattr(visualizer_window, 'show_status'):
-            visualizer_window.show_status("success")
+        # Notification visuelle via la fenêtre GUI (planifiée dans le thread Tkinter)
+        try:
+            if visualizer_window and hasattr(visualizer_window, 'root'):
+                visualizer_window.root.after(0, visualizer_window.show_status, "success")
+        except Exception as e:
+            logging.error(f"Erreur lors de l'affichage du statut success: {e}")
 
     except Exception as e:
         logging.error(f"Erreur lors de la transcription/copie : {e}")
-        if visualizer_window and hasattr(visualizer_window, 'show_status'):
-            visualizer_window.show_status("error")
+        try:
+            import traceback as _tb
+            logging.error("".join(_tb.format_exception(type(e), e, e.__traceback__)))
+        except Exception:
+            pass
+        try:
+            if visualizer_window and hasattr(visualizer_window, 'root'):
+                visualizer_window.root.after(0, visualizer_window.show_status, "error")
+        except Exception as e2:
+            logging.error(f"Erreur lors de l'affichage du statut error: {e2}")
 
 # Plus besoin de la fonction transcription spécialisée - on utilise la standard
 
 def audio_callback(indata, frames, time, status):
-    global visualizer_window
+    global visualizer_window, is_recording
     if status:
         logging.warning(status)
-    audio_frames.append(indata.copy())
-    if indata.size > 0:
+    try:
+        if is_recording:
+            with audio_frames_lock:
+                audio_frames.append(indata.copy())
+    except Exception:
+        pass
+    if is_recording and indata.size > 0:
         mean_square = np.mean(indata**2)
         if mean_square < 0: mean_square = 0
         rms = np.sqrt(mean_square) / 32768.0
         rms_scaled = rms * 200 
-        
-        # Mise à jour du visualiseur Tkinter (doit être fait dans le thread Tkinter)
-        if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-            visualizer_window.window.after(0, visualizer_window.update_visualizer, rms_scaled)
+        # Pousser le niveau dans une queue thread-safe; le thread Tk lit périodiquement
+        try:
+            visualizer_queue.put_nowait(rms_scaled)
+        except Exception:
+            pass
+
+def _poll_visualizer_levels():
+    """Lit la queue des niveaux audio et pousse le dernier vers l'UI (thread Tk)."""
+    global visualizer_window
+    if not visualizer_window:
+        return
+    last_value = None
+    try:
+        while True:
+            last_value = visualizer_queue.get_nowait()
+    except Empty:
+        pass
+    except Exception:
+        last_value = None
+    if last_value is not None:
+        try:
+            visualizer_window.update_visualizer(last_value)
+        except Exception:
+            pass
+    # replanifier à ~30 FPS
+    try:
+        visualizer_window.root.after(33, _poll_visualizer_levels)
+    except Exception:
+        pass
+
+def _processing_worker():
+    global processing_worker_thread
+    logging.info("Worker de traitement audio démarré")
+    while True:
+        try:
+            frames_copy = processing_queue.get()
+            if frames_copy is None:
+                continue
+            try:
+                n = len(frames_copy)
+            except Exception:
+                n = -1
+            try:
+                if not isinstance(frames_copy, list) or n <= 0:
+                    logging.warning("Aucun frame à traiter dans la tâche")
+                    continue
+                logging.info(f"Concaténation de {n} frames audio (worker)...")
+                recording_data = np.concatenate(frames_copy, axis=0)
+                # Nom de fichier unique dans AppData/recordings
+                ts = time.strftime('%Y%m%d_%H%M%S')
+                os.makedirs(RECORDINGS_DIR, exist_ok=True)
+                out_path = os.path.join(RECORDINGS_DIR, f"recording_{ts}.wav")
+                wav.write(out_path, SAMPLE_RATE, recording_data)
+                logging.info(f"Fichier sauvegardé: {out_path}")
+
+                # Rétention: conserver N derniers
+                try:
+                    keep_last = vt_settings.load_user_settings().get("recordings_keep_last", 25)
+                    files = []
+                    for name in os.listdir(RECORDINGS_DIR):
+                        if name.lower().endswith('.wav'):
+                            full = os.path.join(RECORDINGS_DIR, name)
+                            try:
+                                mtime = os.path.getmtime(full)
+                            except Exception:
+                                mtime = 0
+                            files.append((mtime, full))
+                    files.sort(reverse=True)
+                    for _, path in files[keep_last:]:
+                        try:
+                            os.remove(path)
+                            logging.info(f"Recording supprimé (rétention): {path}")
+                        except Exception as de:
+                            logging.error(f"Suppression recording échouée: {de}")
+                except Exception as re:
+                    logging.error(f"Nettoyage rétention recordings: {re}")
+
+                # Lancer la transcription
+                logging.info("Lancement de la transcription (worker)...")
+                Thread(target=transcribe_and_copy, args=(out_path,), daemon=True).start()
+            except Exception as e:
+                logging.error(f"Erreur worker traitement: {e}")
+                try:
+                    import traceback as _tb
+                    logging.error("".join(_tb.format_exception(type(e), e, e.__traceback__)))
+                except Exception:
+                    pass
+        except Exception as e:
+            logging.error(f"Erreur boucle worker: {e}")
+            time.sleep(0.1)
+
+def _ensure_processing_worker_started():
+    global processing_worker_thread
+    if processing_worker_thread is None or not processing_worker_thread.is_alive():
+        processing_worker_thread = Thread(target=_processing_worker, daemon=True)
+        processing_worker_thread.start()
+
+def _ensure_audio_stream_started():
+    """Démarre et conserve un unique InputStream pour toute la durée de vie de l'app.
+    On n'arrête/ferme plus le stream à chaque enregistrement pour éviter les crashs PortAudio sous Windows
+    quand la fenêtre principale Tkinter est ouverte.
+    """
+    global audio_stream, audio_stream_device_index
+    if audio_stream is not None:
+        return
+    try:
+        def _sanitize_input_device_index():
+            try:
+                idx = get_setting("input_device_index", None)
+            except Exception:
+                idx = None
+            try:
+                import sounddevice as _sd
+                devs = _sd.query_devices()
+                if not isinstance(idx, int):
+                    return None
+                if idx < 0 or idx >= len(devs):
+                    return None
+                if devs[idx].get('max_input_channels', 0) <= 0:
+                    return None
+                return idx
+            except Exception:
+                return None
+
+        input_device_index = _sanitize_input_device_index()
+        audio_stream_device_index = input_device_index
+        trace_breadcrumb("before_stream_start")
+        audio_stream = sd.InputStream(
+            samplerate=SAMPLE_RATE,
+            channels=1,
+            dtype='int16',
+            callback=audio_callback,
+            device=input_device_index
+        )
+        audio_stream.start()
+        trace_breadcrumb("after_stream_start")
+        logging.info("InputStream démarré (persistant)")
+        # Démarrer le poll du visualizer si la fenêtre existe
+        try:
+            global visualizer_poll_started
+            if visualizer_window and hasattr(visualizer_window, 'root') and not visualizer_poll_started:
+                visualizer_poll_started = True
+                visualizer_window.root.after(0, _poll_visualizer_levels)
+        except Exception:
+            pass
+    except Exception as e:
+        logging.error(f"Erreur démarrage InputStream: {e}")
+        try:
+            import traceback as _tb
+            logging.error("".join(_tb.format_exception(type(e), e, e.__traceback__)))
+        except Exception:
+            pass
 
 # Plus besoin du callback spécialisé - on utilise le standard
 
 def toggle_recording(icon_pystray):
-    global is_recording, audio_stream, audio_frames, visualizer_window
+    global is_recording, audio_stream, audio_frames, visualizer_window, last_visualizer_update_ts
 
     is_recording = not is_recording
 
@@ -769,13 +724,21 @@ def toggle_recording(icon_pystray):
         # Note: visualizer_window sera initialisé par le thread principal
         
         # Afficher la fenêtre de visualisation si disponible
-        if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-            visualizer_window.window.after(0, visualizer_window.show) # Affiche la fenêtre
-            visualizer_window.window.after(0, visualizer_window.set_mode, "recording") # Passe en mode enregistrement
+        if visualizer_window and hasattr(visualizer_window, 'root'):
+            visualizer_window.root.after(0, visualizer_window.show)
+            visualizer_window.root.after(0, visualizer_window.set_mode, "recording")
         
-        audio_frames = []
-        audio_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='int16', callback=audio_callback)
-        audio_stream.start()
+        # Nettoyer les frames précédentes
+        with audio_frames_lock:
+            audio_frames.clear()
+        # Réinitialiser le throttling du visualiseur au démarrage
+        try:
+            import time as _t
+            last_visualizer_update_ts = _t.monotonic()
+        except Exception:
+            last_visualizer_update_ts = 0.0
+        # S'assurer que le stream audio persistant est démarré
+        _ensure_audio_stream_started()
 
     else:
         logging.info("Arrêt de l'enregistrement...")
@@ -784,48 +747,38 @@ def toggle_recording(icon_pystray):
         if sound_paths and 'stop' in sound_paths:
             play_sound_async(sound_paths['stop'])
         
-        # Vérification et arrêt sécurisé de l'audio stream
-        if not audio_stream:
-            logging.warning("Aucun stream audio à arrêter")
-            return
-            
-        try:
-            logging.info("Arrêt du stream audio...")
-            audio_stream.stop()
-            audio_stream.close()
-            audio_stream = None  # Réinitialiser la variable
-            logging.info("Stream audio fermé avec succès")
-        except Exception as e:
-            logging.error(f"Erreur lors de la fermeture du stream audio: {e}")
-            audio_stream = None  # Réinitialiser même en cas d'erreur
+        # Ne plus arrêter/fermer le stream ici: on le garde persistant pour éviter les crashs
+        trace_breadcrumb("skip_stream_close_persistent_mode")
         
-        # Vérifier que visualizer_window est bien initialisé
+        # 1) Snapshot + envoi au worker (avant UI)
         try:
-            if visualizer_window and hasattr(visualizer_window, 'window') and visualizer_window.window:
-                visualizer_window.window.after(0, visualizer_window.set_mode, "processing") # Passe en mode traitement
-                # Ne plus cacher la fenêtre - elle restera visible en mode traitement
+            log_checkpoint("before_frames_snapshot")
+            with audio_frames_lock:
+                frames_copy2 = list(audio_frames)
+                audio_frames.clear()
+            log_checkpoint("after_frames_snapshot")
+            if len(frames_copy2) == 0:
+                logging.warning("Aucune donnée audio à sauvegarder")
+            else:
+                _ensure_processing_worker_started()
+                processing_queue.put(frames_copy2)
+                logging.info(f"Tâche de traitement audio envoyée au worker (frames={len(frames_copy2)})")
+                log_checkpoint("after_put_to_worker")
+        except Exception as e:
+            logging.error(f"Erreur lors de l'envoi au worker: {e}")
+
+        # 2) Mise à jour UI (après une micro-latence)
+        try:
+            if visualizer_window and hasattr(visualizer_window, 'root'):
+                log_checkpoint("before_set_mode_processing")
+                # petit délai pour laisser PortAudio/threads se stabiliser
+                visualizer_window.root.after(50, visualizer_window.set_mode, "processing")
                 logging.info("Interface de visualisation mise à jour - mode traitement activé")
+                log_checkpoint("after_set_mode_processing_sched")
         except Exception as e:
             logging.error(f"Erreur lors de la mise à jour de l'interface: {e}")
 
-        # Sauvegarde sécurisée des données audio
-        try:
-            if len(audio_frames) == 0:
-                logging.warning("Aucune donnée audio à sauvegarder")
-                return
-                
-            logging.info(f"Concaténation de {len(audio_frames)} frames audio...")
-            recording_data = np.concatenate(audio_frames, axis=0)
-            wav.write(OUTPUT_FILENAME, SAMPLE_RATE, recording_data)
-            logging.info(f"Fichier sauvegardé: {OUTPUT_FILENAME}")
-
-            # Lancement de la transcription dans un thread séparé
-            logging.info("Lancement de la transcription...")
-            threading.Thread(target=transcribe_and_copy, args=(OUTPUT_FILENAME,)).start()
-            logging.info("Thread de transcription démarré - Prêt pour un nouvel enregistrement.")
-            
-        except Exception as e:
-            logging.error(f"Erreur lors de la sauvegarde ou de la transcription: {e}")
+        log_checkpoint("end_toggle_stop")
 
 def toggle_recording_with_gui(icon_pystray, gui_instance):
     """Version de toggle_recording qui utilise l'instance GUI fournie."""
@@ -848,43 +801,38 @@ def toggle_recording_from_gui():
     toggle_recording(global_icon_pystray)
 
 def update_and_restart_hotkeys(new_config):
-    """Met à jour la configuration système et utilisateur selon le type de paramètre."""
+    """Met à jour la configuration (hotkeys dans AppData) et redémarre si besoin."""
     global config, user_settings, global_icon_pystray
     
-    # Séparer les paramètres système des paramètres utilisateur
     system_params = {}
     user_params = {}
+    hotkey_changed = False
     
     for key, value in new_config.items():
         if key in ['record_hotkey', 'open_window_hotkey']:
-            system_params[key] = value
-        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language']:
             user_params[key] = value
+            hotkey_changed = True
+        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language', 'smart_formatting', 'input_device_index', 'record_mode', 'ptt_hotkey', 'recordings_keep_last']:
+            user_params[key] = value
+            if key in ['record_mode', 'ptt_hotkey']:
+                hotkey_changed = True
         else:
             logging.warning(f"Paramètre inconnu: {key}")
     
-    # Sauvegarder les paramètres utilisateur dans AppData
     if user_params:
         user_settings.update(user_params)
         save_user_settings(user_settings)
         logging.info(f"Paramètres utilisateur sauvegardés: {list(user_params.keys())}")
     
-    # Sauvegarder les paramètres système dans config.json
     if system_params:
         config.update(system_params)
-        try:
-            with open(CONFIG_FILE, 'w') as f:
-                json.dump(config, f, indent=4)
-            logging.info(f"Paramètres système sauvegardés: {list(system_params.keys())}")
-        except Exception as e:
-            logging.error(f"Erreur lors de la sauvegarde des paramètres système : {e}")
+        if not config_manager.save_system_config(config):
+            logging.error("Erreur lors de la sauvegarde des paramètres système")
     
-    # Redémarrer les hotkeys seulement si les raccourcis ont changé
-    if system_params and global_icon_pystray:
+    if hotkey_changed and global_icon_pystray:
         setup_hotkey(global_icon_pystray)
         logging.info("Raccourcis clavier redémarrés")
     
-    # Retourner les paramètres effectivement sauvegardés pour mise à jour de l'interface
     return {
         'system_params': system_params,
         'user_params': user_params,
@@ -893,33 +841,89 @@ def update_and_restart_hotkeys(new_config):
     }
 
 def setup_hotkey(icon_pystray):
-    global hotkey_listener, config
-    if hotkey_listener:
-        hotkey_listener.stop()
+    global hotkey_listener, ptt_listener, config
+    # Stopper d'anciens écouteurs si présents
+    try:
+        if hotkey_listener:
+            hotkey_listener.stop()
+    except Exception:
+        pass
+    try:
+        if ptt_listener:
+            ptt_listener.stop()
+    except Exception:
+        pass
+
+    hotkey_listener = None
+    ptt_listener = None
 
     hotkey_map = {}
-    record_key = config.get('record_hotkey')
-    open_key = config.get('open_window_hotkey')
+    # Lire depuis AppData désormais
+    current_user_settings = vt_settings.load_user_settings()
+    record_mode = current_user_settings.get('record_mode', 'toggle')
+    record_key = current_user_settings.get('record_hotkey')
+    ptt_key = current_user_settings.get('ptt_hotkey')
+    open_key = current_user_settings.get('open_window_hotkey')
 
-    if record_key: hotkey_map[record_key] = lambda: toggle_recording(icon_pystray)
-    if open_key: hotkey_map[open_key] = open_interface
+    active_keys = []
 
-    if not hotkey_map:
+    if record_mode == 'toggle' and record_key:
+        hotkey_map[record_key] = lambda: toggle_recording(icon_pystray)
+    elif record_mode == 'ptt' and ptt_key:
+        # Listener PTT custom: démarrer à l'appui de toute la combo, couper dès qu'un des éléments est relâché
+        combo_keys = set(keyboard.HotKey.parse(ptt_key))
+        pressed_keys = set()
+
+        listener_ref = {'l': None}
+
+        def on_press(key):
+            try:
+                k = listener_ref['l'].canonical(key)
+                pressed_keys.add(k)
+                if combo_keys.issubset(pressed_keys) and not is_recording:
+                    toggle_recording(icon_pystray)
+            except Exception:
+                pass
+
+        def on_release(key):
+            try:
+                k = listener_ref['l'].canonical(key)
+                if k in pressed_keys:
+                    pressed_keys.remove(k)
+                if is_recording and not combo_keys.issubset(pressed_keys):
+                    toggle_recording(icon_pystray)
+            except Exception:
+                pass
+
+        listener_ref['l'] = keyboard.Listener(on_press=on_press, on_release=on_release)
+        ptt_listener = listener_ref['l']
+        ptt_listener.start()
+        active_keys.append(ptt_key)
+
+    # Toujours gérer le raccourci d'ouverture de fenêtre via GlobalHotKeys s'il existe
+    if open_key:
+        hotkey_map[open_key] = open_interface
+
+    if hotkey_map:
+        hotkey_listener = keyboard.GlobalHotKeys(hotkey_map)
+        hotkey_listener.start()
+        active_keys.extend(list(hotkey_map.keys()))
+
+    if not active_keys:
         logging.warning("Aucun raccourci clavier n'est configuré.")
-        return
-
-    hotkey_listener = keyboard.GlobalHotKeys(hotkey_map)
-    hotkey_listener.start()
-    logging.info(f"Raccourcis clavier activés : {list(hotkey_map.keys())}")
+    else:
+        logging.info(f"Raccourcis clavier activés : {active_keys}")
 
 def quit_from_gui():
     """Ferme l'application depuis l'interface GUI (fermeture synchrone)."""
-    global hotkey_listener, visualizer_window, global_icon_pystray, audio_stream
+    global hotkey_listener, ptt_listener, visualizer_window, global_icon_pystray, audio_stream
     logging.info("Arrêt de l'application depuis l'interface GUI...")
     
     # Arrêter d'abord les services
     if hotkey_listener:
         hotkey_listener.stop()
+    if ptt_listener:
+        ptt_listener.stop()
     if audio_stream:
         audio_stream.close()
     
@@ -953,10 +957,12 @@ def quit_from_gui():
     os._exit(0)
 
 def on_quit(icon_pystray, item):
-    global hotkey_listener, visualizer_window
+    global hotkey_listener, ptt_listener, visualizer_window
     logging.info("Arrêt de l'application...")
     if hotkey_listener:
         hotkey_listener.stop()
+    if ptt_listener:
+        ptt_listener.stop()
     if audio_stream:
         audio_stream.close()
     if visualizer_window:
@@ -983,13 +989,29 @@ def open_interface():
     else:
         logging.warning("La fenêtre du visualiseur n'est pas encore initialisée.")
 
-def run_tkinter_app():
-    """Fonction pour lancer l'application Tkinter dans un thread séparé."""
-    global visualizer_window
-    # Créer l'icône avant d'initialiser la GUI
-    icon_path = create_window_icon()
-    visualizer_window = VisualizerWindowTkinter(icon_path=icon_path)
-    visualizer_window.run() # Lance la boucle principale Tkinter
+def run_pystray_icon():
+    """Démarre l'icône système pystray (à appeler dans un thread)."""
+    global global_icon_pystray
+    menu = pystray.Menu(
+        pystray.MenuItem('Ouvrir', open_interface),
+        pystray.MenuItem('Quitter', on_quit)
+    )
+    icon_path = os.path.join(script_dir, 'voice_tool_icon.ico')
+    try:
+        icon_image = Image.open(icon_path)
+    except Exception as e:
+        logging.error(f"Impossible de charger l'icône depuis {icon_path}: {e}")
+        # Utiliser une icône de secours
+        icon_image = create_icon_pystray('white', 'gray')
+
+    icon_pystray = pystray.Icon(
+        'VoiceTool',
+        icon=icon_image,
+        title='Voice Tool',
+        menu=menu
+    )
+    global_icon_pystray = icon_pystray
+    icon_pystray.run()
 
 def main():
     global google_credentials, visualizer_window, global_icon_pystray
@@ -1035,15 +1057,20 @@ def main():
             print(f"Erreur lors du lancement en arrière-plan : {e}")
             sys.exit(1)
 
-    # --- Configuration du logging ---
+    # --- Configuration du logging complémentaire ---
+    # Ajouter un handler console si en mode console (sans modifier le file handler déjà actif)
     if is_console_mode:
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    else:
-        # Pour le processus en arrière-plan, on logue dans un fichier
-        log_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'voice_tool.log')
-        logging.basicConfig(filename=log_file_path, filemode='a', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        root_logger = logging.getLogger()
+        has_console = any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler) for h in root_logger.handlers)
+        if not has_console:
+            sh = logging.StreamHandler()
+            sh.setLevel(logging.INFO)
+            sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            root_logger.addHandler(sh)
 
-    load_config() # Charge la configuration au démarrage
+    # Charger la configuration système (peut être vide, non bloquant)
+    global config
+    config = config_manager.load_system_config()
     
     # Charger les paramètres utilisateur
     global transcription_history, sound_paths, user_settings
@@ -1061,63 +1088,49 @@ def main():
     logging.info(f"PROJECT_ID chargé: {'Oui' if os.getenv('PROJECT_ID') else 'Non'}")
     logging.info(f"Répertoire AppData: {APP_DATA_DIR}")
     
-    google_credentials = get_google_credentials()
+    # Crédentials Google depuis l'environnement
+    google_credentials = vt_transcription.get_google_credentials_from_env()
     if not google_credentials:
         return
 
     logging.info("Démarrage de l'application...")
 
-    # Lancer l'application Tkinter dans un thread séparé
-    tkinter_thread = threading.Thread(target=run_tkinter_app)
-    tkinter_thread.daemon = True # Permet au thread de se fermer avec l'app principale
-    tkinter_thread.start()
+    # Initialiser Tkinter dans le thread principal pour robustesse Windows
+    icon_path = create_window_icon()
+    visualizer_window = VisualizerWindowTkinter(icon_path=icon_path)
 
-    # Attendre que la fenêtre Tkinter soit initialisée avant de continuer
-    max_wait = 50  # 5 secondes maximum
-    wait_count = 0
-    while visualizer_window is None and wait_count < max_wait:
-        time.sleep(0.1)
-        wait_count += 1
-    
-    if visualizer_window is None:
-        logging.error("Impossible d'initialiser la fenêtre de visualisation dans les temps impartis.")
-        return
-    else:
-        logging.info("Fenêtre de visualisation initialisée avec succès.")
-
-    # --- Rediriger les logs vers la GUI ---
-    # Créer le handler personnalisé et l'ajouter au logger racine.
-    # Tous les logs seront maintenant aussi envoyés à la GUI si sa fenêtre est ouverte.
+    # Rediriger les logs vers la GUI
     gui_handler = GuiLoggingHandler(visualizer_window)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
     gui_handler.setFormatter(formatter)
     logging.getLogger().addHandler(gui_handler)
 
-    # --- Démarrer le monitoring des commandes inter-processus ---
+    # Démarrer le monitoring des commandes inter-processus
     start_command_monitor()
 
-    # Configuration de l'icône Pystray (reste statique)
-    menu = pystray.Menu(
-        pystray.MenuItem('Ouvrir', open_interface),
-        pystray.MenuItem('Quitter', on_quit)
-    )
-    icon_path = os.path.join(script_dir, 'voice_tool_icon.ico')
-    try:
-        icon_image = Image.open(icon_path)
-    except Exception as e:
-        logging.error(f"Impossible de charger l'icône depuis {icon_path}: {e}")
-        # Utiliser une icône de secours
-        icon_image = create_icon_pystray('white', 'gray')
+    # Démarrer l'icône pystray dans un thread séparé
+    tray_thread = threading.Thread(target=run_pystray_icon, daemon=True)
+    tray_thread.start()
 
-    icon_pystray = pystray.Icon(
-        'VoiceTool',
-        icon=icon_image,
-        title='Voice Tool (Ctrl+Alt+S) - Google Cloud',
-        menu=menu
-    )
-    global_icon_pystray = icon_pystray # Rend l'icône accessible globalement
-    setup_hotkey(icon_pystray)
-    icon_pystray.run()
+    # Configurer les hotkeys (utilise global_icon_pystray qui sera défini par run_pystray_icon)
+    # Attendre un court instant que l'icône soit prête
+    for _ in range(20):
+        if global_icon_pystray:
+            break
+        time.sleep(0.05)
+    if global_icon_pystray:
+        setup_hotkey(global_icon_pystray)
+    else:
+        logging.warning("Icône pystray non initialisée à temps; les hotkeys seront configurés plus tard.")
+
+    # Démarrer le stream audio persistant tôt dans la vie du processus (thread principal)
+    try:
+        _ensure_audio_stream_started()
+    except Exception as e:
+        logging.error(f"Échec du démarrage initial de l'InputStream: {e}")
+
+    # Lancer la boucle principale Tkinter (thread principal)
+    visualizer_window.run()
 
 if __name__ == "__main__":
     main()

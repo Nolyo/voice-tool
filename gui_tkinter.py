@@ -9,6 +9,8 @@ import pyperclip
 import os
 import platform
 from PIL import ImageTk, Image
+import sounddevice as sd
+import traceback
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,10 +24,29 @@ class VisualizerWindowTkinter:
         # Appliquer l'icône à la fenêtre root
         if self.icon_path:
             self.set_window_icon(self.root)
+
+        # Hook global pour capturer et loguer toute exception Tkinter
+        def _report_callback_exception(exc, val, tb):
+            try:
+                logging.error("Exception Tkinter:")
+                logging.error("".join(traceback.format_exception(exc, val, tb)))
+            except Exception:
+                pass
+        try:
+            self.root.report_callback_exception = _report_callback_exception
+        except Exception:
+            pass
         
         self.main_window = None # Pour garder une référence à la fenêtre principale
         self.log_text_widget = None # Pour le widget qui affichera les logs
-        self.history_listbox = None # Pour la Listbox de l'historique
+        self.history_listbox = None # Déprécié: ancienne Listbox (conservée pour compat)
+        self.history_tree = None  # Nouveau: Treeview pour l'historique
+        self._tree_id_to_obj = {}  # map id->objet (dict/str) pour actions
+        # Recherche et gestion d'historique (filtrage)
+        self.history_search_var = tk.StringVar()
+        self._search_after_id = None
+        self._history_master = []  # liste des items d'historique (objets d'origine)
+        self._filtered_history_items = []  # vue filtrée courante
         
         self.window = tk.Toplevel(self.root)
         self.window.title("Voice Tool - Visualizer")  # Titre pour la fenêtre de visualisation
@@ -68,6 +89,16 @@ class VisualizerWindowTkinter:
         # Canvas pour le visualiseur
         self.canvas = tk.Canvas(self.window, width=300, height=60, bg='#1C1C1C', highlightthickness=0)
         self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        # Désactiver les liaisons implicites lourdes (scroll) qui peuvent bloquer le thread UI
+        try:
+            self.canvas.unbind_all("<MouseWheel>")
+        except Exception:
+            pass
+        # Empêcher tout focus clavier sur la fenêtre du visualizer
+        try:
+            self.window.attributes("-disabled", True)
+        except Exception:
+            pass
 
         # Label pour les statuts (Succès, Erreur, etc.)
         self.status_label = tk.Label(self.window, text="", fg="#1C1C1C", bg="white", font=("Arial", 12, "bold"))
@@ -283,18 +314,33 @@ class VisualizerWindowTkinter:
 
 
     def set_mode(self, mode):
-        logging.info(f"GUI Tkinter: Changement de mode vers: {mode}")
-        self.current_mode = mode
-        if mode == "recording":
-            # Simplement dessiner le visualiseur - pas de gestion complexe des layers
-            self.draw_visualizer()
-        elif mode == "processing":
-            # Effacer le canvas et dessiner une interface de traitement professionnelle
-            self.canvas.delete("all")
-            self._draw_processing_interface()
-        else: # idle mode
-            # Mode idle - rien de spécial à faire
-            pass
+        try:
+            logging.info(f"GUI Tkinter: Changement de mode vers: {mode}")
+            self.current_mode = mode
+            if not self.canvas or not self.canvas.winfo_exists():
+                return
+            if mode == "recording":
+                self.draw_visualizer()
+            elif mode == "processing":
+                # Mode processing sûr: dessin minimal si la fenêtre principale est ouverte
+                self.canvas.delete("all")
+                try:
+                    if self.main_window and self.main_window.winfo_exists():
+                        # Rendu minimaliste (éviter opérations graphiques lourdes)
+                        cw = self.canvas.winfo_width(); ch = self.canvas.winfo_height()
+                        self.canvas.create_rectangle(0, 0, cw, ch, fill='#1C1C1C', outline='')
+                        self.canvas.create_text(cw//2, ch//2, text="Traitement…", fill='#4ECDC4', font=('Arial', 10, 'bold'))
+                    else:
+                        self._draw_processing_interface()
+                except Exception:
+                    # Fallback minimal
+                    cw = self.canvas.winfo_width(); ch = self.canvas.winfo_height()
+                    self.canvas.create_rectangle(0, 0, cw, ch, fill='#1C1C1C', outline='')
+                    self.canvas.create_text(cw//2, ch//2, text="Traitement…", fill='#4ECDC4', font=('Arial', 10, 'bold'))
+            else:  # idle mode
+                pass
+        except Exception as e:
+            logging.error(f"Erreur set_mode('{mode}'): {e}")
 
     def show_status(self, status_type):
         if status_type == "success":
@@ -431,44 +477,26 @@ class VisualizerWindowTkinter:
         """Ajoute une nouvelle transcription à la Listbox de l'historique, de manière thread-safe."""
         if self.history_listbox and self.history_listbox.winfo_exists():
             def insert_item():
-                # Gérer à la fois l'ancien format (string) et le nouveau (dict)
-                if isinstance(history_item, dict):
-                    display_text = f"[{history_item['timestamp']}] {history_item['text']}"
-                    actual_text = history_item['text']
-                else:
-                    # Rétrocompatibilité avec l'ancien format
-                    display_text = str(history_item)
-                    actual_text = str(history_item)
-                
-                # Stocker le texte réel dans une structure de données associée
-                index = self.history_listbox.size()
-                self.history_listbox.insert(tk.END, display_text)
-                
-                # Stocker le texte réel pour la copie (utilise un attribut personnalisé)
-                if not hasattr(self.history_listbox, 'text_data'):
-                    self.history_listbox.text_data = {}
-                self.history_listbox.text_data[index] = actual_text
-                
-                self.history_listbox.see(tk.END) # Faire défiler jusqu'au nouvel élément
+                # Ajouter à la liste maître puis re-filtrer pour cohérence avec la vue
+                self._history_master.append(history_item)
+                self._apply_history_filter()
             self.root.after(0, insert_item)
 
     def _copy_history_selection(self):
         """Copie l'élément sélectionné dans la Listbox de l'historique."""
-        if not self.history_listbox:
+        if not (self.history_tree and self.history_tree.winfo_exists()):
             return
-        
-        selected_indices = self.history_listbox.curselection()
-        if not selected_indices:
+        # sélectionner la ligne sous le clic si nécessaire
+        try:
+            iid = self.history_tree.focus() or self.history_tree.selection()[0]
+        except Exception:
+            iid = None
+        if not iid:
             logging.info("Aucun élément sélectionné dans l'historique.")
             return
-        
-        selected_index = selected_indices[0]
-        
-        # Utiliser le texte stocké si disponible, sinon fallback sur le texte affiché
-        if hasattr(self.history_listbox, 'text_data') and selected_index in self.history_listbox.text_data:
-            selected_text = self.history_listbox.text_data[selected_index]
-        else:
-            selected_text = self.history_listbox.get(selected_index)
+        # Récupérer l'objet source depuis la map
+        obj = self._tree_id_to_obj.get(iid)
+        display_text, selected_text = self._history_to_display_and_actual(obj) if obj is not None else (None, None)
         
         pyperclip.copy(selected_text)
         logging.info(f"Texte copié depuis l'historique : '{selected_text[:40]}...'")
@@ -484,40 +512,47 @@ class VisualizerWindowTkinter:
 
     def _delete_history_selection(self):
         """Supprime l'élément sélectionné de l'historique."""
-        if not self.history_listbox:
+        if not (self.history_tree and self.history_tree.winfo_exists()):
             return
-        
-        selected_indices = self.history_listbox.curselection()
-        if not selected_indices:
+        try:
+            iid = self.history_tree.focus() or self.history_tree.selection()[0]
+        except Exception:
+            iid = None
+        if not iid:
             logging.info("Aucun élément sélectionné pour suppression.")
             return
-        
-        selected_index = selected_indices[0]
+        history_obj = self._tree_id_to_obj.get(iid)
+        if history_obj is None:
+            return
         
         # Confirmer la suppression
         import tkinter.messagebox as msgbox
         if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer cette transcription ?"):
-            # Supprimer de la listbox
-            self.history_listbox.delete(selected_index)
-            
-            # Supprimer des données associées
-            if hasattr(self.history_listbox, 'text_data') and selected_index in self.history_listbox.text_data:
-                del self.history_listbox.text_data[selected_index]
-                
-                # Réorganiser les indices
-                new_text_data = {}
-                for old_idx, text in self.history_listbox.text_data.items():
-                    if old_idx > selected_index:
-                        new_text_data[old_idx - 1] = text
-                    else:
-                        new_text_data[old_idx] = text
-                self.history_listbox.text_data = new_text_data
-            
             # Supprimer de l'historique global et sauvegarder
             import main
-            if selected_index < len(main.transcription_history):
-                deleted_item = main.transcription_history.pop(selected_index)
+            # Trouver l'élément à supprimer en s'appuyant sur l'objet (dict/str)
+            deleted_item = None
+            if isinstance(history_obj, dict):
+                # Chercher par timestamp+text si possible
+                for i, it in enumerate(list(main.transcription_history)):
+                    if isinstance(it, dict) and it.get('timestamp') == history_obj.get('timestamp') and it.get('text') == history_obj.get('text'):
+                        deleted_item = main.transcription_history.pop(i)
+                        break
+            else:
+                # Fallback pour ancien format (string): supprimer la première occurrence égale
+                for i, it in enumerate(list(main.transcription_history)):
+                    if not isinstance(it, dict) and str(it) == str(history_obj):
+                        deleted_item = main.transcription_history.pop(i)
+                        break
+
+            if deleted_item is not None:
                 main.save_transcription_history(main.transcription_history)
+                # Mettre à jour la liste maître et la vue filtrée
+                try:
+                    self._history_master.remove(history_obj)
+                except ValueError:
+                    pass
+                self._apply_history_filter()
                 logging.info(f"Transcription supprimée : '{str(deleted_item)[:40]}...'")
 
     def _quit_application(self):
@@ -538,11 +573,14 @@ class VisualizerWindowTkinter:
     def _on_history_right_click(self, event):
         """Affiche le menu contextuel au clic droit."""
         # Sélectionner l'élément sous le curseur
-        index = self.history_listbox.nearest(event.y)
-        if index >= 0:
-            self.history_listbox.selection_clear(0, tk.END)
-            self.history_listbox.selection_set(index)
-            self.history_listbox.activate(index)
+        # Sélection pour Treeview
+        try:
+            row = self.history_tree.identify_row(event.y)
+            if row:
+                self.history_tree.selection_set(row)
+                self.history_tree.focus(row)
+        except Exception:
+            pass
             
             # Créer le menu contextuel
             context_menu = tk.Menu(self.root, tearoff=0, bg="#2b2b2b", fg="white", 
@@ -567,12 +605,32 @@ class VisualizerWindowTkinter:
             try:
                 import main
                 main.clear_all_transcription_history()
+                # Effacer également les fichiers audio associés
+                try:
+                    from voice_tool.paths import RECORDINGS_DIR
+                    import os
+                    count = 0
+                    if os.path.isdir(RECORDINGS_DIR):
+                        for name in os.listdir(RECORDINGS_DIR):
+                            if name.lower().endswith('.wav'):
+                                full = os.path.join(RECORDINGS_DIR, name)
+                                try:
+                                    os.remove(full)
+                                    count += 1
+                                except Exception as e:
+                                    logging.error(f"Suppression audio échouée: {e}")
+                    logging.info(f"Tous les enregistrements audio supprimés ({count})")
+                except Exception as e:
+                    logging.error(f"Nettoyage des enregistrements échoué: {e}")
                 # Effacer la listbox dans l'interface
                 if self.history_listbox:
                     self.history_listbox.delete(0, tk.END)
                     # Nettoyer aussi les données associées
                     if hasattr(self.history_listbox, 'text_data'):
                         self.history_listbox.text_data = {}
+                # Nettoyer les structures locales
+                self._history_master = []
+                self._filtered_history_items = []
                 logging.info("Tout l'historique a été effacé.")
                 msgbox.showinfo("Succès", "L'historique a été complètement effacé.")
             except Exception as e:
@@ -749,25 +807,9 @@ class VisualizerWindowTkinter:
             return
         
         import main
-        
-        # Vider la listbox
-        self.history_listbox.delete(0, tk.END)
-        if hasattr(self.history_listbox, 'text_data'):
-            self.history_listbox.text_data = {}
-        
-        # Recharger l'historique
-        for index, item in enumerate(main.transcription_history):
-            if isinstance(item, dict):
-                display_text = f"[{item['timestamp']}] {item['text']}"
-                actual_text = item['text']
-            else:
-                display_text = str(item)
-                actual_text = str(item)
-            
-            self.history_listbox.insert(tk.END, display_text)
-            if not hasattr(self.history_listbox, 'text_data'):
-                self.history_listbox.text_data = {}
-            self.history_listbox.text_data[index] = actual_text
+        # Mettre à jour la liste maître depuis la source et re-filtrer
+        self._history_master = list(main.transcription_history)
+        self._apply_history_filter()
 
 
     def create_main_interface_window(self, history=None, current_config=None, save_callback=None):
@@ -788,52 +830,113 @@ class VisualizerWindowTkinter:
 
         self.main_window = tk.Toplevel(self.root)
         self.main_window.title("Voice Tool")
-        self.main_window.geometry("800x700")  # Augmenté de 200px au total (600->700) pour cacher le bouton sauvegarder
+        # Ouvrir en plein écran (maximisé)
+        try:
+            self.main_window.state('zoomed')  # Windows
+        except Exception:
+            try:
+                self.main_window.attributes('-zoomed', True)  # Certains WM
+            except Exception:
+                # Fallback taille confortable
+                self.main_window.geometry("1200x800")
         
         # Définir l'icône personnalisée
         self.set_window_icon(self.main_window)
         
+        # Centrage seulement en fallback, sinon l'état zoomed ignore la géométrie
         self.main_window.update_idletasks()
-        x = self.root.winfo_screenwidth() // 2 - self.main_window.winfo_width() // 2
-        y = self.root.winfo_screenheight() // 2 - self.main_window.winfo_height() // 2
-        self.main_window.geometry(f"+{x}+{y}")
+        try:
+            if self.main_window.state() != 'zoomed':
+                x = self.root.winfo_screenwidth() // 2 - self.main_window.winfo_width() // 2
+                y = self.root.winfo_screenheight() // 2 - self.main_window.winfo_height() // 2
+                self.main_window.geometry(f"+{x}+{y}")
+        except Exception:
+            pass
         self.main_window.configure(bg="#2b2b2b")
 
         # --- Création des onglets ---
         notebook = ttk.Notebook(self.main_window)
         notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # --- Onglet 1: Historique & Logs ---
-        main_panel_frame = tk.Frame(notebook, bg="#2b2b2b")
-        notebook.add(main_panel_frame, text='  Historique & Logs  ')
-        paned_window = tk.PanedWindow(main_panel_frame, orient=tk.HORIZONTAL, sashrelief=tk.RAISED, bg="#3c3c3c")
-        paned_window.pack(fill=tk.BOTH, expand=True)
-        # Panneau de gauche : Historique
-        history_frame = tk.Frame(paned_window, bg="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(history_frame, text="Historique des transcriptions", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 10))
-        listbox_frame = tk.Frame(history_frame); listbox_frame.pack(fill=tk.BOTH, expand=True, padx=5)
-        history_scrollbar = tk.Scrollbar(listbox_frame); history_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.history_listbox = tk.Listbox(listbox_frame, yscrollcommand=history_scrollbar.set, bg="#3c3c3c", fg="white", selectbackground="#0078d7", relief=tk.FLAT, borderwidth=0, highlightthickness=0, exportselection=False)
-        self.history_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        history_scrollbar.config(command=self.history_listbox.yview)
+        # --- Onglet 1: Historique ---
+        history_tab = tk.Frame(notebook, bg="#2b2b2b")
+        notebook.add(history_tab, text='  Historique  ')
+        history_frame = tk.Frame(history_tab, bg="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
+        tk.Label(history_frame, text="Historique des transcriptions", fg="white", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(pady=(6, 4))
+        # Compteur d'éléments / résultats
+        self.history_count_label = tk.Label(history_frame, text="", fg="#aaaaaa", bg="#2b2b2b", font=("Arial", 9))
+        self.history_count_label.pack(pady=(0, 8))
+
+        # Barre de recherche
+        search_frame = tk.Frame(history_frame, bg="#2b2b2b")
+        search_frame.pack(fill=tk.X, padx=5, pady=(0, 10))
+        tk.Label(search_frame, text="Rechercher:", fg="white", bg="#2b2b2b").pack(side=tk.LEFT, padx=(0, 8))
+        search_entry = tk.Entry(search_frame, textvariable=self.history_search_var, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        clear_btn = tk.Button(search_frame, text="Effacer", command=lambda: self._clear_search(), bg="#6c757d", fg="white", relief=tk.FLAT)
+        clear_btn.pack(side=tk.LEFT, padx=(8, 0))
+        # Style moderne pour Treeview
+        style = ttk.Style(self.root)
+        try:
+            style.theme_use('clam')
+        except Exception:
+            pass
+        style.configure("VT.Treeview",
+                        background="#2f2f2f",
+                        fieldbackground="#2f2f2f",
+                        foreground="white",
+                        rowheight=24,
+                        borderwidth=0)
+        style.map("VT.Treeview",
+                  background=[('selected', '#0078d7')],
+                  foreground=[('selected', 'white')])
+        style.configure("VT.Treeview.Heading",
+                        background="#1f1f1f",
+                        foreground="white",
+                        relief=tk.FLAT)
+
+        # Conteneur avec légère bordure pour un rendu plus "carte"
+        table_frame = tk.Frame(history_frame, bg="#2b2b2b",
+                               highlightthickness=1, highlightbackground="#3c3c3c",
+                               bd=0, relief=tk.FLAT)
+        table_frame.pack(fill=tk.BOTH, expand=True, padx=5)
+        yscroll = tk.Scrollbar(table_frame)
+        yscroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.history_tree = ttk.Treeview(table_frame,
+                                         columns=("time", "text"),
+                                         show="headings",
+                                         yscrollcommand=yscroll.set,
+                                         style="VT.Treeview")
+        self.history_tree.heading("time", text="Date/Heure")
+        self.history_tree.heading("text", text="Texte")
+        # Colonne date/heure légèrement plus large pour créer un espace visuel
+        self.history_tree.column("time", width=140, minwidth=110, anchor=tk.W, stretch=False)
+        # Colonne texte occupe l'espace restant
+        self.history_tree.column("text", width=400, minwidth=200, anchor=tk.W, stretch=True)
+
+        # Tags pour zébrage des lignes
+        try:
+            self.history_tree.tag_configure('oddrow', background='#2a2a2a')
+            self.history_tree.tag_configure('evenrow', background='#2f2f2f')
+        except Exception:
+            pass
+        self.history_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        yscroll.config(command=self.history_tree.yview)
         
-        # Événements pour la listbox de l'historique
-        self.history_listbox.bind("<Double-Button-1>", self._on_history_double_click)
-        self.history_listbox.bind("<Button-3>", self._on_history_right_click)  # Clic droit
-        # Charger l'historique avec support du nouveau format
-        if history:
-            self.history_listbox.text_data = {}
-            for index, item in enumerate(history):
-                if isinstance(item, dict):
-                    display_text = f"[{item['timestamp']}] {item['text']}"
-                    actual_text = item['text']
-                else:
-                    # Rétrocompatibilité avec l'ancien format
-                    display_text = str(item)
-                    actual_text = str(item)
-                
-                self.history_listbox.insert(tk.END, display_text)
-                self.history_listbox.text_data[index] = actual_text
+        # Événements pour l'historique
+        self.history_tree.bind("<Double-Button-1>", self._on_history_double_click)
+        self.history_tree.bind("<Button-3>", self._on_history_right_click)  # Clic droit
+        # Charger l'historique dans la liste maître et rendre la vue (filtrée)
+        self._history_master = list(history) if history else []
+        self._apply_history_filter()
+
+        # Déclencher le filtrage à la saisie (avec debounce)
+        try:
+            self.history_search_var.trace_add("write", lambda *_: self._on_search_changed())
+        except Exception:
+            pass
+        # État "aucun résultat"
+        self.history_empty_label = tk.Label(history_frame, text="Aucun résultat", fg="#888888", bg="#2b2b2b", font=("Arial", 10))
         
         # Indication pour les interactions avec l'historique
         help_frame = tk.Frame(history_frame, bg="#2b2b2b")
@@ -864,6 +967,15 @@ class VisualizerWindowTkinter:
                   relief=tk.FLAT, activebackground="#c82333", activeforeground="white",
                   font=("Arial", 8, "bold")).pack(side=tk.LEFT)
         
+        # Avertissement si auto-paste actif
+        try:
+            import main
+            if main.get_setting('paste_at_cursor', False):
+                warn = tk.Label(history_frame, text="Astuce: l'option 'Insérer automatiquement au curseur' est active. Évitez de donner le focus à cette fenêtre si vous ne voulez pas y coller.", fg="#ffc107", bg="#2b2b2b", font=("Arial", 9))
+                warn.pack(pady=(8,0), padx=5, anchor='w')
+        except Exception:
+            pass
+        
         # Message informatif pour le raccourci d'enregistrement
         shortcut_frame = tk.Frame(history_frame, bg="#1e1e1e", relief=tk.RAISED, bd=1)
         shortcut_frame.pack(pady=(10,10), padx=5, fill=tk.X)
@@ -871,33 +983,30 @@ class VisualizerWindowTkinter:
         tk.Label(shortcut_frame, text="🎤", fg="#FF6B6B", bg="#1e1e1e", font=("Arial", 16)).pack(pady=(8,2))
         tk.Label(shortcut_frame, text="Pour démarrer/arrêter l'enregistrement", fg="white", bg="#1e1e1e", font=("Arial", 10)).pack()
         
-        # Afficher le raccourci configuré
-        if current_config:
-            current_shortcut = current_config.get('record_hotkey', '<ctrl>+<alt>+s')
-        else:
+        # Afficher le raccourci configuré (prend en compte le mode)
+        try:
             import main
-            current_shortcut = main.config.get('record_hotkey', '<ctrl>+<alt>+s')
-        shortcut_label = tk.Label(shortcut_frame, text=f"Appuyez sur {current_shortcut}", fg="#4ECDC4", bg="#1e1e1e", font=("Arial", 11, "bold"))
+            us = main.load_user_settings()
+            mode_label = us.get("record_mode", "toggle")
+            if mode_label == "ptt":
+                shortcut_text = f"Maintenir {us.get('ptt_hotkey', '<ctrl>+<shift>+<space>')}"
+            else:
+                shortcut_text = f"Appuyez sur {us.get('record_hotkey', '<ctrl>+<alt>+s')}"
+        except Exception:
+            shortcut_text = "Appuyez sur <ctrl>+<alt>+s"
+        shortcut_label = tk.Label(shortcut_frame, text=shortcut_text, fg="#4ECDC4", bg="#1e1e1e", font=("Arial", 11, "bold"))
         shortcut_label.pack(pady=(2,8))
-        paned_window.add(history_frame, width=560)  # 70% de 800px = 560px
-        # Panneau de droite : Logs
-        log_frame = tk.Frame(paned_window, bg="#2b2b2b"); log_frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(log_frame, text="Logs de l'application", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 10))
-        text_frame = tk.Frame(log_frame); text_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0,5))
-        log_scrollbar = tk.Scrollbar(text_frame); log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.log_text_widget = tk.Text(text_frame, wrap=tk.WORD, state='disabled', yscrollcommand=log_scrollbar.set, bg="#1e1e1e", fg="white", font=("Consolas", 10), relief=tk.FLAT, borderwidth=0, highlightthickness=0)
-        self.log_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        log_scrollbar.config(command=self.log_text_widget.yview)
-        paned_window.add(log_frame)
+        # Fin Onglet Historique
 
         # --- Onglet 2: Paramètres ---
-        settings_frame = tk.Frame(notebook, bg="#2b2b2b", padx=20, pady=20)
+        settings_frame = tk.Frame(notebook, bg="#2b2b2b", padx=16, pady=16)
         notebook.add(settings_frame, text='  Paramètres  ')
         
         # Définir les variables AVANT la fonction
         sounds_var = tk.BooleanVar()
         paste_var = tk.BooleanVar()
         auto_start_var = tk.BooleanVar()
+        smart_format_var = tk.BooleanVar()
         
         # Fonction pour gérer le démarrage automatique Windows
         def manage_auto_start(enable):
@@ -956,7 +1065,11 @@ class VisualizerWindowTkinter:
                     "paste_at_cursor": paste_var.get(),
                     "auto_start": auto_start_var.get(),
                     "transcription_provider": api_provider,
-                    "language": api_language
+                    "language": api_language,
+                    "smart_formatting": smart_format_var.get(),
+                    "record_mode": record_mode_var.get(),
+                    # si PTT, on sauvegarde à chaque changement de mode
+                    **({"ptt_hotkey": ptt_hotkey_entry.get().strip()} if 'ptt_hotkey_entry' in locals() and record_mode_var.get()=="ptt" else {}),
                 }
                 
                 # Gérer le démarrage automatique si nécessaire
@@ -972,17 +1085,26 @@ class VisualizerWindowTkinter:
             except Exception as e:
                 logging.error(f"Erreur auto-save: {e}")
 
+        # === Helpers UI ===
+        def create_card(parent, title_text):
+            card = tk.Frame(parent, bg="#1f1f1f", highlightthickness=1, highlightbackground="#3c3c3c")
+            header = tk.Label(card, text=title_text, fg="white", bg="#1f1f1f", font=("Arial", 12, "bold"))
+            header.pack(anchor='w', padx=12, pady=(10, 6))
+            body = tk.Frame(card, bg="#1f1f1f")
+            body.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
+            return card, body
+
         # === LAYOUT 2x2 POUR LES SECTIONS ===
-        
-        # Frame pour la première ligne (Audio + Texte)
-        top_row_frame = tk.Frame(settings_frame, bg="#2b2b2b")
-        top_row_frame.pack(fill=tk.X, pady=(0, 20))
+        two_cols = tk.Frame(settings_frame, bg="#2b2b2b")
+        two_cols.pack(fill=tk.X)
+        left_col = tk.Frame(two_cols, bg="#2b2b2b")
+        left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 8))
+        right_col = tk.Frame(two_cols, bg="#2b2b2b")
+        right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(8, 0))
         
         # === SECTION AUDIO (à gauche) ===
-        audio_frame = tk.Frame(top_row_frame, bg="#2b2b2b")
-        audio_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-        
-        tk.Label(audio_frame, text="🔊 Audio", fg="#4CAF50", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        audio_card, audio_frame = create_card(left_col, "🔊 Audio")
+        audio_card.pack(fill=tk.BOTH, expand=True, pady=(0, 16))
         
         # Charger depuis les paramètres utilisateur passés en paramètre
         if user_settings and "enable_sounds" in user_settings:
@@ -998,11 +1120,85 @@ class VisualizerWindowTkinter:
                                      activeforeground="white")
         sounds_check.pack(anchor='w', pady=(0, 15))
 
-        # === SECTION TEXTE (à droite) ===
-        text_frame = tk.Frame(top_row_frame, bg="#2b2b2b")
-        text_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
-        
-        tk.Label(text_frame, text="📝 Texte", fg="#E0A800", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        # Liste des périphériques audio d'entrée
+        devices = []
+        try:
+            sd_devices = sd.query_devices()
+            for idx, dev in enumerate(sd_devices):
+                if dev.get('max_input_channels', 0) > 0:
+                    name = dev.get('name', f"Device {idx}")
+                    host = dev.get('hostapi', None)
+                    label = f"[{idx}] {name}" if host is None else f"[{idx}] {name}"
+                    devices.append((idx, label))
+            # Ajouter l'option Par défaut (Windows)
+            default_label = "Par défaut (Windows)"
+            try:
+                default_dev = sd.default.device
+                default_in = None
+                if isinstance(default_dev, (list, tuple)) and len(default_dev) > 0:
+                    default_in = default_dev[0]
+                elif isinstance(default_dev, int):
+                    default_in = default_dev
+                if default_in is not None and isinstance(default_in, int) and 0 <= default_in < len(sd_devices):
+                    def_name = sd_devices[default_in].get('name', f"Device {default_in}")
+                    default_label = f"Par défaut (Windows): [{default_in}] {def_name}"
+            except Exception:
+                pass
+            devices.insert(0, (None, default_label))
+        except Exception as e:
+            logging.error(f"Erreur lors de l'énumération des périphériques: {e}")
+            devices = []
+
+        tk.Label(audio_frame, text="Microphone d'entrée :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
+        mic_var = tk.StringVar()
+        # Valeur par défaut depuis user_settings
+        default_input_index = None
+        try:
+            default_input_index = user_settings.get("input_device_index", None) if user_settings else None
+        except Exception:
+            default_input_index = None
+
+        # Construire la liste visible
+        mic_choices = [label for _, label in devices]
+        if not mic_choices:
+            mic_choices = ["(aucun périphérique d'entrée disponible)"]
+
+        # Déterminer la sélection initiale
+        initial_choice = None
+        if default_input_index is not None:
+            for idx, label in devices:
+                if idx == default_input_index:
+                    initial_choice = label
+                    break
+        if initial_choice is None and mic_choices:
+            initial_choice = mic_choices[0]
+        mic_var.set(initial_choice)
+
+        def on_mic_changed(*_):
+            # Mapper le label sélectionné vers l'index
+            selected_label = mic_var.get()
+            selected_index = None
+            for idx, label in devices:
+                if label == selected_label:
+                    selected_index = idx
+                    break
+            # Sauvegarder dans les préférences
+            try:
+                import main
+                main.update_and_restart_hotkeys({"input_device_index": selected_index})
+                # Aussi persister via auto-save utilisateur
+                main.user_settings.update({"input_device_index": selected_index})
+                main.save_user_settings(main.user_settings)
+                logging.info(f"Périphérique d'entrée sélectionné: {selected_label} -> index {selected_index}")
+            except Exception as e:
+                logging.error(f"Erreur sauvegarde périphérique: {e}")
+
+        mic_menu = ttk.OptionMenu(audio_frame, mic_var, initial_choice, *mic_choices, command=lambda *_: on_mic_changed())
+        mic_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
+
+        # === SECTION TEXTE (à gauche, sous Audio) ===
+        text_card, text_frame = create_card(left_col, "📝 Texte")
+        text_card.pack(fill=tk.BOTH, expand=True)
         
         # Charger depuis les paramètres utilisateur passés en paramètre
         if user_settings and "paste_at_cursor" in user_settings:
@@ -1025,19 +1221,32 @@ class VisualizerWindowTkinter:
                                      activeforeground="white")
         paste_check.pack(anchor='w', pady=(0, 15))
         
-        # Séparateur
-        separator1 = tk.Frame(settings_frame, height=1, bg="#555555")
-        separator1.pack(fill=tk.X, pady=(0, 20))
-
-        # Frame pour la deuxième ligne (Service + Système)
-        bottom_row_frame = tk.Frame(settings_frame, bg="#2b2b2b")
-        bottom_row_frame.pack(fill=tk.X, pady=(0, 20))
+        # Toggle Formatage intelligent
+        try:
+            if user_settings and "smart_formatting" in user_settings:
+                smart_format_var.set(user_settings["smart_formatting"])
+            else:
+                smart_format_var.set(True)
+        except Exception:
+            smart_format_var.set(True)
+        smart_format_check = tk.Checkbutton(
+            text_frame,
+            text="Activer le formatage intelligent (ponctuation, majuscule, espaces)",
+            variable=smart_format_var,
+            command=auto_save_user_setting,
+            fg="white",
+            bg="#2b2b2b",
+            wraplength=350,
+            justify=tk.LEFT,
+            selectcolor="#3c3c3c",
+            activebackground="#2b2b2b",
+            activeforeground="white",
+        )
+        smart_format_check.pack(anchor='w', pady=(0, 15))
         
-        # === SECTION TRANSCRIPTION (à gauche) ===
-        transcription_frame = tk.Frame(bottom_row_frame, bg="#2b2b2b")
-        transcription_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-        
-        tk.Label(transcription_frame, text="🤖 Service de Transcription", fg="#9C27B0", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        # === SECTION TRANSCRIPTION (à droite, en haut) ===
+        transcription_card, transcription_frame = create_card(right_col, "🤖 Service de Transcription")
+        transcription_card.pack(fill=tk.BOTH, expand=True, pady=(0, 16))
 
         # Mapping entre affichage UI et valeurs API pour providers
         provider_display_to_api = {
@@ -1087,46 +1296,124 @@ class VisualizerWindowTkinter:
         transcription_provider_var.trace_add("write", lambda *_: auto_save_user_setting())
         language_var.trace_add("write", lambda *_: auto_save_user_setting())
         
-        # === SECTION SYSTÈME (à droite) ===
-        system_frame = tk.Frame(bottom_row_frame, bg="#2b2b2b")
-        system_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
-        
-        tk.Label(system_frame, text="💻 Système", fg="#FF6B6B", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        # === SECTION SYSTÈME (à droite, sous Transcription) ===
+        system_card, system_frame = create_card(right_col, "💻 Système")
+        system_card.pack(fill=tk.BOTH, expand=True)
         auto_start_check = tk.Checkbutton(system_frame, text="Démarrer automatiquement avec Windows", 
                                          variable=auto_start_var, command=auto_save_user_setting,
                                          fg="white", bg="#2b2b2b", 
                                          selectcolor="#3c3c3c", activebackground="#2b2b2b", 
                                          activeforeground="white")
         auto_start_check.pack(anchor='w', pady=(0, 15))
-        
-        # Séparateur
-        separator1b = tk.Frame(settings_frame, height=1, bg="#555555")
-        separator1b.pack(fill=tk.X, pady=(0, 20))
+
+        # Rétention enregistrements (garder N derniers)
+        tk.Label(system_frame, text="Conserver les N derniers enregistrements (WAV) :", fg="white", bg="#2b2b2b").pack(anchor='w')
+        keep_last_var = tk.IntVar()
+        try:
+            import main
+            keep_last_var.set(main.load_user_settings().get("recordings_keep_last", 25))
+        except Exception:
+            keep_last_var.set(25)
+        keep_last_spin = tk.Spinbox(system_frame, from_=0, to=1000, textvariable=keep_last_var, width=6, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        keep_last_spin.pack(anchor='w', pady=(2, 10))
+        def on_keep_last_changed(*_):
+            try:
+                import main
+                val = int(keep_last_var.get())
+                main.update_and_restart_hotkeys({"recordings_keep_last": val})
+            except Exception as e:
+                logging.error(f"Sauvegarde recordings_keep_last échouée: {e}")
+        keep_last_var.trace_add("write", lambda *_: on_keep_last_changed())
         
         # === SECTION RACCOURCIS ===
-        tk.Label(settings_frame, text="⌨️ Raccourcis clavier", fg="#2196F3", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        shortcuts_card, shortcuts_frame = create_card(settings_frame, "⌨️ Raccourcis & modes d'enregistrement")
+        shortcuts_card.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
         
-        # Raccourci Enregistrement
-        tk.Label(settings_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        record_hotkey_entry = tk.Entry(settings_frame, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
-        record_hotkey_entry.pack(fill=tk.X, pady=(0, 15))
-        if current_config: record_hotkey_entry.insert(0, current_config.get("record_hotkey", ""))
+        # Mode d'enregistrement
+        mode_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        mode_row.pack(fill=tk.X, pady=(0, 12))
+        tk.Label(mode_row, text="Mode d'enregistrement :", fg="white", bg="#1f1f1f").pack(anchor='w')
+        record_mode_var = tk.StringVar(value=(user_settings.get("record_mode", "toggle") if user_settings else "toggle"))
+        def on_mode_changed():
+            auto_save_user_setting()
+            # Afficher/masquer la ligne PTT selon le mode
+            if record_mode_var.get() == "ptt":
+                ptt_row.pack(fill=tk.X, pady=(0, 15))
+            else:
+                ptt_row.pack_forget()
+            # Rafraîchir le label de raccourci après un court délai (le temps que la sauvegarde se propage)
+            def refresh_shortcut_label():
+                try:
+                    import main
+                    us = main.load_user_settings()
+                    mode_label = us.get("record_mode", "toggle")
+                    if mode_label == "ptt":
+                        txt = f"Maintenir {us.get('ptt_hotkey', '<ctrl>+<shift>+<space>')}"
+                    else:
+                        txt = f"Appuyez sur {us.get('record_hotkey', '<ctrl>+<alt>+s')}"
+                    if hasattr(self, '_shortcut_label') and self._shortcut_label:
+                        self._shortcut_label.config(text=txt)
+                except Exception:
+                    pass
+            self.root.after(120, refresh_shortcut_label)
+        mode_toggle = tk.Radiobutton(mode_row, text="Toggle (appuyer pour démarrer/arrêter)", value="toggle", variable=record_mode_var,
+                                     command=on_mode_changed, fg="white", bg="#1f1f1f", selectcolor="#3c3c3c", activebackground="#1f1f1f", activeforeground="white")
+        mode_ptt = tk.Radiobutton(mode_row, text="Push‑to‑talk (enregistrer tant que la touche est maintenue)", value="ptt", variable=record_mode_var,
+                                   command=on_mode_changed, fg="white", bg="#1f1f1f", selectcolor="#3c3c3c", activebackground="#1f1f1f", activeforeground="white")
+        mode_toggle.pack(anchor='w')
+        mode_ptt.pack(anchor='w')
 
+        # Raccourci Enregistrement (toggle)
+        tk.Label(shortcuts_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
+        record_hotkey_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        record_hotkey_row.pack(fill=tk.X, pady=(0, 15))
+        record_hotkey_entry = tk.Entry(record_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        record_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Button(record_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(record_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
+        # Charger depuis AppData
+        try:
+            record_hotkey_entry.insert(0, user_settings.get("record_hotkey", "<ctrl>+<alt>+s"))
+        except Exception:
+            pass
+
+        # Raccourci Push‑to‑talk
+        ptt_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        tk.Label(ptt_row, text="Raccourci Push‑to‑talk (maintenir) :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
+        ptt_hotkey_entry = tk.Entry(ptt_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        ptt_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Button(ptt_row, text="Définir…", command=lambda: self._open_hotkey_capture(ptt_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
+        try:
+            ptt_hotkey_entry.insert(0, user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>"))
+        except Exception:
+            pass
+        # Afficher la ligne PTT seulement si le mode est ptt
+        if (user_settings.get("record_mode", "toggle") if user_settings else "toggle") == "ptt":
+            ptt_row.pack(fill=tk.X, pady=(0, 15))
         # Raccourci Ouvrir Fenêtre  
-        tk.Label(settings_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        open_hotkey_entry = tk.Entry(settings_frame, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
-        open_hotkey_entry.pack(fill=tk.X, pady=(0, 15))
-        if current_config: open_hotkey_entry.insert(0, current_config.get("open_window_hotkey", ""))
-        
-        # Séparateur
-        separator2 = tk.Frame(settings_frame, height=1, bg="#555555")
-        separator2.pack(fill=tk.X, pady=(0, 15))
+        tk.Label(shortcuts_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
+        open_hotkey_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        open_hotkey_row.pack(fill=tk.X, pady=(0, 15))
+        open_hotkey_entry = tk.Entry(open_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        open_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Button(open_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(open_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
+        try:
+            open_hotkey_entry.insert(0, user_settings.get("open_window_hotkey", "<ctrl>+<alt>+o"))
+        except Exception:
+            pass
+
+        # Références pour auto-application des hotkeys et callback de sauvegarde
+        self._record_hotkey_entry = record_hotkey_entry
+        self._open_hotkey_entry = open_hotkey_entry
+        self._settings_save_callback = save_callback
+        self._ptt_hotkey_entry = ptt_hotkey_entry if 'ptt_hotkey_entry' in locals() else None
+        self._shortcut_label = shortcut_label
+        self._record_mode_var = record_mode_var
         
         # Aide pour les raccourcis (à la fin)
         help_text = "Modificateurs: <ctrl>, <alt>, <shift>, <cmd> (Mac)\nTouches spéciales: <space>, <tab>, <enter>, <esc>, <f1>-<f12>\nExemples: <ctrl>+<shift>+r, <alt>+<space>, <f9>"
-        help_label = tk.Label(settings_frame, text=help_text, fg="#888888", bg="#2b2b2b", 
+        help_label = tk.Label(shortcuts_frame, text=help_text, fg="#888888", bg="#1f1f1f", 
                              font=("Consolas", 8), justify=tk.LEFT)
-        help_label.pack(anchor='w', pady=(10, 10))
+        help_label.pack(anchor='w', pady=(6, 0))
         
         # Séparateur
         separator3 = tk.Frame(settings_frame, height=1, bg="#555555")
@@ -1153,11 +1440,17 @@ class VisualizerWindowTkinter:
             new_config = {
                 "record_hotkey": record_hotkey_entry.get().strip(),
                 "open_window_hotkey": open_hotkey_entry.get().strip(),
+                "record_mode": record_mode_var.get(),
+                # Toujours persister ptt_hotkey même si on est en toggle (évite de le perdre)
+                "ptt_hotkey": (ptt_hotkey_entry.get().strip() if 'ptt_hotkey_entry' in locals() and ptt_hotkey_entry.get().strip() else main.user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>")),
                 "enable_sounds": sounds_var.get(),
                 "paste_at_cursor": paste_var.get(),
                 "auto_start": auto_start_var.get(),
                 "transcription_provider": api_provider,
-                "language": api_language
+                "language": api_language,
+                "smart_formatting": smart_format_var.get(),
+                # ajouter aussi l'index micro courant si liste disponible
+                **({"input_device_index": next((idx for idx, label in devices if label == mic_var.get()), None)} if 'devices' in locals() else {}),
             }
             if save_callback:
                 try:
@@ -1168,16 +1461,30 @@ class VisualizerWindowTkinter:
                         current_config = result.get('current_config', {})
                         current_user_settings = result.get('current_user_settings', {})
                         
-                        # Recharger les raccourcis depuis la config système
+                        # Recharger les raccourcis depuis AppData
                         record_hotkey_entry.delete(0, tk.END)
-                        record_hotkey_entry.insert(0, current_config.get("record_hotkey", ""))
+                        record_hotkey_entry.insert(0, current_user_settings.get("record_hotkey", "<ctrl>+<alt>+s"))
                         
                         open_hotkey_entry.delete(0, tk.END)
-                        open_hotkey_entry.insert(0, current_config.get("open_window_hotkey", ""))
+                        open_hotkey_entry.insert(0, current_user_settings.get("open_window_hotkey", "<ctrl>+<alt>+o"))
+
+                        # Recharger le mode/ptt
+                        record_mode_var.set(current_user_settings.get("record_mode", "toggle"))
+                        if self._ptt_hotkey_entry:
+                            self._ptt_hotkey_entry.delete(0, tk.END)
+                            self._ptt_hotkey_entry.insert(0, current_user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>"))
+                        # Afficher/masquer ligne ptt
+                        if record_mode_var.get() == "ptt":
+                            ptt_row.pack(fill=tk.X, pady=(0, 15))
+                        else:
+                            ptt_row.pack_forget()
                         
-                        # Mettre à jour l'affichage du raccourci dans la fenêtre principale
-                        new_shortcut = current_config.get("record_hotkey", "<ctrl>+<alt>+s")
-                        shortcut_label.config(text=f"Appuyez sur {new_shortcut}")
+                        # Mettre à jour l'affichage du raccourci dans la fenêtre principale selon le mode
+                        mode_label = current_user_settings.get("record_mode", "toggle")
+                        if mode_label == "ptt":
+                            shortcut_label.config(text=f"Maintenir {current_user_settings.get('ptt_hotkey', '<ctrl>+<shift>+<space>')}")
+                        else:
+                            shortcut_label.config(text=f"Appuyez sur {current_user_settings.get('record_hotkey', '<ctrl>+<alt>+s')}")
                         
                         logging.info("Interface mise à jour avec les paramètres sauvegardés")
                     
@@ -1191,12 +1498,257 @@ class VisualizerWindowTkinter:
                     save_button.config(text="❌ Erreur", bg="#dc3545")
                     self.main_window.after(2000, lambda: save_button.config(text="Sauvegarder", bg="#0078d7"))
 
-        # Bouton de sauvegarde
-        save_button = tk.Button(settings_frame, text="Sauvegarder", command=save_settings, 
-                               bg="#0078d7", fg="white", relief=tk.FLAT, 
-                               activebackground="#005a9e", activeforeground="white",
-                               font=("Arial", 10, "bold"))
-        save_button.pack(pady=20, padx=5, fill=tk.X)
+        # Remplacer le bouton Sauvegarder par des auto-saves (bind focus/enter)
+        def commit_hotkeys(event=None):
+            try:
+                import main
+                new_config = {
+                    "record_hotkey": record_hotkey_entry.get().strip(),
+                    "open_window_hotkey": open_hotkey_entry.get().strip(),
+                    "record_mode": record_mode_var.get(),
+                    "ptt_hotkey": (ptt_hotkey_entry.get().strip() if 'ptt_hotkey_entry' in locals() and ptt_hotkey_entry.get().strip() else main.user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>")),
+                }
+                if self._settings_save_callback:
+                    self._settings_save_callback(new_config)
+                # rafraîchir le label
+                try:
+                    us = main.load_user_settings()
+                    mode_label = us.get("record_mode", "toggle")
+                    if mode_label == "ptt":
+                        txt = f"Maintenir {us.get('ptt_hotkey', '<ctrl>+<shift>+<space>')}"
+                    else:
+                        txt = f"Appuyez sur {us.get('record_hotkey', '<ctrl>+<alt>+s')}"
+                    if hasattr(self, '_shortcut_label') and self._shortcut_label:
+                        self._shortcut_label.config(text=txt)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+        for ent in [record_hotkey_entry, open_hotkey_entry]:
+            ent.bind("<FocusOut>", commit_hotkeys)
+            ent.bind("<Return>", commit_hotkeys)
+        if 'ptt_hotkey_entry' in locals():
+            ptt_hotkey_entry.bind("<FocusOut>", commit_hotkeys)
+            ptt_hotkey_entry.bind("<Return>", commit_hotkeys)
+
+        # --- Onglet 3: Logs --- (ajouté après Paramètres)
+        logs_tab = tk.Frame(notebook, bg="#2b2b2b")
+        notebook.add(logs_tab, text='  Logs  ')
+        tk.Label(logs_tab, text="Logs de l'application", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 4))
+        # Bandeau chemin du fichier log + bouton ouvrir
+        path_frame = tk.Frame(logs_tab, bg="#2b2b2b")
+        path_frame.pack(fill=tk.X, padx=5, pady=(0,6))
+        try:
+            import main
+            from voice_tool.paths import APP_DATA_DIR
+            log_path = os.path.join(APP_DATA_DIR, 'voice_tool.log')
+            tk.Label(path_frame, text=f"Fichier: {log_path}", fg="#aaaaaa", bg="#2b2b2b", font=("Consolas", 8)).pack(side=tk.LEFT)
+            def _open_log_file():
+                try:
+                    if os.path.exists(log_path):
+                        if platform.system() == 'Windows':
+                            os.startfile(log_path)  # type: ignore
+                        elif platform.system() == 'Darwin':
+                            os.system(f"open '{log_path}'")
+                        else:
+                            os.system(f"xdg-open '{log_path}'")
+                    else:
+                        logging.error("Fichier de log introuvable")
+                except Exception as e:
+                    logging.error(f"Impossible d'ouvrir le fichier de log: {e}")
+            tk.Button(path_frame, text="Ouvrir", command=_open_log_file, bg="#007bff", fg="white", relief=tk.FLAT).pack(side=tk.RIGHT)
+        except Exception:
+            pass
+        text_frame = tk.Frame(logs_tab); text_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0,5))
+        log_scrollbar = tk.Scrollbar(text_frame); log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.log_text_widget = tk.Text(text_frame, wrap=tk.WORD, state='disabled', yscrollcommand=log_scrollbar.set, bg="#1e1e1e", fg="white", font=("Consolas", 10), relief=tk.FLAT, borderwidth=0, highlightthickness=0)
+        self.log_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        log_scrollbar.config(command=self.log_text_widget.yview)
+
+    # === Utilitaires Historique & Recherche ===
+    def _open_hotkey_capture(self, target_entry: tk.Entry):
+        """Ouvre une petite fenêtre modale pour capturer une combinaison de touches et la formater."""
+        capture = tk.Toplevel(self.root)
+        capture.title("Définir un raccourci")
+        capture.configure(bg="#2b2b2b")
+        capture.resizable(False, False)
+        capture.grab_set()
+        tk.Label(capture, text="Appuyez sur la combinaison souhaitée…", fg="white", bg="#2b2b2b", font=("Arial", 10, "bold")).pack(padx=20, pady=15)
+        info = tk.Label(capture, text="Ex: Ctrl+Alt+S", fg="#bbbbbb", bg="#2b2b2b")
+        info.pack(pady=(0, 8))
+
+        pressed = set()
+
+        def to_display_combo(keys: set) -> str:
+            order = ["<ctrl>", "<alt>", "<shift>", "<cmd>"]
+            mods = []
+            key = None
+            for m in order:
+                if m in keys:
+                    mods.append(m)
+            # any non-mod key (single char or <fX> etc.)
+            others = [k for k in keys if k not in order]
+            if others:
+                # take first determinstically
+                key = sorted(others)[0]
+            parts = mods + ([key] if key else [])
+            return "+".join(parts) if parts else ""
+
+        def normalize_key(event_keysym: str) -> str:
+            ks = event_keysym.lower()
+            mapping = {
+                "control_l": "<ctrl>",
+                "control_r": "<ctrl>",
+                "alt_l": "<alt>",
+                "alt_r": "<alt>",
+                "shift_l": "<shift>",
+                "shift_r": "<shift>",
+                "super_l": "<cmd>",
+                "super_r": "<cmd>",
+                "meta_l": "<cmd>",
+                "meta_r": "<cmd>",
+                "return": "<enter>",
+                "escape": "<esc>",
+                "space": "<space>",
+                "tab": "<tab>",
+            }
+            if ks in mapping:
+                return mapping[ks]
+            # Function keys
+            if ks.startswith("f") and ks[1:].isdigit():
+                return f"<{ks}>"
+            # Single alphanum
+            if len(ks) == 1:
+                return ks
+            return f"<{ks}>"
+
+        def on_key_press(event):
+            k = normalize_key(event.keysym)
+            pressed.add(k)
+            preview.config(text=to_display_combo(pressed))
+
+        def on_key_release(event):
+            # Sur release, valider si on a au moins une touche
+            combo = to_display_combo(pressed)
+            if combo:
+                target_entry.delete(0, tk.END)
+                target_entry.insert(0, combo)
+                capture.destroy()
+                try:
+                    if hasattr(self, '_settings_save_callback') and self._settings_save_callback:
+                        record_val = self._record_hotkey_entry.get().strip() if hasattr(self, '_record_hotkey_entry') else ""
+                        open_val = self._open_hotkey_entry.get().strip() if hasattr(self, '_open_hotkey_entry') else ""
+                        ptt_val = self._ptt_hotkey_entry.get().strip() if hasattr(self, '_ptt_hotkey_entry') and self._ptt_hotkey_entry else ""
+                        # S'assurer que record_mode courant est transmis pour éviter un retour par défaut côté backend
+                        try:
+                            current_mode = record_mode_var.get()
+                        except Exception:
+                            current_mode = None
+                        new_config = {"record_mode": current_mode} if current_mode else {}
+                        if record_val:
+                            new_config['record_hotkey'] = record_val
+                        if open_val:
+                            new_config['open_window_hotkey'] = open_val
+                        if target_entry is self._ptt_hotkey_entry and ptt_val:
+                            new_config['ptt_hotkey'] = ptt_val
+                        if new_config:
+                            self._settings_save_callback(new_config)
+                except Exception:
+                    pass
+
+        preview = tk.Label(capture, text="", fg="#4ECDC4", bg="#2b2b2b", font=("Consolas", 12, "bold"))
+        preview.pack(pady=(0, 12))
+        tk.Button(capture, text="Annuler", command=capture.destroy, bg="#6c757d", fg="white", relief=tk.FLAT).pack(pady=(0, 12))
+
+        capture.bind("<KeyPress>", on_key_press)
+        capture.bind("<KeyRelease>", on_key_release)
+        capture.focus_force()
+
+    def _history_to_display_and_actual(self, obj):
+        if isinstance(obj, dict):
+            return f"[{obj.get('timestamp', '')}] {obj.get('text', '')}", obj.get('text', '')
+        else:
+            s = str(obj)
+            return s, s
+
+    def _render_history_list(self, items):
+        # Vider la listbox
+        # Reset Treeview
+        if self.history_tree is None:
+            return
+        for iid in self.history_tree.get_children():
+            self.history_tree.delete(iid)
+        self._tree_id_to_obj = {}
+        # Afficher les plus récents en premier
+        items_to_display = list(items)[::-1]
+        for idx, item in enumerate(items_to_display):
+            # Construire colonnes: date/heure + texte SANS redonder la date/heure dans le texte
+            time_col = ""
+            text_col = ""
+            if isinstance(item, dict):
+                time_col = item.get('timestamp', item.get('date', ''))
+                text_col = item.get('text', '')
+            else:
+                # Ancien format: tout en texte
+                text_col = str(item)
+            tag = 'evenrow' if (idx % 2 == 0) else 'oddrow'
+            iid = self.history_tree.insert("", tk.END, values=(time_col, text_col), tags=(tag,))
+            self._tree_id_to_obj[iid] = item
+        self._filtered_history_items = list(items_to_display)
+        # Mettre à jour le compteur
+        try:
+            total = len(self._history_master)
+            filtered = len(items_to_display)
+            query = (self.history_search_var.get() or "").strip()
+            if query:
+                txt = f"{filtered} résultat(s) sur {total}"
+            else:
+                txt = f"{total} élément(s)"
+            if hasattr(self, 'history_count_label') and self.history_count_label:
+                self.history_count_label.config(text=txt)
+        except Exception:
+            pass
+
+    def _apply_history_filter(self):
+        query = (self.history_search_var.get() or "").strip().lower()
+        if not query:
+            self._render_history_list(self._history_master)
+            # gérer label vide
+            try:
+                if len(self._history_master) == 0:
+                    self.history_empty_label.pack(pady=(10,0))
+                else:
+                    self.history_empty_label.pack_forget()
+            except Exception:
+                pass
+            return
+        filtered = []
+        for item in self._history_master:
+            display_text, actual_text = self._history_to_display_and_actual(item)
+            if query in display_text.lower() or query in actual_text.lower():
+                filtered.append(item)
+        self._render_history_list(filtered)
+        # gérer label vide
+        try:
+            if len(filtered) == 0:
+                self.history_empty_label.pack(pady=(10,0))
+            else:
+                self.history_empty_label.pack_forget()
+        except Exception:
+            pass
+
+    def _on_search_changed(self):
+        # Debounce pour éviter de re-filtrer trop souvent
+        if self._search_after_id is not None:
+            try:
+                self.root.after_cancel(self._search_after_id)
+            except Exception:
+                pass
+        self._search_after_id = self.root.after(150, self._apply_history_filter)
+
+    def _clear_search(self):
+        self.history_search_var.set("")
 
         # S'assurer que la référence est nettoyée à la fermeture de la fenêtre
         self.main_window.protocol("WM_DELETE_WINDOW", lambda: (self.main_window.destroy(), setattr(self, 'main_window', None), setattr(self, 'log_text_widget', None), setattr(self, 'history_listbox', None), setattr(self, 'record_button', None)))
