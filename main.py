@@ -590,19 +590,32 @@ def setup_hotkey(icon_pystray):
     if record_mode == 'toggle' and record_key:
         hotkey_map[record_key] = lambda: toggle_recording(icon_pystray)
     elif record_mode == 'ptt' and ptt_key:
-        # Listener spécifique PTT pour press/release
-        start_hotkey = keyboard.HotKey(keyboard.HotKey.parse(ptt_key), lambda: (not is_recording) and toggle_recording(icon_pystray))
-        stop_hotkey = keyboard.HotKey(keyboard.HotKey.parse(ptt_key), lambda: is_recording and toggle_recording(icon_pystray))
+        # Listener PTT custom: démarrer à l'appui de toute la combo, couper dès qu'un des éléments est relâché
+        combo_keys = set(keyboard.HotKey.parse(ptt_key))
+        pressed_keys = set()
 
         listener_ref = {'l': None}
 
-        def for_canonical(f):
-            return lambda k: f(listener_ref['l'].canonical(k))
+        def on_press(key):
+            try:
+                k = listener_ref['l'].canonical(key)
+                pressed_keys.add(k)
+                if combo_keys.issubset(pressed_keys) and not is_recording:
+                    toggle_recording(icon_pystray)
+            except Exception:
+                pass
 
-        listener_ref['l'] = keyboard.Listener(
-            on_press=for_canonical(start_hotkey.press),
-            on_release=for_canonical(stop_hotkey.release)
-        )
+        def on_release(key):
+            try:
+                k = listener_ref['l'].canonical(key)
+                if k in pressed_keys:
+                    pressed_keys.remove(k)
+                if is_recording and not combo_keys.issubset(pressed_keys):
+                    toggle_recording(icon_pystray)
+            except Exception:
+                pass
+
+        listener_ref['l'] = keyboard.Listener(on_press=on_press, on_release=on_release)
         ptt_listener = listener_ref['l']
         ptt_listener.start()
         active_keys.append(ptt_key)
