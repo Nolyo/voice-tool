@@ -16,4 +16,10 @@ dev:
 run:
 	python main.py
 
+build-exe:
+	pyinstaller --clean --noconfirm packaging/pyinstaller/voice_tool.spec
+
+clean-build:
+	rm -rf build dist __pycache__ *.spec
+
 

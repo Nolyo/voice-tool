@@ -4,7 +4,8 @@ from typing import Optional
 
 from google.cloud import speech
 from google.oauth2.service_account import Credentials
-import openai
+import json as _json
+import openai  # type: ignore
 
 
 LANGUAGE_MAPPING = {
@@ -21,9 +22,21 @@ LANGUAGE_MAPPING = {
 def get_google_credentials_from_env() -> Optional[Credentials]:
     required = ["PROJECT_ID", "PRIVATE_KEY_ID", "PRIVATE_KEY", "CLIENT_EMAIL", "CLIENT_ID"]
     missing = [k for k in required if not os.getenv(k)]
+
+    # Fallback: GOOGLE_APPLICATION_CREDENTIALS → JSON service account
     if missing:
+        gac = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if gac and os.path.exists(gac):
+            try:
+                with open(gac, "r", encoding="utf-8") as f:
+                    info = _json.load(f)
+                logging.info("Credentials Google chargés via GOOGLE_APPLICATION_CREDENTIALS")
+                return Credentials.from_service_account_info(info)
+            except Exception as exc:
+                logging.error(f"Erreur lecture GOOGLE_APPLICATION_CREDENTIALS: {exc}")
         logging.error(f"Variables d'environnement manquantes: {missing}")
         return None
+
     info = {
         "type": "service_account",
         "project_id": os.getenv("PROJECT_ID"),

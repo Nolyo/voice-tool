@@ -16,7 +16,10 @@ import json
 import pyperclip
 import time
 import platform
-import setproctitle
+try:
+    import setproctitle  # type: ignore
+except Exception:  # noqa: BLE001
+    setproctitle = None  # type: ignore
 from queue import SimpleQueue, Empty
 from threading import Lock, Thread
 import faulthandler
@@ -31,7 +34,11 @@ from voice_tool import sounds as vt_sounds
 from voice_tool import lock as vt_lock
 from voice_tool import transcription as vt_transcription
 from voice_tool import formatting as vt_formatting
-setproctitle.setproctitle("Voice Tool")
+try:
+    if setproctitle:  # type: ignore
+        setproctitle.setproctitle("Voice Tool")  # type: ignore
+except Exception:
+    pass
 
 # Configuration spécifique Windows pour l'identification de l'application dans la Taskbar
 if platform.system() == 'Windows':
@@ -57,6 +64,7 @@ else:
 
 # Importations pour l'interface graphique (Tkinter)
 from gui_tkinter import VisualizerWindowTkinter # Notre fenêtre de visualiseur Tkinter
+from voice_tool.splash import SplashWindow
 
 # Charger les variables d'environnement depuis la racine du projet
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -151,7 +159,12 @@ def _initialize_persistent_logging() -> None:
 
 _initialize_persistent_logging()
 
-config_manager.load_env_from_project_root()
+# Chargement ENV multi-emplacements (CLI --env, exe dir, AppData, dev root)
+try:
+    config_manager.load_env_multi(sys.argv)
+except Exception:
+    # Fallback dev minimal si la nouvelle fonction n'est pas dispo
+    config_manager.load_env_from_project_root()
 
 # --- Configuration ---
 SAMPLE_RATE = 44100
@@ -285,79 +298,10 @@ def play_sound_async(sound_path):
 
 # --- Fonctions de l'application ---
 
-def load_config():
-    """Charge la configuration système depuis config.json (hotkeys seulement)."""
-    global config
-    # Paramètres SYSTÈME seulement (hotkeys et config technique)
-    system_defaults = {
-        "record_hotkey": "<ctrl>+<alt>+s",
-        "open_window_hotkey": "<ctrl>+<alt>+o"
-    }
-    
-    try:
-        if not os.path.exists(CONFIG_FILE):
-            logging.info(f"Fichier de configuration système non trouvé, création de {CONFIG_FILE}")
-            with open(CONFIG_FILE, 'w') as f:
-                json.dump(system_defaults, f, indent=4)
-            config = system_defaults
-        else:
-            with open(CONFIG_FILE, 'r') as f:
-                loaded = json.load(f)
-                
-                # Migration : déplacer les anciens paramètres utilisateur vers AppData
-                user_params_to_migrate = {}
-                system_params = {}
-                
-                for key, value in loaded.items():
-                    if key in ['enable_sounds', 'paste_at_cursor']:
-                        # Paramètre utilisateur à migrer
-                        user_params_to_migrate[key] = value
-                        logging.info(f"Migration du paramètre utilisateur: {key} = {value}")
-                    else:
-                        # Paramètre système à conserver
-                        system_params[key] = value
-                
-                # Migrer les paramètres utilisateur vers AppData si nécessaire
-                if user_params_to_migrate:
-                    migrate_user_settings(user_params_to_migrate)
-                    # Nettoyer config.json en gardant seulement les paramètres système
-                    clean_config = {**system_defaults, **system_params}
-                    with open(CONFIG_FILE, 'w') as f:
-                        json.dump(clean_config, f, indent=4)
-                    logging.info("config.json nettoyé - paramètres utilisateur migrés vers AppData")
-                    config = clean_config
-                else:
-                    # Fusionner avec les valeurs par défaut
-                    config = {**system_defaults, **system_params}
-                    
-    except Exception as e:
-        logging.error(f"Erreur lors du chargement de la configuration : {e}")
-        config = system_defaults
 
-
-def get_google_credentials():
-    env_vars = ["PROJECT_ID", "PRIVATE_KEY_ID", "PRIVATE_KEY", "CLIENT_EMAIL", "CLIENT_ID"]
-    
-    # Debug: vérifier quelles variables sont manquantes
-    missing_vars = [var for var in env_vars if not os.getenv(var)]
-    if missing_vars:
-        logging.error(f"ERREUR: Variables d'environnement manquantes: {missing_vars}")
-        logging.error("Vérifiez que le fichier .env existe et contient toutes les variables requises.")
-        return None
-    credentials_info = {
-        "type": "service_account",
-        "project_id": os.getenv("PROJECT_ID"),
-        "private_key_id": os.getenv("PRIVATE_KEY_ID"),
-        "private_key": os.getenv("PRIVATE_KEY", "").replace('\\n', '\n'),
-        "client_email": os.getenv("CLIENT_EMAIL"),
-        "client_id": os.getenv("CLIENT_ID"),
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{os.getenv('CLIENT_EMAIL', '').replace('@', '%40')}"
-    }
-    logging.info("Crédentials Google Cloud chargés en mémoire.")
-    return service_account.Credentials.from_service_account_info(credentials_info)
+# def get_google_credentials():
+#     """Ancienne fonction remplacée par vt_transcription.get_google_credentials_from_env."""
+#     return vt_transcription.get_google_credentials_from_env()
 
 def create_icon_pystray(color1, color2):
     width = 64
@@ -992,8 +936,22 @@ def open_interface():
 def run_pystray_icon():
     """Démarre l'icône système pystray (à appeler dans un thread)."""
     global global_icon_pystray
+    def _open_logs_folder(_icon=None, _item=None):
+        try:
+            from voice_tool.paths import APP_DATA_DIR as _APP
+            log_dir = _APP
+            if platform.system() == 'Windows':
+                os.startfile(log_dir)  # type: ignore
+            elif platform.system() == 'Darwin':
+                os.system(f"open '{log_dir}'")
+            else:
+                os.system(f"xdg-open '{log_dir}'")
+        except Exception as e:
+            logging.error(f"Impossible d'ouvrir le dossier des logs: {e}")
+
     menu = pystray.Menu(
         pystray.MenuItem('Ouvrir', open_interface),
+        pystray.MenuItem('Ouvrir le dossier des logs', _open_logs_folder),
         pystray.MenuItem('Quitter', on_quit)
     )
     icon_path = os.path.join(script_dir, 'voice_tool_icon.ico')
@@ -1034,12 +992,15 @@ def main():
     # --- Gestion du mode de lancement (console ou arrière-plan) ---
     # Si '--console' est passé en argument, on est en mode de développement/debug.
     # Sinon, on lance en arrière-plan.
-    is_console_mode = '--console' in sys.argv
+    # Modes
+    is_console_mode = '--console' in sys.argv or '--debug' in sys.argv
     is_background_child = '--background-child' in sys.argv
 
     # Si on n'est pas en mode console et qu'on n'est pas déjà le processus enfant,
     # on relance le script en arrière-plan et on quitte.
-    if not is_console_mode and not is_background_child:
+    # En version packagée, ne pas relancer un process enfant
+    is_frozen = getattr(sys, 'frozen', False)
+    if not is_console_mode and not is_background_child and not is_frozen:
         # Libérer le verrou avant de relancer, car le processus enfant devra l'acquérir
         release_lock()
         
@@ -1064,9 +1025,23 @@ def main():
         has_console = any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler) for h in root_logger.handlers)
         if not has_console:
             sh = logging.StreamHandler()
-            sh.setLevel(logging.INFO)
+            sh.setLevel(logging.DEBUG)
             sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
             root_logger.addHandler(sh)
+        # Niveau de logs plus verbeux en debug
+        try:
+            logging.getLogger().setLevel(logging.DEBUG)
+        except Exception:
+            pass
+
+    # Splash screen (hors debug)
+    splash = None
+    if not is_console_mode:
+        try:
+            splash = SplashWindow()
+            splash.show("Initialisation…")
+        except Exception:
+            splash = None
 
     # Charger la configuration système (peut être vide, non bloquant)
     global config
@@ -1074,12 +1049,21 @@ def main():
     
     # Charger les paramètres utilisateur
     global transcription_history, sound_paths, user_settings
+    if splash:
+        splash.set_message("Chargement des paramètres…")
+        splash.pump()
     user_settings = load_user_settings()
     
     # Charger l'historique des transcriptions
+    if splash:
+        splash.set_message("Chargement de l'historique…")
+        splash.pump()
     transcription_history = load_transcription_history()
     
     # Initialiser les sons
+    if splash:
+        splash.set_message("Préparation des sons…")
+        splash.pump()
     sound_paths = create_sound_files()
 
     # Debug: vérifier si le .env est bien chargé
@@ -1089,8 +1073,20 @@ def main():
     logging.info(f"Répertoire AppData: {APP_DATA_DIR}")
     
     # Crédentials Google depuis l'environnement
+    if splash:
+        splash.set_message("Initialisation des accès API…")
+        splash.pump()
     google_credentials = vt_transcription.get_google_credentials_from_env()
     if not google_credentials:
+        if splash:
+            try:
+                splash.set_message("Clés API manquantes. Consultez la documentation.")
+                splash.pump()
+                import time as _t
+                _t.sleep(1.0)
+                splash.close()
+            except Exception:
+                pass
         return
 
     logging.info("Démarrage de l'application...")
@@ -1109,6 +1105,9 @@ def main():
     start_command_monitor()
 
     # Démarrer l'icône pystray dans un thread séparé
+    if splash:
+        splash.set_message("Icône système…")
+        splash.pump()
     tray_thread = threading.Thread(target=run_pystray_icon, daemon=True)
     tray_thread.start()
 
@@ -1124,10 +1123,27 @@ def main():
         logging.warning("Icône pystray non initialisée à temps; les hotkeys seront configurés plus tard.")
 
     # Démarrer le stream audio persistant tôt dans la vie du processus (thread principal)
+    if splash:
+        splash.set_message("Initialisation audio…")
+        splash.pump()
     try:
         _ensure_audio_stream_started()
     except Exception as e:
         logging.error(f"Échec du démarrage initial de l'InputStream: {e}")
+
+    # Fermer le splash
+    if splash:
+        try:
+            splash.close()
+        except Exception:
+            pass
+
+    # En debug: ouvrir la fenêtre principale directement sur les logs
+    if is_console_mode:
+        try:
+            open_interface()
+        except Exception:
+            pass
 
     # Lancer la boucle principale Tkinter (thread principal)
     visualizer_window.run()

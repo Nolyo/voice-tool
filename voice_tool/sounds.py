@@ -7,6 +7,8 @@ import wave
 from typing import Dict, List
 
 from .paths import SOUNDS_DIR
+import importlib.resources as resources
+import pkgutil
 from .settings import load_user_settings
 
 
@@ -39,32 +41,83 @@ def save_wave_file(filepath: str, wave_data: List[int], sample_rate: int = 44100
         wav_file.writeframes(wave_bytes)
 
 
+def _copy_resource_to_appdata(resource_rel_path: str, dest_name: str) -> str | None:
+    """Copie une ressource packagée (si disponible) vers AppData et retourne le chemin."""
+    try:
+        # Ressource dans voice_tool.assets.sounds
+        package = 'voice_tool.assets.sounds'
+        dest_path = os.path.join(SOUNDS_DIR, dest_name)
+        os.makedirs(SOUNDS_DIR, exist_ok=True)
+
+        # Essai 1: importlib.resources
+        try:
+            if resources.is_resource(package, resource_rel_path):
+                with resources.open_binary(package, resource_rel_path) as src, open(dest_path, 'wb') as dst:
+                    dst.write(src.read())
+                return dest_path
+        except Exception:
+            pass
+
+        # Essai 2: pkgutil (meilleur support dans environnements packagés)
+        try:
+            data = pkgutil.get_data(package, resource_rel_path)
+            if data:
+                with open(dest_path, 'wb') as dst:
+                    dst.write(data)
+                return dest_path
+        except Exception:
+            pass
+    except Exception as exc:
+        logging.error(f"Copie resource→AppData échouée ({resource_rel_path}): {exc}")
+    return None
+
+
 def create_sound_files() -> Dict[str, str]:
+    """Prépare les sons et retourne leurs chemins.
+
+    Priorité:
+      1) Ressources packagées copiées vers AppData (si présentes)
+      2) Fallback: génération synthétique en AppData
+    """
     try:
         os.makedirs(SOUNDS_DIR, exist_ok=True)
-        # Always re-generate to ensure consistent volume
-        for name in ["start_recording.wav", "stop_recording.wav", "success.wav"]:
-            path = os.path.join(SOUNDS_DIR, name)
-            if os.path.exists(path):
-                os.remove(path)
 
-        start_path = os.path.join(SOUNDS_DIR, "start_recording.wav")
-        stop_path = os.path.join(SOUNDS_DIR, "stop_recording.wav")
-        success_path = os.path.join(SOUNDS_DIR, "success.wav")
+        names = {
+            "start": "start_recording.wav",
+            "stop": "stop_recording.wav",
+            "success": "success.wav",
+        }
 
-        save_wave_file(start_path, generate_sweep_sound(400, 800, 0.3))
-        save_wave_file(stop_path, generate_sweep_sound(800, 400, 0.3))
+        paths: Dict[str, str] = {}
 
-        success_sound: List[int] = []
-        success_sound.extend(generate_sound_wave(880, 0.1))
-        success_sound.extend([0] * int(0.05 * 44100))
-        success_sound.extend(generate_sound_wave(1108, 0.15))
-        save_wave_file(success_path, success_sound)
+        # Tenter de copier depuis les ressources packagées
+        for key, fname in names.items():
+            copied = _copy_resource_to_appdata(fname, fname)
+            if copied:
+                paths[key] = copied
 
-        logging.info("Fichiers audio créés avec succès")
-        return {"start": start_path, "stop": stop_path, "success": success_path}
+        # Si une ressource manque, générer en fallback
+        to_generate = [k for k in names if k not in paths]
+        if to_generate:
+            logging.info(f"Ressources son manquantes ({to_generate}), génération fallback…")
+            for key in to_generate:
+                target = os.path.join(SOUNDS_DIR, names[key])
+                if key == 'start':
+                    save_wave_file(target, generate_sweep_sound(400, 800, 0.3))
+                elif key == 'stop':
+                    save_wave_file(target, generate_sweep_sound(800, 400, 0.3))
+                elif key == 'success':
+                    success_sound: List[int] = []
+                    success_sound.extend(generate_sound_wave(880, 0.1))
+                    success_sound.extend([0] * int(0.05 * 44100))
+                    success_sound.extend(generate_sound_wave(1108, 0.15))
+                    save_wave_file(target, success_sound)
+                paths[key] = target
+
+        logging.info("Sons prêts")
+        return paths
     except Exception as exc:
-        logging.error(f"Erreur lors de la création des sons: {exc}")
+        logging.error(f"Erreur lors de la préparation des sons: {exc}")
         return {}
 
 
