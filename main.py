@@ -1094,6 +1094,11 @@ def main():
     # Initialiser Tkinter dans le thread principal pour robustesse Windows
     icon_path = create_window_icon()
     visualizer_window = VisualizerWindowTkinter(icon_path=icon_path)
+    # S'assurer que la racine Tk est initialisée avant tout usage différé
+    try:
+        visualizer_window.root.update_idletasks()
+    except Exception:
+        pass
 
     # Rediriger les logs vers la GUI
     gui_handler = GuiLoggingHandler(visualizer_window)

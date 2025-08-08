@@ -43,7 +43,7 @@ class VisualizerWindowTkinter:
         self.history_tree = None  # Nouveau: Treeview pour l'historique
         self._tree_id_to_obj = {}  # map id->objet (dict/str) pour actions
         # Recherche et gestion d'historique (filtrage)
-        self.history_search_var = tk.StringVar()
+        self.history_search_var = tk.StringVar(master=self.root)
         self._search_after_id = None
         self._history_master = []  # liste des items d'historique (objets d'origine)
         self._filtered_history_items = []  # vue filtrée courante
@@ -123,7 +123,7 @@ class VisualizerWindowTkinter:
                 # Ouvrir l'image avec Pillow
                 pil_img = Image.open(self.icon_path)
                 # Convertir en PhotoImage pour Tkinter
-                photo_img = ImageTk.PhotoImage(pil_img)
+                photo_img = ImageTk.PhotoImage(pil_img, master=window)
                 # Définir l'icône
                 window.iconphoto(False, photo_img)
                 # Garder une référence pour éviter que l'image ne soit supprimée par le garbage collector
@@ -1002,11 +1002,11 @@ class VisualizerWindowTkinter:
         settings_frame = tk.Frame(notebook, bg="#2b2b2b", padx=16, pady=16)
         notebook.add(settings_frame, text='  Paramètres  ')
         
-        # Définir les variables AVANT la fonction
-        sounds_var = tk.BooleanVar()
-        paste_var = tk.BooleanVar()
-        auto_start_var = tk.BooleanVar()
-        smart_format_var = tk.BooleanVar()
+        # Définir les variables AVANT la fonction (lier explicitement au root Tk)
+        sounds_var = tk.BooleanVar(master=self.root)
+        paste_var = tk.BooleanVar(master=self.root)
+        auto_start_var = tk.BooleanVar(master=self.root)
+        smart_format_var = tk.BooleanVar(master=self.root)
         
         # Fonction pour gérer le démarrage automatique Windows
         def manage_auto_start(enable):
@@ -1150,7 +1150,7 @@ class VisualizerWindowTkinter:
             devices = []
 
         tk.Label(audio_frame, text="Microphone d'entrée :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        mic_var = tk.StringVar()
+        mic_var = tk.StringVar(master=self.root)
         # Valeur par défaut depuis user_settings
         default_input_index = None
         try:
@@ -1267,8 +1267,8 @@ class VisualizerWindowTkinter:
         }
         language_api_to_display = {v: k for k, v in language_display_to_api.items()}
 
-        transcription_provider_var = tk.StringVar()
-        language_var = tk.StringVar()
+        transcription_provider_var = tk.StringVar(master=self.root)
+        language_var = tk.StringVar(master=self.root)
 
         # Charger la configuration du fournisseur et convertir pour l'affichage
         current_api_provider = user_settings.get("transcription_provider", "Google") if user_settings and "transcription_provider" in user_settings else "Google"
@@ -1308,7 +1308,7 @@ class VisualizerWindowTkinter:
 
         # Rétention enregistrements (garder N derniers)
         tk.Label(system_frame, text="Conserver les N derniers enregistrements (WAV) :", fg="white", bg="#2b2b2b").pack(anchor='w')
-        keep_last_var = tk.IntVar()
+        keep_last_var = tk.IntVar(master=self.root)
         try:
             import main
             keep_last_var.set(main.load_user_settings().get("recordings_keep_last", 25))
@@ -1333,7 +1333,7 @@ class VisualizerWindowTkinter:
         mode_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
         mode_row.pack(fill=tk.X, pady=(0, 12))
         tk.Label(mode_row, text="Mode d'enregistrement :", fg="white", bg="#1f1f1f").pack(anchor='w')
-        record_mode_var = tk.StringVar(value=(user_settings.get("record_mode", "toggle") if user_settings else "toggle"))
+        record_mode_var = tk.StringVar(master=self.root, value=(user_settings.get("record_mode", "toggle") if user_settings else "toggle"))
         def on_mode_changed():
             auto_save_user_setting()
             # Afficher/masquer la ligne PTT selon le mode
