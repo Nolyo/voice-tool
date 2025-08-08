@@ -167,6 +167,7 @@ def get_setting(key, default=None):
         "transcription_provider",
         "language",
         "smart_formatting",
+        "input_device_index",
     ]:
         return vt_settings.load_user_settings().get(key, default)
     return config.get(key, default)
@@ -529,7 +530,7 @@ def update_and_restart_hotkeys(new_config):
     for key, value in new_config.items():
         if key in ['record_hotkey', 'open_window_hotkey']:
             system_params[key] = value
-        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language', 'smart_formatting']:
+        elif key in ['enable_sounds', 'paste_at_cursor', 'auto_start', 'transcription_provider', 'language', 'smart_formatting', 'input_device_index']:
             user_params[key] = value
         else:
             logging.warning(f"Paramètre inconnu: {key}")

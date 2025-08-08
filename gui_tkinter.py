@@ -987,6 +987,21 @@ class VisualizerWindowTkinter:
                     host = dev.get('hostapi', None)
                     label = f"[{idx}] {name}" if host is None else f"[{idx}] {name}"
                     devices.append((idx, label))
+            # Ajouter l'option Par défaut (Windows)
+            default_label = "Par défaut (Windows)"
+            try:
+                default_dev = sd.default.device
+                default_in = None
+                if isinstance(default_dev, (list, tuple)) and len(default_dev) > 0:
+                    default_in = default_dev[0]
+                elif isinstance(default_dev, int):
+                    default_in = default_dev
+                if default_in is not None and isinstance(default_in, int) and 0 <= default_in < len(sd_devices):
+                    def_name = sd_devices[default_in].get('name', f"Device {default_in}")
+                    default_label = f"Par défaut (Windows): [{default_in}] {def_name}"
+            except Exception:
+                pass
+            devices.insert(0, (None, default_label))
         except Exception as e:
             logging.error(f"Erreur lors de l'énumération des périphériques: {e}")
             devices = []
