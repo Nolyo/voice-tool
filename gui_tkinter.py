@@ -1235,8 +1235,7 @@ class VisualizerWindowTkinter:
         tk.Button(record_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(record_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
         # Charger depuis AppData
         try:
-            import main
-            record_hotkey_entry.insert(0, main.user_settings.get("record_hotkey", "<ctrl>+<alt>+s"))
+            record_hotkey_entry.insert(0, user_settings.get("record_hotkey", "<ctrl>+<alt>+s"))
         except Exception:
             pass
 
@@ -1247,8 +1246,7 @@ class VisualizerWindowTkinter:
         ptt_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         tk.Button(ptt_row, text="Définir…", command=lambda: self._open_hotkey_capture(ptt_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
         try:
-            import main
-            ptt_hotkey_entry.insert(0, main.user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>"))
+            ptt_hotkey_entry.insert(0, user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>"))
         except Exception:
             pass
         # Afficher la ligne PTT seulement si le mode est ptt
@@ -1262,8 +1260,7 @@ class VisualizerWindowTkinter:
         open_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         tk.Button(open_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(open_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
         try:
-            import main
-            open_hotkey_entry.insert(0, main.user_settings.get("open_window_hotkey", "<ctrl>+<alt>+o"))
+            open_hotkey_entry.insert(0, user_settings.get("open_window_hotkey", "<ctrl>+<alt>+o"))
         except Exception:
             pass
 
