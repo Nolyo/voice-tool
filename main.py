@@ -62,8 +62,15 @@ from gui_tkinter import VisualizerWindowTkinter # Notre fenêtre de visualiseur 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # --- Journalisation persistante & diagnostics très précoces ---
-LOG_FILE_PATH = os.path.join(script_dir, 'voice_tool.log')
-CRASH_LOG_PATH = os.path.join(script_dir, 'voice_tool_crash.log')
+try:
+    # Déplacer les logs dans AppData/VoiceTool
+    LOG_FILE_PATH = os.path.join(vt_paths.APP_DATA_DIR, 'voice_tool.log')
+except Exception:
+    LOG_FILE_PATH = os.path.join(script_dir, 'voice_tool.log')
+try:
+    CRASH_LOG_PATH = os.path.join(vt_paths.APP_DATA_DIR, 'voice_tool_crash.log')
+except Exception:
+    CRASH_LOG_PATH = os.path.join(script_dir, 'voice_tool_crash.log')
 _crash_fp = None
 
 def _initialize_persistent_logging() -> None:

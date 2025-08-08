@@ -1541,7 +1541,8 @@ class VisualizerWindowTkinter:
         path_frame.pack(fill=tk.X, padx=5, pady=(0,6))
         try:
             import main
-            log_path = os.path.join(os.path.dirname(os.path.abspath(main.__file__)), 'voice_tool.log')
+            from voice_tool.paths import APP_DATA_DIR
+            log_path = os.path.join(APP_DATA_DIR, 'voice_tool.log')
             tk.Label(path_frame, text=f"Fichier: {log_path}", fg="#aaaaaa", bg="#2b2b2b", font=("Consolas", 8)).pack(side=tk.LEFT)
             def _open_log_file():
                 try:
