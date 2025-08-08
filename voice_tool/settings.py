@@ -48,6 +48,8 @@ def default_user_settings() -> Dict[str, Any]:
         "input_device_index": None,
         "record_hotkey": "<ctrl>+<alt>+s",
         "open_window_hotkey": "<ctrl>+<alt>+o",
+        "record_mode": "toggle",  # 'toggle' ou 'ptt'
+        "ptt_hotkey": "<ctrl>+<shift>+<space>",
     }
 
 

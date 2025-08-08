@@ -1182,9 +1182,28 @@ class VisualizerWindowTkinter:
         separator1b.pack(fill=tk.X, pady=(0, 20))
         
         # === SECTION RACCOURCIS ===
-        tk.Label(settings_frame, text="⌨️ Raccourcis clavier", fg="#2196F3", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
+        tk.Label(settings_frame, text="⌨️ Raccourcis & modes d'enregistrement", fg="#2196F3", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(anchor='w', pady=(0, 10))
         
-        # Raccourci Enregistrement
+        # Mode d'enregistrement
+        mode_row = tk.Frame(settings_frame, bg="#2b2b2b")
+        mode_row.pack(fill=tk.X, pady=(0, 12))
+        tk.Label(mode_row, text="Mode d'enregistrement :", fg="white", bg="#2b2b2b").pack(anchor='w')
+        record_mode_var = tk.StringVar(value=(user_settings.get("record_mode", "toggle") if user_settings else "toggle"))
+        def on_mode_changed():
+            auto_save_user_setting()
+            # Afficher/masquer la ligne PTT selon le mode
+            if record_mode_var.get() == "ptt":
+                ptt_row.pack(fill=tk.X, pady=(0, 15))
+            else:
+                ptt_row.forget()
+        mode_toggle = tk.Radiobutton(mode_row, text="Toggle (appuyer pour démarrer/arrêter)", value="toggle", variable=record_mode_var,
+                                     command=on_mode_changed, fg="white", bg="#2b2b2b", selectcolor="#3c3c3c", activebackground="#2b2b2b", activeforeground="white")
+        mode_ptt = tk.Radiobutton(mode_row, text="Push‑to‑talk (enregistrer tant que la touche est maintenue)", value="ptt", variable=record_mode_var,
+                                   command=on_mode_changed, fg="white", bg="#2b2b2b", selectcolor="#3c3c3c", activebackground="#2b2b2b", activeforeground="white")
+        mode_toggle.pack(anchor='w')
+        mode_ptt.pack(anchor='w')
+
+        # Raccourci Enregistrement (toggle)
         tk.Label(settings_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
         record_hotkey_row = tk.Frame(settings_frame, bg="#2b2b2b")
         record_hotkey_row.pack(fill=tk.X, pady=(0, 15))
@@ -1198,6 +1217,20 @@ class VisualizerWindowTkinter:
         except Exception:
             pass
 
+        # Raccourci Push‑to‑talk
+        ptt_row = tk.Frame(settings_frame, bg="#2b2b2b")
+        tk.Label(ptt_row, text="Raccourci Push‑to‑talk (maintenir) :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
+        ptt_hotkey_entry = tk.Entry(ptt_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        ptt_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Button(ptt_row, text="Définir…", command=lambda: self._open_hotkey_capture(ptt_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
+        try:
+            import main
+            ptt_hotkey_entry.insert(0, main.user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>"))
+        except Exception:
+            pass
+        # Afficher la ligne PTT seulement si le mode est ptt
+        if (user_settings.get("record_mode", "toggle") if user_settings else "toggle") == "ptt":
+            ptt_row.pack(fill=tk.X, pady=(0, 15))
         # Raccourci Ouvrir Fenêtre  
         tk.Label(settings_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
         open_hotkey_row = tk.Frame(settings_frame, bg="#2b2b2b")
@@ -1215,6 +1248,7 @@ class VisualizerWindowTkinter:
         self._record_hotkey_entry = record_hotkey_entry
         self._open_hotkey_entry = open_hotkey_entry
         self._settings_save_callback = save_callback
+        self._ptt_hotkey_entry = ptt_hotkey_entry if 'ptt_hotkey_entry' in locals() else None
         
         # Séparateur
         separator2 = tk.Frame(settings_frame, height=1, bg="#555555")
@@ -1251,6 +1285,8 @@ class VisualizerWindowTkinter:
             new_config = {
                 "record_hotkey": record_hotkey_entry.get().strip(),
                 "open_window_hotkey": open_hotkey_entry.get().strip(),
+                "record_mode": record_mode_var.get(),
+                "ptt_hotkey": (ptt_hotkey_entry.get().strip() if record_mode_var.get()=="ptt" else main.user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>")),
                 "enable_sounds": sounds_var.get(),
                 "paste_at_cursor": paste_var.get(),
                 "auto_start": auto_start_var.get(),
@@ -1275,6 +1311,17 @@ class VisualizerWindowTkinter:
                         
                         open_hotkey_entry.delete(0, tk.END)
                         open_hotkey_entry.insert(0, current_user_settings.get("open_window_hotkey", "<ctrl>+<alt>+o"))
+
+                        # Recharger le mode/ptt
+                        record_mode_var.set(current_user_settings.get("record_mode", "toggle"))
+                        if self._ptt_hotkey_entry:
+                            self._ptt_hotkey_entry.delete(0, tk.END)
+                            self._ptt_hotkey_entry.insert(0, current_user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>"))
+                        # Afficher/masquer ligne ptt
+                        if record_mode_var.get() == "ptt":
+                            ptt_row.pack(fill=tk.X, pady=(0, 15))
+                        else:
+                            ptt_row.forget()
                         
                         # Mettre à jour l'affichage du raccourci dans la fenêtre principale
                         new_shortcut = current_user_settings.get("record_hotkey", "<ctrl>+<alt>+s")

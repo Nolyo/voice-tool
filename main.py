@@ -565,19 +565,66 @@ def setup_hotkey(icon_pystray):
     hotkey_map = {}
     # Lire depuis AppData désormais
     current_user_settings = vt_settings.load_user_settings()
+    record_mode = current_user_settings.get('record_mode', 'toggle')
     record_key = current_user_settings.get('record_hotkey')
+    ptt_key = current_user_settings.get('ptt_hotkey')
     open_key = current_user_settings.get('open_window_hotkey')
 
-    if record_key: hotkey_map[record_key] = lambda: toggle_recording(icon_pystray)
+    if record_mode == 'toggle' and record_key:
+        hotkey_map[record_key] = lambda: toggle_recording(icon_pystray)
+    elif record_mode == 'ptt' and ptt_key:
+        # En PTT: start on press, stop on release
+        # pynput GlobalHotKeys ne gère pas directement press/release séparés.
+        # On utilise deux entrées : une pour press (démarrer), une pour release (arrêter) via Key combination tricks.
+        # Simplification: assigner la même combo pour start/stop avec wrapper press/release séparés via keyboard.Listener.
+        pass
     if open_key: hotkey_map[open_key] = open_interface
 
     if not hotkey_map:
         logging.warning("Aucun raccourci clavier n'est configuré.")
         return
 
-    hotkey_listener = keyboard.GlobalHotKeys(hotkey_map)
-    hotkey_listener.start()
-    logging.info(f"Raccourcis clavier activés : {list(hotkey_map.keys())}")
+    if record_mode == 'ptt' and ptt_key:
+        # Écouteur spécifique pour PTT
+        def on_press(key):
+            try:
+                # Démarrer si combo correspond et si pas déjà en cours
+                combo = ptt_key
+                # Utiliser la même logique que GlobalHotKeys: comparer via ._repr? Simplifié: utiliser keyboard.HotKey
+            except Exception:
+                pass
+
+        # Utiliser l'utilitaire HotKey de pynput
+        def parse_combo(c):
+            # Convertit "<ctrl>+a" en une séquence pour HotKey
+            parts = [p.strip() for p in c.split('+') if p.strip()]
+            seq = []
+            for p in parts:
+                if p.startswith('<') and p.endswith('>'):
+                    name = p[1:-1]
+                    seq.append(getattr(keyboard.Key, name, None) or p)
+                else:
+                    seq.append(p)
+            return seq
+
+        start_hotkey = keyboard.HotKey(keyboard.HotKey.parse(ptt_key), lambda: (not is_recording) and toggle_recording(icon_pystray))
+        stop_hotkey = keyboard.HotKey(keyboard.HotKey.parse(ptt_key), lambda: is_recording and toggle_recording(icon_pystray))
+
+        def for_canonical(f):
+            return lambda k: f(hotkey_listener.canonical(k))
+
+        hotkey_listener = keyboard.Listener(
+            on_press=for_canonical(start_hotkey.press),
+            on_release=for_canonical(stop_hotkey.release)
+        )
+        hotkey_listener.start()
+        active_keys = [ptt_key]
+    else:
+        hotkey_listener = keyboard.GlobalHotKeys(hotkey_map)
+        hotkey_listener.start()
+        active_keys = list(hotkey_map.keys())
+
+    logging.info(f"Raccourcis clavier activés : {active_keys}")
 
 def quit_from_gui():
     """Ferme l'application depuis l'interface GUI (fermeture synchrone)."""
