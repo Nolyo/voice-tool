@@ -39,7 +39,9 @@ class VisualizerWindowTkinter:
         
         self.main_window = None # Pour garder une référence à la fenêtre principale
         self.log_text_widget = None # Pour le widget qui affichera les logs
-        self.history_listbox = None # Pour la Listbox de l'historique
+        self.history_listbox = None # Déprécié: ancienne Listbox (conservée pour compat)
+        self.history_tree = None  # Nouveau: Treeview pour l'historique
+        self._tree_id_to_obj = {}  # map id->objet (dict/str) pour actions
         # Recherche et gestion d'historique (filtrage)
         self.history_search_var = tk.StringVar()
         self._search_after_id = None
@@ -482,21 +484,19 @@ class VisualizerWindowTkinter:
 
     def _copy_history_selection(self):
         """Copie l'élément sélectionné dans la Listbox de l'historique."""
-        if not self.history_listbox:
+        if not (self.history_tree and self.history_tree.winfo_exists()):
             return
-        
-        selected_indices = self.history_listbox.curselection()
-        if not selected_indices:
+        # sélectionner la ligne sous le clic si nécessaire
+        try:
+            iid = self.history_tree.focus() or self.history_tree.selection()[0]
+        except Exception:
+            iid = None
+        if not iid:
             logging.info("Aucun élément sélectionné dans l'historique.")
             return
-        
-        selected_index = selected_indices[0]
-        
-        # Utiliser le texte stocké si disponible, sinon fallback sur le texte affiché
-        if hasattr(self.history_listbox, 'text_data') and selected_index in self.history_listbox.text_data:
-            selected_text = self.history_listbox.text_data[selected_index]
-        else:
-            selected_text = self.history_listbox.get(selected_index)
+        # Récupérer l'objet source depuis la map
+        obj = self._tree_id_to_obj.get(iid)
+        display_text, selected_text = self._history_to_display_and_actual(obj) if obj is not None else (None, None)
         
         pyperclip.copy(selected_text)
         logging.info(f"Texte copié depuis l'historique : '{selected_text[:40]}...'")
@@ -512,19 +512,18 @@ class VisualizerWindowTkinter:
 
     def _delete_history_selection(self):
         """Supprime l'élément sélectionné de l'historique."""
-        if not self.history_listbox:
+        if not (self.history_tree and self.history_tree.winfo_exists()):
             return
-        
-        selected_indices = self.history_listbox.curselection()
-        if not selected_indices:
+        try:
+            iid = self.history_tree.focus() or self.history_tree.selection()[0]
+        except Exception:
+            iid = None
+        if not iid:
             logging.info("Aucun élément sélectionné pour suppression.")
             return
-        
-        selected_index = selected_indices[0]
-        # Récupérer l'objet d'historique correspondant dans la vue filtrée
-        if selected_index >= len(self._filtered_history_items):
+        history_obj = self._tree_id_to_obj.get(iid)
+        if history_obj is None:
             return
-        history_obj = self._filtered_history_items[selected_index]
         
         # Confirmer la suppression
         import tkinter.messagebox as msgbox
@@ -574,11 +573,14 @@ class VisualizerWindowTkinter:
     def _on_history_right_click(self, event):
         """Affiche le menu contextuel au clic droit."""
         # Sélectionner l'élément sous le curseur
-        index = self.history_listbox.nearest(event.y)
-        if index >= 0:
-            self.history_listbox.selection_clear(0, tk.END)
-            self.history_listbox.selection_set(index)
-            self.history_listbox.activate(index)
+        # Sélection pour Treeview
+        try:
+            row = self.history_tree.identify_row(event.y)
+            if row:
+                self.history_tree.selection_set(row)
+                self.history_tree.focus(row)
+        except Exception:
+            pass
             
             # Créer le menu contextuel
             context_menu = tk.Menu(self.root, tearoff=0, bg="#2b2b2b", fg="white", 
@@ -860,15 +862,45 @@ class VisualizerWindowTkinter:
         search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         clear_btn = tk.Button(search_frame, text="Effacer", command=lambda: self._clear_search(), bg="#6c757d", fg="white", relief=tk.FLAT)
         clear_btn.pack(side=tk.LEFT, padx=(8, 0))
-        listbox_frame = tk.Frame(history_frame); listbox_frame.pack(fill=tk.BOTH, expand=True, padx=5)
-        history_scrollbar = tk.Scrollbar(listbox_frame); history_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.history_listbox = tk.Listbox(listbox_frame, yscrollcommand=history_scrollbar.set, bg="#3c3c3c", fg="white", selectbackground="#0078d7", relief=tk.FLAT, borderwidth=0, highlightthickness=0, exportselection=False)
-        self.history_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        history_scrollbar.config(command=self.history_listbox.yview)
+        # Style moderne pour Treeview
+        style = ttk.Style(self.root)
+        try:
+            style.theme_use('clam')
+        except Exception:
+            pass
+        style.configure("VT.Treeview",
+                        background="#2f2f2f",
+                        fieldbackground="#2f2f2f",
+                        foreground="white",
+                        rowheight=24,
+                        borderwidth=0)
+        style.map("VT.Treeview",
+                  background=[('selected', '#0078d7')],
+                  foreground=[('selected', 'white')])
+        style.configure("VT.Treeview.Heading",
+                        background="#1f1f1f",
+                        foreground="white",
+                        relief=tk.FLAT)
+
+        table_frame = tk.Frame(history_frame, bg="#2b2b2b")
+        table_frame.pack(fill=tk.BOTH, expand=True, padx=5)
+        yscroll = tk.Scrollbar(table_frame)
+        yscroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.history_tree = ttk.Treeview(table_frame,
+                                         columns=("time", "text"),
+                                         show="headings",
+                                         yscrollcommand=yscroll.set,
+                                         style="VT.Treeview")
+        self.history_tree.heading("time", text="Date/Heure")
+        self.history_tree.heading("text", text="Texte")
+        self.history_tree.column("time", width=150, anchor=tk.W)
+        self.history_tree.column("text", anchor=tk.W)
+        self.history_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        yscroll.config(command=self.history_tree.yview)
         
-        # Événements pour la listbox de l'historique
-        self.history_listbox.bind("<Double-Button-1>", self._on_history_double_click)
-        self.history_listbox.bind("<Button-3>", self._on_history_right_click)  # Clic droit
+        # Événements pour l'historique
+        self.history_tree.bind("<Double-Button-1>", self._on_history_double_click)
+        self.history_tree.bind("<Button-3>", self._on_history_right_click)  # Clic droit
         # Charger l'historique dans la liste maître et rendre la vue (filtrée)
         self._history_master = list(history) if history else []
         self._apply_history_filter()
@@ -1616,17 +1648,23 @@ class VisualizerWindowTkinter:
 
     def _render_history_list(self, items):
         # Vider la listbox
-        self.history_listbox.delete(0, tk.END)
-        if not hasattr(self.history_listbox, 'text_data'):
-            self.history_listbox.text_data = {}
-        else:
-            self.history_listbox.text_data = {}
+        # Reset Treeview
+        if self.history_tree is None:
+            return
+        for iid in self.history_tree.get_children():
+            self.history_tree.delete(iid)
+        self._tree_id_to_obj = {}
         # Afficher les plus récents en premier
         items_to_display = list(items)[::-1]
-        for index, item in enumerate(items_to_display):
+        for item in items_to_display:
             display_text, actual_text = self._history_to_display_and_actual(item)
-            self.history_listbox.insert(tk.END, display_text)
-            self.history_listbox.text_data[index] = actual_text
+            # On sépare en deux colonnes: date/heure + texte
+            # Extraire la date/heure si présent dans dict
+            time_col = ""
+            if isinstance(item, dict):
+                time_col = item.get('timestamp', item.get('date', ''))
+            iid = self.history_tree.insert("", tk.END, values=(time_col, display_text))
+            self._tree_id_to_obj[iid] = item
         self._filtered_history_items = list(items_to_display)
         # Mettre à jour le compteur
         try:
