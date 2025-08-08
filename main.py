@@ -16,6 +16,7 @@ import pyperclip
 import time
 import platform
 import setproctitle
+from queue import SimpleQueue, Empty
 
 # Modules refactorisés
 from voice_tool import config_manager
@@ -82,8 +83,7 @@ global_icon_pystray = None # Pour accéder à l'icône depuis d'autres fonctions
 
 # Variables globales pour la GUI Tkinter
 visualizer_window = None
-last_visualizer_update_ts = 0.0
-VISUALIZER_UPDATE_INTERVAL_S = 1.0 / 30.0  # limiter à ~30 FPS
+visualizer_queue: SimpleQueue = SimpleQueue()
 
 # Gestion d'instance unique via module vt_lock
 
@@ -418,18 +418,35 @@ def audio_callback(indata, frames, time, status):
         if mean_square < 0: mean_square = 0
         rms = np.sqrt(mean_square) / 32768.0
         rms_scaled = rms * 200 
-        
-        # Mise à jour du visualiseur Tkinter (doit être fait dans le thread Tkinter) avec throttling
+        # Pousser le niveau dans une queue thread-safe; le thread Tk lit périodiquement
         try:
-            import time as _t
-            now = _t.monotonic()
-            global last_visualizer_update_ts
-            if now - last_visualizer_update_ts >= VISUALIZER_UPDATE_INTERVAL_S:
-                last_visualizer_update_ts = now
-                if visualizer_window and hasattr(visualizer_window, 'root'):
-                    visualizer_window.root.after(0, visualizer_window.update_visualizer, rms_scaled)
+            visualizer_queue.put_nowait(rms_scaled)
         except Exception:
             pass
+
+def _poll_visualizer_levels():
+    """Lit la queue des niveaux audio et pousse le dernier vers l'UI (thread Tk)."""
+    global visualizer_window
+    if not visualizer_window:
+        return
+    last_value = None
+    try:
+        while True:
+            last_value = visualizer_queue.get_nowait()
+    except Empty:
+        pass
+    except Exception:
+        last_value = None
+    if last_value is not None:
+        try:
+            visualizer_window.update_visualizer(last_value)
+        except Exception:
+            pass
+    # replanifier à ~30 FPS
+    try:
+        visualizer_window.root.after(33, _poll_visualizer_levels)
+    except Exception:
+        pass
 
 # Plus besoin du callback spécialisé - on utilise le standard
 
@@ -466,6 +483,12 @@ def toggle_recording(icon_pystray):
             last_visualizer_update_ts = 0.0
         audio_stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='int16', callback=audio_callback, device=input_device_index)
         audio_stream.start()
+        # Démarrer le poll du visualizer si la fenêtre existe
+        try:
+            if visualizer_window and hasattr(visualizer_window, 'root'):
+                visualizer_window.root.after(0, _poll_visualizer_levels)
+        except Exception:
+            pass
 
     else:
         logging.info("Arrêt de l'enregistrement...")
@@ -725,13 +748,29 @@ def open_interface():
     else:
         logging.warning("La fenêtre du visualiseur n'est pas encore initialisée.")
 
-def run_tkinter_app():
-    """Fonction pour lancer l'application Tkinter dans un thread séparé."""
-    global visualizer_window
-    # Créer l'icône avant d'initialiser la GUI
-    icon_path = create_window_icon()
-    visualizer_window = VisualizerWindowTkinter(icon_path=icon_path)
-    visualizer_window.run() # Lance la boucle principale Tkinter
+def run_pystray_icon():
+    """Démarre l'icône système pystray (à appeler dans un thread)."""
+    global global_icon_pystray
+    menu = pystray.Menu(
+        pystray.MenuItem('Ouvrir', open_interface),
+        pystray.MenuItem('Quitter', on_quit)
+    )
+    icon_path = os.path.join(script_dir, 'voice_tool_icon.ico')
+    try:
+        icon_image = Image.open(icon_path)
+    except Exception as e:
+        logging.error(f"Impossible de charger l'icône depuis {icon_path}: {e}")
+        # Utiliser une icône de secours
+        icon_image = create_icon_pystray('white', 'gray')
+
+    icon_pystray = pystray.Icon(
+        'VoiceTool',
+        icon=icon_image,
+        title='Voice Tool',
+        menu=menu
+    )
+    global_icon_pystray = icon_pystray
+    icon_pystray.run()
 
 def main():
     global google_credentials, visualizer_window, global_icon_pystray
@@ -812,57 +851,36 @@ def main():
 
     logging.info("Démarrage de l'application...")
 
-    # Lancer l'application Tkinter dans un thread séparé
-    tkinter_thread = threading.Thread(target=run_tkinter_app)
-    tkinter_thread.daemon = True # Permet au thread de se fermer avec l'app principale
-    tkinter_thread.start()
+    # Initialiser Tkinter dans le thread principal pour robustesse Windows
+    icon_path = create_window_icon()
+    visualizer_window = VisualizerWindowTkinter(icon_path=icon_path)
 
-    # Attendre que la fenêtre Tkinter soit initialisée avant de continuer
-    max_wait = 50  # 5 secondes maximum
-    wait_count = 0
-    while visualizer_window is None and wait_count < max_wait:
-        time.sleep(0.1)
-        wait_count += 1
-    
-    if visualizer_window is None:
-        logging.error("Impossible d'initialiser la fenêtre de visualisation dans les temps impartis.")
-        return
-    else:
-        logging.info("Fenêtre de visualisation initialisée avec succès.")
-
-    # --- Rediriger les logs vers la GUI ---
-    # Créer le handler personnalisé et l'ajouter au logger racine.
-    # Tous les logs seront maintenant aussi envoyés à la GUI si sa fenêtre est ouverte.
+    # Rediriger les logs vers la GUI
     gui_handler = GuiLoggingHandler(visualizer_window)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
     gui_handler.setFormatter(formatter)
     logging.getLogger().addHandler(gui_handler)
 
-    # --- Démarrer le monitoring des commandes inter-processus ---
+    # Démarrer le monitoring des commandes inter-processus
     start_command_monitor()
 
-    # Configuration de l'icône Pystray (reste statique)
-    menu = pystray.Menu(
-        pystray.MenuItem('Ouvrir', open_interface),
-        pystray.MenuItem('Quitter', on_quit)
-    )
-    icon_path = os.path.join(script_dir, 'voice_tool_icon.ico')
-    try:
-        icon_image = Image.open(icon_path)
-    except Exception as e:
-        logging.error(f"Impossible de charger l'icône depuis {icon_path}: {e}")
-        # Utiliser une icône de secours
-        icon_image = create_icon_pystray('white', 'gray')
+    # Démarrer l'icône pystray dans un thread séparé
+    tray_thread = threading.Thread(target=run_pystray_icon, daemon=True)
+    tray_thread.start()
 
-    icon_pystray = pystray.Icon(
-        'VoiceTool',
-        icon=icon_image,
-        title='Voice Tool (Ctrl+Alt+S) - Google Cloud',
-        menu=menu
-    )
-    global_icon_pystray = icon_pystray # Rend l'icône accessible globalement
-    setup_hotkey(icon_pystray)
-    icon_pystray.run()
+    # Configurer les hotkeys (utilise global_icon_pystray qui sera défini par run_pystray_icon)
+    # Attendre un court instant que l'icône soit prête
+    for _ in range(20):
+        if global_icon_pystray:
+            break
+        time.sleep(0.05)
+    if global_icon_pystray:
+        setup_hotkey(global_icon_pystray)
+    else:
+        logging.warning("Icône pystray non initialisée à temps; les hotkeys seront configurés plus tard.")
+
+    # Lancer la boucle principale Tkinter (thread principal)
+    visualizer_window.run()
 
 if __name__ == "__main__":
     main()
