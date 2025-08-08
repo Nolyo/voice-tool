@@ -1198,7 +1198,7 @@ class VisualizerWindowTkinter:
             if record_mode_var.get() == "ptt":
                 ptt_row.pack(fill=tk.X, pady=(0, 15))
             else:
-                ptt_row.forget()
+                ptt_row.pack_forget()
         mode_toggle = tk.Radiobutton(mode_row, text="Toggle (appuyer pour démarrer/arrêter)", value="toggle", variable=record_mode_var,
                                      command=on_mode_changed, fg="white", bg="#2b2b2b", selectcolor="#3c3c3c", activebackground="#2b2b2b", activeforeground="white")
         mode_ptt = tk.Radiobutton(mode_row, text="Push‑to‑talk (enregistrer tant que la touche est maintenue)", value="ptt", variable=record_mode_var,
@@ -1324,7 +1324,7 @@ class VisualizerWindowTkinter:
                         if record_mode_var.get() == "ptt":
                             ptt_row.pack(fill=tk.X, pady=(0, 15))
                         else:
-                            ptt_row.forget()
+                            ptt_row.pack_forget()
                         
                         # Mettre à jour l'affichage du raccourci dans la fenêtre principale
                         new_shortcut = current_user_settings.get("record_hotkey", "<ctrl>+<alt>+s")
@@ -1433,7 +1433,12 @@ class VisualizerWindowTkinter:
                         record_val = self._record_hotkey_entry.get().strip() if hasattr(self, '_record_hotkey_entry') else ""
                         open_val = self._open_hotkey_entry.get().strip() if hasattr(self, '_open_hotkey_entry') else ""
                         ptt_val = self._ptt_hotkey_entry.get().strip() if hasattr(self, '_ptt_hotkey_entry') and self._ptt_hotkey_entry else ""
-                        new_config = {}
+                        # S'assurer que record_mode courant est transmis pour éviter un retour par défaut côté backend
+                        try:
+                            current_mode = record_mode_var.get()
+                        except Exception:
+                            current_mode = None
+                        new_config = {"record_mode": current_mode} if current_mode else {}
                         if record_val:
                             new_config['record_hotkey'] = record_val
                         if open_val:
