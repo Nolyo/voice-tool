@@ -857,13 +857,18 @@ class VisualizerWindowTkinter:
         tk.Label(shortcut_frame, text="🎤", fg="#FF6B6B", bg="#1e1e1e", font=("Arial", 16)).pack(pady=(8,2))
         tk.Label(shortcut_frame, text="Pour démarrer/arrêter l'enregistrement", fg="white", bg="#1e1e1e", font=("Arial", 10)).pack()
         
-        # Afficher le raccourci configuré
-        if current_config:
-            current_shortcut = current_config.get('record_hotkey', '<ctrl>+<alt>+s')
-        else:
+        # Afficher le raccourci configuré (prend en compte le mode)
+        try:
             import main
-            current_shortcut = main.config.get('record_hotkey', '<ctrl>+<alt>+s')
-        shortcut_label = tk.Label(shortcut_frame, text=f"Appuyez sur {current_shortcut}", fg="#4ECDC4", bg="#1e1e1e", font=("Arial", 11, "bold"))
+            us = main.load_user_settings()
+            mode_label = us.get("record_mode", "toggle")
+            if mode_label == "ptt":
+                shortcut_text = f"Maintenir {us.get('ptt_hotkey', '<ctrl>+<shift>+<space>')}"
+            else:
+                shortcut_text = f"Appuyez sur {us.get('record_hotkey', '<ctrl>+<alt>+s')}"
+        except Exception:
+            shortcut_text = "Appuyez sur <ctrl>+<alt>+s"
+        shortcut_label = tk.Label(shortcut_frame, text=shortcut_text, fg="#4ECDC4", bg="#1e1e1e", font=("Arial", 11, "bold"))
         shortcut_label.pack(pady=(2,8))
         # Fin Onglet Historique
 
@@ -1199,6 +1204,21 @@ class VisualizerWindowTkinter:
                 ptt_row.pack(fill=tk.X, pady=(0, 15))
             else:
                 ptt_row.pack_forget()
+            # Rafraîchir le label de raccourci après un court délai (le temps que la sauvegarde se propage)
+            def refresh_shortcut_label():
+                try:
+                    import main
+                    us = main.load_user_settings()
+                    mode_label = us.get("record_mode", "toggle")
+                    if mode_label == "ptt":
+                        txt = f"Maintenir {us.get('ptt_hotkey', '<ctrl>+<shift>+<space>')}"
+                    else:
+                        txt = f"Appuyez sur {us.get('record_hotkey', '<ctrl>+<alt>+s')}"
+                    if hasattr(self, '_shortcut_label') and self._shortcut_label:
+                        self._shortcut_label.config(text=txt)
+                except Exception:
+                    pass
+            self.root.after(120, refresh_shortcut_label)
         mode_toggle = tk.Radiobutton(mode_row, text="Toggle (appuyer pour démarrer/arrêter)", value="toggle", variable=record_mode_var,
                                      command=on_mode_changed, fg="white", bg="#2b2b2b", selectcolor="#3c3c3c", activebackground="#2b2b2b", activeforeground="white")
         mode_ptt = tk.Radiobutton(mode_row, text="Push‑to‑talk (enregistrer tant que la touche est maintenue)", value="ptt", variable=record_mode_var,
@@ -1252,6 +1272,8 @@ class VisualizerWindowTkinter:
         self._open_hotkey_entry = open_hotkey_entry
         self._settings_save_callback = save_callback
         self._ptt_hotkey_entry = ptt_hotkey_entry if 'ptt_hotkey_entry' in locals() else None
+        self._shortcut_label = shortcut_label
+        self._record_mode_var = record_mode_var
         
         # Séparateur
         separator2 = tk.Frame(settings_frame, height=1, bg="#555555")
@@ -1289,7 +1311,8 @@ class VisualizerWindowTkinter:
                 "record_hotkey": record_hotkey_entry.get().strip(),
                 "open_window_hotkey": open_hotkey_entry.get().strip(),
                 "record_mode": record_mode_var.get(),
-                "ptt_hotkey": (ptt_hotkey_entry.get().strip() if record_mode_var.get()=="ptt" else main.user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>")),
+                # Toujours persister ptt_hotkey même si on est en toggle (évite de le perdre)
+                "ptt_hotkey": (ptt_hotkey_entry.get().strip() if 'ptt_hotkey_entry' in locals() and ptt_hotkey_entry.get().strip() else main.user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>")),
                 "enable_sounds": sounds_var.get(),
                 "paste_at_cursor": paste_var.get(),
                 "auto_start": auto_start_var.get(),
@@ -1326,9 +1349,12 @@ class VisualizerWindowTkinter:
                         else:
                             ptt_row.pack_forget()
                         
-                        # Mettre à jour l'affichage du raccourci dans la fenêtre principale
-                        new_shortcut = current_user_settings.get("record_hotkey", "<ctrl>+<alt>+s")
-                        shortcut_label.config(text=f"Appuyez sur {new_shortcut}")
+                        # Mettre à jour l'affichage du raccourci dans la fenêtre principale selon le mode
+                        mode_label = current_user_settings.get("record_mode", "toggle")
+                        if mode_label == "ptt":
+                            shortcut_label.config(text=f"Maintenir {current_user_settings.get('ptt_hotkey', '<ctrl>+<shift>+<space>')}")
+                        else:
+                            shortcut_label.config(text=f"Appuyez sur {current_user_settings.get('record_hotkey', '<ctrl>+<alt>+s')}")
                         
                         logging.info("Interface mise à jour avec les paramètres sauvegardés")
                     
@@ -1342,12 +1368,39 @@ class VisualizerWindowTkinter:
                     save_button.config(text="❌ Erreur", bg="#dc3545")
                     self.main_window.after(2000, lambda: save_button.config(text="Sauvegarder", bg="#0078d7"))
 
-        # Bouton de sauvegarde
-        save_button = tk.Button(settings_frame, text="Sauvegarder", command=save_settings, 
-                               bg="#0078d7", fg="white", relief=tk.FLAT, 
-                               activebackground="#005a9e", activeforeground="white",
-                               font=("Arial", 10, "bold"))
-        save_button.pack(pady=20, padx=5, fill=tk.X)
+        # Remplacer le bouton Sauvegarder par des auto-saves (bind focus/enter)
+        def commit_hotkeys(event=None):
+            try:
+                import main
+                new_config = {
+                    "record_hotkey": record_hotkey_entry.get().strip(),
+                    "open_window_hotkey": open_hotkey_entry.get().strip(),
+                    "record_mode": record_mode_var.get(),
+                    "ptt_hotkey": (ptt_hotkey_entry.get().strip() if 'ptt_hotkey_entry' in locals() and ptt_hotkey_entry.get().strip() else main.user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>")),
+                }
+                if self._settings_save_callback:
+                    self._settings_save_callback(new_config)
+                # rafraîchir le label
+                try:
+                    us = main.load_user_settings()
+                    mode_label = us.get("record_mode", "toggle")
+                    if mode_label == "ptt":
+                        txt = f"Maintenir {us.get('ptt_hotkey', '<ctrl>+<shift>+<space>')}"
+                    else:
+                        txt = f"Appuyez sur {us.get('record_hotkey', '<ctrl>+<alt>+s')}"
+                    if hasattr(self, '_shortcut_label') and self._shortcut_label:
+                        self._shortcut_label.config(text=txt)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+        for ent in [record_hotkey_entry, open_hotkey_entry]:
+            ent.bind("<FocusOut>", commit_hotkeys)
+            ent.bind("<Return>", commit_hotkeys)
+        if 'ptt_hotkey_entry' in locals():
+            ptt_hotkey_entry.bind("<FocusOut>", commit_hotkeys)
+            ptt_hotkey_entry.bind("<Return>", commit_hotkeys)
 
         # --- Onglet 3: Logs --- (ajouté après Paramètres)
         logs_tab = tk.Frame(notebook, bg="#2b2b2b")
