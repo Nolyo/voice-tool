@@ -543,10 +543,52 @@ def _processing_worker():
             try:
                 if not isinstance(frames_copy, list) or n <= 0:
                     logging.warning("Aucun frame à traiter dans la tâche")
+                    # Feedback: son cancel + UI discrète
+                    try:
+                        if visualizer_window and hasattr(visualizer_window, 'root'):
+                            visualizer_window.root.after(0, visualizer_window.set_mode, "idle")
+                            visualizer_window.root.after(0, visualizer_window.show_status, "error")
+                    except Exception:
+                        pass
+                    try:
+                        if sound_paths and 'cancel' in sound_paths:
+                            play_sound_async(sound_paths['cancel'])
+                    except Exception:
+                        pass
                     continue
                 logging.info(f"Concaténation de {n} frames audio (worker)...")
                 recording_data = np.concatenate(frames_copy, axis=0)
-                # Nom de fichier unique dans AppData/recordings
+
+                # Analyse du signal pour détecter le "vide" (anti-missclick / casque éteint)
+                try:
+                    duration_sec = float(len(recording_data)) / float(SAMPLE_RATE) if SAMPLE_RATE else 0.0
+                except Exception:
+                    duration_sec = 0.0
+                try:
+                    # RMS en int16 (0..32767 approx). La parole normale est largement > 100.
+                    rms_val = float(np.sqrt(np.mean((recording_data.astype(np.float32))**2)))
+                except Exception:
+                    rms_val = 0.0
+                min_duration_sec = 0.6  # ignorer < 600ms (anti-missclick)
+                min_rms_threshold = 60.0  # seuil de silence effectif
+
+                if duration_sec < min_duration_sec or rms_val < min_rms_threshold:
+                    logging.warning(f"Enregistrement ignoré (duration={duration_sec:.3f}s, rms={rms_val:.1f})")
+                    # Feedback UI discret
+                    try:
+                        if visualizer_window and hasattr(visualizer_window, 'root'):
+                            visualizer_window.root.after(0, visualizer_window.set_mode, "idle")
+                            visualizer_window.root.after(0, visualizer_window.show_status, "error")
+                    except Exception:
+                        pass
+                    try:
+                        if sound_paths and 'cancel' in sound_paths:
+                            play_sound_async(sound_paths['cancel'])
+                    except Exception:
+                        pass
+                    continue
+
+                # Nom de fichier unique dans AppData/recordings (après validation)
                 ts = time.strftime('%Y%m%d_%H%M%S')
                 os.makedirs(RECORDINGS_DIR, exist_ok=True)
                 out_path = os.path.join(RECORDINGS_DIR, f"recording_{ts}.wav")
@@ -703,11 +745,50 @@ def toggle_recording(icon_pystray):
             log_checkpoint("after_frames_snapshot")
             if len(frames_copy2) == 0:
                 logging.warning("Aucune donnée audio à sauvegarder")
+                # Feedback: son cancel + UI discrète
+                try:
+                    if visualizer_window and hasattr(visualizer_window, 'root'):
+                        visualizer_window.root.after(0, visualizer_window.set_mode, "idle")
+                        visualizer_window.root.after(0, visualizer_window.show_status, "error")
+                except Exception:
+                    pass
+                try:
+                    if sound_paths and 'cancel' in sound_paths:
+                        play_sound_async(sound_paths['cancel'])
+                except Exception:
+                    pass
             else:
-                _ensure_processing_worker_started()
-                processing_queue.put(frames_copy2)
-                logging.info(f"Tâche de traitement audio envoyée au worker (frames={len(frames_copy2)})")
-                log_checkpoint("after_put_to_worker")
+                # Filtre rapide: ignorer si enregistrement trop court (tap involontaire PTT)
+                try:
+                    total_samples = 0
+                    for _fr in frames_copy2:
+                        try:
+                            total_samples += len(_fr)
+                        except Exception:
+                            pass
+                    min_duration_sec = 0.6  # ignorer < 600ms (anti-missclick)
+                    if total_samples < int(SAMPLE_RATE * min_duration_sec):
+                        logging.warning("Enregistrement trop court, annulation de l'envoi au worker")
+                        # Retour visuel: repasser en mode idle et montrer une erreur discrète
+                        try:
+                            if visualizer_window and hasattr(visualizer_window, 'root'):
+                                visualizer_window.root.after(0, visualizer_window.set_mode, "idle")
+                                visualizer_window.root.after(0, visualizer_window.show_status, "error")
+                        except Exception:
+                            pass
+                        # Son d'erreur léger
+                        try:
+                            if sound_paths and 'cancel' in sound_paths:
+                                play_sound_async(sound_paths['cancel'])
+                        except Exception:
+                            pass
+                    else:
+                        _ensure_processing_worker_started()
+                        processing_queue.put(frames_copy2)
+                        logging.info(f"Tâche de traitement audio envoyée au worker (frames={len(frames_copy2)})")
+                        log_checkpoint("after_put_to_worker")
+                except Exception as e:
+                    logging.error(f"Erreur lors de l'envoi au worker: {e}")
         except Exception as e:
             logging.error(f"Erreur lors de l'envoi au worker: {e}")
 

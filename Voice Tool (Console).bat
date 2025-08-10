@@ -1,3 +1,4 @@
 @echo off
-powershell -Command "Set-Location '\\wsl$\Ubuntu\home\nolyo\www\voice-tool'; python main.py --console"
+rem Launch from the directory of this .bat (Windows path)
+powershell -NoProfile -Command "Set-Location '%~dp0'; python main.py --console"
 pause
