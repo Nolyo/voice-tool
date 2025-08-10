@@ -10,3 +10,4 @@ pyperclip
 PySide6
 setproctitle
 openai
+customtkinter
