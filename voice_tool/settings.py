@@ -59,7 +59,7 @@ def default_user_settings() -> Dict[str, Any]:
         # géométrie au format 'WxH+X+Y' (ex: '1200x800+100+60')
         "main_window_geometry": None,
         # Performance Historique: limiter le nombre de cartes rendues
-        "history_cards_render_limit": 150,
+        "history_cards_render_limit": 50,
     }
 
 

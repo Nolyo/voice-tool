@@ -1009,6 +1009,11 @@ class VisualizerWindowTkinter:
         self._geom_save_after_id = None
         self._last_saved_geometry = None
         self._last_saved_state = None
+        self._last_configure_ts = 0.0
+        # Optimisation cartes pendant redimensionnement
+        self._cards_resize_after_id = None
+        self._cards_hidden_for_resize = False
+        self._cards_placeholder = None
 
         def _save_geometry_now():
             try:
@@ -1057,6 +1062,54 @@ class VisualizerWindowTkinter:
                     except Exception:
                         pass
                 self._geom_save_after_id = self.root.after(1500, _save_geometry_now)
+
+                # Geler l'affichage des cartes pendant le redimensionnement (pour réduire le lag)
+                try:
+                    view_mode = self._history_view_mode.get() if hasattr(self, '_history_view_mode') else 'cartes'
+                except Exception:
+                    view_mode = 'cartes'
+                if view_mode == 'cartes':
+                    # Planifier la ré‑affichage après une courte inactivité (220ms)
+                    if self._cards_resize_after_id is not None:
+                        try:
+                            self.root.after_cancel(self._cards_resize_after_id)
+                        except Exception:
+                            pass
+                    # Masquer immédiatement les cartes si pas déjà fait
+                    if not self._cards_hidden_for_resize:
+                        try:
+                            if hasattr(self, 'history_cards_container') and self.history_cards_container.winfo_ismapped():
+                                self.history_cards_container.pack_forget()
+                                self._cards_hidden_for_resize = True
+                                # Afficher un placeholder discret
+                                try:
+                                    ph = ctk.CTkLabel(self._history_tab if hasattr(self, '_history_tab') else self.main_window,
+                                                       text="Redimensionnement…",
+                                                       text_color="#888888",
+                                                       font=("Arial", 11))
+                                    ph.pack(pady=12)
+                                    self._cards_placeholder = ph
+                                except Exception:
+                                    self._cards_placeholder = None
+                        except Exception:
+                            pass
+                    # Reprogrammer l'affichage des cartes après pause
+                    def _end_cards_resize():
+                        try:
+                            if self._cards_placeholder and self._cards_placeholder.winfo_exists():
+                                try:
+                                    self._cards_placeholder.destroy()
+                                except Exception:
+                                    pass
+                                self._cards_placeholder = None
+                            if hasattr(self, 'history_cards_container') and not self.history_cards_container.winfo_ismapped():
+                                self.history_cards_container.pack(fill=tk.BOTH, expand=True)
+                            self._cards_hidden_for_resize = False
+                        except Exception:
+                            pass
+                        finally:
+                            self._cards_resize_after_id = None
+                    self._cards_resize_after_id = self.root.after(220, _end_cards_resize)
             except Exception:
                 pass
 
@@ -1308,9 +1361,12 @@ class VisualizerWindowTkinter:
         # Fin Onglet Historique
 
         # --- Onglet 2: Paramètres ---
-        settings_frame = ctk.CTkFrame(notebook, fg_color="#2b2b2b")
-        notebook.add(settings_frame, text='  Paramètres  ')
-        self._settings_tab = settings_frame
+        # Créer un onglet conteneur, puis un frame scrollable pour le contenu
+        settings_tab = ctk.CTkFrame(notebook, fg_color="#2b2b2b")
+        notebook.add(settings_tab, text='  Paramètres  ')
+        self._settings_tab = settings_tab
+        settings_frame = ctk.CTkScrollableFrame(settings_tab, fg_color="#2b2b2b")
+        settings_frame.pack(fill=tk.BOTH, expand=True)
         
         # Définir les variables AVANT la fonction (lier explicitement au root Tk)
         sounds_var = tk.BooleanVar(master=self.root)
