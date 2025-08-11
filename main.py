@@ -187,6 +187,8 @@ audio_stream = None
 audio_stream_device_index = None
 audio_frames = []
 audio_frames_lock = Lock()
+# Verrou pour opérations sur l'historique (évite les courses effacer/ajouter)
+history_lock = Lock()
 google_credentials = None
 transcription_history = [] # Historique des transcriptions réussies
 global_icon_pystray = None # Pour accéder à l'icône depuis d'autres fonctions
@@ -197,6 +199,7 @@ visualizer_queue: SimpleQueue = SimpleQueue()
 processing_queue: SimpleQueue = SimpleQueue()
 processing_worker_thread: Thread | None = None
 visualizer_poll_started = False
+pending_open_settings_tab = False
 
 # Gestion d'instance unique via module vt_lock
 
@@ -240,16 +243,25 @@ def save_transcription_history(transcriptions):
     return vt_history.save_transcription_history(transcriptions)
 
 
-def add_to_transcription_history(text):
+def add_to_transcription_history(text, audio_path=None):
     global transcription_history
-    item = vt_history.add_to_transcription_history(transcription_history, text)
+    # Recharger depuis disque + verrou pour éviter toute réapparition de données effacées
+    with history_lock:
+        try:
+            fresh = vt_history.load_transcription_history()
+            if isinstance(fresh, list):
+                transcription_history = fresh
+        except Exception:
+            pass
+        item = vt_history.add_to_transcription_history(transcription_history, text, audio_path)
     return item
 
 
 def clear_all_transcription_history():
     global transcription_history
-    transcription_history = []
-    vt_history.save_transcription_history(transcription_history)
+    with history_lock:
+        transcription_history = []
+        vt_history.save_transcription_history(transcription_history)
     logging.info("Historique des transcriptions complètement effacé")
 
 # --- Fonctions de gestion des paramètres utilisateur ---
@@ -453,10 +465,8 @@ def transcribe_and_copy(filename):
         if sound_paths and 'success' in sound_paths:
             play_sound_async(sound_paths['success'])
 
-        # Ajout à l'historique avec sauvegarde automatique
-        # Si le texte provient d'un fichier wav récent, on pourrait passer le chemin audio.
-        # Ici, on ne l'a pas au moment de la transcription asynchrone. Option: détecter via param supplémentaire si besoin.
-        history_item = add_to_transcription_history(text)
+        # Ajout à l'historique avec sauvegarde automatique (associer le fichier audio utilisé)
+        history_item = add_to_transcription_history(text, audio_path=filename)
         if visualizer_window and visualizer_window.main_window and visualizer_window.main_window.winfo_exists():
             # Planifie l'ajout dans le thread de la GUI pour éviter les conflits
             visualizer_window.root.after(0, visualizer_window.add_transcription_to_history, history_item)
@@ -999,20 +1009,60 @@ def on_quit(icon_pystray, item):
     release_lock()
     icon_pystray.stop()
 
+def _ui_thread_entry(icon_path):
+    """Point d'entrée du thread UI: crée la fenêtre et lance la boucle Tk."""
+    global visualizer_window
+    try:
+        logging.info("[UI] Démarrage du thread UI…")
+        # Toutes les opérations Tk doivent rester dans ce thread
+        visualizer_window = VisualizerWindowTkinter(icon_path=icon_path)
+        # Créer immédiatement l'interface principale dans ce même thread
+        visualizer_window.create_main_interface_window(
+            history=transcription_history,
+            current_config=config,
+            save_callback=update_and_restart_hotkeys
+        )
+        # Si une demande d'ouverture directe de l'onglet Paramètres est en attente, l'appliquer maintenant
+        try:
+            global pending_open_settings_tab
+            if pending_open_settings_tab:
+                pending_open_settings_tab = False
+                try:
+                    visualizer_window.open_settings_tab()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        # Lancer la boucle
+        visualizer_window.run()
+    except Exception as e:
+        logging.error(f"Thread UI: échec d'initialisation de la fenêtre: {e}")
+
+
 def open_interface():
-    """Demande à la boucle Tkinter d'ouvrir l'interface principale."""
-    if visualizer_window:
-        # On utilise `after` pour s'assurer que la création de la fenêtre
-        # se fait dans le thread Tkinter, évitant les problèmes de concurrence.
-        # after() ne supporte que les arguments positionnels, donc on utilise lambda
-        visualizer_window.root.after(
-            0, 
-            lambda: visualizer_window.create_main_interface_window(
-                history=transcription_history, 
-                current_config=config, 
-                save_callback=update_and_restart_hotkeys))
+    """Ouvre l'interface principale (démarre un thread UI si nécessaire)."""
+    global visualizer_window
+    logging.info("[UI] open_interface() appelé")
+    if visualizer_window is None:
+        try:
+            icon_path = create_window_icon()
+        except Exception:
+            icon_path = None
+        # Démarrer la fenêtre et sa boucle Tk dans un thread dédié
+        t = threading.Thread(target=_ui_thread_entry, args=(icon_path,), daemon=True)
+        t.start()
     else:
-        logging.warning("La fenêtre du visualiseur n'est pas encore initialisée.")
+        # Planifier la création/affichage de l'UI dans le thread Tk existant
+        try:
+            logging.info("[UI] Planification de create_main_interface_window via after()")
+            visualizer_window.root.after(
+                0,
+                lambda: visualizer_window.create_main_interface_window(
+                    history=transcription_history,
+                    current_config=config,
+                    save_callback=update_and_restart_hotkeys))
+        except Exception:
+            pass
 
 def run_pystray_icon():
     """Démarre l'icône système pystray (à appeler dans un thread)."""
@@ -1030,8 +1080,22 @@ def run_pystray_icon():
         except Exception as e:
             logging.error(f"Impossible d'ouvrir le dossier des logs: {e}")
 
+    # Menu contextuel: Ouvrir (défaut = double‑clic), Ouvrir paramètres, Ouvrir le dossier des logs, Quitter
+    def _open_settings(_icon=None, _item=None):
+        try:
+            # Marquer l'intention d'ouvrir l'onglet Paramètres et ouvrir l'interface
+            global pending_open_settings_tab
+            pending_open_settings_tab = True
+            open_interface()
+            # Basculer sur l'onglet Paramètres dans le thread UI
+            if visualizer_window and hasattr(visualizer_window, 'root'):
+                visualizer_window.root.after(0, getattr(visualizer_window, 'open_settings_tab', lambda: None))
+        except Exception as e:
+            logging.error(f"Impossible d'ouvrir les paramètres: {e}")
+
     menu = pystray.Menu(
-        pystray.MenuItem('Ouvrir', open_interface),
+        pystray.MenuItem('Ouvrir', open_interface, default=True),
+        pystray.MenuItem('Ouvrir paramètres', _open_settings),
         pystray.MenuItem('Ouvrir le dossier des logs', _open_logs_folder),
         pystray.MenuItem('Quitter', on_quit)
     )
@@ -1117,10 +1181,15 @@ def main():
 
     # Splash screen (hors debug)
     splash = None
+    splash_start_ts = None
     if not is_console_mode:
         try:
             splash = SplashWindow()
             splash.show("Initialisation…")
+            try:
+                splash_start_ts = time.monotonic()
+            except Exception:
+                splash_start_ts = None
         except Exception:
             splash = None
 
@@ -1159,33 +1228,32 @@ def main():
         splash.pump()
     google_credentials = vt_transcription.get_google_credentials_from_env()
     if not google_credentials:
+        logging.warning("Clés API manquantes: l'application démarre quand même (fonctionnalités limitées).")
         if splash:
             try:
-                splash.set_message("Clés API manquantes. Consultez la documentation.")
+                splash.set_message("Clés API manquantes (non bloquant)…")
                 splash.pump()
-                import time as _t
-                _t.sleep(1.0)
-                splash.close()
             except Exception:
                 pass
-        return
 
     logging.info("Démarrage de l'application...")
 
-    # Initialiser Tkinter dans le thread principal pour robustesse Windows
-    icon_path = create_window_icon()
-    visualizer_window = VisualizerWindowTkinter(icon_path=icon_path)
-    # S'assurer que la racine Tk est initialisée avant tout usage différé
-    try:
-        visualizer_window.root.update_idletasks()
-    except Exception:
-        pass
+    # Initialiser la fenêtre principale uniquement en mode console.
+    if is_console_mode:
+        icon_path = create_window_icon()
+        visualizer_window = VisualizerWindowTkinter(icon_path=icon_path)
+        # S'assurer que la racine Tk est initialisée avant tout usage différé
+        try:
+            visualizer_window.root.update_idletasks()
+        except Exception:
+            pass
 
-    # Rediriger les logs vers la GUI
-    gui_handler = GuiLoggingHandler(visualizer_window)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
-    gui_handler.setFormatter(formatter)
-    logging.getLogger().addHandler(gui_handler)
+    # Rediriger les logs vers la GUI uniquement si la fenêtre existe (mode console)
+    if visualizer_window is not None:
+        gui_handler = GuiLoggingHandler(visualizer_window)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
+        gui_handler.setFormatter(formatter)
+        logging.getLogger().addHandler(gui_handler)
 
     # Démarrer le monitoring des commandes inter-processus
     start_command_monitor()
@@ -1194,7 +1262,7 @@ def main():
     if splash:
         splash.set_message("Icône système…")
         splash.pump()
-    tray_thread = threading.Thread(target=run_pystray_icon, daemon=True)
+    tray_thread = threading.Thread(target=run_pystray_icon, daemon=False)
     tray_thread.start()
 
     # Configurer les hotkeys (utilise global_icon_pystray qui sera défini par run_pystray_icon)
@@ -1217,22 +1285,54 @@ def main():
     except Exception as e:
         logging.error(f"Échec du démarrage initial de l'InputStream: {e}")
 
-    # Fermer le splash
+    # Fermer le splash (respecter une durée minimale d'affichage de 3s)
     if splash:
         try:
+            try:
+                if splash_start_ts is not None:
+                    elapsed = time.monotonic() - splash_start_ts
+                    if elapsed < 3.0:
+                        time.sleep(max(0.0, 3.0 - elapsed))
+            except Exception:
+                pass
             splash.close()
+            # Assainir tout root Tk implicite qui pourrait persister
+            try:
+                import tkinter as tk  # type: ignore
+                if getattr(tk, "_default_root", None) is not None:
+                    try:
+                        tk._default_root.withdraw()
+                    except Exception:
+                        pass
+                    try:
+                        tk._default_root.destroy()
+                    except Exception:
+                        pass
+                    try:
+                        tk._default_root = None
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         except Exception:
             pass
 
-    # En debug: ouvrir la fenêtre principale directement sur les logs
+    # En console: ouvrir la fenêtre principale directement sur les logs
     if is_console_mode:
         try:
             open_interface()
         except Exception:
             pass
 
-    # Lancer la boucle principale Tkinter (thread principal)
-    visualizer_window.run()
+    # Lancer la boucle principale Tkinter (thread principal) uniquement en console
+    if is_console_mode and visualizer_window is not None:
+        visualizer_window.run()
+    else:
+        # En arrière-plan, empêcher la fin du processus tant que le tray est actif
+        try:
+            tray_thread.join()
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     main()

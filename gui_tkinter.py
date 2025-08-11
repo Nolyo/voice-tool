@@ -5,6 +5,7 @@ import time
 import numpy as np
 import logging
 from tkinter import ttk
+import customtkinter as ctk
 import pyperclip
 import os
 import platform
@@ -16,9 +17,17 @@ logging.basicConfig(level=logging.INFO)
 
 class VisualizerWindowTkinter:
     def __init__(self, icon_path=None):
-        self.root = tk.Tk()
+        # Créer un root CTk dédié à l'application (ne pas réutiliser celui du Splash)
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("blue")
+        self.root = ctk.CTk()
+        # Cacher le root immédiatement afin d'éviter tout flash de fenêtre 'tk' en arrière-plan
+        try:
+            self.root.attributes('-alpha', 0.0)
+        except Exception:
+            pass
+        self.root.withdraw()  # Cache la fenêtre principale Tkinter par défaut
         self.root.title("Voice Tool")  # Définir le titre de l'application
-        self.root.withdraw() # Cache la fenêtre principale Tkinter par défaut
         self.icon_path = icon_path
         
         # Appliquer l'icône à la fenêtre root
@@ -43,19 +52,26 @@ class VisualizerWindowTkinter:
         self.history_tree = None  # Nouveau: Treeview pour l'historique
         self._tree_id_to_obj = {}  # map id->objet (dict/str) pour actions
         # Recherche et gestion d'historique (filtrage)
-        self.history_search_var = tk.StringVar(master=self.root)
+        self.history_search_var = ctk.StringVar(master=self.root)
         self._search_after_id = None
         self._history_master = []  # liste des items d'historique (objets d'origine)
         self._filtered_history_items = []  # vue filtrée courante
+        # Watcher de fichier d'historique
+        self._history_file_last_mtime = None
+        self._history_watch_active = False
         
-        self.window = tk.Toplevel(self.root)
+        self.window = ctk.CTkToplevel(self.root)
         self.window.title("Voice Tool - Visualizer")  # Titre pour la fenêtre de visualisation
         self.set_window_icon(self.window) # Appliquer l'icône à la fenêtre de visualisation
         self.window.overrideredirect(True) # Supprime la barre de titre et les bordures
         self.window.attributes("-topmost", True) # Toujours au-dessus
-        self.window.geometry("300x60") # Taille ajustée pour le nouveau design
-        self.window.configure(bg='#1C1C1C') # Fond sombre moderne
-        self.window.attributes("-alpha", 0.9) # Un peu plus transparent
+        self.window.geometry("420x26") # Fenêtre plus fine et large pour un look moderne
+        # Utiliser la couleur de fond CTk pour un thème sombre moderne
+        try:
+            self.window.configure(fg_color='#1C1C1C')
+        except Exception:
+            self.window.configure(bg='#1C1C1C')
+        self.window.attributes("-alpha", 0.95) # Légère transparence
 
         # --- Configuration pour éviter le vol de focus (Windows) ---
         if platform.system() == 'Windows':
@@ -86,8 +102,8 @@ class VisualizerWindowTkinter:
         # Cacher la fenêtre au démarrage pour qu'elle n'apparaisse que lors de l'enregistrement
         self.window.withdraw()
 
-        # Canvas pour le visualiseur
-        self.canvas = tk.Canvas(self.window, width=300, height=60, bg='#1C1C1C', highlightthickness=0)
+        # Canvas pour le visualiseur (mince)
+        self.canvas = tk.Canvas(self.window, width=420, height=26, bg='#1C1C1C', highlightthickness=0)
         self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
         # Désactiver les liaisons implicites lourdes (scroll) qui peuvent bloquer le thread UI
         try:
@@ -100,12 +116,14 @@ class VisualizerWindowTkinter:
         except Exception:
             pass
 
-        # Label pour les statuts (Succès, Erreur, etc.)
-        self.status_label = tk.Label(self.window, text="", fg="#1C1C1C", bg="white", font=("Arial", 12, "bold"))
+        # Label pour les statuts (Succès, Erreur, etc.) en CTk pour cohérence visuelle
+        self.status_label = ctk.CTkLabel(self.window, text="", text_color="#1C1C1C", fg_color="white", font=("Arial", 12, "bold"))
         self.status_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         self.status_label.lower() 
 
-        self.audio_levels = np.zeros(60) # Plus de barres pour un effet plus fluide
+        self.audio_levels = np.zeros(84) # Plus de barres fines pour un effet fluide
+        # Pic de niveau pour normalisation auto (AGC simple)
+        self._level_peak = 0.1
 
         self.current_mode = "idle"
 
@@ -164,9 +182,36 @@ class VisualizerWindowTkinter:
 
     def update_visualizer(self, new_level):
         if self.current_mode == "recording":
+            # Normalisation automatique des niveaux pour assurer un mouvement visible
+            lvl = self._normalize_level(new_level)
             self.audio_levels = np.roll(self.audio_levels, -1)
-            self.audio_levels[-1] = new_level
+            self.audio_levels[-1] = lvl
             self.draw_visualizer()
+
+    def _normalize_level(self, level):
+        """AGC simple: suit un pic décroissant et met à l'échelle le niveau.
+        Tolère des niveaux très faibles (ex: flux float déjà entre -1..1).
+        """
+        try:
+            x = float(level)
+            if not np.isfinite(x):
+                x = 0.0
+            if x < 0:
+                x = 0.0
+            # Si les niveaux sont extrêmement faibles (ex. échelle 1/32768), amplifier fortement
+            if x < 1e-3:
+                x *= 2000.0
+            # Suivi de pic avec décroissance
+            self._level_peak = max(x, self._level_peak * 0.985)
+            peak = self._level_peak if self._level_peak > 1e-6 else 1e-6
+            y = x / peak
+            # Un léger gain pour être bien visible
+            y *= 1.2
+            if y > 1.0:
+                y = 1.0
+            return y
+        except Exception:
+            return 0.0
 
     def draw_visualizer(self):
         self.canvas.delete("all")
@@ -174,23 +219,38 @@ class VisualizerWindowTkinter:
         canvas_height = self.canvas.winfo_height()
         canvas_width = self.canvas.winfo_width()
         
+        # Panneau arrondi noir en arrière-plan
+        padding = 6
+        radius = 10
+        self._draw_rounded_panel(0, 0, canvas_width, canvas_height, radius=radius, fill="#000000", outline="#0e0e0e")
+        
         num_bars = len(self.audio_levels)
-        bar_width = 3  # Largeur fixe pour des barres fines
-        spacing = 2    # Espacement entre les barres
+        bar_width = 3  # Barres légèrement plus larges pour une meilleure lisibilité
+        spacing = 2    # Espacement un peu plus généreux
         total_width = num_bars * (bar_width + spacing) - spacing
-        start_x = (canvas_width - total_width) / 2
+        usable_width = max(0, canvas_width - 2*(padding + radius))
+        start_x = (canvas_width - usable_width) / 2 + max(0, (usable_width - total_width) / 2)
+
+        # Ligne de base subtile
+        try:
+            self.canvas.create_line(padding+radius, canvas_height - padding - 2, canvas_width - padding - radius, canvas_height - padding - 2, fill="#2a2a2a")
+        except Exception:
+            pass
 
         for i, level in enumerate(self.audio_levels):
             x1 = start_x + i * (bar_width + spacing)
             x2 = x1 + bar_width
             
             # Courbe de croissance non-linéaire pour un effet plus doux
-            # La racine carrée rend les sons faibles plus visibles
-            bar_height = int(np.sqrt(level) * (canvas_height * 0.9))
-            bar_height = max(2, bar_height) # Hauteur minimale de 2px
+            # Courbe douce avec niveaux déjà normalisés 0..1
+            available_h = max(2, (canvas_height - 2*padding - 4))
+            lvl = max(0.0, min(1.0, float(level)))
+            bar_height = int((lvl ** 0.5) * available_h)
+            bar_height = max(2, bar_height) # Hauteur minimale un peu plus grande
             
-            y1 = (canvas_height - bar_height) / 2
-            y2 = y1 + bar_height
+            # Ancrer depuis le bas, avec marge intérieure
+            y2 = canvas_height - padding - 2
+            y1 = y2 - bar_height
             
             # Dégradé de couleur moderne
             color = self._get_color_gradient(level)
@@ -225,57 +285,45 @@ class VisualizerWindowTkinter:
 
     def _draw_rounded_rect(self, x1, y1, x2, y2, radius=3, fill='#4CAF50'):
         """Dessine un rectangle avec des coins entièrement arrondis (pilule)."""
-        self.canvas.create_oval(x1, y1, x2, y2, fill=fill, outline="")
+        # Pour des barres très fines, un simple rectangle rend mieux visuellement que des ovales
+        self.canvas.create_rectangle(x1, y1, x2, y2, fill=fill, outline="")
+
+    def _draw_rounded_panel(self, x1, y1, x2, y2, radius=10, fill="#000000", outline="#0e0e0e"):
+        """Dessine un panneau arrondi (fond) avec rayon et couleur donnés."""
+        try:
+            w = max(0, x2 - x1)
+            h = max(0, y2 - y1)
+            r = max(0, min(radius, w/2, h/2))
+            # Corps (rectangles centraux)
+            self.canvas.create_rectangle(x1 + r, y1, x2 - r, y2, fill=fill, outline=outline)
+            self.canvas.create_rectangle(x1, y1 + r, x2, y2 - r, fill=fill, outline=outline)
+            # Coins (ovales)
+            self.canvas.create_oval(x1, y1, x1 + 2*r, y1 + 2*r, fill=fill, outline=outline)
+            self.canvas.create_oval(x2 - 2*r, y1, x2, y1 + 2*r, fill=fill, outline=outline)
+            self.canvas.create_oval(x1, y2 - 2*r, x1 + 2*r, y2, fill=fill, outline=outline)
+            self.canvas.create_oval(x2 - 2*r, y2 - 2*r, x2, y2, fill=fill, outline=outline)
+        except Exception:
+            pass
 
     def _draw_processing_interface(self):
-        """Dessine une interface de traitement professionnelle avec l'icône de l'app."""
+        """Bannière de traitement compacte et moderne (panneau arrondi + texte + points animés)."""
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
-        
-        # Fond dégradé subtil
-        self.canvas.create_rectangle(0, 0, canvas_width, canvas_height, 
-                                   fill='#1C1C1C', outline='')
-        
-        # Cercle d'arrière-plan pour l'icône (style moderne)
-        center_x = canvas_width // 2
-        center_y = canvas_height // 2 - 8  # Remonter légèrement l'icône
-        
-        # Cercle principal (bleu Voice Tool)
-        self.canvas.create_oval(center_x - 20, center_y - 15, 
-                              center_x + 20, center_y + 15, 
-                              fill='#2196F3', outline='#1976D2', width=2)
-        
-        # Icône microphone stylisé (blanc)
-        # Corps du micro
-        self.canvas.create_oval(center_x - 8, center_y - 8, 
-                              center_x + 8, center_y + 2, 
-                              fill='white', outline='')
-        
-        # Tige du micro
-        self.canvas.create_rectangle(center_x - 1, center_y + 2, 
-                                   center_x + 1, center_y + 8, 
-                                   fill='white', outline='')
-        
-        # Base du micro
-        self.canvas.create_rectangle(center_x - 4, center_y + 8, 
-                                   center_x + 4, center_y + 10, 
-                                   fill='white', outline='')
-        
-        # Onde sonore animée (style moderne)
-        wave_color = '#4ECDC4'
-        # Arc de droite
-        self.canvas.create_arc(center_x + 12, center_y - 8, 
-                             center_x + 25, center_y + 5, 
-                             start=135, extent=90, 
-                             outline=wave_color, width=2, style='arc')
-        
-        # Texte "Voice Tool" discret en bas - même position que les autres
-        self.canvas.create_text(center_x, canvas_height - 6, 
-                              text="Voice Tool", 
-                              fill='#666666', 
-                              font=('Arial', 7, 'bold'))
-        
-        # Animation de points de chargement
+        # Fond arrondi noir cohérent avec le visualizer
+        padding = 6
+        radius = 10
+        self._draw_rounded_panel(0, 0, canvas_width, canvas_height, radius=radius, fill="#000000", outline="#0e0e0e")
+
+        center_y = canvas_height // 2
+        # Texte centré
+        self.canvas.delete("processing_text")
+        self.canvas.create_text(canvas_width//2 - 8, center_y, 
+                                text="Traitement", 
+                                fill='#4ECDC4', 
+                                font=('Arial', 10, 'bold'),
+                                tags="processing_text")
+
+        # Animation de points de chargement, positionnée juste après le texte
         self._animate_processing_dots()
 
     def _animate_processing_dots(self):
@@ -285,29 +333,21 @@ class VisualizerWindowTkinter:
             
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
-        center_x = canvas_width // 2
-        
+        center_y = canvas_height // 2
+
         # Supprimer les anciens points
         self.canvas.delete("processing_dots")
-        self.canvas.delete("processing_text")
-        
-        # Texte "Traitement en cours" - même position que les autres
-        self.canvas.create_text(center_x, canvas_height - 18, 
-                              text="Traitement", 
-                              fill='#4ECDC4', 
-                              font=('Arial', 9, 'bold'),
-                              tags="processing_text")
-        
-        # Points animés
+
+        # Points animés à droite du texte
         import time
         dot_count = int(time.time() * 2) % 4  # 2 cycles par seconde
         dots_text = "." * dot_count
         
-        self.canvas.create_text(center_x + 55, canvas_height - 18, 
-                              text=dots_text, 
-                              fill='#4ECDC4', 
-                              font=('Arial', 9, 'bold'),
-                              tags="processing_dots")
+        self.canvas.create_text(canvas_width//2 + 48, center_y, 
+                                text=dots_text, 
+                                fill='#4ECDC4', 
+                                font=('Arial', 10, 'bold'),
+                                tags="processing_dots")
         
         # Programmer la prochaine animation
         self.window.after(250, self._animate_processing_dots)
@@ -322,16 +362,10 @@ class VisualizerWindowTkinter:
             if mode == "recording":
                 self.draw_visualizer()
             elif mode == "processing":
-                # Mode processing sûr: dessin minimal si la fenêtre principale est ouverte
+                # Toujours dessiner la bannière de traitement moderne
                 self.canvas.delete("all")
                 try:
-                    if self.main_window and self.main_window.winfo_exists():
-                        # Rendu minimaliste (éviter opérations graphiques lourdes)
-                        cw = self.canvas.winfo_width(); ch = self.canvas.winfo_height()
-                        self.canvas.create_rectangle(0, 0, cw, ch, fill='#1C1C1C', outline='')
-                        self.canvas.create_text(cw//2, ch//2, text="Traitement…", fill='#4ECDC4', font=('Arial', 10, 'bold'))
-                    else:
-                        self._draw_processing_interface()
+                    self._draw_processing_interface()
                 except Exception:
                     # Fallback minimal
                     cw = self.canvas.winfo_width(); ch = self.canvas.winfo_height()
@@ -365,80 +399,65 @@ class VisualizerWindowTkinter:
             self.window.after(3000, self.hide)
 
     def _draw_success_interface(self):
-        """Dessine une interface de succès professionnelle."""
+        """Bannière de succès compacte et moderne (panneau arrondi + check + texte)."""
+        self.canvas.delete("all")
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
-        center_x = canvas_width // 2
-        center_y = canvas_height // 2 - 8  # Remonter l'icône pour faire de la place
-        
-        # Fond
-        self.canvas.create_rectangle(0, 0, canvas_width, canvas_height, 
-                                   fill='#1C1C1C', outline='')
-        
-        # Cercle de succès (vert moderne) - taille réduite
-        self.canvas.create_oval(center_x - 15, center_y - 12, 
-                              center_x + 15, center_y + 12, 
-                              fill='#4CAF50', outline='#2E7D32', width=2)
-        
-        # Checkmark stylisé - proportions ajustées
-        # Trait 1 du checkmark
-        self.canvas.create_line(center_x - 6, center_y - 1,
-                              center_x - 2, center_y + 3,
-                              fill='white', width=2, capstyle='round')
-        # Trait 2 du checkmark
-        self.canvas.create_line(center_x - 2, center_y + 3,
-                              center_x + 6, center_y - 5,
-                              fill='white', width=2, capstyle='round')
-        
-        # Texte "Transcription réussie !" - descendre un peu plus
-        self.canvas.create_text(center_x, canvas_height - 18, 
-                              text="Copie réussie !", 
-                              fill='#4CAF50', 
-                              font=('Arial', 9, 'bold'))
-        
-        # Texte "Voice Tool" discret
-        self.canvas.create_text(center_x, canvas_height - 6, 
-                              text="Voice Tool", 
-                              fill='#666666', 
-                              font=('Arial', 7, 'bold'))
+        padding = 6
+        radius = 10
+        self._draw_rounded_panel(0, 0, canvas_width, canvas_height, radius=radius, fill="#000000", outline="#0e0e0e")
+
+        center_y = canvas_height // 2
+        # Mesurer la largeur du texte pour centrer l'ensemble (icône + espace + texte)
+        try:
+            import tkinter.font as tkfont
+            font_spec = ('Arial', 11, 'bold')
+            fnt = tkfont.Font(root=self.root, font=font_spec)
+            text_w = fnt.measure("Copié dans le presse-papiers !")
+        except Exception:
+            font_spec = ('Arial', 11, 'bold')
+            text_w = 48  # fallback approximatif
+
+        icon_w = 12  # petit logo succès circulaire ~12px
+        gap = 6
+        total_w = icon_w + gap + text_w
+        left_x = max(0, (canvas_width - total_w) // 2)
+
+        # Dessiner un petit logo succès (cercle vert + check blanc) aligné verticalement
+        icon_center_x = left_x + icon_w // 2
+        # Cercle
+        self.canvas.create_oval(icon_center_x - 6, center_y - 6,
+                                icon_center_x + 6, center_y + 6,
+                                fill='#1B5E20', outline='#2E7D32', width=1)
+        # Check à l'intérieur
+        self.canvas.create_line(icon_center_x - 3, center_y,
+                                icon_center_x - 1, center_y + 3,
+                                fill='white', width=2, capstyle='round')
+        self.canvas.create_line(icon_center_x - 1, center_y + 3,
+                                icon_center_x + 4, center_y - 3,
+                                fill='white', width=2, capstyle='round')
+
+        # Texte à droite de l'icône
+        self.canvas.create_text(left_x + icon_w + gap, center_y,
+                                text="Copié dans le presse-papiers !", fill='#4CAF50', font=font_spec, anchor='w')
 
     def _draw_error_interface(self):
-        """Dessine une interface d'erreur professionnelle."""
+        """Bannière d'erreur compacte et moderne (panneau arrondi + X + texte)."""
+        self.canvas.delete("all")
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
-        center_x = canvas_width // 2
-        center_y = canvas_height // 2 - 8  # Remonter l'icône pour faire de la place
-        
-        # Fond
-        self.canvas.create_rectangle(0, 0, canvas_width, canvas_height, 
-                                   fill='#1C1C1C', outline='')
-        
-        # Cercle d'erreur (rouge moderne) - taille réduite
-        self.canvas.create_oval(center_x - 15, center_y - 12, 
-                              center_x + 15, center_y + 12, 
-                              fill='#F44336', outline='#C62828', width=2)
-        
-        # X stylisé - proportions ajustées
-        # Trait 1 du X
-        self.canvas.create_line(center_x - 5, center_y - 5,
-                              center_x + 5, center_y + 5,
-                              fill='white', width=2, capstyle='round')
-        # Trait 2 du X
-        self.canvas.create_line(center_x + 5, center_y - 5,
-                              center_x - 5, center_y + 5,
-                              fill='white', width=2, capstyle='round')
-        
-        # Texte "Échec de la transcription" - descendre un peu plus
-        self.canvas.create_text(center_x, canvas_height - 18, 
-                              text="Échec de la transcription", 
-                              fill='#F44336', 
-                              font=('Arial', 9, 'bold'))
-        
-        # Texte "Voice Tool" discret
-        self.canvas.create_text(center_x, canvas_height - 6, 
-                              text="Voice Tool", 
-                              fill='#666666', 
-                              font=('Arial', 7, 'bold'))
+        padding = 6
+        radius = 10
+        self._draw_rounded_panel(0, 0, canvas_width, canvas_height, radius=radius, fill="#000000", outline="#0e0e0e")
+
+        center_y = canvas_height // 2
+        cx = padding + radius
+        # X minimaliste
+        self.canvas.create_line(cx - 4, center_y - 4, cx + 4, center_y + 4, fill='#F44336', width=2, capstyle='round')
+        self.canvas.create_line(cx + 4, center_y - 4, cx - 4, center_y + 4, fill='#F44336', width=2, capstyle='round')
+
+        # Texte concis
+        self.canvas.create_text(cx + 18, center_y, text="Échec", fill='#F44336', font=('Arial', 11, 'bold'), anchor='w')
 
     def show(self):
         """Affiche la fenêtre et s'assure qu'elle est correctement positionnée"""
@@ -448,6 +467,35 @@ class VisualizerWindowTkinter:
         self.window.attributes("-topmost", True)  # Réactiver topmost au cas où
         # Repositionner au cas où elle aurait dérivé
         self.center_window()
+
+    def open_settings_tab(self):
+        try:
+            # Sélection différée jusqu'à ce que la fenêtre principale existe (évite les doubles ouvertures)
+            def _select_when_ready():
+                try:
+                    if self.main_window and self.main_window.winfo_exists():
+                        try:
+                            self.main_window.lift()
+                            self.main_window.focus_force()
+                        except Exception:
+                            pass
+                        if hasattr(self, '_main_notebook') and hasattr(self, '_settings_tab'):
+                            try:
+                                self._main_notebook.select(self._settings_tab)
+                            except Exception:
+                                pass
+                        return
+                except Exception:
+                    pass
+                # Re-essayer un peu plus tard
+                try:
+                    self.root.after(120, _select_when_ready)
+                except Exception:
+                    pass
+
+            _select_when_ready()
+        except Exception:
+            pass
 
     def hide(self):
         # Remettre le label de statut à sa position initiale
@@ -474,13 +522,19 @@ class VisualizerWindowTkinter:
             self.root.after(0, append_message)
 
     def add_transcription_to_history(self, history_item):
-        """Ajoute une nouvelle transcription à la Listbox de l'historique, de manière thread-safe."""
-        if self.history_listbox and self.history_listbox.winfo_exists():
-            def insert_item():
-                # Ajouter à la liste maître puis re-filtrer pour cohérence avec la vue
+        """Ajoute une nouvelle transcription à l'historique (toutes vues), de manière thread-safe."""
+        def insert_item():
+            try:
+                # Mettre à jour la source locale
                 self._history_master.append(history_item)
+                # Si la table est visible ou la vue cartes, re-render via le pipeline unifié
                 self._apply_history_filter()
+            except Exception:
+                pass
+        try:
             self.root.after(0, insert_item)
+        except Exception:
+            insert_item()
 
     def _copy_history_selection(self):
         """Copie l'élément sélectionné dans la Listbox de l'historique."""
@@ -527,7 +581,7 @@ class VisualizerWindowTkinter:
         
         # Confirmer la suppression
         import tkinter.messagebox as msgbox
-        if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer cette transcription ?"):
+        if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer cette transcription ?", parent=self.main_window if hasattr(self, 'main_window') else self.root):
             # Supprimer de l'historique global et sauvegarder
             import main
             # Trouver l'élément à supprimer en s'appuyant sur l'objet (dict/str)
@@ -546,7 +600,16 @@ class VisualizerWindowTkinter:
                         break
 
             if deleted_item is not None:
-                main.save_transcription_history(main.transcription_history)
+                # Sauvegarde robuste sous verrou côté main
+                try:
+                    if hasattr(main, 'history_lock'):
+                        import threading
+                        with main.history_lock:  # type: ignore[attr-defined]
+                            main.save_transcription_history(main.transcription_history)
+                    else:
+                        main.save_transcription_history(main.transcription_history)
+                except Exception:
+                    main.save_transcription_history(main.transcription_history)
                 # Mettre à jour la liste maître et la vue filtrée
                 try:
                     self._history_master.remove(history_obj)
@@ -558,8 +621,9 @@ class VisualizerWindowTkinter:
     def _quit_application(self):
         """Ferme complètement l'application après confirmation."""
         import tkinter.messagebox as msgbox
-        if msgbox.askyesno("Fermer l'application", 
-                          "Êtes-vous sûr de vouloir fermer complètement Voice Tool ?\n\nL'application se fermera et ne fonctionnera plus en arrière-plan."):
+        if msgbox.askyesno("Fermer l'application",
+                           "Êtes-vous sûr de vouloir fermer complètement Voice Tool ?\n\nL'application se fermera et ne fonctionnera plus en arrière-plan.",
+                           parent=self.main_window if hasattr(self, 'main_window') else self.root):
             logging.info("Fermeture complète de l'application demandée depuis l'interface")
             
             # Utiliser la fonction spéciale pour fermeture depuis GUI
@@ -601,9 +665,10 @@ class VisualizerWindowTkinter:
     def _clear_all_history(self):
         """Supprime tout l'historique après confirmation."""
         import tkinter.messagebox as msgbox
-        if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer tout l'historique des transcriptions ?\n\nCette action est irréversible."):
+        if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer tout l'historique des transcriptions ?\n\nCette action est irréversible.", parent=self.main_window if hasattr(self, 'main_window') else self.root):
             try:
                 import main
+                # Effacer via la fonction main (protégée par verrou)
                 main.clear_all_transcription_history()
                 # Effacer également les fichiers audio associés
                 try:
@@ -631,11 +696,28 @@ class VisualizerWindowTkinter:
                 # Nettoyer les structures locales
                 self._history_master = []
                 self._filtered_history_items = []
+                # Vider les vues modernes (table/cartes) et re-render
+                try:
+                    if hasattr(self, 'history_tree') and self.history_tree:
+                        for iid in self.history_tree.get_children():
+                            self.history_tree.delete(iid)
+                        self._tree_id_to_obj = {}
+                except Exception:
+                    pass
+                try:
+                    self._clear_history_cards()
+                except Exception:
+                    pass
+                try:
+                    # Utiliser le pipeline existant pour mettre à jour compteur + label vide
+                    self._apply_history_filter()
+                except Exception:
+                    pass
                 logging.info("Tout l'historique a été effacé.")
-                msgbox.showinfo("Succès", "L'historique a été complètement effacé.")
+                msgbox.showinfo("Succès", "L'historique a été complètement effacé.", parent=self.main_window if hasattr(self, 'main_window') else self.root)
             except Exception as e:
                 logging.error(f"Erreur lors de la suppression de l'historique: {e}")
-                msgbox.showerror("Erreur", "Une erreur est survenue lors de la suppression de l'historique.")
+                msgbox.showerror("Erreur", "Une erreur est survenue lors de la suppression de l'historique.", parent=self.main_window if hasattr(self, 'main_window') else self.root)
 
     def _export_history(self):
         """Ouvre une fenêtre de dialogue pour choisir le format d'export."""
@@ -650,15 +732,26 @@ class VisualizerWindowTkinter:
         current_history = main.load_transcription_history()
         
         if not current_history:
-            msgbox.showwarning("Attention", "Aucune transcription à exporter.")
+            msgbox.showwarning("Attention", "Aucune transcription à exporter.", parent=self.main_window if hasattr(self, 'main_window') else self.root)
             return
         
         # Demander le format d'export
-        export_window = tk.Toplevel(self.root)
+        export_window = ctk.CTkToplevel(self.root)
+        self._export_window = export_window  # garder une référence forte pour éviter une fermeture immédiate par GC
         export_window.title("Exporter l'historique")
         export_window.geometry("300x220")
-        export_window.configure(bg="#2b2b2b")
+        try:
+            export_window.configure(fg_color="#2b2b2b")
+        except Exception:
+            pass
         export_window.resizable(False, False)
+        # Rendre la fenêtre modale et centrée par rapport à la fenêtre principale
+        try:
+            parent_win = self.main_window if hasattr(self, 'main_window') and self.main_window else self.root
+            export_window.transient(parent_win)
+            export_window.grab_set()
+        except Exception:
+            pass
         
         # Centrer la fenêtre
         export_window.update_idletasks()
@@ -666,14 +759,18 @@ class VisualizerWindowTkinter:
         y = export_window.winfo_screenheight() // 2 - export_window.winfo_height() // 2
         export_window.geometry(f"+{x}+{y}")
         
-        tk.Label(export_window, text="Choisissez le format d'export :", 
-                fg="white", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(pady=(15, 10))
+        ctk.CTkLabel(export_window, text="Choisissez le format d'export :", font=("Arial", 12, "bold")).pack(pady=(15, 10))
+        try:
+            export_window.focus_force()
+        except Exception:
+            pass
         
         def export_csv():
             filename = filedialog.asksaveasfilename(
                 defaultextension=".csv",
                 filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-                title="Sauvegarder en CSV"
+                title="Sauvegarder en CSV",
+                parent=self.main_window if hasattr(self, 'main_window') else self.root
             )
             if filename:
                 try:
@@ -685,17 +782,18 @@ class VisualizerWindowTkinter:
                                 writer.writerow([item['timestamp'], item['text']])
                             else:
                                 writer.writerow([datetime.now().strftime('%Y-%m-%d %H:%M:%S'), str(item)])
-                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}")
+                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 except Exception as e:
-                    msgbox.showerror("Erreur", f"Erreur lors de l'export CSV: {e}")
+                    msgbox.showerror("Erreur", f"Erreur lors de l'export CSV: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 finally:
-                    export_window.destroy()
+                    self._close_export_window()
         
         def export_txt():
             filename = filedialog.asksaveasfilename(
                 defaultextension=".txt",
                 filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
-                title="Sauvegarder en TXT"
+                title="Sauvegarder en TXT",
+                parent=self.main_window if hasattr(self, 'main_window') else self.root
             )
             if filename:
                 try:
@@ -706,17 +804,18 @@ class VisualizerWindowTkinter:
                                 txtfile.write(f"{i}. [{item['timestamp']}]\n{item['text']}\n\n")
                             else:
                                 txtfile.write(f"{i}. {str(item)}\n\n")
-                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}")
+                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 except Exception as e:
-                    msgbox.showerror("Erreur", f"Erreur lors de l'export TXT: {e}")
+                    msgbox.showerror("Erreur", f"Erreur lors de l'export TXT: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 finally:
-                    export_window.destroy()
+                    self._close_export_window()
         
         def export_json():
             filename = filedialog.asksaveasfilename(
                 defaultextension=".json",
                 filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-                title="Sauvegarder en JSON"
+                title="Sauvegarder en JSON",
+                parent=self.main_window if hasattr(self, 'main_window') else self.root
             )
             if filename:
                 try:
@@ -728,25 +827,38 @@ class VisualizerWindowTkinter:
                     }
                     with open(filename, 'w', encoding='utf-8') as jsonfile:
                         json.dump(export_data, jsonfile, ensure_ascii=False, indent=2)
-                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}")
+                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 except Exception as e:
-                    msgbox.showerror("Erreur", f"Erreur lors de l'export JSON: {e}")
+                    msgbox.showerror("Erreur", f"Erreur lors de l'export JSON: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 finally:
-                    export_window.destroy()
+                    self._close_export_window()
         
         # Boutons d'export
-        btn_frame = tk.Frame(export_window, bg="#2b2b2b")
+        btn_frame = ctk.CTkFrame(export_window)
         btn_frame.pack(pady=10)
         
-        tk.Button(btn_frame, text="📊  CSV", command=export_csv, bg="#28a745", fg="white",
-                  relief=tk.FLAT, font=("Arial", 10), width=15, height=1).pack(pady=5)
-        tk.Button(btn_frame, text="📄  TXT", command=export_txt, bg="#6f42c1", fg="white",
-                  relief=tk.FLAT, font=("Arial", 10), width=15, height=1).pack(pady=5)
-        tk.Button(btn_frame, text="🔧  JSON", command=export_json, bg="#fd7e14", fg="white",
-                  relief=tk.FLAT, font=("Arial", 10), width=15, height=1).pack(pady=5)
+        ctk.CTkButton(btn_frame, text="📊  CSV", command=export_csv, fg_color="#28a745", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=5)
+        ctk.CTkButton(btn_frame, text="📄  TXT", command=export_txt, fg_color="#6f42c1", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=5)
+        ctk.CTkButton(btn_frame, text="🔧  JSON", command=export_json, fg_color="#fd7e14", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=5)
         
-        tk.Button(export_window, text="Annuler", command=export_window.destroy,
-                  bg="#6c757d", fg="white", relief=tk.FLAT, font=("Arial", 10)).pack(pady=10)
+        ctk.CTkButton(export_window, text="Annuler", command=self._close_export_window, fg_color="#6c757d", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=10)
+        try:
+            export_window.protocol("WM_DELETE_WINDOW", self._close_export_window)
+        except Exception:
+            pass
+
+    def _close_export_window(self):
+        try:
+            if hasattr(self, '_export_window') and self._export_window and self._export_window.winfo_exists():
+                try:
+                    self._export_window.grab_release()
+                except Exception:
+                    pass
+                self._export_window.destroy()
+        except Exception:
+            pass
+        finally:
+            self._export_window = None
 
     def _import_history(self):
         """Importe un historique depuis un fichier JSON."""
@@ -757,7 +869,8 @@ class VisualizerWindowTkinter:
         
         filename = filedialog.askopenfilename(
             filetypes=[("JSON files", "*.json"), ("All files", "*.*忽视")],
-            title="Importer un historique JSON"
+            title="Importer un historique JSON",
+            parent=self.main_window if hasattr(self, 'main_window') else self.root
         )
         
         if not filename:
@@ -777,11 +890,12 @@ class VisualizerWindowTkinter:
             
             # Demander confirmation pour le merge ou remplacement
             if main.transcription_history:
-                result = msgbox.askyesnocancel("Import", 
+                result = msgbox.askyesnocancel("Import",
                     f"Importer {len(imported_transcriptions)} transcriptions.\n\n" +
                     "Oui = Ajouter à l'historique existant\n" +
                     "Non = Remplacer l'historique existant\n" +
-                    "Annuler = Annuler l'import")
+                    "Annuler = Annuler l'import",
+                    parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 
                 if result is None:  # Annuler
                     return
@@ -796,19 +910,20 @@ class VisualizerWindowTkinter:
             main.save_transcription_history(main.transcription_history)
             self._refresh_history_display()
             
-            msgbox.showinfo("Succès", f"{len(imported_transcriptions)} transcriptions importées avec succès !")
+            msgbox.showinfo("Succès", f"{len(imported_transcriptions)} transcriptions importées avec succès !", parent=self.main_window if hasattr(self, 'main_window') else self.root)
             
         except Exception as e:
-            msgbox.showerror("Erreur", f"Erreur lors de l'import: {e}")
+            msgbox.showerror("Erreur", f"Erreur lors de l'import: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
 
     def _refresh_history_display(self):
-        """Rafraîchit l'affichage de l'historique après import."""
-        if not self.history_listbox:
-            return
-        
+        """Rafraîchit l'affichage de l'historique après import/suppression."""
         import main
-        # Mettre à jour la liste maître depuis la source et re-filtrer
-        self._history_master = list(main.transcription_history)
+        try:
+            # Mettre à jour la liste maître depuis la source et re-filtrer (indépendant du widget utilisé)
+            self._history_master = list(main.transcription_history or [])
+        except Exception:
+            self._history_master = []
+        # Utiliser le pipeline unifié qui gère table/cartes + compteur + label vide
         self._apply_history_filter()
 
 
@@ -828,25 +943,61 @@ class VisualizerWindowTkinter:
                 pass
             return
 
-        self.main_window = tk.Toplevel(self.root)
+        # Utiliser CTkToplevel pour éviter une fenêtre Tk par défaut intitulée "tk"
+        self.main_window = ctk.CTkToplevel(self.root)
         self.main_window.title("Voice Tool")
-        # Ouvrir en plein écran (maximisé)
+        # Appliquer l'état/geometry persistés si disponibles (ordre: état puis géométrie si normal)
         try:
-            self.main_window.state('zoomed')  # Windows
-        except Exception:
+            import main
+            us = main.load_user_settings()
+            saved_geom = us.get("main_window_geometry")
+            saved_state = us.get("main_window_state", "zoomed")
+            if saved_state == 'zoomed':
+                try:
+                    self.main_window.state('zoomed')
+                except Exception:
+                    try:
+                        self.main_window.attributes('-zoomed', True)
+                    except Exception:
+                        pass
+            else:
+                try:
+                    self.main_window.state('normal')
+                except Exception:
+                    pass
+                if isinstance(saved_geom, str) and len(saved_geom) >= 6:
+                    try:
+                        self.main_window.geometry(saved_geom)
+                    except Exception:
+                        pass
+            # Confirmer la géométrie appliquée
             try:
-                self.main_window.attributes('-zoomed', True)  # Certains WM
+                self.main_window.update_idletasks()
             except Exception:
-                # Fallback taille confortable
-                self.main_window.geometry("1200x800")
+                pass
+        except Exception:
+            # Fallback: plein écran Windows sinon géométrie confortable
+            try:
+                self.main_window.state('zoomed')
+            except Exception:
+                try:
+                    self.main_window.attributes('-zoomed', True)
+                except Exception:
+                    self.main_window.geometry("1200x800")
         
         # Définir l'icône personnalisée
         self.set_window_icon(self.main_window)
         
-        # Centrage seulement en fallback, sinon l'état zoomed ignore la géométrie
+        # Centrage seulement si aucune géométrie n'était fournie et pas zoomed
         self.main_window.update_idletasks()
         try:
-            if self.main_window.state() != 'zoomed':
+            import main
+            us = main.load_user_settings()
+            had_geom = bool(us.get("main_window_geometry"))
+        except Exception:
+            had_geom = False
+        try:
+            if self.main_window.state() != 'zoomed' and not had_geom:
                 x = self.root.winfo_screenwidth() // 2 - self.main_window.winfo_width() // 2
                 y = self.root.winfo_screenheight() // 2 - self.main_window.winfo_height() // 2
                 self.main_window.geometry(f"+{x}+{y}")
@@ -854,26 +1005,210 @@ class VisualizerWindowTkinter:
             pass
         self.main_window.configure(bg="#2b2b2b")
 
+        # Détection des mouvements/redimensionnements avec sauvegarde différée
+        self._geom_save_after_id = None
+        self._last_saved_geometry = None
+        self._last_saved_state = None
+        self._last_configure_ts = 0.0
+        # Optimisation cartes pendant redimensionnement
+        self._cards_resize_after_id = None
+        self._cards_hidden_for_resize = False
+        self._cards_placeholder = None
+
+        def _save_geometry_now():
+            try:
+                import main
+                state = None
+                geom = None
+                try:
+                    state = self.main_window.state()
+                except Exception:
+                    state = None
+                try:
+                    geom = self.main_window.geometry()
+                except Exception:
+                    geom = None
+                # Éviter les écritures inutiles
+                if state == self._last_saved_state and ((state != 'normal') or (geom == self._last_saved_geometry)):
+                    return
+                if state:
+                    main.user_settings.update({"main_window_state": state})
+                # On ne persiste la géométrie que quand la fenêtre est en état normal
+                if geom and state == 'normal':
+                    main.user_settings.update({"main_window_geometry": geom})
+                main.save_user_settings(main.user_settings)
+                self._last_saved_state = state
+                if state == 'normal':
+                    self._last_saved_geometry = geom
+            except Exception:
+                pass
+
+        def _schedule_geometry_save(event=None):
+            try:
+                # Ne traiter que les events issus de la fenêtre principale
+                if event is not None and getattr(event, 'widget', None) is not self.main_window:
+                    return
+                # Debounce: ne pas recalculer trop souvent pendant le drag/resize
+                import time as _t
+                now = _t.monotonic()
+                last = getattr(self, '_last_configure_ts', 0.0)
+                if now - last < 0.05:  # max ~20Hz
+                    return
+                self._last_configure_ts = now
+                # Redémarrer le timer de sauvegarde différée
+                if self._geom_save_after_id is not None:
+                    try:
+                        self.root.after_cancel(self._geom_save_after_id)
+                    except Exception:
+                        pass
+                self._geom_save_after_id = self.root.after(1500, _save_geometry_now)
+
+                # Geler l'affichage des cartes pendant le redimensionnement (pour réduire le lag)
+                try:
+                    view_mode = self._history_view_mode.get() if hasattr(self, '_history_view_mode') else 'cartes'
+                except Exception:
+                    view_mode = 'cartes'
+                if view_mode == 'cartes':
+                    # Planifier la ré‑affichage après une courte inactivité (220ms)
+                    if self._cards_resize_after_id is not None:
+                        try:
+                            self.root.after_cancel(self._cards_resize_after_id)
+                        except Exception:
+                            pass
+                    # Masquer immédiatement les cartes si pas déjà fait
+                    if not self._cards_hidden_for_resize:
+                        try:
+                            if hasattr(self, 'history_cards_container') and self.history_cards_container.winfo_ismapped():
+                                self.history_cards_container.pack_forget()
+                                self._cards_hidden_for_resize = True
+                                # Afficher un placeholder discret
+                                try:
+                                    ph = ctk.CTkLabel(self._history_tab if hasattr(self, '_history_tab') else self.main_window,
+                                                       text="Redimensionnement…",
+                                                       text_color="#888888",
+                                                       font=("Arial", 11))
+                                    ph.pack(pady=12)
+                                    self._cards_placeholder = ph
+                                except Exception:
+                                    self._cards_placeholder = None
+                        except Exception:
+                            pass
+                    # Reprogrammer l'affichage des cartes après pause
+                    def _end_cards_resize():
+                        try:
+                            if self._cards_placeholder and self._cards_placeholder.winfo_exists():
+                                try:
+                                    self._cards_placeholder.destroy()
+                                except Exception:
+                                    pass
+                                self._cards_placeholder = None
+                            if hasattr(self, 'history_cards_container') and not self.history_cards_container.winfo_ismapped():
+                                self.history_cards_container.pack(fill=tk.BOTH, expand=True)
+                            self._cards_hidden_for_resize = False
+                        except Exception:
+                            pass
+                        finally:
+                            self._cards_resize_after_id = None
+                    self._cards_resize_after_id = self.root.after(220, _end_cards_resize)
+            except Exception:
+                pass
+
+        try:
+            self.main_window.bind('<Configure>', _schedule_geometry_save)
+        except Exception:
+            pass
+
+        # Style du notebook (onglets du haut)
+        nb_style = ttk.Style(self.root)
+        try:
+            nb_style.theme_use('clam')
+        except Exception:
+            pass
+        nb_style.configure("VT.TNotebook", background="#2b2b2b", borderwidth=0, tabmargins=(4, 4, 4, 0))
+        nb_style.configure(
+            "VT.TNotebook.Tab",
+            background="#1f1f1f",
+            foreground="white",
+            padding=(20, 12),  # base padding pour les onglets non sélectionnés
+            font=("Arial", 11, "bold")
+        )
+        nb_style.map(
+            "VT.TNotebook.Tab",
+            background=[('selected', '#0078d7'), ('active', '#3a3a3a')],
+            foreground=[('selected', 'white')],
+            relief=[('selected', 'flat'), ('!selected', 'flat')],
+            # Augmenter légèrement taille perçue du tab sélectionné
+            font=[('selected', ('Arial', 12, 'bold'))],
+            # Augmenter padding vertical du tab sélectionné pour compenser l'effet visuel de hauteur
+            padding=[('selected', (22, 16)), ('!selected', (20, 14))]
+        )
+        # Forcer un layout constant pour éviter les variations de hauteur entre états
+        try:
+            nb_style.layout(
+                "VT.TNotebook.Tab",
+                [
+                    ("Notebook.tab", {
+                        "sticky": "nswe",
+                        "children": [
+                            ("Notebook.padding", {
+                                "side": "top",
+                                "sticky": "nswe",
+                                "children": [
+                                    ("Notebook.focus", {
+                                        "side": "top",
+                                        "sticky": "nswe",
+                                        "children": [
+                                            ("Notebook.label", {"side": "top", "sticky": ""})
+                                        ]
+                                    })
+                                ]
+                            })
+                        ]
+                    })
+                ]
+            )
+        except Exception:
+            pass
+
         # --- Création des onglets ---
-        notebook = ttk.Notebook(self.main_window)
+        notebook = ttk.Notebook(self.main_window, style="VT.TNotebook")
         notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Référencer le notebook pour navigation programmée
+        self._main_notebook = notebook
 
         # --- Onglet 1: Historique ---
-        history_tab = tk.Frame(notebook, bg="#2b2b2b")
+        history_tab = ctk.CTkFrame(notebook, fg_color="#2b2b2b")
         notebook.add(history_tab, text='  Historique  ')
-        history_frame = tk.Frame(history_tab, bg="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(history_frame, text="Historique des transcriptions", fg="white", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(pady=(6, 4))
-        # Compteur d'éléments / résultats
-        self.history_count_label = tk.Label(history_frame, text="", fg="#aaaaaa", bg="#2b2b2b", font=("Arial", 9))
-        self.history_count_label.pack(pady=(0, 8))
+        self._history_tab = history_tab
+        history_frame = ctk.CTkFrame(history_tab, fg_color="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # En-tête avec titre, compteur et bascule d'affichage
+        header = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
+        header.pack(fill=tk.X, pady=(6, 4), padx=5)
+        ctk.CTkLabel(header, text="Historique des transcriptions", text_color="white", font=("Arial", 13, "bold")).pack(side=tk.LEFT)
+        self.history_count_label = ctk.CTkLabel(header, text="", text_color="#aaaaaa", font=("Arial", 10))
+        self.history_count_label.pack(side=tk.LEFT, padx=(8,0))
+        
+        # Bascule entre Vue Table et Vue Cartes (par défaut: Cartes)
+        self._history_view_mode = tk.StringVar(master=self.root, value="cartes")
+        def _on_view_change(choice):
+            try:
+                self._switch_history_view(choice)
+                # Re-rendu pour appliquer le mode
+                self._render_history_list(self._filtered_history_items or self._history_master)
+            except Exception:
+                pass
+        view_toggle = ctk.CTkSegmentedButton(header, values=["table", "cartes"], variable=self._history_view_mode, command=_on_view_change)
+        view_toggle.pack(side=tk.RIGHT)
+        view_toggle.set("cartes")
 
         # Barre de recherche
-        search_frame = tk.Frame(history_frame, bg="#2b2b2b")
+        search_frame = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
         search_frame.pack(fill=tk.X, padx=5, pady=(0, 10))
-        tk.Label(search_frame, text="Rechercher:", fg="white", bg="#2b2b2b").pack(side=tk.LEFT, padx=(0, 8))
-        search_entry = tk.Entry(search_frame, textvariable=self.history_search_var, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        ctk.CTkLabel(search_frame, text="Rechercher:", text_color="white").pack(side=tk.LEFT, padx=(0, 8))
+        search_entry = ctk.CTkEntry(search_frame, textvariable=self.history_search_var, placeholder_text="Rechercher…", corner_radius=12)
         search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        clear_btn = tk.Button(search_frame, text="Effacer", command=lambda: self._clear_search(), bg="#6c757d", fg="white", relief=tk.FLAT)
+        clear_btn = ctk.CTkButton(search_frame, text="Effacer", command=lambda: self._clear_search(), font=("Arial", 11))
         clear_btn.pack(side=tk.LEFT, padx=(8, 0))
         # Style moderne pour Treeview
         style = ttk.Style(self.root)
@@ -895,14 +1230,16 @@ class VisualizerWindowTkinter:
                         foreground="white",
                         relief=tk.FLAT)
 
-        # Conteneur avec légère bordure pour un rendu plus "carte"
-        table_frame = tk.Frame(history_frame, bg="#2b2b2b",
-                               highlightthickness=1, highlightbackground="#3c3c3c",
-                               bd=0, relief=tk.FLAT)
-        table_frame.pack(fill=tk.BOTH, expand=True, padx=5)
-        yscroll = tk.Scrollbar(table_frame)
+        # Zone de contenu (pile) : table vs cartes
+        content_stack = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
+        content_stack.pack(fill=tk.BOTH, expand=True, padx=5)
+        
+        # Vue Table: léger cadre
+        self.history_table_frame = ctk.CTkFrame(content_stack, fg_color="#2b2b2b", border_color="#3c3c3c", border_width=1, corner_radius=8)
+        self.history_table_frame.pack_forget() # default to cards view
+        yscroll = tk.Scrollbar(self.history_table_frame)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.history_tree = ttk.Treeview(table_frame,
+        self.history_tree = ttk.Treeview(self.history_table_frame,
                                          columns=("time", "text"),
                                          show="headings",
                                          yscrollcommand=yscroll.set,
@@ -923,12 +1260,28 @@ class VisualizerWindowTkinter:
         self.history_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscroll.config(command=self.history_tree.yview)
         
+        # Vue Cartes: scrollable
+        self.history_cards_container = ctk.CTkScrollableFrame(content_stack, fg_color="#2b2b2b", corner_radius=8)
+        # Optimisations d'UI pour réduire le coût de layout pendant resize
+        try:
+            self.history_cards_container.grid_propagate(False)
+        except Exception:
+            pass
+        # Par défaut, afficher les cartes et masquer la table
+        self.history_table_frame.pack_forget()
+        self.history_cards_container.pack(fill=tk.BOTH, expand=True)
+        
         # Événements pour l'historique
         self.history_tree.bind("<Double-Button-1>", self._on_history_double_click)
         self.history_tree.bind("<Button-3>", self._on_history_right_click)  # Clic droit
         # Charger l'historique dans la liste maître et rendre la vue (filtrée)
         self._history_master = list(history) if history else []
         self._apply_history_filter()
+        # Démarrer le watcher de fichier histoire (polling léger)
+        try:
+            self._start_history_file_watch()
+        except Exception:
+            pass
 
         # Déclencher le filtrage à la saisie (avec debounce)
         try:
@@ -936,52 +1289,61 @@ class VisualizerWindowTkinter:
         except Exception:
             pass
         # État "aucun résultat"
-        self.history_empty_label = tk.Label(history_frame, text="Aucun résultat", fg="#888888", bg="#2b2b2b", font=("Arial", 10))
+        self.history_empty_label = ctk.CTkLabel(history_frame, text="Aucun résultat", text_color="#888888", font=("Arial", 10))
         
         # Indication pour les interactions avec l'historique
-        help_frame = tk.Frame(history_frame, bg="#2b2b2b")
+        help_frame = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
         help_frame.pack(pady=(10,5), padx=5, fill=tk.X)
         
-        tk.Label(help_frame, text="💡 Double-clic pour copier • Clic droit pour le menu", 
-                fg="#888888", bg="#2b2b2b", font=("Arial", 9), justify=tk.LEFT).pack(side=tk.LEFT)
+        ctk.CTkLabel(help_frame, text="💡 Double-clic pour copier • Clic droit pour le menu", 
+                text_color="#888888", font=("Arial", 11), justify=tk.LEFT).pack(side=tk.LEFT)
 
         # Boutons d'action
-        buttons_frame = tk.Frame(help_frame, bg="#2b2b2b")
+        buttons_frame = ctk.CTkFrame(help_frame, fg_color="#2b2b2b")
         buttons_frame.pack(side=tk.RIGHT)
         
         # Bouton d'import
-        tk.Button(buttons_frame, text="📥 Import", 
-                  command=self._import_history, bg="#28a745", fg="white", 
-                  relief=tk.FLAT, activebackground="#218838", activeforeground="white",
-                  font=("Arial", 8, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ctk.CTkButton(buttons_frame, text="📥 Import", 
+                  command=self._import_history, 
+                  fg_color="#28a745",
+                  text_color="white",
+                  height=32,
+                  corner_radius=8,
+                  font=("Arial", 11, "bold")).pack(side=tk.LEFT, padx=(0, 5))
         
         # Bouton d'export
-        tk.Button(buttons_frame, text="📤 Export", 
-                  command=self._export_history, bg="#007bff", fg="white", 
-                  relief=tk.FLAT, activebackground="#0056b3", activeforeground="white",
-                  font=("Arial", 8, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+        ctk.CTkButton(buttons_frame, text="📤 Export", 
+                  command=self._export_history, 
+                  fg_color="#007bff",
+                  text_color="white",
+                  height=32,
+                  corner_radius=8,
+                  font=("Arial", 11, "bold")).pack(side=tk.LEFT, padx=(0, 5))
         
         # Bouton pour tout effacer
-        tk.Button(buttons_frame, text="🗑️ Tout effacer", 
-                  command=self._clear_all_history, bg="#dc3545", fg="white", 
-                  relief=tk.FLAT, activebackground="#c82333", activeforeground="white",
-                  font=("Arial", 8, "bold")).pack(side=tk.LEFT)
+        ctk.CTkButton(buttons_frame, text="🗑️ Tout effacer", 
+                  command=self._clear_all_history, 
+                  fg_color="#dc3545",
+                  text_color="white",
+                  height=32,
+                  corner_radius=8,
+                  font=("Arial", 11, "bold")).pack(side=tk.LEFT)
         
         # Avertissement si auto-paste actif
         try:
             import main
             if main.get_setting('paste_at_cursor', False):
-                warn = tk.Label(history_frame, text="Astuce: l'option 'Insérer automatiquement au curseur' est active. Évitez de donner le focus à cette fenêtre si vous ne voulez pas y coller.", fg="#ffc107", bg="#2b2b2b", font=("Arial", 9))
+                warn = ctk.CTkLabel(history_frame, text="Astuce: l'option 'Insérer automatiquement au curseur' est active. Évitez de donner le focus à cette fenêtre si vous ne voulez pas y coller.", text_color="#ffc107", font=("Arial", 10))
                 warn.pack(pady=(8,0), padx=5, anchor='w')
         except Exception:
             pass
         
         # Message informatif pour le raccourci d'enregistrement
-        shortcut_frame = tk.Frame(history_frame, bg="#1e1e1e", relief=tk.RAISED, bd=1)
+        shortcut_frame = ctk.CTkFrame(history_frame, fg_color="#1e1e1e")
         shortcut_frame.pack(pady=(10,10), padx=5, fill=tk.X)
         
-        tk.Label(shortcut_frame, text="🎤", fg="#FF6B6B", bg="#1e1e1e", font=("Arial", 16)).pack(pady=(8,2))
-        tk.Label(shortcut_frame, text="Pour démarrer/arrêter l'enregistrement", fg="white", bg="#1e1e1e", font=("Arial", 10)).pack()
+        ctk.CTkLabel(shortcut_frame, text="🎤", text_color="#FF6B6B", font=("Arial", 16)).pack(pady=(8,2))
+        ctk.CTkLabel(shortcut_frame, text="Pour démarrer/arrêter l'enregistrement", text_color="white", font=("Arial", 10)).pack()
         
         # Afficher le raccourci configuré (prend en compte le mode)
         try:
@@ -994,13 +1356,17 @@ class VisualizerWindowTkinter:
                 shortcut_text = f"Appuyez sur {us.get('record_hotkey', '<ctrl>+<alt>+s')}"
         except Exception:
             shortcut_text = "Appuyez sur <ctrl>+<alt>+s"
-        shortcut_label = tk.Label(shortcut_frame, text=shortcut_text, fg="#4ECDC4", bg="#1e1e1e", font=("Arial", 11, "bold"))
+        shortcut_label = ctk.CTkLabel(shortcut_frame, text=shortcut_text, text_color="#4ECDC4", font=("Arial", 11, "bold"))
         shortcut_label.pack(pady=(2,8))
         # Fin Onglet Historique
 
         # --- Onglet 2: Paramètres ---
-        settings_frame = tk.Frame(notebook, bg="#2b2b2b", padx=16, pady=16)
-        notebook.add(settings_frame, text='  Paramètres  ')
+        # Créer un onglet conteneur, puis un frame scrollable pour le contenu
+        settings_tab = ctk.CTkFrame(notebook, fg_color="#2b2b2b")
+        notebook.add(settings_tab, text='  Paramètres  ')
+        self._settings_tab = settings_tab
+        settings_frame = ctk.CTkScrollableFrame(settings_tab, fg_color="#2b2b2b")
+        settings_frame.pack(fill=tk.BOTH, expand=True)
         
         # Définir les variables AVANT la fonction (lier explicitement au root Tk)
         sounds_var = tk.BooleanVar(master=self.root)
@@ -1087,19 +1453,19 @@ class VisualizerWindowTkinter:
 
         # === Helpers UI ===
         def create_card(parent, title_text):
-            card = tk.Frame(parent, bg="#1f1f1f", highlightthickness=1, highlightbackground="#3c3c3c")
-            header = tk.Label(card, text=title_text, fg="white", bg="#1f1f1f", font=("Arial", 12, "bold"))
+            card = ctk.CTkFrame(parent, fg_color="#1f1f1f", corner_radius=8)
+            header = ctk.CTkLabel(card, text=title_text, text_color="white", font=("Arial", 12, "bold"))
             header.pack(anchor='w', padx=12, pady=(10, 6))
-            body = tk.Frame(card, bg="#1f1f1f")
+            body = ctk.CTkFrame(card, fg_color="#1f1f1f")
             body.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
             return card, body
 
         # === LAYOUT 2x2 POUR LES SECTIONS ===
-        two_cols = tk.Frame(settings_frame, bg="#2b2b2b")
-        two_cols.pack(fill=tk.X)
-        left_col = tk.Frame(two_cols, bg="#2b2b2b")
+        two_cols = ctk.CTkFrame(settings_frame, fg_color="#2b2b2b")
+        two_cols.pack(fill=tk.X, padx=16, pady=16)
+        left_col = ctk.CTkFrame(two_cols, fg_color="#2b2b2b")
         left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 8))
-        right_col = tk.Frame(two_cols, bg="#2b2b2b")
+        right_col = ctk.CTkFrame(two_cols, fg_color="#2b2b2b")
         right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(8, 0))
         
         # === SECTION AUDIO (à gauche) ===
@@ -1113,12 +1479,33 @@ class VisualizerWindowTkinter:
             sounds_var.set(current_config.get("enable_sounds", True))
         else:
             sounds_var.set(True)
-        sounds_check = tk.Checkbutton(audio_frame, text="Activer les sons d'interface", 
-                                     variable=sounds_var, command=auto_save_user_setting,
-                                     fg="white", bg="#2b2b2b", 
-                                     selectcolor="#3c3c3c", activebackground="#2b2b2b", 
-                                     activeforeground="white")
+        sounds_check = ctk.CTkCheckBox(audio_frame, text="Activer les sons d'interface",
+                                       variable=sounds_var, command=auto_save_user_setting)
         sounds_check.pack(anchor='w', pady=(0, 15))
+
+        # Option: Activer l'écoute des audios dans l'historique
+        history_preview_var = tk.BooleanVar(master=self.root)
+        try:
+            history_preview_var.set(user_settings.get("enable_history_audio_preview", True))
+        except Exception:
+            history_preview_var.set(True)
+
+        def _save_history_preview():
+            try:
+                import main
+                main.update_and_restart_hotkeys({})  # no-op pour rester cohérent
+                main.user_settings.update({"enable_history_audio_preview": history_preview_var.get()})
+                main.save_user_settings(main.user_settings)
+            except Exception as e:
+                logging.error(f"Sauvegarde enable_history_audio_preview échouée: {e}")
+
+        history_preview_check = ctk.CTkCheckBox(
+            audio_frame,
+            text="Afficher le bouton Écouter dans l'historique",
+            variable=history_preview_var,
+            command=_save_history_preview,
+        )
+        history_preview_check.pack(anchor='w', pady=(0, 12))
 
         # Liste des périphériques audio d'entrée
         devices = []
@@ -1149,7 +1536,7 @@ class VisualizerWindowTkinter:
             logging.error(f"Erreur lors de l'énumération des périphériques: {e}")
             devices = []
 
-        tk.Label(audio_frame, text="Microphone d'entrée :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
+        ctk.CTkLabel(audio_frame, text="Microphone d'entrée :", text_color="white").pack(anchor='w', pady=(0,2))
         mic_var = tk.StringVar(master=self.root)
         # Valeur par défaut depuis user_settings
         default_input_index = None
@@ -1193,7 +1580,9 @@ class VisualizerWindowTkinter:
             except Exception as e:
                 logging.error(f"Erreur sauvegarde périphérique: {e}")
 
-        mic_menu = ttk.OptionMenu(audio_frame, mic_var, initial_choice, *mic_choices, command=lambda *_: on_mic_changed())
+        mic_menu = ctk.CTkOptionMenu(audio_frame, values=mic_choices, variable=mic_var, command=lambda *_: on_mic_changed())
+        if initial_choice:
+            mic_menu.set(initial_choice)
         mic_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
 
         # === SECTION TEXTE (à gauche, sous Audio) ===
@@ -1213,12 +1602,8 @@ class VisualizerWindowTkinter:
             auto_start_var.set(user_settings["auto_start"])
         else:
             auto_start_var.set(False)
-        paste_check = tk.Checkbutton(text_frame, text="Insérer automatiquement au curseur\naprès la transcription / copie depuis l'historique", 
-                                     variable=paste_var, command=auto_save_user_setting,
-                                     fg="white", bg="#2b2b2b", 
-                                     wraplength=350, justify=tk.LEFT,
-                                     selectcolor="#3c3c3c", activebackground="#2b2b2b", 
-                                     activeforeground="white")
+        paste_check = ctk.CTkCheckBox(text_frame, text="Insérer automatiquement au curseur\naprès la transcription / copie depuis l'historique",
+                                      variable=paste_var, command=auto_save_user_setting)
         paste_check.pack(anchor='w', pady=(0, 15))
         
         # Toggle Formatage intelligent
@@ -1229,18 +1614,11 @@ class VisualizerWindowTkinter:
                 smart_format_var.set(True)
         except Exception:
             smart_format_var.set(True)
-        smart_format_check = tk.Checkbutton(
+        smart_format_check = ctk.CTkCheckBox(
             text_frame,
             text="Activer le formatage intelligent (ponctuation, majuscule, espaces)",
             variable=smart_format_var,
             command=auto_save_user_setting,
-            fg="white",
-            bg="#2b2b2b",
-            wraplength=350,
-            justify=tk.LEFT,
-            selectcolor="#3c3c3c",
-            activebackground="#2b2b2b",
-            activeforeground="white",
         )
         smart_format_check.pack(anchor='w', pady=(0, 15))
         
@@ -1281,41 +1659,55 @@ class VisualizerWindowTkinter:
         language_var.set(current_display_language)
 
         # Créer le menu déroulant pour le fournisseur
-        tk.Label(transcription_frame, text="Fournisseur de service :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        provider_menu = ttk.OptionMenu(transcription_frame, transcription_provider_var, current_display_provider, "Google", "OpenAI Whisper (recommandé)")
+        ctk.CTkLabel(transcription_frame, text="Fournisseur de service :", text_color="white").pack(anchor='w', pady=(0,2))
+        provider_menu = ctk.CTkOptionMenu(transcription_frame, values=["Google", "OpenAI Whisper (recommandé)"],
+                                          variable=transcription_provider_var,
+                                          command=lambda *_: auto_save_user_setting())
+        provider_menu.set(current_display_provider)
         provider_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
 
         # Créer le menu déroulant pour la langue
-        tk.Label(transcription_frame, text="Langue de transcription :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        language_menu = ttk.OptionMenu(transcription_frame, language_var, current_display_language, 
-                                     "🇫🇷 Français", "🇺🇸 English", "🇪🇸 Español", "🇩🇪 Deutsch", 
-                                     "🇮🇹 Italiano", "🇵🇹 Português", "🇳🇱 Nederlands")
+        ctk.CTkLabel(transcription_frame, text="Langue de transcription :", text_color="white").pack(anchor='w', pady=(0,2))
+        language_values = ["🇫🇷 Français", "🇺🇸 English", "🇪🇸 Español", "🇩🇪 Deutsch", "🇮🇹 Italiano", "🇵🇹 Português", "🇳🇱 Nederlands"]
+        language_menu = ctk.CTkOptionMenu(transcription_frame, values=language_values,
+                                          variable=language_var,
+                                          command=lambda *_: auto_save_user_setting())
+        language_menu.set(current_display_language)
         language_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
 
-        # Ajouter la trace automatique pour la sauvegarde
-        transcription_provider_var.trace_add("write", lambda *_: auto_save_user_setting())
-        language_var.trace_add("write", lambda *_: auto_save_user_setting())
+        # Traces supprimées pour éviter les doublons de sauvegarde; CTkOptionMenu appelle déjà auto_save_user_setting via command
         
         # === SECTION SYSTÈME (à droite, sous Transcription) ===
         system_card, system_frame = create_card(right_col, "💻 Système")
         system_card.pack(fill=tk.BOTH, expand=True)
-        auto_start_check = tk.Checkbutton(system_frame, text="Démarrer automatiquement avec Windows", 
-                                         variable=auto_start_var, command=auto_save_user_setting,
-                                         fg="white", bg="#2b2b2b", 
-                                         selectcolor="#3c3c3c", activebackground="#2b2b2b", 
-                                         activeforeground="white")
+        auto_start_check = ctk.CTkCheckBox(system_frame, text="Démarrer automatiquement avec Windows",
+                                           variable=auto_start_var, command=auto_save_user_setting)
         auto_start_check.pack(anchor='w', pady=(0, 15))
 
         # Rétention enregistrements (garder N derniers)
-        tk.Label(system_frame, text="Conserver les N derniers enregistrements (WAV) :", fg="white", bg="#2b2b2b").pack(anchor='w')
+        ctk.CTkLabel(system_frame, text="Conserver les N derniers enregistrements (WAV) :", text_color="white").pack(anchor='w')
         keep_last_var = tk.IntVar(master=self.root)
         try:
             import main
             keep_last_var.set(main.load_user_settings().get("recordings_keep_last", 25))
         except Exception:
             keep_last_var.set(25)
-        keep_last_spin = tk.Spinbox(system_frame, from_=0, to=1000, textvariable=keep_last_var, width=6, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
-        keep_last_spin.pack(anchor='w', pady=(2, 10))
+        # Contrôle CTk pour N derniers (remplace le Spinbox): bouton - / entrée / bouton +
+        keep_row = ctk.CTkFrame(system_frame, fg_color="#1f1f1f")
+        keep_row.pack(anchor='w', pady=(2, 10))
+        def _inc_keep(delta):
+            try:
+                val = int(keep_last_var.get()) + delta
+                val = max(0, min(1000, val))
+                keep_last_var.set(val)
+            except Exception:
+                pass
+        dec_btn = ctk.CTkButton(keep_row, text="-", width=28, command=lambda: _inc_keep(-1))
+        dec_btn.pack(side=tk.LEFT, padx=(0,6))
+        keep_entry = ctk.CTkEntry(keep_row, width=64, textvariable=keep_last_var)
+        keep_entry.pack(side=tk.LEFT)
+        inc_btn = ctk.CTkButton(keep_row, text="+", width=28, command=lambda: _inc_keep(1))
+        inc_btn.pack(side=tk.LEFT, padx=(6,0))
         def on_keep_last_changed(*_):
             try:
                 import main
@@ -1330,9 +1722,9 @@ class VisualizerWindowTkinter:
         shortcuts_card.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
         
         # Mode d'enregistrement
-        mode_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        mode_row = ctk.CTkFrame(shortcuts_frame, fg_color="#1f1f1f")
         mode_row.pack(fill=tk.X, pady=(0, 12))
-        tk.Label(mode_row, text="Mode d'enregistrement :", fg="white", bg="#1f1f1f").pack(anchor='w')
+        ctk.CTkLabel(mode_row, text="Mode d'enregistrement :", text_color="white", font=("Arial", 12, "bold")).pack(anchor='w')
         record_mode_var = tk.StringVar(master=self.root, value=(user_settings.get("record_mode", "toggle") if user_settings else "toggle"))
         def on_mode_changed():
             auto_save_user_setting()
@@ -1356,20 +1748,20 @@ class VisualizerWindowTkinter:
                 except Exception:
                     pass
             self.root.after(120, refresh_shortcut_label)
-        mode_toggle = tk.Radiobutton(mode_row, text="Toggle (appuyer pour démarrer/arrêter)", value="toggle", variable=record_mode_var,
-                                     command=on_mode_changed, fg="white", bg="#1f1f1f", selectcolor="#3c3c3c", activebackground="#1f1f1f", activeforeground="white")
-        mode_ptt = tk.Radiobutton(mode_row, text="Push‑to‑talk (enregistrer tant que la touche est maintenue)", value="ptt", variable=record_mode_var,
-                                   command=on_mode_changed, fg="white", bg="#1f1f1f", selectcolor="#3c3c3c", activebackground="#1f1f1f", activeforeground="white")
+        mode_toggle = ctk.CTkRadioButton(mode_row, text="Toggle (appuyer pour démarrer/arrêter)", value="toggle", variable=record_mode_var,
+                                         command=on_mode_changed, font=("Arial", 11))
+        mode_ptt = ctk.CTkRadioButton(mode_row, text="Push‑to‑talk (enregistrer tant que la touche est maintenue)", value="ptt", variable=record_mode_var,
+                                       command=on_mode_changed, font=("Arial", 11))
         mode_toggle.pack(anchor='w')
         mode_ptt.pack(anchor='w')
 
         # Raccourci Enregistrement (toggle)
-        tk.Label(shortcuts_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
-        record_hotkey_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        ctk.CTkLabel(shortcuts_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", text_color="white", font=("Arial", 11, "bold")).pack(anchor='w', pady=(0,2))
+        record_hotkey_row = ctk.CTkFrame(shortcuts_frame, fg_color="#1f1f1f")
         record_hotkey_row.pack(fill=tk.X, pady=(0, 15))
-        record_hotkey_entry = tk.Entry(record_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        record_hotkey_entry = ctk.CTkEntry(record_hotkey_row, font=("Consolas", 11))
         record_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        tk.Button(record_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(record_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
+        ctk.CTkButton(record_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(record_hotkey_entry), font=("Arial", 11)).pack(side=tk.LEFT, padx=(8,0))
         # Charger depuis AppData
         try:
             record_hotkey_entry.insert(0, user_settings.get("record_hotkey", "<ctrl>+<alt>+s"))
@@ -1377,11 +1769,11 @@ class VisualizerWindowTkinter:
             pass
 
         # Raccourci Push‑to‑talk
-        ptt_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
-        tk.Label(ptt_row, text="Raccourci Push‑to‑talk (maintenir) :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
-        ptt_hotkey_entry = tk.Entry(ptt_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        ptt_row = ctk.CTkFrame(shortcuts_frame, fg_color="#1f1f1f")
+        ctk.CTkLabel(ptt_row, text="Raccourci Push‑to‑talk (maintenir) :", text_color="white", font=("Arial", 11, "bold")).pack(anchor='w', pady=(0,2))
+        ptt_hotkey_entry = ctk.CTkEntry(ptt_row, font=("Consolas", 11))
         ptt_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        tk.Button(ptt_row, text="Définir…", command=lambda: self._open_hotkey_capture(ptt_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
+        ctk.CTkButton(ptt_row, text="Définir…", command=lambda: self._open_hotkey_capture(ptt_hotkey_entry), font=("Arial", 11)).pack(side=tk.LEFT, padx=(8,0))
         try:
             ptt_hotkey_entry.insert(0, user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>"))
         except Exception:
@@ -1390,12 +1782,12 @@ class VisualizerWindowTkinter:
         if (user_settings.get("record_mode", "toggle") if user_settings else "toggle") == "ptt":
             ptt_row.pack(fill=tk.X, pady=(0, 15))
         # Raccourci Ouvrir Fenêtre  
-        tk.Label(shortcuts_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
-        open_hotkey_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        ctk.CTkLabel(shortcuts_frame, text="Raccourci pour Ouvrir cette fenêtre :", text_color="white", font=("Arial", 11, "bold")).pack(anchor='w', pady=(0,2))
+        open_hotkey_row = ctk.CTkFrame(shortcuts_frame, fg_color="#1f1f1f")
         open_hotkey_row.pack(fill=tk.X, pady=(0, 15))
-        open_hotkey_entry = tk.Entry(open_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        open_hotkey_entry = ctk.CTkEntry(open_hotkey_row, font=("Consolas", 11))
         open_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        tk.Button(open_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(open_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
+        ctk.CTkButton(open_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(open_hotkey_entry), font=("Arial", 11)).pack(side=tk.LEFT, padx=(8,0))
         try:
             open_hotkey_entry.insert(0, user_settings.get("open_window_hotkey", "<ctrl>+<alt>+o"))
         except Exception:
@@ -1411,22 +1803,21 @@ class VisualizerWindowTkinter:
         
         # Aide pour les raccourcis (à la fin)
         help_text = "Modificateurs: <ctrl>, <alt>, <shift>, <cmd> (Mac)\nTouches spéciales: <space>, <tab>, <enter>, <esc>, <f1>-<f12>\nExemples: <ctrl>+<shift>+r, <alt>+<space>, <f9>"
-        help_label = tk.Label(shortcuts_frame, text=help_text, fg="#888888", bg="#1f1f1f", 
-                             font=("Consolas", 8), justify=tk.LEFT)
+        help_label = ctk.CTkLabel(shortcuts_frame, text=help_text, text_color="#aaaaaa", 
+                                  font=("Consolas", 10), justify=tk.LEFT)
         help_label.pack(anchor='w', pady=(6, 0))
         
         # Séparateur
-        separator3 = tk.Frame(settings_frame, height=1, bg="#555555")
+        separator3 = ctk.CTkFrame(settings_frame, height=1, fg_color="#555555")
         separator3.pack(fill=tk.X, pady=(10, 15))
         
         # Bouton de fermeture complète (discret)
-        quit_frame = tk.Frame(settings_frame, bg="#2b2b2b")
+        quit_frame = ctk.CTkFrame(settings_frame, fg_color="#2b2b2b")
         quit_frame.pack(fill=tk.X, pady=(0, 5))
         
-        tk.Button(quit_frame, text="⚠️ Fermer complètement l'application", 
-                 command=self._quit_application, bg="#6c757d", fg="white", 
-                 relief=tk.FLAT, activebackground="#5a6268", activeforeground="white",
-                 font=("Arial", 9)).pack(side=tk.RIGHT)
+        ctk.CTkButton(quit_frame, text="⚠️ Fermer complètement l'application", 
+                      command=self._quit_application, fg_color="#6c757d", text_color="white",
+                      hover_color="#5a6268", font=("Arial", 9)).pack(side=tk.RIGHT)
 
         # Fonction pour sauvegarder la configuration complète
         def save_settings():
@@ -1535,6 +1926,7 @@ class VisualizerWindowTkinter:
         # --- Onglet 3: Logs --- (ajouté après Paramètres)
         logs_tab = tk.Frame(notebook, bg="#2b2b2b")
         notebook.add(logs_tab, text='  Logs  ')
+        self._logs_tab = logs_tab
         tk.Label(logs_tab, text="Logs de l'application", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 4))
         # Bandeau chemin du fichier log + bouton ouvrir
         path_frame = tk.Frame(logs_tab, bg="#2b2b2b")
@@ -1569,9 +1961,12 @@ class VisualizerWindowTkinter:
     # === Utilitaires Historique & Recherche ===
     def _open_hotkey_capture(self, target_entry: tk.Entry):
         """Ouvre une petite fenêtre modale pour capturer une combinaison de touches et la formater."""
-        capture = tk.Toplevel(self.root)
+        capture = ctk.CTkToplevel(self.root)
         capture.title("Définir un raccourci")
-        capture.configure(bg="#2b2b2b")
+        try:
+            capture.configure(fg_color="#2b2b2b")
+        except Exception:
+            pass
         capture.resizable(False, False)
         capture.grab_set()
         tk.Label(capture, text="Appuyez sur la combinaison souhaitée…", fg="white", bg="#2b2b2b", font=("Arial", 10, "bold")).pack(padx=20, pady=15)
@@ -1672,29 +2067,165 @@ class VisualizerWindowTkinter:
             s = str(obj)
             return s, s
 
+    def _switch_history_view(self, mode):
+        """Affiche la vue souhaitée: 'table' ou 'cartes'."""
+        try:
+            if mode == "table":
+                if hasattr(self, 'history_cards_container') and self.history_cards_container.winfo_ismapped():
+                    self.history_cards_container.pack_forget()
+                if hasattr(self, 'history_table_frame') and not self.history_table_frame.winfo_ismapped():
+                    self.history_table_frame.pack(fill=tk.BOTH, expand=True)
+            else:
+                if hasattr(self, 'history_table_frame') and self.history_table_frame.winfo_ismapped():
+                    self.history_table_frame.pack_forget()
+                if hasattr(self, 'history_cards_container') and not self.history_cards_container.winfo_ismapped():
+                    self.history_cards_container.pack(fill=tk.BOTH, expand=True)
+        except Exception:
+            pass
+
+    def _clear_history_cards(self):
+        try:
+            if hasattr(self, 'history_cards_container') and self.history_cards_container:
+                for child in self.history_cards_container.winfo_children():
+                    child.destroy()
+        except Exception:
+            pass
+
+    def _create_history_card(self, parent, item):
+        """Crée une carte visuelle pour un item d'historique."""
+        try:
+            card = ctk.CTkFrame(parent, fg_color="#242424", corner_radius=12)
+            card.pack(fill=tk.X, padx=4, pady=6)
+
+            # Contenu de la carte: en-tête (timestamp) + boutons, puis texte
+            header = ctk.CTkFrame(card, fg_color="#242424")
+            header.pack(fill=tk.X, padx=10, pady=(8, 2))
+
+            ts = ""
+            txt = ""
+            if isinstance(item, dict):
+                ts = item.get('timestamp', item.get('date', ''))
+                txt = item.get('text', '')
+            else:
+                txt = str(item)
+
+            ctk.CTkLabel(header, text=ts or "(sans date)", text_color="#9aa0a6", font=("Consolas", 10)).pack(side=tk.LEFT)
+
+            # Boutons d'action à droite
+            actions = ctk.CTkFrame(header, fg_color="#242424")
+            actions.pack(side=tk.RIGHT)
+
+            def _copy_and_notify():
+                try:
+                    pyperclip.copy(txt or "")
+                except Exception:
+                    pass
+                # Notification succès (bannière mini‑fenêtre)
+                try:
+                    self.show()
+                    self.show_status("success")
+                except Exception:
+                    pass
+
+            # Bouton Écouter (si un audio est lié et si option activée)
+            try:
+                from voice_tool.settings import load_user_settings
+                settings = load_user_settings()
+                enable_preview = settings.get("enable_history_audio_preview", True)
+            except Exception:
+                enable_preview = True
+
+            audio_path = None
+            if isinstance(item, dict):
+                audio_path = item.get('audio_path')
+
+            def _play_audio():
+                if not audio_path:
+                    return
+                try:
+                    import os, platform
+                    if not os.path.exists(audio_path):
+                        # Message discret dans les logs, pas de popup intrusive
+                        logging.warning(f"Fichier audio introuvable: {audio_path}")
+                        return
+                    system = platform.system()
+                    if system == 'Windows':
+                        os.startfile(audio_path)  # type: ignore
+                    elif system == 'Darwin':
+                        os.system(f"open '{audio_path}'")
+                    else:
+                        # Essayer avec aplay, sinon xdg-open
+                        rc = os.system(f"aplay '{audio_path}' > /dev/null 2>&1")
+                        if rc != 0:
+                            os.system(f"xdg-open '{audio_path}'")
+                except Exception as e:
+                    logging.error(f"Lecture audio échouée: {e}")
+
+            if enable_preview and audio_path:
+                ctk.CTkButton(actions, text="▶", width=40, height=28, corner_radius=14, font=("Arial", 16, "bold"), command=_play_audio).pack(side=tk.LEFT, padx=(6,0))
+
+            # Corps du texte
+            body = ctk.CTkFrame(card, fg_color="#242424")
+            body.pack(fill=tk.X, padx=10, pady=(0, 10))
+            body_label = ctk.CTkLabel(body, text=txt, text_color="white", font=("Arial", 11), justify=tk.LEFT, wraplength=680)
+            body_label.pack(anchor='w')
+            try:
+                body_label.bind("<Double-Button-1>", lambda e: _copy_and_notify())
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     def _render_history_list(self, items):
         # Vider la listbox
         # Reset Treeview
-        if self.history_tree is None:
-            return
-        for iid in self.history_tree.get_children():
-            self.history_tree.delete(iid)
-        self._tree_id_to_obj = {}
+        view_mode = None
+        try:
+            view_mode = self._history_view_mode.get()
+        except Exception:
+            view_mode = "cartes"
+
         # Afficher les plus récents en premier
         items_to_display = list(items)[::-1]
-        for idx, item in enumerate(items_to_display):
-            # Construire colonnes: date/heure + texte SANS redonder la date/heure dans le texte
-            time_col = ""
-            text_col = ""
-            if isinstance(item, dict):
-                time_col = item.get('timestamp', item.get('date', ''))
-                text_col = item.get('text', '')
-            else:
-                # Ancien format: tout en texte
-                text_col = str(item)
-            tag = 'evenrow' if (idx % 2 == 0) else 'oddrow'
-            iid = self.history_tree.insert("", tk.END, values=(time_col, text_col), tags=(tag,))
-            self._tree_id_to_obj[iid] = item
+
+        if view_mode == "table":
+            if self.history_tree is None:
+                return
+            for iid in self.history_tree.get_children():
+                self.history_tree.delete(iid)
+            self._tree_id_to_obj = {}
+            for idx, item in enumerate(items_to_display):
+                time_col = ""
+                text_col = ""
+                if isinstance(item, dict):
+                    time_col = item.get('timestamp', item.get('date', ''))
+                    text_col = item.get('text', '')
+                else:
+                    text_col = str(item)
+                tag = 'evenrow' if (idx % 2 == 0) else 'oddrow'
+                iid = self.history_tree.insert("", tk.END, values=(time_col, text_col), tags=(tag,))
+                self._tree_id_to_obj[iid] = item
+        else:
+            # Vue cartes (rendu borné pour éviter le lag sur gros historiques)
+            self._clear_history_cards()
+            try:
+                import main
+                limit = int(main.load_user_settings().get("history_cards_render_limit", 150))
+            except Exception:
+                limit = 150
+            # Rendre seulement les N premiers visibles (les plus récents)
+            for idx, item in enumerate(items_to_display):
+                if idx >= max(10, limit):  # toujours au moins 10
+                    break
+                self._create_history_card(self.history_cards_container, item)
+            # Si coupé, afficher une note discrète
+            if len(items_to_display) > max(10, limit):
+                try:
+                    note = ctk.CTkLabel(self.history_cards_container, text=f"Affichage de {max(10, limit)} éléments sur {len(items_to_display)} (utilisez la recherche pour filtrer)", text_color="#888888", font=("Arial", 10))
+                    note.pack(pady=(4,8))
+                except Exception:
+                    pass
+
         self._filtered_history_items = list(items_to_display)
         # Mettre à jour le compteur
         try:
@@ -1751,10 +2282,96 @@ class VisualizerWindowTkinter:
         self.history_search_var.set("")
 
         # S'assurer que la référence est nettoyée à la fermeture de la fenêtre
-        self.main_window.protocol("WM_DELETE_WINDOW", lambda: (self.main_window.destroy(), setattr(self, 'main_window', None), setattr(self, 'log_text_widget', None), setattr(self, 'history_listbox', None), setattr(self, 'record_button', None)))
+        def _on_close():
+            try:
+                self._history_watch_active = False
+            except Exception:
+                pass
+            # Persist geometry + state au moment de la fermeture
+            try:
+                import main
+                state = None
+                try:
+                    state = self.main_window.state()
+                except Exception:
+                    state = None
+                geom = None
+                try:
+                    geom = self.main_window.geometry()
+                except Exception:
+                    geom = None
+                if state:
+                    main.user_settings.update({"main_window_state": state})
+                if geom:
+                    main.user_settings.update({"main_window_geometry": geom})
+                main.save_user_settings(main.user_settings)
+            except Exception:
+                pass
+            self.main_window.destroy()
+            setattr(self, 'main_window', None)
+            setattr(self, 'log_text_widget', None)
+            setattr(self, 'history_listbox', None)
+            setattr(self, 'record_button', None)
+        self.main_window.protocol("WM_DELETE_WINDOW", _on_close)
 
     def run(self):
         self.root.mainloop()
+
+    # === Watcher d'historique (polling mtime) ===
+    def _start_history_file_watch(self):
+        try:
+            from voice_tool.paths import HISTORY_FILE
+            import os
+            if os.path.exists(HISTORY_FILE):
+                try:
+                    self._history_file_last_mtime = os.path.getmtime(HISTORY_FILE)
+                except Exception:
+                    self._history_file_last_mtime = None
+            self._history_watch_active = True
+            # Premier poll dans ~1s
+            self.root.after(1000, self._poll_history_file)
+        except Exception:
+            pass
+
+    def _poll_history_file(self):
+        if not self._history_watch_active:
+            return
+        try:
+            from voice_tool.paths import HISTORY_FILE
+            import os
+            mtime = None
+            try:
+                if os.path.exists(HISTORY_FILE):
+                    mtime = os.path.getmtime(HISTORY_FILE)
+            except Exception:
+                mtime = None
+            if mtime and self._history_file_last_mtime and mtime <= self._history_file_last_mtime:
+                pass
+            else:
+                # mtime a changé (ou premier passage)
+                self._history_file_last_mtime = mtime
+                self._reload_history_from_disk()
+        except Exception:
+            pass
+        # Replanifier
+        try:
+            self.root.after(1200, self._poll_history_file)
+        except Exception:
+            pass
+
+    def _reload_history_from_disk(self):
+        try:
+            import main
+            # Charger depuis disque (thread UI; handle JSON partiel via try/except)
+            new_hist = main.load_transcription_history()
+            if isinstance(new_hist, list):
+                # Mettre à jour l’état global et local
+                main.transcription_history = list(new_hist)
+                self._history_master = list(new_hist)
+                self._apply_history_filter()
+        except Exception:
+            # Ignorer les erreurs de lecture; on réessaiera au prochain tick
+            pass
 
 # --- Pour tester ce fichier seul ---
 if __name__ == '__main__':

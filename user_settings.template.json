@@ -8,6 +8,12 @@
     "smart_formatting": true,
     "input_device_index": null,
     "record_hotkey": "<ctrl>+<alt>+k",
-    "open_window_hotkey": "<ctrl>+<alt>+<shift>+o"
+    "open_window_hotkey": "<ctrl>+<alt>+<shift>+o",
+    "record_mode": "toggle",
+    "ptt_hotkey": "<ctrl>+<shift>+<space>",
+    "recordings_keep_last": 25,
+    "enable_history_audio_preview": true,
+    "main_window_state": "zoomed",
+    "main_window_geometry": null
   }
 }

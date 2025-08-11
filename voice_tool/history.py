@@ -47,6 +47,14 @@ def add_to_transcription_history(current_history: List[Dict[str, Any]], text: st
     }
     if audio_path:
         item["audio_path"] = audio_path
+    try:
+        # Nettoyage des doublons exacts timestamp+text pour réduire les réinsertions inattendues
+        for i in range(len(current_history)-1, -1, -1):
+            it = current_history[i]
+            if isinstance(it, dict) and it.get('timestamp') == item['timestamp'] and it.get('text') == item['text']:
+                current_history.pop(i)
+    except Exception:
+        pass
     current_history.append(item)
     if len(current_history) > 1000:
         current_history[:] = current_history[-1000:]
