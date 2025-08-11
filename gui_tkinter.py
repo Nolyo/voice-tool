@@ -5,6 +5,7 @@ import time
 import numpy as np
 import logging
 from tkinter import ttk
+import customtkinter as ctk
 import pyperclip
 import os
 import platform
@@ -16,9 +17,17 @@ logging.basicConfig(level=logging.INFO)
 
 class VisualizerWindowTkinter:
     def __init__(self, icon_path=None):
-        self.root = tk.Tk()
+        # Créer un root CTk dédié à l'application (ne pas réutiliser celui du Splash)
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("blue")
+        self.root = ctk.CTk()
+        # Cacher le root immédiatement afin d'éviter tout flash de fenêtre 'tk' en arrière-plan
+        try:
+            self.root.attributes('-alpha', 0.0)
+        except Exception:
+            pass
+        self.root.withdraw()  # Cache la fenêtre principale Tkinter par défaut
         self.root.title("Voice Tool")  # Définir le titre de l'application
-        self.root.withdraw() # Cache la fenêtre principale Tkinter par défaut
         self.icon_path = icon_path
         
         # Appliquer l'icône à la fenêtre root
@@ -43,18 +52,22 @@ class VisualizerWindowTkinter:
         self.history_tree = None  # Nouveau: Treeview pour l'historique
         self._tree_id_to_obj = {}  # map id->objet (dict/str) pour actions
         # Recherche et gestion d'historique (filtrage)
-        self.history_search_var = tk.StringVar(master=self.root)
+        self.history_search_var = ctk.StringVar(master=self.root)
         self._search_after_id = None
         self._history_master = []  # liste des items d'historique (objets d'origine)
         self._filtered_history_items = []  # vue filtrée courante
         
-        self.window = tk.Toplevel(self.root)
+        self.window = ctk.CTkToplevel(self.root)
         self.window.title("Voice Tool - Visualizer")  # Titre pour la fenêtre de visualisation
         self.set_window_icon(self.window) # Appliquer l'icône à la fenêtre de visualisation
         self.window.overrideredirect(True) # Supprime la barre de titre et les bordures
         self.window.attributes("-topmost", True) # Toujours au-dessus
         self.window.geometry("300x60") # Taille ajustée pour le nouveau design
-        self.window.configure(bg='#1C1C1C') # Fond sombre moderne
+        # Utiliser la couleur de fond CTk pour un thème sombre moderne
+        try:
+            self.window.configure(fg_color='#1C1C1C')
+        except Exception:
+            self.window.configure(bg='#1C1C1C')
         self.window.attributes("-alpha", 0.9) # Un peu plus transparent
 
         # --- Configuration pour éviter le vol de focus (Windows) ---
@@ -100,8 +113,8 @@ class VisualizerWindowTkinter:
         except Exception:
             pass
 
-        # Label pour les statuts (Succès, Erreur, etc.)
-        self.status_label = tk.Label(self.window, text="", fg="#1C1C1C", bg="white", font=("Arial", 12, "bold"))
+        # Label pour les statuts (Succès, Erreur, etc.) en CTk pour cohérence visuelle
+        self.status_label = ctk.CTkLabel(self.window, text="", text_color="#1C1C1C", fg_color="white", font=("Arial", 12, "bold"))
         self.status_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         self.status_label.lower() 
 
@@ -527,7 +540,7 @@ class VisualizerWindowTkinter:
         
         # Confirmer la suppression
         import tkinter.messagebox as msgbox
-        if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer cette transcription ?"):
+        if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer cette transcription ?", parent=self.main_window if hasattr(self, 'main_window') else self.root):
             # Supprimer de l'historique global et sauvegarder
             import main
             # Trouver l'élément à supprimer en s'appuyant sur l'objet (dict/str)
@@ -558,8 +571,9 @@ class VisualizerWindowTkinter:
     def _quit_application(self):
         """Ferme complètement l'application après confirmation."""
         import tkinter.messagebox as msgbox
-        if msgbox.askyesno("Fermer l'application", 
-                          "Êtes-vous sûr de vouloir fermer complètement Voice Tool ?\n\nL'application se fermera et ne fonctionnera plus en arrière-plan."):
+        if msgbox.askyesno("Fermer l'application",
+                           "Êtes-vous sûr de vouloir fermer complètement Voice Tool ?\n\nL'application se fermera et ne fonctionnera plus en arrière-plan.",
+                           parent=self.main_window if hasattr(self, 'main_window') else self.root):
             logging.info("Fermeture complète de l'application demandée depuis l'interface")
             
             # Utiliser la fonction spéciale pour fermeture depuis GUI
@@ -601,7 +615,7 @@ class VisualizerWindowTkinter:
     def _clear_all_history(self):
         """Supprime tout l'historique après confirmation."""
         import tkinter.messagebox as msgbox
-        if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer tout l'historique des transcriptions ?\n\nCette action est irréversible."):
+        if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer tout l'historique des transcriptions ?\n\nCette action est irréversible.", parent=self.main_window if hasattr(self, 'main_window') else self.root):
             try:
                 import main
                 main.clear_all_transcription_history()
@@ -632,10 +646,10 @@ class VisualizerWindowTkinter:
                 self._history_master = []
                 self._filtered_history_items = []
                 logging.info("Tout l'historique a été effacé.")
-                msgbox.showinfo("Succès", "L'historique a été complètement effacé.")
+                msgbox.showinfo("Succès", "L'historique a été complètement effacé.", parent=self.main_window if hasattr(self, 'main_window') else self.root)
             except Exception as e:
                 logging.error(f"Erreur lors de la suppression de l'historique: {e}")
-                msgbox.showerror("Erreur", "Une erreur est survenue lors de la suppression de l'historique.")
+                msgbox.showerror("Erreur", "Une erreur est survenue lors de la suppression de l'historique.", parent=self.main_window if hasattr(self, 'main_window') else self.root)
 
     def _export_history(self):
         """Ouvre une fenêtre de dialogue pour choisir le format d'export."""
@@ -650,14 +664,17 @@ class VisualizerWindowTkinter:
         current_history = main.load_transcription_history()
         
         if not current_history:
-            msgbox.showwarning("Attention", "Aucune transcription à exporter.")
+            msgbox.showwarning("Attention", "Aucune transcription à exporter.", parent=self.main_window if hasattr(self, 'main_window') else self.root)
             return
         
         # Demander le format d'export
-        export_window = tk.Toplevel(self.root)
+        export_window = ctk.CTkToplevel(self.root)
         export_window.title("Exporter l'historique")
         export_window.geometry("300x220")
-        export_window.configure(bg="#2b2b2b")
+        try:
+            export_window.configure(fg_color="#2b2b2b")
+        except Exception:
+            pass
         export_window.resizable(False, False)
         
         # Centrer la fenêtre
@@ -666,14 +683,14 @@ class VisualizerWindowTkinter:
         y = export_window.winfo_screenheight() // 2 - export_window.winfo_height() // 2
         export_window.geometry(f"+{x}+{y}")
         
-        tk.Label(export_window, text="Choisissez le format d'export :", 
-                fg="white", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(pady=(15, 10))
+        ctk.CTkLabel(export_window, text="Choisissez le format d'export :", font=("Arial", 12, "bold")).pack(pady=(15, 10))
         
         def export_csv():
             filename = filedialog.asksaveasfilename(
                 defaultextension=".csv",
                 filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-                title="Sauvegarder en CSV"
+                title="Sauvegarder en CSV",
+                parent=self.main_window if hasattr(self, 'main_window') else self.root
             )
             if filename:
                 try:
@@ -685,9 +702,9 @@ class VisualizerWindowTkinter:
                                 writer.writerow([item['timestamp'], item['text']])
                             else:
                                 writer.writerow([datetime.now().strftime('%Y-%m-%d %H:%M:%S'), str(item)])
-                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}")
+                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 except Exception as e:
-                    msgbox.showerror("Erreur", f"Erreur lors de l'export CSV: {e}")
+                    msgbox.showerror("Erreur", f"Erreur lors de l'export CSV: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 finally:
                     export_window.destroy()
         
@@ -695,7 +712,8 @@ class VisualizerWindowTkinter:
             filename = filedialog.asksaveasfilename(
                 defaultextension=".txt",
                 filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
-                title="Sauvegarder en TXT"
+                title="Sauvegarder en TXT",
+                parent=self.main_window if hasattr(self, 'main_window') else self.root
             )
             if filename:
                 try:
@@ -706,9 +724,9 @@ class VisualizerWindowTkinter:
                                 txtfile.write(f"{i}. [{item['timestamp']}]\n{item['text']}\n\n")
                             else:
                                 txtfile.write(f"{i}. {str(item)}\n\n")
-                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}")
+                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 except Exception as e:
-                    msgbox.showerror("Erreur", f"Erreur lors de l'export TXT: {e}")
+                    msgbox.showerror("Erreur", f"Erreur lors de l'export TXT: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 finally:
                     export_window.destroy()
         
@@ -716,7 +734,8 @@ class VisualizerWindowTkinter:
             filename = filedialog.asksaveasfilename(
                 defaultextension=".json",
                 filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-                title="Sauvegarder en JSON"
+                title="Sauvegarder en JSON",
+                parent=self.main_window if hasattr(self, 'main_window') else self.root
             )
             if filename:
                 try:
@@ -728,25 +747,21 @@ class VisualizerWindowTkinter:
                     }
                     with open(filename, 'w', encoding='utf-8') as jsonfile:
                         json.dump(export_data, jsonfile, ensure_ascii=False, indent=2)
-                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}")
+                    msgbox.showinfo("Succès", f"Historique exporté vers {filename}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 except Exception as e:
-                    msgbox.showerror("Erreur", f"Erreur lors de l'export JSON: {e}")
+                    msgbox.showerror("Erreur", f"Erreur lors de l'export JSON: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 finally:
                     export_window.destroy()
         
         # Boutons d'export
-        btn_frame = tk.Frame(export_window, bg="#2b2b2b")
+        btn_frame = ctk.CTkFrame(export_window)
         btn_frame.pack(pady=10)
         
-        tk.Button(btn_frame, text="📊  CSV", command=export_csv, bg="#28a745", fg="white",
-                  relief=tk.FLAT, font=("Arial", 10), width=15, height=1).pack(pady=5)
-        tk.Button(btn_frame, text="📄  TXT", command=export_txt, bg="#6f42c1", fg="white",
-                  relief=tk.FLAT, font=("Arial", 10), width=15, height=1).pack(pady=5)
-        tk.Button(btn_frame, text="🔧  JSON", command=export_json, bg="#fd7e14", fg="white",
-                  relief=tk.FLAT, font=("Arial", 10), width=15, height=1).pack(pady=5)
+        ctk.CTkButton(btn_frame, text="📊  CSV", command=export_csv, fg_color="#28a745", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=5)
+        ctk.CTkButton(btn_frame, text="📄  TXT", command=export_txt, fg_color="#6f42c1", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=5)
+        ctk.CTkButton(btn_frame, text="🔧  JSON", command=export_json, fg_color="#fd7e14", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=5)
         
-        tk.Button(export_window, text="Annuler", command=export_window.destroy,
-                  bg="#6c757d", fg="white", relief=tk.FLAT, font=("Arial", 10)).pack(pady=10)
+        ctk.CTkButton(export_window, text="Annuler", command=export_window.destroy, fg_color="#6c757d", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=10)
 
     def _import_history(self):
         """Importe un historique depuis un fichier JSON."""
@@ -757,7 +772,8 @@ class VisualizerWindowTkinter:
         
         filename = filedialog.askopenfilename(
             filetypes=[("JSON files", "*.json"), ("All files", "*.*忽视")],
-            title="Importer un historique JSON"
+            title="Importer un historique JSON",
+            parent=self.main_window if hasattr(self, 'main_window') else self.root
         )
         
         if not filename:
@@ -777,11 +793,12 @@ class VisualizerWindowTkinter:
             
             # Demander confirmation pour le merge ou remplacement
             if main.transcription_history:
-                result = msgbox.askyesnocancel("Import", 
+                result = msgbox.askyesnocancel("Import",
                     f"Importer {len(imported_transcriptions)} transcriptions.\n\n" +
                     "Oui = Ajouter à l'historique existant\n" +
                     "Non = Remplacer l'historique existant\n" +
-                    "Annuler = Annuler l'import")
+                    "Annuler = Annuler l'import",
+                    parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 
                 if result is None:  # Annuler
                     return
@@ -796,10 +813,10 @@ class VisualizerWindowTkinter:
             main.save_transcription_history(main.transcription_history)
             self._refresh_history_display()
             
-            msgbox.showinfo("Succès", f"{len(imported_transcriptions)} transcriptions importées avec succès !")
+            msgbox.showinfo("Succès", f"{len(imported_transcriptions)} transcriptions importées avec succès !", parent=self.main_window if hasattr(self, 'main_window') else self.root)
             
         except Exception as e:
-            msgbox.showerror("Erreur", f"Erreur lors de l'import: {e}")
+            msgbox.showerror("Erreur", f"Erreur lors de l'import: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
 
     def _refresh_history_display(self):
         """Rafraîchit l'affichage de l'historique après import."""
@@ -828,7 +845,8 @@ class VisualizerWindowTkinter:
                 pass
             return
 
-        self.main_window = tk.Toplevel(self.root)
+        # Utiliser CTkToplevel pour éviter une fenêtre Tk par défaut intitulée "tk"
+        self.main_window = ctk.CTkToplevel(self.root)
         self.main_window.title("Voice Tool")
         # Ouvrir en plein écran (maximisé)
         try:
@@ -859,21 +877,21 @@ class VisualizerWindowTkinter:
         notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # --- Onglet 1: Historique ---
-        history_tab = tk.Frame(notebook, bg="#2b2b2b")
+        history_tab = ctk.CTkFrame(notebook, fg_color="#2b2b2b")
         notebook.add(history_tab, text='  Historique  ')
-        history_frame = tk.Frame(history_tab, bg="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(history_frame, text="Historique des transcriptions", fg="white", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(pady=(6, 4))
+        history_frame = ctk.CTkFrame(history_tab, fg_color="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
+        ctk.CTkLabel(history_frame, text="Historique des transcriptions", text_color="white", font=("Arial", 12, "bold")).pack(pady=(6, 4))
         # Compteur d'éléments / résultats
-        self.history_count_label = tk.Label(history_frame, text="", fg="#aaaaaa", bg="#2b2b2b", font=("Arial", 9))
+        self.history_count_label = ctk.CTkLabel(history_frame, text="", text_color="#aaaaaa", font=("Arial", 9))
         self.history_count_label.pack(pady=(0, 8))
 
         # Barre de recherche
-        search_frame = tk.Frame(history_frame, bg="#2b2b2b")
+        search_frame = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
         search_frame.pack(fill=tk.X, padx=5, pady=(0, 10))
-        tk.Label(search_frame, text="Rechercher:", fg="white", bg="#2b2b2b").pack(side=tk.LEFT, padx=(0, 8))
-        search_entry = tk.Entry(search_frame, textvariable=self.history_search_var, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        ctk.CTkLabel(search_frame, text="Rechercher:", text_color="white").pack(side=tk.LEFT, padx=(0, 8))
+        search_entry = ctk.CTkEntry(search_frame, textvariable=self.history_search_var)
         search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        clear_btn = tk.Button(search_frame, text="Effacer", command=lambda: self._clear_search(), bg="#6c757d", fg="white", relief=tk.FLAT)
+        clear_btn = ctk.CTkButton(search_frame, text="Effacer", command=lambda: self._clear_search())
         clear_btn.pack(side=tk.LEFT, padx=(8, 0))
         # Style moderne pour Treeview
         style = ttk.Style(self.root)
@@ -896,9 +914,7 @@ class VisualizerWindowTkinter:
                         relief=tk.FLAT)
 
         # Conteneur avec légère bordure pour un rendu plus "carte"
-        table_frame = tk.Frame(history_frame, bg="#2b2b2b",
-                               highlightthickness=1, highlightbackground="#3c3c3c",
-                               bd=0, relief=tk.FLAT)
+        table_frame = ctk.CTkFrame(history_frame, fg_color="#2b2b2b", border_color="#3c3c3c", border_width=1, corner_radius=6)
         table_frame.pack(fill=tk.BOTH, expand=True, padx=5)
         yscroll = tk.Scrollbar(table_frame)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -936,52 +952,52 @@ class VisualizerWindowTkinter:
         except Exception:
             pass
         # État "aucun résultat"
-        self.history_empty_label = tk.Label(history_frame, text="Aucun résultat", fg="#888888", bg="#2b2b2b", font=("Arial", 10))
+        self.history_empty_label = ctk.CTkLabel(history_frame, text="Aucun résultat", text_color="#888888", font=("Arial", 10))
         
         # Indication pour les interactions avec l'historique
-        help_frame = tk.Frame(history_frame, bg="#2b2b2b")
+        help_frame = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
         help_frame.pack(pady=(10,5), padx=5, fill=tk.X)
         
-        tk.Label(help_frame, text="💡 Double-clic pour copier • Clic droit pour le menu", 
-                fg="#888888", bg="#2b2b2b", font=("Arial", 9), justify=tk.LEFT).pack(side=tk.LEFT)
+        ctk.CTkLabel(help_frame, text="💡 Double-clic pour copier • Clic droit pour le menu", 
+                text_color="#888888", font=("Arial", 9), justify=tk.LEFT).pack(side=tk.LEFT)
 
         # Boutons d'action
-        buttons_frame = tk.Frame(help_frame, bg="#2b2b2b")
+        buttons_frame = ctk.CTkFrame(help_frame, fg_color="#2b2b2b")
         buttons_frame.pack(side=tk.RIGHT)
         
         # Bouton d'import
-        tk.Button(buttons_frame, text="📥 Import", 
-                  command=self._import_history, bg="#28a745", fg="white", 
-                  relief=tk.FLAT, activebackground="#218838", activeforeground="white",
+        ctk.CTkButton(buttons_frame, text="📥 Import", 
+                  command=self._import_history, 
+                  fg_color="#28a745",
                   font=("Arial", 8, "bold")).pack(side=tk.LEFT, padx=(0, 5))
         
         # Bouton d'export
-        tk.Button(buttons_frame, text="📤 Export", 
-                  command=self._export_history, bg="#007bff", fg="white", 
-                  relief=tk.FLAT, activebackground="#0056b3", activeforeground="white",
+        ctk.CTkButton(buttons_frame, text="📤 Export", 
+                  command=self._export_history, 
+                  fg_color="#007bff",
                   font=("Arial", 8, "bold")).pack(side=tk.LEFT, padx=(0, 5))
         
         # Bouton pour tout effacer
-        tk.Button(buttons_frame, text="🗑️ Tout effacer", 
-                  command=self._clear_all_history, bg="#dc3545", fg="white", 
-                  relief=tk.FLAT, activebackground="#c82333", activeforeground="white",
+        ctk.CTkButton(buttons_frame, text="🗑️ Tout effacer", 
+                  command=self._clear_all_history, 
+                  fg_color="#dc3545",
                   font=("Arial", 8, "bold")).pack(side=tk.LEFT)
         
         # Avertissement si auto-paste actif
         try:
             import main
             if main.get_setting('paste_at_cursor', False):
-                warn = tk.Label(history_frame, text="Astuce: l'option 'Insérer automatiquement au curseur' est active. Évitez de donner le focus à cette fenêtre si vous ne voulez pas y coller.", fg="#ffc107", bg="#2b2b2b", font=("Arial", 9))
+                warn = ctk.CTkLabel(history_frame, text="Astuce: l'option 'Insérer automatiquement au curseur' est active. Évitez de donner le focus à cette fenêtre si vous ne voulez pas y coller.", text_color="#ffc107", font=("Arial", 9))
                 warn.pack(pady=(8,0), padx=5, anchor='w')
         except Exception:
             pass
         
         # Message informatif pour le raccourci d'enregistrement
-        shortcut_frame = tk.Frame(history_frame, bg="#1e1e1e", relief=tk.RAISED, bd=1)
+        shortcut_frame = ctk.CTkFrame(history_frame, fg_color="#1e1e1e")
         shortcut_frame.pack(pady=(10,10), padx=5, fill=tk.X)
         
-        tk.Label(shortcut_frame, text="🎤", fg="#FF6B6B", bg="#1e1e1e", font=("Arial", 16)).pack(pady=(8,2))
-        tk.Label(shortcut_frame, text="Pour démarrer/arrêter l'enregistrement", fg="white", bg="#1e1e1e", font=("Arial", 10)).pack()
+        ctk.CTkLabel(shortcut_frame, text="🎤", text_color="#FF6B6B", font=("Arial", 16)).pack(pady=(8,2))
+        ctk.CTkLabel(shortcut_frame, text="Pour démarrer/arrêter l'enregistrement", text_color="white", font=("Arial", 10)).pack()
         
         # Afficher le raccourci configuré (prend en compte le mode)
         try:
@@ -994,12 +1010,12 @@ class VisualizerWindowTkinter:
                 shortcut_text = f"Appuyez sur {us.get('record_hotkey', '<ctrl>+<alt>+s')}"
         except Exception:
             shortcut_text = "Appuyez sur <ctrl>+<alt>+s"
-        shortcut_label = tk.Label(shortcut_frame, text=shortcut_text, fg="#4ECDC4", bg="#1e1e1e", font=("Arial", 11, "bold"))
+        shortcut_label = ctk.CTkLabel(shortcut_frame, text=shortcut_text, text_color="#4ECDC4", font=("Arial", 11, "bold"))
         shortcut_label.pack(pady=(2,8))
         # Fin Onglet Historique
 
         # --- Onglet 2: Paramètres ---
-        settings_frame = tk.Frame(notebook, bg="#2b2b2b", padx=16, pady=16)
+        settings_frame = ctk.CTkFrame(notebook, fg_color="#2b2b2b")
         notebook.add(settings_frame, text='  Paramètres  ')
         
         # Définir les variables AVANT la fonction (lier explicitement au root Tk)
@@ -1087,19 +1103,19 @@ class VisualizerWindowTkinter:
 
         # === Helpers UI ===
         def create_card(parent, title_text):
-            card = tk.Frame(parent, bg="#1f1f1f", highlightthickness=1, highlightbackground="#3c3c3c")
-            header = tk.Label(card, text=title_text, fg="white", bg="#1f1f1f", font=("Arial", 12, "bold"))
+            card = ctk.CTkFrame(parent, fg_color="#1f1f1f", corner_radius=8)
+            header = ctk.CTkLabel(card, text=title_text, text_color="white", font=("Arial", 12, "bold"))
             header.pack(anchor='w', padx=12, pady=(10, 6))
-            body = tk.Frame(card, bg="#1f1f1f")
+            body = ctk.CTkFrame(card, fg_color="#1f1f1f")
             body.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
             return card, body
 
         # === LAYOUT 2x2 POUR LES SECTIONS ===
-        two_cols = tk.Frame(settings_frame, bg="#2b2b2b")
-        two_cols.pack(fill=tk.X)
-        left_col = tk.Frame(two_cols, bg="#2b2b2b")
+        two_cols = ctk.CTkFrame(settings_frame, fg_color="#2b2b2b")
+        two_cols.pack(fill=tk.X, padx=16, pady=16)
+        left_col = ctk.CTkFrame(two_cols, fg_color="#2b2b2b")
         left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 8))
-        right_col = tk.Frame(two_cols, bg="#2b2b2b")
+        right_col = ctk.CTkFrame(two_cols, fg_color="#2b2b2b")
         right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(8, 0))
         
         # === SECTION AUDIO (à gauche) ===
@@ -1113,11 +1129,8 @@ class VisualizerWindowTkinter:
             sounds_var.set(current_config.get("enable_sounds", True))
         else:
             sounds_var.set(True)
-        sounds_check = tk.Checkbutton(audio_frame, text="Activer les sons d'interface", 
-                                     variable=sounds_var, command=auto_save_user_setting,
-                                     fg="white", bg="#2b2b2b", 
-                                     selectcolor="#3c3c3c", activebackground="#2b2b2b", 
-                                     activeforeground="white")
+        sounds_check = ctk.CTkCheckBox(audio_frame, text="Activer les sons d'interface",
+                                       variable=sounds_var, command=auto_save_user_setting)
         sounds_check.pack(anchor='w', pady=(0, 15))
 
         # Liste des périphériques audio d'entrée
@@ -1149,7 +1162,7 @@ class VisualizerWindowTkinter:
             logging.error(f"Erreur lors de l'énumération des périphériques: {e}")
             devices = []
 
-        tk.Label(audio_frame, text="Microphone d'entrée :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
+        ctk.CTkLabel(audio_frame, text="Microphone d'entrée :", text_color="white").pack(anchor='w', pady=(0,2))
         mic_var = tk.StringVar(master=self.root)
         # Valeur par défaut depuis user_settings
         default_input_index = None
@@ -1193,7 +1206,9 @@ class VisualizerWindowTkinter:
             except Exception as e:
                 logging.error(f"Erreur sauvegarde périphérique: {e}")
 
-        mic_menu = ttk.OptionMenu(audio_frame, mic_var, initial_choice, *mic_choices, command=lambda *_: on_mic_changed())
+        mic_menu = ctk.CTkOptionMenu(audio_frame, values=mic_choices, variable=mic_var, command=lambda *_: on_mic_changed())
+        if initial_choice:
+            mic_menu.set(initial_choice)
         mic_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
 
         # === SECTION TEXTE (à gauche, sous Audio) ===
@@ -1213,12 +1228,8 @@ class VisualizerWindowTkinter:
             auto_start_var.set(user_settings["auto_start"])
         else:
             auto_start_var.set(False)
-        paste_check = tk.Checkbutton(text_frame, text="Insérer automatiquement au curseur\naprès la transcription / copie depuis l'historique", 
-                                     variable=paste_var, command=auto_save_user_setting,
-                                     fg="white", bg="#2b2b2b", 
-                                     wraplength=350, justify=tk.LEFT,
-                                     selectcolor="#3c3c3c", activebackground="#2b2b2b", 
-                                     activeforeground="white")
+        paste_check = ctk.CTkCheckBox(text_frame, text="Insérer automatiquement au curseur\naprès la transcription / copie depuis l'historique",
+                                      variable=paste_var, command=auto_save_user_setting)
         paste_check.pack(anchor='w', pady=(0, 15))
         
         # Toggle Formatage intelligent
@@ -1229,18 +1240,11 @@ class VisualizerWindowTkinter:
                 smart_format_var.set(True)
         except Exception:
             smart_format_var.set(True)
-        smart_format_check = tk.Checkbutton(
+        smart_format_check = ctk.CTkCheckBox(
             text_frame,
             text="Activer le formatage intelligent (ponctuation, majuscule, espaces)",
             variable=smart_format_var,
             command=auto_save_user_setting,
-            fg="white",
-            bg="#2b2b2b",
-            wraplength=350,
-            justify=tk.LEFT,
-            selectcolor="#3c3c3c",
-            activebackground="#2b2b2b",
-            activeforeground="white",
         )
         smart_format_check.pack(anchor='w', pady=(0, 15))
         
@@ -1281,41 +1285,55 @@ class VisualizerWindowTkinter:
         language_var.set(current_display_language)
 
         # Créer le menu déroulant pour le fournisseur
-        tk.Label(transcription_frame, text="Fournisseur de service :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        provider_menu = ttk.OptionMenu(transcription_frame, transcription_provider_var, current_display_provider, "Google", "OpenAI Whisper (recommandé)")
+        ctk.CTkLabel(transcription_frame, text="Fournisseur de service :", text_color="white").pack(anchor='w', pady=(0,2))
+        provider_menu = ctk.CTkOptionMenu(transcription_frame, values=["Google", "OpenAI Whisper (recommandé)"],
+                                          variable=transcription_provider_var,
+                                          command=lambda *_: auto_save_user_setting())
+        provider_menu.set(current_display_provider)
         provider_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
 
         # Créer le menu déroulant pour la langue
-        tk.Label(transcription_frame, text="Langue de transcription :", fg="white", bg="#2b2b2b").pack(anchor='w', pady=(0,2))
-        language_menu = ttk.OptionMenu(transcription_frame, language_var, current_display_language, 
-                                     "🇫🇷 Français", "🇺🇸 English", "🇪🇸 Español", "🇩🇪 Deutsch", 
-                                     "🇮🇹 Italiano", "🇵🇹 Português", "🇳🇱 Nederlands")
+        ctk.CTkLabel(transcription_frame, text="Langue de transcription :", text_color="white").pack(anchor='w', pady=(0,2))
+        language_values = ["🇫🇷 Français", "🇺🇸 English", "🇪🇸 Español", "🇩🇪 Deutsch", "🇮🇹 Italiano", "🇵🇹 Português", "🇳🇱 Nederlands"]
+        language_menu = ctk.CTkOptionMenu(transcription_frame, values=language_values,
+                                          variable=language_var,
+                                          command=lambda *_: auto_save_user_setting())
+        language_menu.set(current_display_language)
         language_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
 
-        # Ajouter la trace automatique pour la sauvegarde
-        transcription_provider_var.trace_add("write", lambda *_: auto_save_user_setting())
-        language_var.trace_add("write", lambda *_: auto_save_user_setting())
+        # Traces supprimées pour éviter les doublons de sauvegarde; CTkOptionMenu appelle déjà auto_save_user_setting via command
         
         # === SECTION SYSTÈME (à droite, sous Transcription) ===
         system_card, system_frame = create_card(right_col, "💻 Système")
         system_card.pack(fill=tk.BOTH, expand=True)
-        auto_start_check = tk.Checkbutton(system_frame, text="Démarrer automatiquement avec Windows", 
-                                         variable=auto_start_var, command=auto_save_user_setting,
-                                         fg="white", bg="#2b2b2b", 
-                                         selectcolor="#3c3c3c", activebackground="#2b2b2b", 
-                                         activeforeground="white")
+        auto_start_check = ctk.CTkCheckBox(system_frame, text="Démarrer automatiquement avec Windows",
+                                           variable=auto_start_var, command=auto_save_user_setting)
         auto_start_check.pack(anchor='w', pady=(0, 15))
 
         # Rétention enregistrements (garder N derniers)
-        tk.Label(system_frame, text="Conserver les N derniers enregistrements (WAV) :", fg="white", bg="#2b2b2b").pack(anchor='w')
+        ctk.CTkLabel(system_frame, text="Conserver les N derniers enregistrements (WAV) :", text_color="white").pack(anchor='w')
         keep_last_var = tk.IntVar(master=self.root)
         try:
             import main
             keep_last_var.set(main.load_user_settings().get("recordings_keep_last", 25))
         except Exception:
             keep_last_var.set(25)
-        keep_last_spin = tk.Spinbox(system_frame, from_=0, to=1000, textvariable=keep_last_var, width=6, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
-        keep_last_spin.pack(anchor='w', pady=(2, 10))
+        # Contrôle CTk pour N derniers (remplace le Spinbox): bouton - / entrée / bouton +
+        keep_row = ctk.CTkFrame(system_frame, fg_color="#1f1f1f")
+        keep_row.pack(anchor='w', pady=(2, 10))
+        def _inc_keep(delta):
+            try:
+                val = int(keep_last_var.get()) + delta
+                val = max(0, min(1000, val))
+                keep_last_var.set(val)
+            except Exception:
+                pass
+        dec_btn = ctk.CTkButton(keep_row, text="-", width=28, command=lambda: _inc_keep(-1))
+        dec_btn.pack(side=tk.LEFT, padx=(0,6))
+        keep_entry = ctk.CTkEntry(keep_row, width=64, textvariable=keep_last_var)
+        keep_entry.pack(side=tk.LEFT)
+        inc_btn = ctk.CTkButton(keep_row, text="+", width=28, command=lambda: _inc_keep(1))
+        inc_btn.pack(side=tk.LEFT, padx=(6,0))
         def on_keep_last_changed(*_):
             try:
                 import main
@@ -1330,9 +1348,9 @@ class VisualizerWindowTkinter:
         shortcuts_card.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
         
         # Mode d'enregistrement
-        mode_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        mode_row = ctk.CTkFrame(shortcuts_frame, fg_color="#1f1f1f")
         mode_row.pack(fill=tk.X, pady=(0, 12))
-        tk.Label(mode_row, text="Mode d'enregistrement :", fg="white", bg="#1f1f1f").pack(anchor='w')
+        ctk.CTkLabel(mode_row, text="Mode d'enregistrement :", text_color="white", font=("Arial", 12, "bold")).pack(anchor='w')
         record_mode_var = tk.StringVar(master=self.root, value=(user_settings.get("record_mode", "toggle") if user_settings else "toggle"))
         def on_mode_changed():
             auto_save_user_setting()
@@ -1356,20 +1374,20 @@ class VisualizerWindowTkinter:
                 except Exception:
                     pass
             self.root.after(120, refresh_shortcut_label)
-        mode_toggle = tk.Radiobutton(mode_row, text="Toggle (appuyer pour démarrer/arrêter)", value="toggle", variable=record_mode_var,
-                                     command=on_mode_changed, fg="white", bg="#1f1f1f", selectcolor="#3c3c3c", activebackground="#1f1f1f", activeforeground="white")
-        mode_ptt = tk.Radiobutton(mode_row, text="Push‑to‑talk (enregistrer tant que la touche est maintenue)", value="ptt", variable=record_mode_var,
-                                   command=on_mode_changed, fg="white", bg="#1f1f1f", selectcolor="#3c3c3c", activebackground="#1f1f1f", activeforeground="white")
+        mode_toggle = ctk.CTkRadioButton(mode_row, text="Toggle (appuyer pour démarrer/arrêter)", value="toggle", variable=record_mode_var,
+                                         command=on_mode_changed, font=("Arial", 11))
+        mode_ptt = ctk.CTkRadioButton(mode_row, text="Push‑to‑talk (enregistrer tant que la touche est maintenue)", value="ptt", variable=record_mode_var,
+                                       command=on_mode_changed, font=("Arial", 11))
         mode_toggle.pack(anchor='w')
         mode_ptt.pack(anchor='w')
 
         # Raccourci Enregistrement (toggle)
-        tk.Label(shortcuts_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
-        record_hotkey_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        ctk.CTkLabel(shortcuts_frame, text="Raccourci pour Démarrer/Arrêter l'enregistrement :", text_color="white", font=("Arial", 11, "bold")).pack(anchor='w', pady=(0,2))
+        record_hotkey_row = ctk.CTkFrame(shortcuts_frame, fg_color="#1f1f1f")
         record_hotkey_row.pack(fill=tk.X, pady=(0, 15))
-        record_hotkey_entry = tk.Entry(record_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        record_hotkey_entry = ctk.CTkEntry(record_hotkey_row, font=("Consolas", 11))
         record_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        tk.Button(record_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(record_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
+        ctk.CTkButton(record_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(record_hotkey_entry), font=("Arial", 11)).pack(side=tk.LEFT, padx=(8,0))
         # Charger depuis AppData
         try:
             record_hotkey_entry.insert(0, user_settings.get("record_hotkey", "<ctrl>+<alt>+s"))
@@ -1377,11 +1395,11 @@ class VisualizerWindowTkinter:
             pass
 
         # Raccourci Push‑to‑talk
-        ptt_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
-        tk.Label(ptt_row, text="Raccourci Push‑to‑talk (maintenir) :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
-        ptt_hotkey_entry = tk.Entry(ptt_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        ptt_row = ctk.CTkFrame(shortcuts_frame, fg_color="#1f1f1f")
+        ctk.CTkLabel(ptt_row, text="Raccourci Push‑to‑talk (maintenir) :", text_color="white", font=("Arial", 11, "bold")).pack(anchor='w', pady=(0,2))
+        ptt_hotkey_entry = ctk.CTkEntry(ptt_row, font=("Consolas", 11))
         ptt_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        tk.Button(ptt_row, text="Définir…", command=lambda: self._open_hotkey_capture(ptt_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
+        ctk.CTkButton(ptt_row, text="Définir…", command=lambda: self._open_hotkey_capture(ptt_hotkey_entry), font=("Arial", 11)).pack(side=tk.LEFT, padx=(8,0))
         try:
             ptt_hotkey_entry.insert(0, user_settings.get("ptt_hotkey", "<ctrl>+<shift>+<space>"))
         except Exception:
@@ -1390,12 +1408,12 @@ class VisualizerWindowTkinter:
         if (user_settings.get("record_mode", "toggle") if user_settings else "toggle") == "ptt":
             ptt_row.pack(fill=tk.X, pady=(0, 15))
         # Raccourci Ouvrir Fenêtre  
-        tk.Label(shortcuts_frame, text="Raccourci pour Ouvrir cette fenêtre :", fg="white", bg="#1f1f1f").pack(anchor='w', pady=(0,2))
-        open_hotkey_row = tk.Frame(shortcuts_frame, bg="#1f1f1f")
+        ctk.CTkLabel(shortcuts_frame, text="Raccourci pour Ouvrir cette fenêtre :", text_color="white", font=("Arial", 11, "bold")).pack(anchor='w', pady=(0,2))
+        open_hotkey_row = ctk.CTkFrame(shortcuts_frame, fg_color="#1f1f1f")
         open_hotkey_row.pack(fill=tk.X, pady=(0, 15))
-        open_hotkey_entry = tk.Entry(open_hotkey_row, bg="#3c3c3c", fg="white", relief=tk.FLAT, insertbackground="white")
+        open_hotkey_entry = ctk.CTkEntry(open_hotkey_row, font=("Consolas", 11))
         open_hotkey_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        tk.Button(open_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(open_hotkey_entry), bg="#0078d7", fg="white", relief=tk.FLAT).pack(side=tk.LEFT, padx=(8,0))
+        ctk.CTkButton(open_hotkey_row, text="Définir…", command=lambda: self._open_hotkey_capture(open_hotkey_entry), font=("Arial", 11)).pack(side=tk.LEFT, padx=(8,0))
         try:
             open_hotkey_entry.insert(0, user_settings.get("open_window_hotkey", "<ctrl>+<alt>+o"))
         except Exception:
@@ -1411,22 +1429,21 @@ class VisualizerWindowTkinter:
         
         # Aide pour les raccourcis (à la fin)
         help_text = "Modificateurs: <ctrl>, <alt>, <shift>, <cmd> (Mac)\nTouches spéciales: <space>, <tab>, <enter>, <esc>, <f1>-<f12>\nExemples: <ctrl>+<shift>+r, <alt>+<space>, <f9>"
-        help_label = tk.Label(shortcuts_frame, text=help_text, fg="#888888", bg="#1f1f1f", 
-                             font=("Consolas", 8), justify=tk.LEFT)
+        help_label = ctk.CTkLabel(shortcuts_frame, text=help_text, text_color="#aaaaaa", 
+                                  font=("Consolas", 10), justify=tk.LEFT)
         help_label.pack(anchor='w', pady=(6, 0))
         
         # Séparateur
-        separator3 = tk.Frame(settings_frame, height=1, bg="#555555")
+        separator3 = ctk.CTkFrame(settings_frame, height=1, fg_color="#555555")
         separator3.pack(fill=tk.X, pady=(10, 15))
         
         # Bouton de fermeture complète (discret)
-        quit_frame = tk.Frame(settings_frame, bg="#2b2b2b")
+        quit_frame = ctk.CTkFrame(settings_frame, fg_color="#2b2b2b")
         quit_frame.pack(fill=tk.X, pady=(0, 5))
         
-        tk.Button(quit_frame, text="⚠️ Fermer complètement l'application", 
-                 command=self._quit_application, bg="#6c757d", fg="white", 
-                 relief=tk.FLAT, activebackground="#5a6268", activeforeground="white",
-                 font=("Arial", 9)).pack(side=tk.RIGHT)
+        ctk.CTkButton(quit_frame, text="⚠️ Fermer complètement l'application", 
+                      command=self._quit_application, fg_color="#6c757d", text_color="white",
+                      hover_color="#5a6268", font=("Arial", 9)).pack(side=tk.RIGHT)
 
         # Fonction pour sauvegarder la configuration complète
         def save_settings():
@@ -1569,9 +1586,12 @@ class VisualizerWindowTkinter:
     # === Utilitaires Historique & Recherche ===
     def _open_hotkey_capture(self, target_entry: tk.Entry):
         """Ouvre une petite fenêtre modale pour capturer une combinaison de touches et la formater."""
-        capture = tk.Toplevel(self.root)
+        capture = ctk.CTkToplevel(self.root)
         capture.title("Définir un raccourci")
-        capture.configure(bg="#2b2b2b")
+        try:
+            capture.configure(fg_color="#2b2b2b")
+        except Exception:
+            pass
         capture.resizable(False, False)
         capture.grab_set()
         tk.Label(capture, text="Appuyez sur la combinaison souhaitée…", fg="white", bg="#2b2b2b", font=("Arial", 10, "bold")).pack(padx=20, pady=15)
