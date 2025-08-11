@@ -880,18 +880,34 @@ class VisualizerWindowTkinter:
         history_tab = ctk.CTkFrame(notebook, fg_color="#2b2b2b")
         notebook.add(history_tab, text='  Historique  ')
         history_frame = ctk.CTkFrame(history_tab, fg_color="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
-        ctk.CTkLabel(history_frame, text="Historique des transcriptions", text_color="white", font=("Arial", 12, "bold")).pack(pady=(6, 4))
-        # Compteur d'éléments / résultats
-        self.history_count_label = ctk.CTkLabel(history_frame, text="", text_color="#aaaaaa", font=("Arial", 9))
-        self.history_count_label.pack(pady=(0, 8))
+        
+        # En-tête avec titre, compteur et bascule d'affichage
+        header = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
+        header.pack(fill=tk.X, pady=(6, 4), padx=5)
+        ctk.CTkLabel(header, text="Historique des transcriptions", text_color="white", font=("Arial", 13, "bold")).pack(side=tk.LEFT)
+        self.history_count_label = ctk.CTkLabel(header, text="", text_color="#aaaaaa", font=("Arial", 10))
+        self.history_count_label.pack(side=tk.LEFT, padx=(8,0))
+        
+        # Bascule entre Vue Table et Vue Cartes (par défaut: Cartes)
+        self._history_view_mode = tk.StringVar(master=self.root, value="cartes")
+        def _on_view_change(choice):
+            try:
+                self._switch_history_view(choice)
+                # Re-rendu pour appliquer le mode
+                self._render_history_list(self._filtered_history_items or self._history_master)
+            except Exception:
+                pass
+        view_toggle = ctk.CTkSegmentedButton(header, values=["table", "cartes"], variable=self._history_view_mode, command=_on_view_change)
+        view_toggle.pack(side=tk.RIGHT)
+        view_toggle.set("cartes")
 
         # Barre de recherche
         search_frame = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
         search_frame.pack(fill=tk.X, padx=5, pady=(0, 10))
         ctk.CTkLabel(search_frame, text="Rechercher:", text_color="white").pack(side=tk.LEFT, padx=(0, 8))
-        search_entry = ctk.CTkEntry(search_frame, textvariable=self.history_search_var)
+        search_entry = ctk.CTkEntry(search_frame, textvariable=self.history_search_var, placeholder_text="Rechercher…", corner_radius=12)
         search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        clear_btn = ctk.CTkButton(search_frame, text="Effacer", command=lambda: self._clear_search())
+        clear_btn = ctk.CTkButton(search_frame, text="Effacer", command=lambda: self._clear_search(), font=("Arial", 11))
         clear_btn.pack(side=tk.LEFT, padx=(8, 0))
         # Style moderne pour Treeview
         style = ttk.Style(self.root)
@@ -913,12 +929,16 @@ class VisualizerWindowTkinter:
                         foreground="white",
                         relief=tk.FLAT)
 
-        # Conteneur avec légère bordure pour un rendu plus "carte"
-        table_frame = ctk.CTkFrame(history_frame, fg_color="#2b2b2b", border_color="#3c3c3c", border_width=1, corner_radius=6)
-        table_frame.pack(fill=tk.BOTH, expand=True, padx=5)
-        yscroll = tk.Scrollbar(table_frame)
+        # Zone de contenu (pile) : table vs cartes
+        content_stack = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
+        content_stack.pack(fill=tk.BOTH, expand=True, padx=5)
+        
+        # Vue Table: léger cadre
+        self.history_table_frame = ctk.CTkFrame(content_stack, fg_color="#2b2b2b", border_color="#3c3c3c", border_width=1, corner_radius=8)
+        self.history_table_frame.pack_forget() # default to cards view
+        yscroll = tk.Scrollbar(self.history_table_frame)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.history_tree = ttk.Treeview(table_frame,
+        self.history_tree = ttk.Treeview(self.history_table_frame,
                                          columns=("time", "text"),
                                          show="headings",
                                          yscrollcommand=yscroll.set,
@@ -938,6 +958,12 @@ class VisualizerWindowTkinter:
             pass
         self.history_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscroll.config(command=self.history_tree.yview)
+        
+        # Vue Cartes: scrollable
+        self.history_cards_container = ctk.CTkScrollableFrame(content_stack, fg_color="#2b2b2b", corner_radius=8)
+        # Par défaut, afficher les cartes et masquer la table
+        self.history_table_frame.pack_forget()
+        self.history_cards_container.pack(fill=tk.BOTH, expand=True)
         
         # Événements pour l'historique
         self.history_tree.bind("<Double-Button-1>", self._on_history_double_click)
@@ -1692,29 +1718,104 @@ class VisualizerWindowTkinter:
             s = str(obj)
             return s, s
 
+    def _switch_history_view(self, mode):
+        """Affiche la vue souhaitée: 'table' ou 'cartes'."""
+        try:
+            if mode == "table":
+                if hasattr(self, 'history_cards_container') and self.history_cards_container.winfo_ismapped():
+                    self.history_cards_container.pack_forget()
+                if hasattr(self, 'history_table_frame') and not self.history_table_frame.winfo_ismapped():
+                    self.history_table_frame.pack(fill=tk.BOTH, expand=True)
+            else:
+                if hasattr(self, 'history_table_frame') and self.history_table_frame.winfo_ismapped():
+                    self.history_table_frame.pack_forget()
+                if hasattr(self, 'history_cards_container') and not self.history_cards_container.winfo_ismapped():
+                    self.history_cards_container.pack(fill=tk.BOTH, expand=True)
+        except Exception:
+            pass
+
+    def _clear_history_cards(self):
+        try:
+            if hasattr(self, 'history_cards_container') and self.history_cards_container:
+                for child in self.history_cards_container.winfo_children():
+                    child.destroy()
+        except Exception:
+            pass
+
+    def _create_history_card(self, parent, item):
+        """Crée une carte visuelle pour un item d'historique."""
+        try:
+            card = ctk.CTkFrame(parent, fg_color="#242424", corner_radius=12)
+            card.pack(fill=tk.X, padx=4, pady=6)
+
+            # Contenu de la carte: en-tête (timestamp) + boutons, puis texte
+            header = ctk.CTkFrame(card, fg_color="#242424")
+            header.pack(fill=tk.X, padx=10, pady=(8, 2))
+
+            ts = ""
+            txt = ""
+            if isinstance(item, dict):
+                ts = item.get('timestamp', item.get('date', ''))
+                txt = item.get('text', '')
+            else:
+                txt = str(item)
+
+            ctk.CTkLabel(header, text=ts or "(sans date)", text_color="#9aa0a6", font=("Consolas", 10)).pack(side=tk.LEFT)
+
+            # Boutons d'action à droite
+            actions = ctk.CTkFrame(header, fg_color="#242424")
+            actions.pack(side=tk.RIGHT)
+
+            def _copy():
+                try:
+                    pyperclip.copy(txt or "")
+                except Exception:
+                    pass
+
+            ctk.CTkButton(actions, text="Copier", width=68, height=26, font=("Arial", 10), command=_copy).pack(side=tk.LEFT)
+
+            # Corps du texte
+            body = ctk.CTkFrame(card, fg_color="#242424")
+            body.pack(fill=tk.X, padx=10, pady=(0, 10))
+            ctk.CTkLabel(body, text=txt, text_color="white", font=("Arial", 11), justify=tk.LEFT, wraplength=680).pack(anchor='w')
+        except Exception:
+            pass
+
     def _render_history_list(self, items):
         # Vider la listbox
         # Reset Treeview
-        if self.history_tree is None:
-            return
-        for iid in self.history_tree.get_children():
-            self.history_tree.delete(iid)
-        self._tree_id_to_obj = {}
+        view_mode = None
+        try:
+            view_mode = self._history_view_mode.get()
+        except Exception:
+            view_mode = "cartes"
+
         # Afficher les plus récents en premier
         items_to_display = list(items)[::-1]
-        for idx, item in enumerate(items_to_display):
-            # Construire colonnes: date/heure + texte SANS redonder la date/heure dans le texte
-            time_col = ""
-            text_col = ""
-            if isinstance(item, dict):
-                time_col = item.get('timestamp', item.get('date', ''))
-                text_col = item.get('text', '')
-            else:
-                # Ancien format: tout en texte
-                text_col = str(item)
-            tag = 'evenrow' if (idx % 2 == 0) else 'oddrow'
-            iid = self.history_tree.insert("", tk.END, values=(time_col, text_col), tags=(tag,))
-            self._tree_id_to_obj[iid] = item
+
+        if view_mode == "table":
+            if self.history_tree is None:
+                return
+            for iid in self.history_tree.get_children():
+                self.history_tree.delete(iid)
+            self._tree_id_to_obj = {}
+            for idx, item in enumerate(items_to_display):
+                time_col = ""
+                text_col = ""
+                if isinstance(item, dict):
+                    time_col = item.get('timestamp', item.get('date', ''))
+                    text_col = item.get('text', '')
+                else:
+                    text_col = str(item)
+                tag = 'evenrow' if (idx % 2 == 0) else 'oddrow'
+                iid = self.history_tree.insert("", tk.END, values=(time_col, text_col), tags=(tag,))
+                self._tree_id_to_obj[iid] = item
+        else:
+            # Vue cartes
+            self._clear_history_cards()
+            for item in items_to_display:
+                self._create_history_card(self.history_cards_container, item)
+
         self._filtered_history_items = list(items_to_display)
         # Mettre à jour le compteur
         try:
