@@ -946,29 +946,124 @@ class VisualizerWindowTkinter:
         # Utiliser CTkToplevel pour éviter une fenêtre Tk par défaut intitulée "tk"
         self.main_window = ctk.CTkToplevel(self.root)
         self.main_window.title("Voice Tool")
-        # Ouvrir en plein écran (maximisé)
+        # Appliquer l'état/geometry persistés si disponibles (ordre: état puis géométrie si normal)
         try:
-            self.main_window.state('zoomed')  # Windows
-        except Exception:
+            import main
+            us = main.load_user_settings()
+            saved_geom = us.get("main_window_geometry")
+            saved_state = us.get("main_window_state", "zoomed")
+            if saved_state == 'zoomed':
+                try:
+                    self.main_window.state('zoomed')
+                except Exception:
+                    try:
+                        self.main_window.attributes('-zoomed', True)
+                    except Exception:
+                        pass
+            else:
+                try:
+                    self.main_window.state('normal')
+                except Exception:
+                    pass
+                if isinstance(saved_geom, str) and len(saved_geom) >= 6:
+                    try:
+                        self.main_window.geometry(saved_geom)
+                    except Exception:
+                        pass
+            # Confirmer la géométrie appliquée
             try:
-                self.main_window.attributes('-zoomed', True)  # Certains WM
+                self.main_window.update_idletasks()
             except Exception:
-                # Fallback taille confortable
-                self.main_window.geometry("1200x800")
+                pass
+        except Exception:
+            # Fallback: plein écran Windows sinon géométrie confortable
+            try:
+                self.main_window.state('zoomed')
+            except Exception:
+                try:
+                    self.main_window.attributes('-zoomed', True)
+                except Exception:
+                    self.main_window.geometry("1200x800")
         
         # Définir l'icône personnalisée
         self.set_window_icon(self.main_window)
         
-        # Centrage seulement en fallback, sinon l'état zoomed ignore la géométrie
+        # Centrage seulement si aucune géométrie n'était fournie et pas zoomed
         self.main_window.update_idletasks()
         try:
-            if self.main_window.state() != 'zoomed':
+            import main
+            us = main.load_user_settings()
+            had_geom = bool(us.get("main_window_geometry"))
+        except Exception:
+            had_geom = False
+        try:
+            if self.main_window.state() != 'zoomed' and not had_geom:
                 x = self.root.winfo_screenwidth() // 2 - self.main_window.winfo_width() // 2
                 y = self.root.winfo_screenheight() // 2 - self.main_window.winfo_height() // 2
                 self.main_window.geometry(f"+{x}+{y}")
         except Exception:
             pass
         self.main_window.configure(bg="#2b2b2b")
+
+        # Détection des mouvements/redimensionnements avec sauvegarde différée
+        self._geom_save_after_id = None
+        self._last_saved_geometry = None
+        self._last_saved_state = None
+
+        def _save_geometry_now():
+            try:
+                import main
+                state = None
+                geom = None
+                try:
+                    state = self.main_window.state()
+                except Exception:
+                    state = None
+                try:
+                    geom = self.main_window.geometry()
+                except Exception:
+                    geom = None
+                # Éviter les écritures inutiles
+                if state == self._last_saved_state and ((state != 'normal') or (geom == self._last_saved_geometry)):
+                    return
+                if state:
+                    main.user_settings.update({"main_window_state": state})
+                # On ne persiste la géométrie que quand la fenêtre est en état normal
+                if geom and state == 'normal':
+                    main.user_settings.update({"main_window_geometry": geom})
+                main.save_user_settings(main.user_settings)
+                self._last_saved_state = state
+                if state == 'normal':
+                    self._last_saved_geometry = geom
+            except Exception:
+                pass
+
+        def _schedule_geometry_save(event=None):
+            try:
+                # Ne traiter que les events issus de la fenêtre principale
+                if event is not None and getattr(event, 'widget', None) is not self.main_window:
+                    return
+                # Debounce: ne pas recalculer trop souvent pendant le drag/resize
+                import time as _t
+                now = _t.monotonic()
+                last = getattr(self, '_last_configure_ts', 0.0)
+                if now - last < 0.05:  # max ~20Hz
+                    return
+                self._last_configure_ts = now
+                # Redémarrer le timer de sauvegarde différée
+                if self._geom_save_after_id is not None:
+                    try:
+                        self.root.after_cancel(self._geom_save_after_id)
+                    except Exception:
+                        pass
+                self._geom_save_after_id = self.root.after(1500, _save_geometry_now)
+            except Exception:
+                pass
+
+        try:
+            self.main_window.bind('<Configure>', _schedule_geometry_save)
+        except Exception:
+            pass
 
         # Style du notebook (onglets du haut)
         nb_style = ttk.Style(self.root)
@@ -1114,6 +1209,11 @@ class VisualizerWindowTkinter:
         
         # Vue Cartes: scrollable
         self.history_cards_container = ctk.CTkScrollableFrame(content_stack, fg_color="#2b2b2b", corner_radius=8)
+        # Optimisations d'UI pour réduire le coût de layout pendant resize
+        try:
+            self.history_cards_container.grid_propagate(False)
+        except Exception:
+            pass
         # Par défaut, afficher les cartes et masquer la table
         self.history_table_frame.pack_forget()
         self.history_cards_container.pack(fill=tk.BOTH, expand=True)
@@ -1959,13 +2059,17 @@ class VisualizerWindowTkinter:
             actions = ctk.CTkFrame(header, fg_color="#242424")
             actions.pack(side=tk.RIGHT)
 
-            def _copy():
+            def _copy_and_notify():
                 try:
                     pyperclip.copy(txt or "")
                 except Exception:
                     pass
-
-            ctk.CTkButton(actions, text="Copier", width=68, height=26, font=("Arial", 10), command=_copy).pack(side=tk.LEFT)
+                # Notification succès (bannière mini‑fenêtre)
+                try:
+                    self.show()
+                    self.show_status("success")
+                except Exception:
+                    pass
 
             # Bouton Écouter (si un audio est lié et si option activée)
             try:
@@ -2002,12 +2106,17 @@ class VisualizerWindowTkinter:
                     logging.error(f"Lecture audio échouée: {e}")
 
             if enable_preview and audio_path:
-                ctk.CTkButton(actions, text="Écouter", width=78, height=26, font=("Arial", 10), command=_play_audio).pack(side=tk.LEFT, padx=(6,0))
+                ctk.CTkButton(actions, text="▶", width=40, height=28, corner_radius=14, font=("Arial", 16, "bold"), command=_play_audio).pack(side=tk.LEFT, padx=(6,0))
 
             # Corps du texte
             body = ctk.CTkFrame(card, fg_color="#242424")
             body.pack(fill=tk.X, padx=10, pady=(0, 10))
-            ctk.CTkLabel(body, text=txt, text_color="white", font=("Arial", 11), justify=tk.LEFT, wraplength=680).pack(anchor='w')
+            body_label = ctk.CTkLabel(body, text=txt, text_color="white", font=("Arial", 11), justify=tk.LEFT, wraplength=680)
+            body_label.pack(anchor='w')
+            try:
+                body_label.bind("<Double-Button-1>", lambda e: _copy_and_notify())
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -2041,10 +2150,25 @@ class VisualizerWindowTkinter:
                 iid = self.history_tree.insert("", tk.END, values=(time_col, text_col), tags=(tag,))
                 self._tree_id_to_obj[iid] = item
         else:
-            # Vue cartes
+            # Vue cartes (rendu borné pour éviter le lag sur gros historiques)
             self._clear_history_cards()
-            for item in items_to_display:
+            try:
+                import main
+                limit = int(main.load_user_settings().get("history_cards_render_limit", 150))
+            except Exception:
+                limit = 150
+            # Rendre seulement les N premiers visibles (les plus récents)
+            for idx, item in enumerate(items_to_display):
+                if idx >= max(10, limit):  # toujours au moins 10
+                    break
                 self._create_history_card(self.history_cards_container, item)
+            # Si coupé, afficher une note discrète
+            if len(items_to_display) > max(10, limit):
+                try:
+                    note = ctk.CTkLabel(self.history_cards_container, text=f"Affichage de {max(10, limit)} éléments sur {len(items_to_display)} (utilisez la recherche pour filtrer)", text_color="#888888", font=("Arial", 10))
+                    note.pack(pady=(4,8))
+                except Exception:
+                    pass
 
         self._filtered_history_items = list(items_to_display)
         # Mettre à jour le compteur
@@ -2105,6 +2229,26 @@ class VisualizerWindowTkinter:
         def _on_close():
             try:
                 self._history_watch_active = False
+            except Exception:
+                pass
+            # Persist geometry + state au moment de la fermeture
+            try:
+                import main
+                state = None
+                try:
+                    state = self.main_window.state()
+                except Exception:
+                    state = None
+                geom = None
+                try:
+                    geom = self.main_window.geometry()
+                except Exception:
+                    geom = None
+                if state:
+                    main.user_settings.update({"main_window_state": state})
+                if geom:
+                    main.user_settings.update({"main_window_geometry": geom})
+                main.save_user_settings(main.user_settings)
             except Exception:
                 pass
             self.main_window.destroy()

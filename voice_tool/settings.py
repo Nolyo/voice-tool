@@ -53,6 +53,13 @@ def default_user_settings() -> Dict[str, Any]:
         "ptt_hotkey": "<ctrl>+<shift>+<space>",
         # Rétention des enregistrements
         "recordings_keep_last": 25,
+        # Fenêtre principale: état et géométrie persistés
+        # état possible: 'zoomed' (maximisée), 'normal'
+        "main_window_state": "zoomed",
+        # géométrie au format 'WxH+X+Y' (ex: '1200x800+100+60')
+        "main_window_geometry": None,
+        # Performance Historique: limiter le nombre de cartes rendues
+        "history_cards_render_limit": 150,
     }
 
 

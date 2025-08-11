@@ -1181,10 +1181,15 @@ def main():
 
     # Splash screen (hors debug)
     splash = None
+    splash_start_ts = None
     if not is_console_mode:
         try:
             splash = SplashWindow()
             splash.show("Initialisation…")
+            try:
+                splash_start_ts = time.monotonic()
+            except Exception:
+                splash_start_ts = None
         except Exception:
             splash = None
 
@@ -1280,9 +1285,16 @@ def main():
     except Exception as e:
         logging.error(f"Échec du démarrage initial de l'InputStream: {e}")
 
-    # Fermer le splash
+    # Fermer le splash (respecter une durée minimale d'affichage de 3s)
     if splash:
         try:
+            try:
+                if splash_start_ts is not None:
+                    elapsed = time.monotonic() - splash_start_ts
+                    if elapsed < 3.0:
+                        time.sleep(max(0.0, 3.0 - elapsed))
+            except Exception:
+                pass
             splash.close()
             # Assainir tout root Tk implicite qui pourrait persister
             try:
