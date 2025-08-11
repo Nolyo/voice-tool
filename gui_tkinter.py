@@ -56,6 +56,9 @@ class VisualizerWindowTkinter:
         self._search_after_id = None
         self._history_master = []  # liste des items d'historique (objets d'origine)
         self._filtered_history_items = []  # vue filtrée courante
+        # Watcher de fichier d'historique
+        self._history_file_last_mtime = None
+        self._history_watch_active = False
         
         self.window = ctk.CTkToplevel(self.root)
         self.window.title("Voice Tool - Visualizer")  # Titre pour la fenêtre de visualisation
@@ -465,6 +468,35 @@ class VisualizerWindowTkinter:
         # Repositionner au cas où elle aurait dérivé
         self.center_window()
 
+    def open_settings_tab(self):
+        try:
+            # Sélection différée jusqu'à ce que la fenêtre principale existe (évite les doubles ouvertures)
+            def _select_when_ready():
+                try:
+                    if self.main_window and self.main_window.winfo_exists():
+                        try:
+                            self.main_window.lift()
+                            self.main_window.focus_force()
+                        except Exception:
+                            pass
+                        if hasattr(self, '_main_notebook') and hasattr(self, '_settings_tab'):
+                            try:
+                                self._main_notebook.select(self._settings_tab)
+                            except Exception:
+                                pass
+                        return
+                except Exception:
+                    pass
+                # Re-essayer un peu plus tard
+                try:
+                    self.root.after(120, _select_when_ready)
+                except Exception:
+                    pass
+
+            _select_when_ready()
+        except Exception:
+            pass
+
     def hide(self):
         # Remettre le label de statut à sa position initiale
         if self.status_label:
@@ -490,13 +522,19 @@ class VisualizerWindowTkinter:
             self.root.after(0, append_message)
 
     def add_transcription_to_history(self, history_item):
-        """Ajoute une nouvelle transcription à la Listbox de l'historique, de manière thread-safe."""
-        if self.history_listbox and self.history_listbox.winfo_exists():
-            def insert_item():
-                # Ajouter à la liste maître puis re-filtrer pour cohérence avec la vue
+        """Ajoute une nouvelle transcription à l'historique (toutes vues), de manière thread-safe."""
+        def insert_item():
+            try:
+                # Mettre à jour la source locale
                 self._history_master.append(history_item)
+                # Si la table est visible ou la vue cartes, re-render via le pipeline unifié
                 self._apply_history_filter()
+            except Exception:
+                pass
+        try:
             self.root.after(0, insert_item)
+        except Exception:
+            insert_item()
 
     def _copy_history_selection(self):
         """Copie l'élément sélectionné dans la Listbox de l'historique."""
@@ -562,7 +600,16 @@ class VisualizerWindowTkinter:
                         break
 
             if deleted_item is not None:
-                main.save_transcription_history(main.transcription_history)
+                # Sauvegarde robuste sous verrou côté main
+                try:
+                    if hasattr(main, 'history_lock'):
+                        import threading
+                        with main.history_lock:  # type: ignore[attr-defined]
+                            main.save_transcription_history(main.transcription_history)
+                    else:
+                        main.save_transcription_history(main.transcription_history)
+                except Exception:
+                    main.save_transcription_history(main.transcription_history)
                 # Mettre à jour la liste maître et la vue filtrée
                 try:
                     self._history_master.remove(history_obj)
@@ -621,6 +668,7 @@ class VisualizerWindowTkinter:
         if msgbox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer tout l'historique des transcriptions ?\n\nCette action est irréversible.", parent=self.main_window if hasattr(self, 'main_window') else self.root):
             try:
                 import main
+                # Effacer via la fonction main (protégée par verrou)
                 main.clear_all_transcription_history()
                 # Effacer également les fichiers audio associés
                 try:
@@ -922,13 +970,68 @@ class VisualizerWindowTkinter:
             pass
         self.main_window.configure(bg="#2b2b2b")
 
+        # Style du notebook (onglets du haut)
+        nb_style = ttk.Style(self.root)
+        try:
+            nb_style.theme_use('clam')
+        except Exception:
+            pass
+        nb_style.configure("VT.TNotebook", background="#2b2b2b", borderwidth=0, tabmargins=(4, 4, 4, 0))
+        nb_style.configure(
+            "VT.TNotebook.Tab",
+            background="#1f1f1f",
+            foreground="white",
+            padding=(20, 12),  # base padding pour les onglets non sélectionnés
+            font=("Arial", 11, "bold")
+        )
+        nb_style.map(
+            "VT.TNotebook.Tab",
+            background=[('selected', '#0078d7'), ('active', '#3a3a3a')],
+            foreground=[('selected', 'white')],
+            relief=[('selected', 'flat'), ('!selected', 'flat')],
+            # Augmenter légèrement taille perçue du tab sélectionné
+            font=[('selected', ('Arial', 12, 'bold'))],
+            # Augmenter padding vertical du tab sélectionné pour compenser l'effet visuel de hauteur
+            padding=[('selected', (22, 16)), ('!selected', (20, 14))]
+        )
+        # Forcer un layout constant pour éviter les variations de hauteur entre états
+        try:
+            nb_style.layout(
+                "VT.TNotebook.Tab",
+                [
+                    ("Notebook.tab", {
+                        "sticky": "nswe",
+                        "children": [
+                            ("Notebook.padding", {
+                                "side": "top",
+                                "sticky": "nswe",
+                                "children": [
+                                    ("Notebook.focus", {
+                                        "side": "top",
+                                        "sticky": "nswe",
+                                        "children": [
+                                            ("Notebook.label", {"side": "top", "sticky": ""})
+                                        ]
+                                    })
+                                ]
+                            })
+                        ]
+                    })
+                ]
+            )
+        except Exception:
+            pass
+
         # --- Création des onglets ---
-        notebook = ttk.Notebook(self.main_window)
+        notebook = ttk.Notebook(self.main_window, style="VT.TNotebook")
         notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Référencer le notebook pour navigation programmée
+        self._main_notebook = notebook
 
         # --- Onglet 1: Historique ---
         history_tab = ctk.CTkFrame(notebook, fg_color="#2b2b2b")
         notebook.add(history_tab, text='  Historique  ')
+        self._history_tab = history_tab
         history_frame = ctk.CTkFrame(history_tab, fg_color="#2b2b2b"); history_frame.pack(fill=tk.BOTH, expand=True)
         
         # En-tête avec titre, compteur et bascule d'affichage
@@ -1021,6 +1124,11 @@ class VisualizerWindowTkinter:
         # Charger l'historique dans la liste maître et rendre la vue (filtrée)
         self._history_master = list(history) if history else []
         self._apply_history_filter()
+        # Démarrer le watcher de fichier histoire (polling léger)
+        try:
+            self._start_history_file_watch()
+        except Exception:
+            pass
 
         # Déclencher le filtrage à la saisie (avec debounce)
         try:
@@ -1035,7 +1143,7 @@ class VisualizerWindowTkinter:
         help_frame.pack(pady=(10,5), padx=5, fill=tk.X)
         
         ctk.CTkLabel(help_frame, text="💡 Double-clic pour copier • Clic droit pour le menu", 
-                text_color="#888888", font=("Arial", 9), justify=tk.LEFT).pack(side=tk.LEFT)
+                text_color="#888888", font=("Arial", 11), justify=tk.LEFT).pack(side=tk.LEFT)
 
         # Boutons d'action
         buttons_frame = ctk.CTkFrame(help_frame, fg_color="#2b2b2b")
@@ -1045,25 +1153,34 @@ class VisualizerWindowTkinter:
         ctk.CTkButton(buttons_frame, text="📥 Import", 
                   command=self._import_history, 
                   fg_color="#28a745",
-                  font=("Arial", 8, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+                  text_color="white",
+                  height=32,
+                  corner_radius=8,
+                  font=("Arial", 11, "bold")).pack(side=tk.LEFT, padx=(0, 5))
         
         # Bouton d'export
         ctk.CTkButton(buttons_frame, text="📤 Export", 
                   command=self._export_history, 
                   fg_color="#007bff",
-                  font=("Arial", 8, "bold")).pack(side=tk.LEFT, padx=(0, 5))
+                  text_color="white",
+                  height=32,
+                  corner_radius=8,
+                  font=("Arial", 11, "bold")).pack(side=tk.LEFT, padx=(0, 5))
         
         # Bouton pour tout effacer
         ctk.CTkButton(buttons_frame, text="🗑️ Tout effacer", 
                   command=self._clear_all_history, 
                   fg_color="#dc3545",
-                  font=("Arial", 8, "bold")).pack(side=tk.LEFT)
+                  text_color="white",
+                  height=32,
+                  corner_radius=8,
+                  font=("Arial", 11, "bold")).pack(side=tk.LEFT)
         
         # Avertissement si auto-paste actif
         try:
             import main
             if main.get_setting('paste_at_cursor', False):
-                warn = ctk.CTkLabel(history_frame, text="Astuce: l'option 'Insérer automatiquement au curseur' est active. Évitez de donner le focus à cette fenêtre si vous ne voulez pas y coller.", text_color="#ffc107", font=("Arial", 9))
+                warn = ctk.CTkLabel(history_frame, text="Astuce: l'option 'Insérer automatiquement au curseur' est active. Évitez de donner le focus à cette fenêtre si vous ne voulez pas y coller.", text_color="#ffc107", font=("Arial", 10))
                 warn.pack(pady=(8,0), padx=5, anchor='w')
         except Exception:
             pass
@@ -1093,6 +1210,7 @@ class VisualizerWindowTkinter:
         # --- Onglet 2: Paramètres ---
         settings_frame = ctk.CTkFrame(notebook, fg_color="#2b2b2b")
         notebook.add(settings_frame, text='  Paramètres  ')
+        self._settings_tab = settings_frame
         
         # Définir les variables AVANT la fonction (lier explicitement au root Tk)
         sounds_var = tk.BooleanVar(master=self.root)
@@ -1208,6 +1326,30 @@ class VisualizerWindowTkinter:
         sounds_check = ctk.CTkCheckBox(audio_frame, text="Activer les sons d'interface",
                                        variable=sounds_var, command=auto_save_user_setting)
         sounds_check.pack(anchor='w', pady=(0, 15))
+
+        # Option: Activer l'écoute des audios dans l'historique
+        history_preview_var = tk.BooleanVar(master=self.root)
+        try:
+            history_preview_var.set(user_settings.get("enable_history_audio_preview", True))
+        except Exception:
+            history_preview_var.set(True)
+
+        def _save_history_preview():
+            try:
+                import main
+                main.update_and_restart_hotkeys({})  # no-op pour rester cohérent
+                main.user_settings.update({"enable_history_audio_preview": history_preview_var.get()})
+                main.save_user_settings(main.user_settings)
+            except Exception as e:
+                logging.error(f"Sauvegarde enable_history_audio_preview échouée: {e}")
+
+        history_preview_check = ctk.CTkCheckBox(
+            audio_frame,
+            text="Afficher le bouton Écouter dans l'historique",
+            variable=history_preview_var,
+            command=_save_history_preview,
+        )
+        history_preview_check.pack(anchor='w', pady=(0, 12))
 
         # Liste des périphériques audio d'entrée
         devices = []
@@ -1628,6 +1770,7 @@ class VisualizerWindowTkinter:
         # --- Onglet 3: Logs --- (ajouté après Paramètres)
         logs_tab = tk.Frame(notebook, bg="#2b2b2b")
         notebook.add(logs_tab, text='  Logs  ')
+        self._logs_tab = logs_tab
         tk.Label(logs_tab, text="Logs de l'application", fg="white", bg="#2b2b2b", font=("Arial", 11, "bold")).pack(pady=(5, 4))
         # Bandeau chemin du fichier log + bouton ouvrir
         path_frame = tk.Frame(logs_tab, bg="#2b2b2b")
@@ -1824,6 +1967,43 @@ class VisualizerWindowTkinter:
 
             ctk.CTkButton(actions, text="Copier", width=68, height=26, font=("Arial", 10), command=_copy).pack(side=tk.LEFT)
 
+            # Bouton Écouter (si un audio est lié et si option activée)
+            try:
+                from voice_tool.settings import load_user_settings
+                settings = load_user_settings()
+                enable_preview = settings.get("enable_history_audio_preview", True)
+            except Exception:
+                enable_preview = True
+
+            audio_path = None
+            if isinstance(item, dict):
+                audio_path = item.get('audio_path')
+
+            def _play_audio():
+                if not audio_path:
+                    return
+                try:
+                    import os, platform
+                    if not os.path.exists(audio_path):
+                        # Message discret dans les logs, pas de popup intrusive
+                        logging.warning(f"Fichier audio introuvable: {audio_path}")
+                        return
+                    system = platform.system()
+                    if system == 'Windows':
+                        os.startfile(audio_path)  # type: ignore
+                    elif system == 'Darwin':
+                        os.system(f"open '{audio_path}'")
+                    else:
+                        # Essayer avec aplay, sinon xdg-open
+                        rc = os.system(f"aplay '{audio_path}' > /dev/null 2>&1")
+                        if rc != 0:
+                            os.system(f"xdg-open '{audio_path}'")
+                except Exception as e:
+                    logging.error(f"Lecture audio échouée: {e}")
+
+            if enable_preview and audio_path:
+                ctk.CTkButton(actions, text="Écouter", width=78, height=26, font=("Arial", 10), command=_play_audio).pack(side=tk.LEFT, padx=(6,0))
+
             # Corps du texte
             body = ctk.CTkFrame(card, fg_color="#242424")
             body.pack(fill=tk.X, padx=10, pady=(0, 10))
@@ -1922,10 +2102,76 @@ class VisualizerWindowTkinter:
         self.history_search_var.set("")
 
         # S'assurer que la référence est nettoyée à la fermeture de la fenêtre
-        self.main_window.protocol("WM_DELETE_WINDOW", lambda: (self.main_window.destroy(), setattr(self, 'main_window', None), setattr(self, 'log_text_widget', None), setattr(self, 'history_listbox', None), setattr(self, 'record_button', None)))
+        def _on_close():
+            try:
+                self._history_watch_active = False
+            except Exception:
+                pass
+            self.main_window.destroy()
+            setattr(self, 'main_window', None)
+            setattr(self, 'log_text_widget', None)
+            setattr(self, 'history_listbox', None)
+            setattr(self, 'record_button', None)
+        self.main_window.protocol("WM_DELETE_WINDOW", _on_close)
 
     def run(self):
         self.root.mainloop()
+
+    # === Watcher d'historique (polling mtime) ===
+    def _start_history_file_watch(self):
+        try:
+            from voice_tool.paths import HISTORY_FILE
+            import os
+            if os.path.exists(HISTORY_FILE):
+                try:
+                    self._history_file_last_mtime = os.path.getmtime(HISTORY_FILE)
+                except Exception:
+                    self._history_file_last_mtime = None
+            self._history_watch_active = True
+            # Premier poll dans ~1s
+            self.root.after(1000, self._poll_history_file)
+        except Exception:
+            pass
+
+    def _poll_history_file(self):
+        if not self._history_watch_active:
+            return
+        try:
+            from voice_tool.paths import HISTORY_FILE
+            import os
+            mtime = None
+            try:
+                if os.path.exists(HISTORY_FILE):
+                    mtime = os.path.getmtime(HISTORY_FILE)
+            except Exception:
+                mtime = None
+            if mtime and self._history_file_last_mtime and mtime <= self._history_file_last_mtime:
+                pass
+            else:
+                # mtime a changé (ou premier passage)
+                self._history_file_last_mtime = mtime
+                self._reload_history_from_disk()
+        except Exception:
+            pass
+        # Replanifier
+        try:
+            self.root.after(1200, self._poll_history_file)
+        except Exception:
+            pass
+
+    def _reload_history_from_disk(self):
+        try:
+            import main
+            # Charger depuis disque (thread UI; handle JSON partiel via try/except)
+            new_hist = main.load_transcription_history()
+            if isinstance(new_hist, list):
+                # Mettre à jour l’état global et local
+                main.transcription_history = list(new_hist)
+                self._history_master = list(new_hist)
+                self._apply_history_filter()
+        except Exception:
+            # Ignorer les erreurs de lecture; on réessaiera au prochain tick
+            pass
 
 # --- Pour tester ce fichier seul ---
 if __name__ == '__main__':

@@ -40,6 +40,7 @@ def _load_template_settings_if_any() -> Dict[str, Any] | None:
 def default_user_settings() -> Dict[str, Any]:
     return {
         "enable_sounds": True,
+        "enable_history_audio_preview": True,
         "paste_at_cursor": False,
         "auto_start": False,
         "transcription_provider": "Google",
