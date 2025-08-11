@@ -62,13 +62,13 @@ class VisualizerWindowTkinter:
         self.set_window_icon(self.window) # Appliquer l'icône à la fenêtre de visualisation
         self.window.overrideredirect(True) # Supprime la barre de titre et les bordures
         self.window.attributes("-topmost", True) # Toujours au-dessus
-        self.window.geometry("300x60") # Taille ajustée pour le nouveau design
+        self.window.geometry("420x26") # Fenêtre plus fine et large pour un look moderne
         # Utiliser la couleur de fond CTk pour un thème sombre moderne
         try:
             self.window.configure(fg_color='#1C1C1C')
         except Exception:
             self.window.configure(bg='#1C1C1C')
-        self.window.attributes("-alpha", 0.9) # Un peu plus transparent
+        self.window.attributes("-alpha", 0.95) # Légère transparence
 
         # --- Configuration pour éviter le vol de focus (Windows) ---
         if platform.system() == 'Windows':
@@ -99,8 +99,8 @@ class VisualizerWindowTkinter:
         # Cacher la fenêtre au démarrage pour qu'elle n'apparaisse que lors de l'enregistrement
         self.window.withdraw()
 
-        # Canvas pour le visualiseur
-        self.canvas = tk.Canvas(self.window, width=300, height=60, bg='#1C1C1C', highlightthickness=0)
+        # Canvas pour le visualiseur (mince)
+        self.canvas = tk.Canvas(self.window, width=420, height=26, bg='#1C1C1C', highlightthickness=0)
         self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
         # Désactiver les liaisons implicites lourdes (scroll) qui peuvent bloquer le thread UI
         try:
@@ -118,7 +118,9 @@ class VisualizerWindowTkinter:
         self.status_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         self.status_label.lower() 
 
-        self.audio_levels = np.zeros(60) # Plus de barres pour un effet plus fluide
+        self.audio_levels = np.zeros(84) # Plus de barres fines pour un effet fluide
+        # Pic de niveau pour normalisation auto (AGC simple)
+        self._level_peak = 0.1
 
         self.current_mode = "idle"
 
@@ -177,9 +179,36 @@ class VisualizerWindowTkinter:
 
     def update_visualizer(self, new_level):
         if self.current_mode == "recording":
+            # Normalisation automatique des niveaux pour assurer un mouvement visible
+            lvl = self._normalize_level(new_level)
             self.audio_levels = np.roll(self.audio_levels, -1)
-            self.audio_levels[-1] = new_level
+            self.audio_levels[-1] = lvl
             self.draw_visualizer()
+
+    def _normalize_level(self, level):
+        """AGC simple: suit un pic décroissant et met à l'échelle le niveau.
+        Tolère des niveaux très faibles (ex: flux float déjà entre -1..1).
+        """
+        try:
+            x = float(level)
+            if not np.isfinite(x):
+                x = 0.0
+            if x < 0:
+                x = 0.0
+            # Si les niveaux sont extrêmement faibles (ex. échelle 1/32768), amplifier fortement
+            if x < 1e-3:
+                x *= 2000.0
+            # Suivi de pic avec décroissance
+            self._level_peak = max(x, self._level_peak * 0.985)
+            peak = self._level_peak if self._level_peak > 1e-6 else 1e-6
+            y = x / peak
+            # Un léger gain pour être bien visible
+            y *= 1.2
+            if y > 1.0:
+                y = 1.0
+            return y
+        except Exception:
+            return 0.0
 
     def draw_visualizer(self):
         self.canvas.delete("all")
@@ -187,23 +216,38 @@ class VisualizerWindowTkinter:
         canvas_height = self.canvas.winfo_height()
         canvas_width = self.canvas.winfo_width()
         
+        # Panneau arrondi noir en arrière-plan
+        padding = 6
+        radius = 10
+        self._draw_rounded_panel(0, 0, canvas_width, canvas_height, radius=radius, fill="#000000", outline="#0e0e0e")
+        
         num_bars = len(self.audio_levels)
-        bar_width = 3  # Largeur fixe pour des barres fines
-        spacing = 2    # Espacement entre les barres
+        bar_width = 3  # Barres légèrement plus larges pour une meilleure lisibilité
+        spacing = 2    # Espacement un peu plus généreux
         total_width = num_bars * (bar_width + spacing) - spacing
-        start_x = (canvas_width - total_width) / 2
+        usable_width = max(0, canvas_width - 2*(padding + radius))
+        start_x = (canvas_width - usable_width) / 2 + max(0, (usable_width - total_width) / 2)
+
+        # Ligne de base subtile
+        try:
+            self.canvas.create_line(padding+radius, canvas_height - padding - 2, canvas_width - padding - radius, canvas_height - padding - 2, fill="#2a2a2a")
+        except Exception:
+            pass
 
         for i, level in enumerate(self.audio_levels):
             x1 = start_x + i * (bar_width + spacing)
             x2 = x1 + bar_width
             
             # Courbe de croissance non-linéaire pour un effet plus doux
-            # La racine carrée rend les sons faibles plus visibles
-            bar_height = int(np.sqrt(level) * (canvas_height * 0.9))
-            bar_height = max(2, bar_height) # Hauteur minimale de 2px
+            # Courbe douce avec niveaux déjà normalisés 0..1
+            available_h = max(2, (canvas_height - 2*padding - 4))
+            lvl = max(0.0, min(1.0, float(level)))
+            bar_height = int((lvl ** 0.5) * available_h)
+            bar_height = max(2, bar_height) # Hauteur minimale un peu plus grande
             
-            y1 = (canvas_height - bar_height) / 2
-            y2 = y1 + bar_height
+            # Ancrer depuis le bas, avec marge intérieure
+            y2 = canvas_height - padding - 2
+            y1 = y2 - bar_height
             
             # Dégradé de couleur moderne
             color = self._get_color_gradient(level)
@@ -238,57 +282,45 @@ class VisualizerWindowTkinter:
 
     def _draw_rounded_rect(self, x1, y1, x2, y2, radius=3, fill='#4CAF50'):
         """Dessine un rectangle avec des coins entièrement arrondis (pilule)."""
-        self.canvas.create_oval(x1, y1, x2, y2, fill=fill, outline="")
+        # Pour des barres très fines, un simple rectangle rend mieux visuellement que des ovales
+        self.canvas.create_rectangle(x1, y1, x2, y2, fill=fill, outline="")
+
+    def _draw_rounded_panel(self, x1, y1, x2, y2, radius=10, fill="#000000", outline="#0e0e0e"):
+        """Dessine un panneau arrondi (fond) avec rayon et couleur donnés."""
+        try:
+            w = max(0, x2 - x1)
+            h = max(0, y2 - y1)
+            r = max(0, min(radius, w/2, h/2))
+            # Corps (rectangles centraux)
+            self.canvas.create_rectangle(x1 + r, y1, x2 - r, y2, fill=fill, outline=outline)
+            self.canvas.create_rectangle(x1, y1 + r, x2, y2 - r, fill=fill, outline=outline)
+            # Coins (ovales)
+            self.canvas.create_oval(x1, y1, x1 + 2*r, y1 + 2*r, fill=fill, outline=outline)
+            self.canvas.create_oval(x2 - 2*r, y1, x2, y1 + 2*r, fill=fill, outline=outline)
+            self.canvas.create_oval(x1, y2 - 2*r, x1 + 2*r, y2, fill=fill, outline=outline)
+            self.canvas.create_oval(x2 - 2*r, y2 - 2*r, x2, y2, fill=fill, outline=outline)
+        except Exception:
+            pass
 
     def _draw_processing_interface(self):
-        """Dessine une interface de traitement professionnelle avec l'icône de l'app."""
+        """Bannière de traitement compacte et moderne (panneau arrondi + texte + points animés)."""
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
-        
-        # Fond dégradé subtil
-        self.canvas.create_rectangle(0, 0, canvas_width, canvas_height, 
-                                   fill='#1C1C1C', outline='')
-        
-        # Cercle d'arrière-plan pour l'icône (style moderne)
-        center_x = canvas_width // 2
-        center_y = canvas_height // 2 - 8  # Remonter légèrement l'icône
-        
-        # Cercle principal (bleu Voice Tool)
-        self.canvas.create_oval(center_x - 20, center_y - 15, 
-                              center_x + 20, center_y + 15, 
-                              fill='#2196F3', outline='#1976D2', width=2)
-        
-        # Icône microphone stylisé (blanc)
-        # Corps du micro
-        self.canvas.create_oval(center_x - 8, center_y - 8, 
-                              center_x + 8, center_y + 2, 
-                              fill='white', outline='')
-        
-        # Tige du micro
-        self.canvas.create_rectangle(center_x - 1, center_y + 2, 
-                                   center_x + 1, center_y + 8, 
-                                   fill='white', outline='')
-        
-        # Base du micro
-        self.canvas.create_rectangle(center_x - 4, center_y + 8, 
-                                   center_x + 4, center_y + 10, 
-                                   fill='white', outline='')
-        
-        # Onde sonore animée (style moderne)
-        wave_color = '#4ECDC4'
-        # Arc de droite
-        self.canvas.create_arc(center_x + 12, center_y - 8, 
-                             center_x + 25, center_y + 5, 
-                             start=135, extent=90, 
-                             outline=wave_color, width=2, style='arc')
-        
-        # Texte "Voice Tool" discret en bas - même position que les autres
-        self.canvas.create_text(center_x, canvas_height - 6, 
-                              text="Voice Tool", 
-                              fill='#666666', 
-                              font=('Arial', 7, 'bold'))
-        
-        # Animation de points de chargement
+        # Fond arrondi noir cohérent avec le visualizer
+        padding = 6
+        radius = 10
+        self._draw_rounded_panel(0, 0, canvas_width, canvas_height, radius=radius, fill="#000000", outline="#0e0e0e")
+
+        center_y = canvas_height // 2
+        # Texte centré
+        self.canvas.delete("processing_text")
+        self.canvas.create_text(canvas_width//2 - 8, center_y, 
+                                text="Traitement", 
+                                fill='#4ECDC4', 
+                                font=('Arial', 10, 'bold'),
+                                tags="processing_text")
+
+        # Animation de points de chargement, positionnée juste après le texte
         self._animate_processing_dots()
 
     def _animate_processing_dots(self):
@@ -298,29 +330,21 @@ class VisualizerWindowTkinter:
             
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
-        center_x = canvas_width // 2
-        
+        center_y = canvas_height // 2
+
         # Supprimer les anciens points
         self.canvas.delete("processing_dots")
-        self.canvas.delete("processing_text")
-        
-        # Texte "Traitement en cours" - même position que les autres
-        self.canvas.create_text(center_x, canvas_height - 18, 
-                              text="Traitement", 
-                              fill='#4ECDC4', 
-                              font=('Arial', 9, 'bold'),
-                              tags="processing_text")
-        
-        # Points animés
+
+        # Points animés à droite du texte
         import time
         dot_count = int(time.time() * 2) % 4  # 2 cycles par seconde
         dots_text = "." * dot_count
         
-        self.canvas.create_text(center_x + 55, canvas_height - 18, 
-                              text=dots_text, 
-                              fill='#4ECDC4', 
-                              font=('Arial', 9, 'bold'),
-                              tags="processing_dots")
+        self.canvas.create_text(canvas_width//2 + 48, center_y, 
+                                text=dots_text, 
+                                fill='#4ECDC4', 
+                                font=('Arial', 10, 'bold'),
+                                tags="processing_dots")
         
         # Programmer la prochaine animation
         self.window.after(250, self._animate_processing_dots)
@@ -335,16 +359,10 @@ class VisualizerWindowTkinter:
             if mode == "recording":
                 self.draw_visualizer()
             elif mode == "processing":
-                # Mode processing sûr: dessin minimal si la fenêtre principale est ouverte
+                # Toujours dessiner la bannière de traitement moderne
                 self.canvas.delete("all")
                 try:
-                    if self.main_window and self.main_window.winfo_exists():
-                        # Rendu minimaliste (éviter opérations graphiques lourdes)
-                        cw = self.canvas.winfo_width(); ch = self.canvas.winfo_height()
-                        self.canvas.create_rectangle(0, 0, cw, ch, fill='#1C1C1C', outline='')
-                        self.canvas.create_text(cw//2, ch//2, text="Traitement…", fill='#4ECDC4', font=('Arial', 10, 'bold'))
-                    else:
-                        self._draw_processing_interface()
+                    self._draw_processing_interface()
                 except Exception:
                     # Fallback minimal
                     cw = self.canvas.winfo_width(); ch = self.canvas.winfo_height()
@@ -378,80 +396,65 @@ class VisualizerWindowTkinter:
             self.window.after(3000, self.hide)
 
     def _draw_success_interface(self):
-        """Dessine une interface de succès professionnelle."""
+        """Bannière de succès compacte et moderne (panneau arrondi + check + texte)."""
+        self.canvas.delete("all")
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
-        center_x = canvas_width // 2
-        center_y = canvas_height // 2 - 8  # Remonter l'icône pour faire de la place
-        
-        # Fond
-        self.canvas.create_rectangle(0, 0, canvas_width, canvas_height, 
-                                   fill='#1C1C1C', outline='')
-        
-        # Cercle de succès (vert moderne) - taille réduite
-        self.canvas.create_oval(center_x - 15, center_y - 12, 
-                              center_x + 15, center_y + 12, 
-                              fill='#4CAF50', outline='#2E7D32', width=2)
-        
-        # Checkmark stylisé - proportions ajustées
-        # Trait 1 du checkmark
-        self.canvas.create_line(center_x - 6, center_y - 1,
-                              center_x - 2, center_y + 3,
-                              fill='white', width=2, capstyle='round')
-        # Trait 2 du checkmark
-        self.canvas.create_line(center_x - 2, center_y + 3,
-                              center_x + 6, center_y - 5,
-                              fill='white', width=2, capstyle='round')
-        
-        # Texte "Transcription réussie !" - descendre un peu plus
-        self.canvas.create_text(center_x, canvas_height - 18, 
-                              text="Copie réussie !", 
-                              fill='#4CAF50', 
-                              font=('Arial', 9, 'bold'))
-        
-        # Texte "Voice Tool" discret
-        self.canvas.create_text(center_x, canvas_height - 6, 
-                              text="Voice Tool", 
-                              fill='#666666', 
-                              font=('Arial', 7, 'bold'))
+        padding = 6
+        radius = 10
+        self._draw_rounded_panel(0, 0, canvas_width, canvas_height, radius=radius, fill="#000000", outline="#0e0e0e")
+
+        center_y = canvas_height // 2
+        # Mesurer la largeur du texte pour centrer l'ensemble (icône + espace + texte)
+        try:
+            import tkinter.font as tkfont
+            font_spec = ('Arial', 11, 'bold')
+            fnt = tkfont.Font(root=self.root, font=font_spec)
+            text_w = fnt.measure("Copié dans le presse-papiers !")
+        except Exception:
+            font_spec = ('Arial', 11, 'bold')
+            text_w = 48  # fallback approximatif
+
+        icon_w = 12  # petit logo succès circulaire ~12px
+        gap = 6
+        total_w = icon_w + gap + text_w
+        left_x = max(0, (canvas_width - total_w) // 2)
+
+        # Dessiner un petit logo succès (cercle vert + check blanc) aligné verticalement
+        icon_center_x = left_x + icon_w // 2
+        # Cercle
+        self.canvas.create_oval(icon_center_x - 6, center_y - 6,
+                                icon_center_x + 6, center_y + 6,
+                                fill='#1B5E20', outline='#2E7D32', width=1)
+        # Check à l'intérieur
+        self.canvas.create_line(icon_center_x - 3, center_y,
+                                icon_center_x - 1, center_y + 3,
+                                fill='white', width=2, capstyle='round')
+        self.canvas.create_line(icon_center_x - 1, center_y + 3,
+                                icon_center_x + 4, center_y - 3,
+                                fill='white', width=2, capstyle='round')
+
+        # Texte à droite de l'icône
+        self.canvas.create_text(left_x + icon_w + gap, center_y,
+                                text="Copié dans le presse-papiers !", fill='#4CAF50', font=font_spec, anchor='w')
 
     def _draw_error_interface(self):
-        """Dessine une interface d'erreur professionnelle."""
+        """Bannière d'erreur compacte et moderne (panneau arrondi + X + texte)."""
+        self.canvas.delete("all")
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
-        center_x = canvas_width // 2
-        center_y = canvas_height // 2 - 8  # Remonter l'icône pour faire de la place
-        
-        # Fond
-        self.canvas.create_rectangle(0, 0, canvas_width, canvas_height, 
-                                   fill='#1C1C1C', outline='')
-        
-        # Cercle d'erreur (rouge moderne) - taille réduite
-        self.canvas.create_oval(center_x - 15, center_y - 12, 
-                              center_x + 15, center_y + 12, 
-                              fill='#F44336', outline='#C62828', width=2)
-        
-        # X stylisé - proportions ajustées
-        # Trait 1 du X
-        self.canvas.create_line(center_x - 5, center_y - 5,
-                              center_x + 5, center_y + 5,
-                              fill='white', width=2, capstyle='round')
-        # Trait 2 du X
-        self.canvas.create_line(center_x + 5, center_y - 5,
-                              center_x - 5, center_y + 5,
-                              fill='white', width=2, capstyle='round')
-        
-        # Texte "Échec de la transcription" - descendre un peu plus
-        self.canvas.create_text(center_x, canvas_height - 18, 
-                              text="Échec de la transcription", 
-                              fill='#F44336', 
-                              font=('Arial', 9, 'bold'))
-        
-        # Texte "Voice Tool" discret
-        self.canvas.create_text(center_x, canvas_height - 6, 
-                              text="Voice Tool", 
-                              fill='#666666', 
-                              font=('Arial', 7, 'bold'))
+        padding = 6
+        radius = 10
+        self._draw_rounded_panel(0, 0, canvas_width, canvas_height, radius=radius, fill="#000000", outline="#0e0e0e")
+
+        center_y = canvas_height // 2
+        cx = padding + radius
+        # X minimaliste
+        self.canvas.create_line(cx - 4, center_y - 4, cx + 4, center_y + 4, fill='#F44336', width=2, capstyle='round')
+        self.canvas.create_line(cx + 4, center_y - 4, cx - 4, center_y + 4, fill='#F44336', width=2, capstyle='round')
+
+        # Texte concis
+        self.canvas.create_text(cx + 18, center_y, text="Échec", fill='#F44336', font=('Arial', 11, 'bold'), anchor='w')
 
     def show(self):
         """Affiche la fenêtre et s'assure qu'elle est correctement positionnée"""
@@ -645,6 +648,23 @@ class VisualizerWindowTkinter:
                 # Nettoyer les structures locales
                 self._history_master = []
                 self._filtered_history_items = []
+                # Vider les vues modernes (table/cartes) et re-render
+                try:
+                    if hasattr(self, 'history_tree') and self.history_tree:
+                        for iid in self.history_tree.get_children():
+                            self.history_tree.delete(iid)
+                        self._tree_id_to_obj = {}
+                except Exception:
+                    pass
+                try:
+                    self._clear_history_cards()
+                except Exception:
+                    pass
+                try:
+                    # Utiliser le pipeline existant pour mettre à jour compteur + label vide
+                    self._apply_history_filter()
+                except Exception:
+                    pass
                 logging.info("Tout l'historique a été effacé.")
                 msgbox.showinfo("Succès", "L'historique a été complètement effacé.", parent=self.main_window if hasattr(self, 'main_window') else self.root)
             except Exception as e:
@@ -669,6 +689,7 @@ class VisualizerWindowTkinter:
         
         # Demander le format d'export
         export_window = ctk.CTkToplevel(self.root)
+        self._export_window = export_window  # garder une référence forte pour éviter une fermeture immédiate par GC
         export_window.title("Exporter l'historique")
         export_window.geometry("300x220")
         try:
@@ -676,6 +697,13 @@ class VisualizerWindowTkinter:
         except Exception:
             pass
         export_window.resizable(False, False)
+        # Rendre la fenêtre modale et centrée par rapport à la fenêtre principale
+        try:
+            parent_win = self.main_window if hasattr(self, 'main_window') and self.main_window else self.root
+            export_window.transient(parent_win)
+            export_window.grab_set()
+        except Exception:
+            pass
         
         # Centrer la fenêtre
         export_window.update_idletasks()
@@ -684,6 +712,10 @@ class VisualizerWindowTkinter:
         export_window.geometry(f"+{x}+{y}")
         
         ctk.CTkLabel(export_window, text="Choisissez le format d'export :", font=("Arial", 12, "bold")).pack(pady=(15, 10))
+        try:
+            export_window.focus_force()
+        except Exception:
+            pass
         
         def export_csv():
             filename = filedialog.asksaveasfilename(
@@ -706,7 +738,7 @@ class VisualizerWindowTkinter:
                 except Exception as e:
                     msgbox.showerror("Erreur", f"Erreur lors de l'export CSV: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 finally:
-                    export_window.destroy()
+                    self._close_export_window()
         
         def export_txt():
             filename = filedialog.asksaveasfilename(
@@ -728,7 +760,7 @@ class VisualizerWindowTkinter:
                 except Exception as e:
                     msgbox.showerror("Erreur", f"Erreur lors de l'export TXT: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 finally:
-                    export_window.destroy()
+                    self._close_export_window()
         
         def export_json():
             filename = filedialog.asksaveasfilename(
@@ -751,7 +783,7 @@ class VisualizerWindowTkinter:
                 except Exception as e:
                     msgbox.showerror("Erreur", f"Erreur lors de l'export JSON: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
                 finally:
-                    export_window.destroy()
+                    self._close_export_window()
         
         # Boutons d'export
         btn_frame = ctk.CTkFrame(export_window)
@@ -761,7 +793,24 @@ class VisualizerWindowTkinter:
         ctk.CTkButton(btn_frame, text="📄  TXT", command=export_txt, fg_color="#6f42c1", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=5)
         ctk.CTkButton(btn_frame, text="🔧  JSON", command=export_json, fg_color="#fd7e14", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=5)
         
-        ctk.CTkButton(export_window, text="Annuler", command=export_window.destroy, fg_color="#6c757d", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=10)
+        ctk.CTkButton(export_window, text="Annuler", command=self._close_export_window, fg_color="#6c757d", text_color="white", font=("Arial", 10), width=160, height=28).pack(pady=10)
+        try:
+            export_window.protocol("WM_DELETE_WINDOW", self._close_export_window)
+        except Exception:
+            pass
+
+    def _close_export_window(self):
+        try:
+            if hasattr(self, '_export_window') and self._export_window and self._export_window.winfo_exists():
+                try:
+                    self._export_window.grab_release()
+                except Exception:
+                    pass
+                self._export_window.destroy()
+        except Exception:
+            pass
+        finally:
+            self._export_window = None
 
     def _import_history(self):
         """Importe un historique depuis un fichier JSON."""
@@ -819,13 +868,14 @@ class VisualizerWindowTkinter:
             msgbox.showerror("Erreur", f"Erreur lors de l'import: {e}", parent=self.main_window if hasattr(self, 'main_window') else self.root)
 
     def _refresh_history_display(self):
-        """Rafraîchit l'affichage de l'historique après import."""
-        if not self.history_listbox:
-            return
-        
+        """Rafraîchit l'affichage de l'historique après import/suppression."""
         import main
-        # Mettre à jour la liste maître depuis la source et re-filtrer
-        self._history_master = list(main.transcription_history)
+        try:
+            # Mettre à jour la liste maître depuis la source et re-filtrer (indépendant du widget utilisé)
+            self._history_master = list(main.transcription_history or [])
+        except Exception:
+            self._history_master = []
+        # Utiliser le pipeline unifié qui gère table/cartes + compteur + label vide
         self._apply_history_filter()
 
 
