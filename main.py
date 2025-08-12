@@ -67,6 +67,15 @@ from gui_tkinter import VisualizerWindowTkinter # Notre fenêtre de visualiseur 
 from voice_tool.splash import SplashWindow
 
 # Charger les variables d'environnement depuis la racine du projet
+def _resource_path(relative_path: str) -> str:
+    """Compat support: retourne le chemin d'une ressource embarquée (PyInstaller) ou du projet.
+    """
+    try:
+        base_path = sys._MEIPASS  # type: ignore[attr-defined]
+    except Exception:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # --- Journalisation persistante & diagnostics très précoces ---
@@ -349,7 +358,7 @@ def create_window_icon():
     dc.arc([8, 8, 56, 56], 45, 135, fill=wave_color, width=2)
     
     # Sauvegarder l'icône
-    icon_path = os.path.join(script_dir, 'voice_tool_icon.ico')
+    icon_path = _resource_path('voice_tool_icon.ico')
     try:
         image.save(icon_path, format='ICO', sizes=[(16,16), (32,32), (48,48), (64,64)])
         logging.info(f"Icône sauvegardée: {icon_path}")
@@ -1099,7 +1108,7 @@ def run_pystray_icon():
         pystray.MenuItem('Ouvrir le dossier des logs', _open_logs_folder),
         pystray.MenuItem('Quitter', on_quit)
     )
-    icon_path = os.path.join(script_dir, 'voice_tool_icon.ico')
+    icon_path = _resource_path('voice_tool_icon.ico')
     try:
         icon_image = Image.open(icon_path)
     except Exception as e:

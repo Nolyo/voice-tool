@@ -20,6 +20,6 @@ build-exe:
 	pyinstaller --clean --noconfirm packaging/pyinstaller/voice_tool.spec
 
 clean-build:
-	rm -rf build dist __pycache__ *.spec
+	python -c "import shutil, os, glob; [shutil.rmtree(p, ignore_errors=True) for p in ('build','dist','__pycache__')]; [os.remove(f) for f in glob.glob('*.spec') if os.path.isfile(f)]"
 
 

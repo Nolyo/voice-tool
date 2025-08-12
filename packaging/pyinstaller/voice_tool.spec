@@ -83,6 +83,11 @@ ONEFILE = True
 # Datas (inclure les WAV d'assets)
 datas = []
 datas += collect_data_files('voice_tool', includes=['assets/sounds/*.wav'])
+datas += [
+    (str(Path(PROJECT_ROOT) / 'Voice Tool (Background).bat'), '.'),
+    (str(Path(PROJECT_ROOT) / 'Voice Tool (Console).bat'), '.'),
+    (str(Path(PROJECT_ROOT) / 'voice_tool_icon.ico'), '.'),
+]
 
 # Imports cachés éventuels
 hiddenimports = []
