@@ -726,12 +726,21 @@ def toggle_recording(icon_pystray):
         if sound_paths and 'start' in sound_paths:
             play_sound_async(sound_paths['start'])
         
-        # Note: visualizer_window sera initialisé par le thread principal
-        
-        # Afficher la fenêtre de visualisation si disponible
+        # Afficher la fenêtre de visualisation uniquement si elle existe déjà
         if visualizer_window and hasattr(visualizer_window, 'root'):
-            visualizer_window.root.after(0, visualizer_window.show)
-            visualizer_window.root.after(0, visualizer_window.set_mode, "recording")
+            try:
+                visualizer_window.root.after(0, visualizer_window.show)
+                visualizer_window.root.after(0, visualizer_window.set_mode, "recording")
+                # Démarrer le polling si pas déjà lancé
+                try:
+                    global visualizer_poll_started
+                    if not visualizer_poll_started:
+                        visualizer_poll_started = True
+                        visualizer_window.root.after(0, _poll_visualizer_levels)
+                except Exception:
+                    pass
+            except Exception:
+                pass
         
         # Nettoyer les frames précédentes
         with audio_frames_lock:
@@ -1025,6 +1034,14 @@ def _ui_thread_entry(icon_path):
         logging.info("[UI] Démarrage du thread UI…")
         # Toutes les opérations Tk doivent rester dans ce thread
         visualizer_window = VisualizerWindowTkinter(icon_path=icon_path)
+        # Démarrer le polling des niveaux si ce n'est pas déjà fait
+        try:
+            global visualizer_poll_started
+            if not visualizer_poll_started:
+                visualizer_poll_started = True
+                visualizer_window.root.after(0, _poll_visualizer_levels)
+        except Exception:
+            pass
         # Créer immédiatement l'interface principale dans ce même thread
         visualizer_window.create_main_interface_window(
             history=transcription_history,
@@ -1326,8 +1343,13 @@ def main():
         except Exception:
             pass
 
-    # En console: ouvrir la fenêtre principale directement sur les logs
+    # Ouvrir la fenêtre principale au lancement (console ou arrière-plan)
     if is_console_mode:
+        try:
+            open_interface()
+        except Exception:
+            pass
+    else:
         try:
             open_interface()
         except Exception:
