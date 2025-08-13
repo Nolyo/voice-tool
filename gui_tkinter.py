@@ -1189,8 +1189,8 @@ class VisualizerWindowTkinter:
         self.history_count_label = ctk.CTkLabel(header, text="", text_color="#aaaaaa", font=("Arial", 10))
         self.history_count_label.pack(side=tk.LEFT, padx=(8,0))
         
-        # Bascule entre Vue Table et Vue Cartes (par défaut: Cartes)
-        self._history_view_mode = tk.StringVar(master=self.root, value="cartes")
+        # Bascule entre Vue Table et Vue Cartes (par défaut: Table)
+        self._history_view_mode = tk.StringVar(master=self.root, value="table")
         def _on_view_change(choice):
             try:
                 self._switch_history_view(choice)
@@ -1200,7 +1200,7 @@ class VisualizerWindowTkinter:
                 pass
         view_toggle = ctk.CTkSegmentedButton(header, values=["table", "cartes"], variable=self._history_view_mode, command=_on_view_change)
         view_toggle.pack(side=tk.RIGHT)
-        view_toggle.set("cartes")
+        view_toggle.set("table")
 
         # Barre de recherche
         search_frame = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
@@ -1236,7 +1236,7 @@ class VisualizerWindowTkinter:
         
         # Vue Table: léger cadre
         self.history_table_frame = ctk.CTkFrame(content_stack, fg_color="#2b2b2b", border_color="#3c3c3c", border_width=1, corner_radius=8)
-        self.history_table_frame.pack_forget() # default to cards view
+        self.history_table_frame.pack(fill=tk.BOTH, expand=True)  # défaut: vue table
         yscroll = tk.Scrollbar(self.history_table_frame)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.history_tree = ttk.Treeview(self.history_table_frame,
@@ -1267,9 +1267,8 @@ class VisualizerWindowTkinter:
             self.history_cards_container.grid_propagate(False)
         except Exception:
             pass
-        # Par défaut, afficher les cartes et masquer la table
-        self.history_table_frame.pack_forget()
-        self.history_cards_container.pack(fill=tk.BOTH, expand=True)
+        # Par défaut, afficher la table et masquer les cartes
+        self.history_cards_container.pack_forget()
         
         # Événements pour l'historique
         self.history_tree.bind("<Double-Button-1>", self._on_history_double_click)
