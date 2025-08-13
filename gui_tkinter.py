@@ -1674,6 +1674,10 @@ class VisualizerWindowTkinter:
         language_menu.set(current_display_language)
         language_menu.pack(anchor='w', padx=(0, 20), pady=(0, 10))
 
+        # Bouton pour rouvrir l'assistant de configuration API à tout moment
+        ctk.CTkButton(transcription_frame, text="Configurer les accès API…",
+                      command=lambda: self._open_env_setup_window(blocking=False)).pack(anchor='w', pady=(2, 4))
+
         # Traces supprimées pour éviter les doublons de sauvegarde; CTkOptionMenu appelle déjà auto_save_user_setting via command
         
         # === SECTION SYSTÈME (à droite, sous Transcription) ===
@@ -1957,6 +1961,12 @@ class VisualizerWindowTkinter:
         self.log_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         log_scrollbar.config(command=self.log_text_widget.yview)
 
+        # Vérifier à chaud la configuration des variables d'environnement
+        try:
+            self.root.after(200, self._maybe_show_env_setup)
+        except Exception:
+            pass
+
     # === Utilitaires Historique & Recherche ===
     def _open_hotkey_capture(self, target_entry: tk.Entry):
         """Ouvre une petite fenêtre modale pour capturer une combinaison de touches et la formater."""
@@ -2058,6 +2068,406 @@ class VisualizerWindowTkinter:
         capture.bind("<KeyPress>", on_key_press)
         capture.bind("<KeyRelease>", on_key_release)
         capture.focus_force()
+
+    def _maybe_show_env_setup(self):
+        """Affiche une fenêtre de configuration si les variables d'environnement API sont manquantes."""
+        try:
+            import main
+            provider = (main.load_user_settings() or {}).get("transcription_provider", "Google")
+            from voice_tool.env_setup import validate_google_env, validate_openai_env
+            ok = True
+            if provider == "OpenAI":
+                ok, _ = validate_openai_env()
+            else:
+                ok, _ = validate_google_env()
+            if not ok:
+                self._open_env_setup_window(blocking=True)
+        except Exception:
+            pass
+
+    def _open_env_setup_window(self, blocking: bool = False):
+        import tkinter.messagebox as msgbox
+        import tkinter.filedialog as filedialog
+        from voice_tool.env_setup import (
+            REQUIRED_GOOGLE_KEYS,
+            save_env_to_appdata,
+            load_google_json_credentials_from_string,
+            set_google_application_credentials_path,
+            validate_google_env,
+            validate_openai_env,
+        )
+        import json
+
+        win = ctk.CTkToplevel(self.root)
+        win.title("Configurer les accès API (OpenAI & Google)")
+        try:
+            win.configure(fg_color="#2b2b2b")
+        except Exception:
+            pass
+        win.grab_set()
+        win.resizable(True, True)
+        try:
+            win.minsize(820, 560)
+            win.geometry("920x640")
+        except Exception:
+            pass
+        if blocking:
+            try:
+                win.attributes("-topmost", True)
+            except Exception:
+                pass
+
+        # Helpers UI: alert style (façon Bootstrap) et sections repliables
+        def _make_alert(parent, level: str, message: str, details: str | None = None):
+            palette = {
+                "success": {"bg": "#173e28", "border": "#2e7d32", "text": "#c8e6c9"},
+                "warning": {"bg": "#3d2c18", "border": "#ff9800", "text": "#ffe0b2"},
+                "info": {"bg": "#1b2a41", "border": "#2196f3", "text": "#bbdefb"},
+                "error": {"bg": "#4a1f1f", "border": "#f44336", "text": "#ffcdd2"},
+            }
+            colors = palette.get(level, palette["info"])
+            box = ctk.CTkFrame(parent, fg_color=colors["bg"], border_color=colors["border"], border_width=2, corner_radius=8)
+            msg = ctk.CTkLabel(box, text=message, text_color=colors["text"], font=("Arial", 11, "bold"))
+            msg.pack(anchor='w', padx=10, pady=(8, 6))
+            if details:
+                ctk.CTkLabel(box, text=details, text_color=colors["text"], font=("Consolas", 10)).pack(anchor='w', padx=10, pady=(0, 8))
+            return box
+
+        def _make_collapsible(parent, title: str, build_content_fn):
+            container = ctk.CTkFrame(parent, fg_color="#2b2b2b")
+            container.pack(fill=tk.X, pady=(8, 6))
+            header_btn = ctk.CTkButton(container, text=f"▶ {title}", fg_color="#1f1f1f", hover_color="#2a2a2a", text_color="white")
+            header_btn.pack(fill=tk.X)
+            content = ctk.CTkFrame(container, fg_color="#2b2b2b")
+            state = {"open": False, "built": False}
+            def _toggle():
+                if not state["open"]:
+                    header_btn.configure(text=f"▼ {title}")
+                    if not state["built"]:
+                        try:
+                            build_content_fn(content)
+                        except Exception:
+                            pass
+                        state["built"] = True
+                    content.pack(fill=tk.X, pady=(4, 0))
+                    state["open"] = True
+                else:
+                    header_btn.configure(text=f"▶ {title}")
+                    content.pack_forget()
+                    state["open"] = False
+            header_btn.configure(command=_toggle)
+            return container, header_btn, content, _toggle
+
+        ctk.CTkLabel(win, text="Configurez vos accès API.",
+                     text_color="white", font=("Arial", 12, "bold"), anchor="w").pack(fill=tk.X, padx=14, pady=(12, 6))
+
+        # Onglets principaux: OpenAI, Google
+        tabs = ttk.Notebook(win)
+        tabs.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # ==== Onglet OpenAI ====
+        openai_tab = ctk.CTkFrame(tabs, fg_color="#2b2b2b")
+        tabs.add(openai_tab, text='  OpenAI  ')
+        openai_frame = ctk.CTkFrame(openai_tab, fg_color="#2b2b2b"); openai_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        # Statut OpenAI (alert)
+        openai_status_row = ctk.CTkFrame(openai_frame, fg_color="#2b2b2b"); openai_status_row.pack(fill=tk.X)
+        def _render_openai_status():
+            try:
+                for ch in openai_status_row.winfo_children(): ch.destroy()
+            except Exception:
+                pass
+            try:
+                from voice_tool.env_setup import validate_openai_env
+                ok, _ = validate_openai_env()
+                if ok:
+                    box = _make_alert(openai_status_row, "success", "OpenAI: Configuré (clé détectée)")
+                else:
+                    box = _make_alert(openai_status_row, "warning", "OpenAI: Incomplet (OPENAI_API_KEY absent)")
+                box.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                ctk.CTkButton(openai_status_row, text="Actualiser", width=100, command=_render_openai_status).pack(side=tk.RIGHT)
+            except Exception:
+                try:
+                    _make_alert(openai_status_row, "warning", "OpenAI: Statut inconnu").pack(fill=tk.X)
+                except Exception:
+                    pass
+        _render_openai_status()
+
+        # Aide repliable OpenAI
+        def _build_openai_help(frame):
+            text = (
+                "1) Créez un compte sur la plateforme OpenAI.\n"
+                "2) Générez une API Key (section API Keys).\n"
+                "3) Copiez/collez la clé ci‑dessous; activez la facturation si nécessaire."
+            )
+            ctk.CTkLabel(frame, text=text, justify=tk.LEFT, text_color="#cccccc", font=("Arial", 11)).pack(anchor='w', pady=(6, 6))
+        _make_collapsible(openai_frame, "Comment obtenir la clé OpenAI ?", _build_openai_help)
+
+        ctk.CTkLabel(openai_frame, text="Clé API OpenAI (Whisper)", text_color="white").pack(anchor='w')
+        openai_key_var = tk.StringVar(master=self.root)
+        openai_entry = ctk.CTkEntry(openai_frame, textvariable=openai_key_var)
+        openai_entry.pack(fill=tk.X, pady=(4,8))
+        def save_openai():
+            try:
+                key = openai_key_var.get().strip()
+                if not key:
+                    msgbox.showerror("Clé manquante", "Renseignez OPENAI_API_KEY.", parent=win)
+                    return
+                if save_env_to_appdata({"OPENAI_API_KEY": key}, override_process_env=True):
+                    msgbox.showinfo("Succès", "Clé OpenAI enregistrée !", parent=win)
+                    # Si mode bloquant et provider OpenAI choisi, fermer si tout est bon
+                    if blocking:
+                        try:
+                            ok_openai, _ = validate_openai_env()
+                            if ok_openai:
+                                win.destroy()
+                        except Exception:
+                            pass
+                else:
+                    msgbox.showerror("Erreur", "Impossible d'enregistrer la clé.", parent=win)
+            except Exception as e:
+                msgbox.showerror("Erreur", f"Échec: {e}", parent=win)
+        ctk.CTkButton(openai_frame, text="Enregistrer la clé OpenAI", command=save_openai).pack(anchor='e')
+        # Rafraîchir le statut initial
+        try:
+            _refresh_openai_status()
+        except Exception:
+            pass
+
+        # ==== Onglet Google ====
+        google_tab = ctk.CTkFrame(tabs, fg_color="#2b2b2b")
+        tabs.add(google_tab, text='  Google  ')
+        # Statut Google (alert)
+        google_status_row = ctk.CTkFrame(google_tab, fg_color="#2b2b2b"); google_status_row.pack(fill=tk.X, padx=6, pady=(2,0))
+        def _render_google_status():
+            try:
+                for ch in google_status_row.winfo_children(): ch.destroy()
+            except Exception:
+                pass
+            try:
+                import os
+                from voice_tool.env_setup import validate_google_env
+                ok, details = validate_google_env()
+                gac = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+                if ok:
+                    if gac and os.path.exists(gac):
+                        box = _make_alert(google_status_row, "success", f"Google: Configuré (via JSON)", details=f"{gac}")
+                    else:
+                        box = _make_alert(google_status_row, "success", "Google: Configuré (variables détaillées)")
+                else:
+                    missing = [k for k, present in (details or {}).items() if not present]
+                    note = ""
+                    if gac and not os.path.exists(gac):
+                        note = f"; JSON introuvable: {gac}"
+                    box = _make_alert(google_status_row, "warning", "Google: Incomplet", details=(f"Manquantes: {', '.join(missing)}{note}" if missing or note else None))
+                box.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                ctk.CTkButton(google_status_row, text="Actualiser", width=100, command=_render_google_status).pack(side=tk.RIGHT)
+            except Exception:
+                try:
+                    _make_alert(google_status_row, "warning", "Google: Statut inconnu").pack(fill=tk.X)
+                except Exception:
+                    pass
+        _render_google_status()
+
+        # Sous-onglets Google: JSON (par défaut), Manuel
+        google_tabs = ttk.Notebook(google_tab)
+        google_tabs.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+
+        # --- Sous-onglet JSON ---
+        json_page = ctk.CTkFrame(google_tabs, fg_color="#2b2b2b")
+        google_tabs.add(json_page, text='  JSON (recommandé)  ')
+
+        json_frame = ctk.CTkScrollableFrame(json_page, fg_color="#2b2b2b")
+        json_frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        def _build_google_help(frame):
+            text = (
+                "1) Console GCP: créez un projet et activez Speech‑to‑Text.\n"
+                "2) IAM & Admin: créez un compte de service avec rôle adéquat.\n"
+                "3) Générez une clé JSON et téléchargez le fichier.\n"
+                "4) Importez le fichier ou collez le JSON dans cet onglet."
+            )
+            ctk.CTkLabel(frame, text=text, justify=tk.LEFT, text_color="#cccccc", font=("Arial", 11)).pack(anchor='w', pady=(6, 6))
+        _make_collapsible(json_frame, "Comment obtenir le JSON Google ?", _build_google_help)
+
+        file_row = ctk.CTkFrame(json_frame, fg_color="#2b2b2b"); file_row.pack(fill=tk.X, pady=(0,10))
+        ctk.CTkLabel(file_row, text="Importer depuis un fichier JSON (Service Account)", text_color="white").pack(anchor='w')
+        file_path_var = tk.StringVar(master=self.root)
+        path_row = ctk.CTkFrame(file_row, fg_color="#2b2b2b"); path_row.pack(fill=tk.X, pady=(4,0))
+        path_entry = ctk.CTkEntry(path_row, textvariable=file_path_var); path_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        def browse_file():
+            p = filedialog.askopenfilename(filetypes=[("JSON", "*.json"), ("Tous les fichiers", "*.*")], title="Choisir le fichier de credentials JSON")
+            if p:
+                file_path_var.set(p)
+        ctk.CTkButton(path_row, text="Parcourir…", command=browse_file).pack(side=tk.LEFT, padx=(8,0))
+
+        def import_from_file():
+            p = file_path_var.get().strip()
+            if not p:
+                msgbox.showerror("Chemin manquant", "Sélectionnez un fichier JSON.", parent=win)
+                return
+            ok = set_google_application_credentials_path(p, also_extract=True)
+            if ok:
+                try:
+                    import voice_tool.transcription as vt_transcription
+                    if vt_transcription.get_google_credentials_from_env() is None:
+                        raise RuntimeError("Échec de validation des credentials.")
+                except Exception:
+                    msgbox.showwarning("Partiel", "Chemin et clés sauvegardés, mais la validation a échoué.", parent=win)
+                else:
+                    msgbox.showinfo("Succès", "Credentials importés et enregistrés !", parent=win)
+                    if blocking:
+                        win.destroy()
+            else:
+                msgbox.showerror("Erreur", "Impossible d'enregistrer les credentials.", parent=win)
+
+        ctk.CTkButton(file_row, text="Importer depuis le fichier", command=import_from_file).pack(anchor='e', pady=(4,6))
+
+        ctk.CTkLabel(json_frame, text="Ou collez ici le contenu JSON:", text_color="white").pack(anchor='w', pady=(8,2))
+        try:
+            json_text = ctk.CTkTextbox(json_frame, height=160)
+        except Exception:
+            json_text = tk.Text(json_frame, height=8)
+        json_text.pack(fill=tk.BOTH, expand=True)
+
+        def save_from_json_text():
+            try:
+                raw = json_text.get("1.0", tk.END).strip()
+                if not raw:
+                    msgbox.showerror("JSON manquant", "Collez le JSON de Google.", parent=win)
+                    return
+                # Valider JSON rapidement
+                try:
+                    json.loads(raw)
+                except Exception as je:
+                    msgbox.showerror("JSON invalide", f"Format JSON non valide: {je}", parent=win)
+                    return
+                env_map = load_google_json_credentials_from_string(raw)
+                if save_env_to_appdata(env_map, override_process_env=True):
+                    try:
+                        import voice_tool.transcription as vt_transcription
+                        if vt_transcription.get_google_credentials_from_env() is None:
+                            raise RuntimeError("Échec de validation des credentials.")
+                    except Exception:
+                        msgbox.showwarning("Partiel", "Clés sauvegardées, mais la validation a échoué.", parent=win)
+                    else:
+                        msgbox.showinfo("Succès", "Clés importées et enregistrées !", parent=win)
+                        if blocking:
+                            win.destroy()
+                else:
+                    msgbox.showerror("Erreur", "Impossible d'enregistrer le .env.", parent=win)
+            except Exception as e:
+                msgbox.showerror("Erreur", f"Échec: {e}", parent=win)
+
+        ctk.CTkButton(json_frame, text="Enregistrer depuis le JSON collé", command=save_from_json_text).pack(anchor='e', pady=(6,10))
+        # Rafraîchir le statut Google initial
+        try:
+            _refresh_google_status()
+        except Exception:
+            pass
+
+        # --- Sous-onglet Manuel ---
+        manual_page = ctk.CTkFrame(google_tabs, fg_color="#2b2b2b")
+        google_tabs.add(manual_page, text='  Manuel  ')
+        manual_frame = ctk.CTkScrollableFrame(manual_page, fg_color="#2b2b2b")
+        manual_frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        def _build_manual_tip(frame):
+            tip = (
+                "Option avancée: collez la clé privée complète dans le champ prévu.\n"
+                "Astuce: préférez l’import JSON pour minimiser les erreurs."
+            )
+            ctk.CTkLabel(frame, text=tip, justify=tk.LEFT, text_color="#cccccc", font=("Arial", 11)).pack(anchor='w', pady=(6, 6))
+        _make_collapsible(manual_frame, "Conseils sur la saisie manuelle", _build_manual_tip)
+        entries = {}
+        def add_field(parent, label, key, is_multiline=False):
+            row = ctk.CTkFrame(parent, fg_color="#2b2b2b"); row.pack(fill=tk.X, pady=(0,10))
+            ctk.CTkLabel(row, text=label, text_color="white").pack(anchor='w')
+            if is_multiline:
+                try:
+                    textw = ctk.CTkTextbox(row, height=120)
+                except Exception:
+                    textw = tk.Text(row, height=6)
+                textw.pack(fill=tk.X, expand=True)
+                entries[key] = textw
+            else:
+                ent = ctk.CTkEntry(row)
+                ent.pack(fill=tk.X, expand=True)
+                entries[key] = ent
+        add_field(manual_frame, "PROJECT_ID", "PROJECT_ID")
+        add_field(manual_frame, "PRIVATE_KEY_ID", "PRIVATE_KEY_ID")
+        add_field(manual_frame, "PRIVATE_KEY (coller le contenu complet)", "PRIVATE_KEY", is_multiline=True)
+        add_field(manual_frame, "CLIENT_EMAIL", "CLIENT_EMAIL")
+        add_field(manual_frame, "CLIENT_ID", "CLIENT_ID")
+        def save_manual():
+            try:
+                env_map = {}
+                for k in REQUIRED_GOOGLE_KEYS:
+                    w = entries.get(k)
+                    if w is None:
+                        continue
+                    val = ""
+                    try:
+                        # CTkTextbox ou tk.Text → get("1.0", "end")
+                        if isinstance(w, ctk.CTkTextbox) or isinstance(w, tk.Text):
+                            try:
+                                val = w.get("1.0", tk.END).strip()
+                            except Exception:
+                                val = w.get("1.0", "end").strip()
+                        else:
+                            # CTkEntry ou équivalent
+                            val = w.get().strip()
+                    except Exception:
+                        val = ""
+                    env_map[k] = val
+                if not all(env_map.get(k) for k in REQUIRED_GOOGLE_KEYS):
+                    msgbox.showerror("Champs requis", "Merci de remplir toutes les clés requises.", parent=win)
+                    return
+                if save_env_to_appdata(env_map, override_process_env=True):
+                    try:
+                        import voice_tool.transcription as vt_transcription
+                        creds = vt_transcription.get_google_credentials_from_env()
+                        if creds is None:
+                            raise RuntimeError("Échec de validation des credentials.")
+                    except Exception:
+                        msgbox.showwarning("Partiel", "Clés sauvegardées, mais la validation a échoué. Vérifiez les valeurs.", parent=win)
+                    else:
+                        msgbox.showinfo("Succès", "Clés enregistrées avec succès !", parent=win)
+                        win.destroy()
+                else:
+                    msgbox.showerror("Erreur", "Impossible d'enregistrer le fichier .env dans AppData.", parent=win)
+            except Exception as e:
+                msgbox.showerror("Erreur", f"Échec: {e}", parent=win)
+        ctk.CTkButton(manual_frame, text="Enregistrer", command=save_manual).pack(anchor='e', pady=(4, 6))
+
+        # Par défaut, ouvrir l’onglet OpenAI et, pour Google, le sous‑onglet JSON
+        try:
+            tabs.select(openai_tab)
+            google_tabs.select(json_page)
+        except Exception:
+            pass
+
+        # Gestion de la fermeture: bloquer si non configuré quand mode bloquant
+        def _on_close_env():
+            try:
+                if not blocking:
+                    win.destroy()
+                    return
+                # Mode bloquant: vérifier provider courant
+                import main
+                provider = (main.load_user_settings() or {}).get("transcription_provider", "Google")
+                ok = True
+                if provider == "OpenAI":
+                    ok, _ = validate_openai_env()
+                else:
+                    ok, _ = validate_google_env()
+                if ok:
+                    win.destroy()
+                else:
+                    msgbox.showerror("Configuration requise", "Vous devez configurer les accès API pour utiliser l'application.", parent=win)
+            except Exception:
+                pass
+        try:
+            win.protocol("WM_DELETE_WINDOW", _on_close_env)
+        except Exception:
+            pass
 
     def _history_to_display_and_actual(self, obj):
         if isinstance(obj, dict):

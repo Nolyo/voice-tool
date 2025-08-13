@@ -209,6 +209,7 @@ processing_queue: SimpleQueue = SimpleQueue()
 processing_worker_thread: Thread | None = None
 visualizer_poll_started = False
 pending_open_settings_tab = False
+pending_open_env_setup = False
 
 # Gestion d'instance unique via module vt_lock
 
@@ -1254,13 +1255,11 @@ def main():
         splash.pump()
     google_credentials = vt_transcription.get_google_credentials_from_env()
     if not google_credentials:
-        logging.warning("Clés API manquantes: l'application démarre quand même (fonctionnalités limitées).")
-        if splash:
-            try:
-                splash.set_message("Clés API manquantes (non bloquant)…")
-                splash.pump()
-            except Exception:
-                pass
+        logging.warning("Clés API manquantes: la configuration API sera demandée après l'initialisation.")
+        # Ne pas ouvrir l'UI tout de suite (conflit avec le Splash/root Tk)
+        # Marquer l'intention d'ouvrir la fenêtre de configuration dès que l'UI est disponible
+        global pending_open_env_setup
+        pending_open_env_setup = True
 
     logging.info("Démarrage de l'application...")
 
@@ -1345,6 +1344,12 @@ def main():
 
     # Ouvrir la fenêtre principale au lancement (console ou arrière-plan)
     if is_console_mode:
+        try:
+            open_interface()
+        except Exception:
+            pass
+    elif pending_open_env_setup:
+        # En mode arrière‑plan, si la config API manque, ouvrir l'interface pour afficher l'assistant
         try:
             open_interface()
         except Exception:
