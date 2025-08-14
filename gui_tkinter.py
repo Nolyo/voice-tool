@@ -561,6 +561,12 @@ class VisualizerWindowTkinter:
                 # Si la fenêtre Tk a le focus, on évite de coller (l'utilisateur est dans l'UI)
                 if self.root.focus_get() is None:
                     self.root.after(80, main.paste_to_cursor)
+            # Feedback visuel discret: garder la sélection visible
+            try:
+                if iid:
+                    self.history_tree.selection_set(iid)
+            except Exception:
+                pass
         except Exception as e:
             logging.error(f"Erreur lors du collage automatique: {e}")
 
@@ -655,12 +661,103 @@ class VisualizerWindowTkinter:
             context_menu.add_separator()
             context_menu.add_command(label="🗑️ Supprimer", command=self._delete_history_selection, 
                                    foreground="#dc3545")
+        # Export rapide depuis le menu contextuel
+        try:
+            context_menu.add_separator()
+            context_menu.add_command(label="📤 Exporter…", command=self._export_history)
+        except Exception:
+            pass
             
             # Afficher le menu à la position du curseur
             try:
                 context_menu.tk_popup(event.x_root, event.y_root)
             finally:
                 context_menu.grab_release()
+
+    def _on_tree_motion(self, event):
+        try:
+            if not (self.history_tree and self.history_tree.winfo_exists()):
+                return
+            row = self.history_tree.identify_row(event.y)
+            if row != getattr(self, '_last_hovered_tree_iid', None):
+                # Nettoyer l'ancien hover
+                old = getattr(self, '_last_hovered_tree_iid', None)
+                if old:
+                    try:
+                        self.history_tree.item(old, tags=tuple(t for t in self.history_tree.item(old, 'tags') if t != 'hovered'))
+                    except Exception:
+                        pass
+                # Appliquer hover sur la nouvelle ligne
+                if row:
+                    try:
+                        current_tags = list(self.history_tree.item(row, 'tags'))
+                        if 'hovered' not in current_tags:
+                            current_tags.append('hovered')
+                            self.history_tree.item(row, tags=tuple(current_tags))
+                    except Exception:
+                        pass
+                self._last_hovered_tree_iid = row
+        except Exception:
+            pass
+
+    def _on_tree_leave(self, _event):
+        try:
+            old = getattr(self, '_last_hovered_tree_iid', None)
+            if old:
+                try:
+                    self.history_tree.item(old, tags=tuple(t for t in self.history_tree.item(old, 'tags') if t != 'hovered'))
+                except Exception:
+                    pass
+            self._last_hovered_tree_iid = None
+        except Exception:
+            pass
+
+    def _on_tree_select(self, _event=None):
+        """Met à jour le panneau de détails en fonction de la sélection."""
+        try:
+            if not (self.history_tree and self.history_tree.winfo_exists()):
+                return
+            try:
+                iid = self.history_tree.focus() or self.history_tree.selection()[0]
+            except Exception:
+                iid = None
+            if not iid:
+                return
+            obj = self._tree_id_to_obj.get(iid)
+            if obj is None:
+                return
+            # Renseigner la date/heure
+            if isinstance(obj, dict):
+                ts = obj.get('timestamp', obj.get('date', ''))
+                txt = obj.get('text', '')
+                audio = obj.get('audio_path')
+            else:
+                ts = ''
+                txt = str(obj)
+                audio = None
+            try:
+                self.history_details_time.configure(text=ts or "(sans date)")
+            except Exception:
+                pass
+            # Texte
+            try:
+                self.history_details_text.configure(state='normal')
+                self.history_details_text.delete('1.0', 'end')
+                self.history_details_text.insert('end', txt)
+                self.history_details_text.configure(state='disabled')
+            except Exception:
+                pass
+            # Audio
+            self._details_current_audio_path = audio
+            try:
+                if audio:
+                    self.history_details_play_btn.configure(state='normal')
+                else:
+                    self.history_details_play_btn.configure(state='disabled')
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     def _clear_all_history(self):
         """Supprime tout l'historique après confirmation."""
@@ -1014,6 +1111,12 @@ class VisualizerWindowTkinter:
         self._cards_resize_after_id = None
         self._cards_hidden_for_resize = False
         self._cards_placeholder = None
+        # Rendu progressif des cartes (évite les lags)
+        self._cards_render_after_id = None
+        self._cards_pending_items = []
+        self._cards_render_note_needed = False
+        # Améliorations UI table
+        self._last_hovered_tree_iid = None
 
         def _save_geometry_now():
             try:
@@ -1228,7 +1331,8 @@ class VisualizerWindowTkinter:
         style.configure("VT.Treeview.Heading",
                         background="#1f1f1f",
                         foreground="white",
-                        relief=tk.FLAT)
+                        relief=tk.FLAT,
+                        font=("Arial", 10, "bold"))
 
         # Zone de contenu (pile) : table vs cartes
         content_stack = ctk.CTkFrame(history_frame, fg_color="#2b2b2b")
@@ -1237,17 +1341,24 @@ class VisualizerWindowTkinter:
         # Vue Table: léger cadre
         self.history_table_frame = ctk.CTkFrame(content_stack, fg_color="#2b2b2b", border_color="#3c3c3c", border_width=1, corner_radius=8)
         self.history_table_frame.pack(fill=tk.BOTH, expand=True)  # défaut: vue table
-        yscroll = tk.Scrollbar(self.history_table_frame)
+        # Zone table avec panneau de détails à droite
+        table_split = ctk.CTkFrame(self.history_table_frame, fg_color="#2b2b2b")
+        table_split.pack(fill=tk.BOTH, expand=True)
+
+        table_left = ctk.CTkFrame(table_split, fg_color="#2b2b2b")
+        table_left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        yscroll = tk.Scrollbar(table_left)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.history_tree = ttk.Treeview(self.history_table_frame,
+        self.history_tree = ttk.Treeview(table_left,
                                          columns=("time", "text"),
                                          show="headings",
                                          yscrollcommand=yscroll.set,
                                          style="VT.Treeview")
         self.history_tree.heading("time", text="Date/Heure")
         self.history_tree.heading("text", text="Texte")
-        # Colonne date/heure légèrement plus large pour créer un espace visuel
-        self.history_tree.column("time", width=140, minwidth=110, anchor=tk.W, stretch=False)
+        # Colonne date/heure plus lisible
+        self.history_tree.column("time", width=180, minwidth=130, anchor=tk.W, stretch=False)
         # Colonne texte occupe l'espace restant
         self.history_tree.column("text", width=400, minwidth=200, anchor=tk.W, stretch=True)
 
@@ -1255,10 +1366,78 @@ class VisualizerWindowTkinter:
         try:
             self.history_tree.tag_configure('oddrow', background='#2a2a2a')
             self.history_tree.tag_configure('evenrow', background='#2f2f2f')
+            # Ligne survolée
+            self.history_tree.tag_configure('hovered', background='#3a3a3a')
         except Exception:
             pass
         self.history_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscroll.config(command=self.history_tree.yview)
+
+        # Panneau détails à droite
+        details_right = ctk.CTkFrame(table_split, fg_color="#242424", corner_radius=10)
+        details_right.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0), pady=4)
+        try:
+            details_right.configure(width=360)
+        except Exception:
+            pass
+        try:
+            details_right.pack_propagate(False)
+        except Exception:
+            pass
+
+        self.history_details_frame = details_right
+        ctk.CTkLabel(details_right, text="Détails", text_color="white", font=("Arial", 12, "bold")).pack(anchor='w', padx=10, pady=(10, 6))
+
+        self.history_details_time = ctk.CTkLabel(details_right, text="", text_color="#9aa0a6", font=("Consolas", 10))
+        self.history_details_time.pack(anchor='w', padx=10)
+
+        # Zone texte détaillée
+        try:
+            self.history_details_text = ctk.CTkTextbox(details_right, height=240, corner_radius=8)
+        except Exception:
+            # Fallback si CTkTextbox non dispo
+            self.history_details_text = tk.Text(details_right, height=14, wrap=tk.WORD)
+        try:
+            self.history_details_text.configure(state='disabled')
+        except Exception:
+            pass
+        try:
+            self.history_details_text.pack(fill=tk.BOTH, expand=False, padx=10, pady=(6, 10))
+        except Exception:
+            pass
+
+        # Boutons d'action (copier / écouter)
+        actions_bar = ctk.CTkFrame(details_right, fg_color="#242424")
+        actions_bar.pack(fill=tk.X, padx=10, pady=(0, 10))
+        ctk.CTkButton(actions_bar, text="📋 Copier", command=self._copy_history_selection, height=28).pack(side=tk.LEFT)
+
+        def _play_details_audio():
+            path = getattr(self, '_details_current_audio_path', None)
+            if not path:
+                return
+            try:
+                import os, platform
+                if not os.path.exists(path):
+                    logging.warning(f"Fichier audio introuvable: {path}")
+                    return
+                system = platform.system()
+                if system == 'Windows':
+                    os.startfile(path)  # type: ignore
+                elif system == 'Darwin':
+                    os.system(f"open '{path}'")
+                else:
+                    rc = os.system(f"aplay '{path}' > /dev/null 2>&1")
+                    if rc != 0:
+                        os.system(f"xdg-open '{path}'")
+            except Exception as e:
+                logging.error(f"Lecture audio échouée: {e}")
+
+        self.history_details_play_btn = ctk.CTkButton(actions_bar, text="▶ Écouter", command=_play_details_audio, height=28)
+        self.history_details_play_btn.pack(side=tk.LEFT, padx=(8, 0))
+        try:
+            self.history_details_play_btn.configure(state="disabled")
+        except Exception:
+            pass
         
         # Vue Cartes: scrollable
         self.history_cards_container = ctk.CTkScrollableFrame(content_stack, fg_color="#2b2b2b", corner_radius=8)
@@ -1269,10 +1448,20 @@ class VisualizerWindowTkinter:
             pass
         # Par défaut, afficher la table et masquer les cartes
         self.history_cards_container.pack_forget()
+        # Masquer la scrollbar verticale pour un aspect plus propre (la frame interne gère le scroll)
+        try:
+            self.history_cards_container._parent_canvas.configure(highlightthickness=0, bd=0)
+        except Exception:
+            pass
         
         # Événements pour l'historique
         self.history_tree.bind("<Double-Button-1>", self._on_history_double_click)
         self.history_tree.bind("<Button-3>", self._on_history_right_click)  # Clic droit
+        # Hover + copie au clavier + maj panneau détails
+        self.history_tree.bind("<Motion>", self._on_tree_motion)
+        self.history_tree.bind("<Leave>", self._on_tree_leave)
+        self.history_tree.bind("<Control-c>", lambda e: self._copy_history_selection())
+        self.history_tree.bind("<<TreeviewSelect>>", self._on_tree_select)
         # Charger l'historique dans la liste maître et rendre la vue (filtrée)
         self._history_master = list(history) if history else []
         self._apply_history_filter()
@@ -2497,6 +2686,15 @@ class VisualizerWindowTkinter:
             if hasattr(self, 'history_cards_container') and self.history_cards_container:
                 for child in self.history_cards_container.winfo_children():
                     child.destroy()
+            # Annuler un rendu progressif en cours
+            try:
+                if self._cards_render_after_id is not None:
+                    self.root.after_cancel(self._cards_render_after_id)
+            except Exception:
+                pass
+            self._cards_render_after_id = None
+            self._cards_pending_items = []
+            self._cards_render_note_needed = False
         except Exception:
             pass
 
@@ -2614,26 +2812,65 @@ class VisualizerWindowTkinter:
                 tag = 'evenrow' if (idx % 2 == 0) else 'oddrow'
                 iid = self.history_tree.insert("", tk.END, values=(time_col, text_col), tags=(tag,))
                 self._tree_id_to_obj[iid] = item
+            # Sélectionner automatiquement la première ligne pour pré-remplir les détails
+            try:
+                first = self.history_tree.get_children()
+                if first:
+                    self.history_tree.selection_set(first[0])
+                    self.history_tree.focus(first[0])
+                    self._on_tree_select()
+            except Exception:
+                pass
+            # Ajuster la largeur des colonnes après remplissage
+            try:
+                total_width = self.history_table_frame.winfo_width()
+                time_width = max(160, int(total_width * 0.25))
+                text_width = max(200, total_width - time_width - 30)
+                self.history_tree.column("time", width=time_width, stretch=False)
+                self.history_tree.column("text", width=text_width, stretch=True)
+            except Exception:
+                pass
         else:
-            # Vue cartes (rendu borné pour éviter le lag sur gros historiques)
+            # Vue cartes (rendu progressif + bornage pour éviter le lag)
             self._clear_history_cards()
             try:
                 import main
                 limit = int(main.load_user_settings().get("history_cards_render_limit", 150))
             except Exception:
                 limit = 150
-            # Rendre seulement les N premiers visibles (les plus récents)
-            for idx, item in enumerate(items_to_display):
-                if idx >= max(10, limit):  # toujours au moins 10
-                    break
-                self._create_history_card(self.history_cards_container, item)
-            # Si coupé, afficher une note discrète
-            if len(items_to_display) > max(10, limit):
+            limit = max(10, limit)
+            # Préparer les items à rendre progressivement
+            self._cards_pending_items = list(items_to_display[:limit])
+            self._cards_render_note_needed = len(items_to_display) > limit
+
+            def _render_next_batch(batch_size=8):
                 try:
-                    note = ctk.CTkLabel(self.history_cards_container, text=f"Affichage de {max(10, limit)} éléments sur {len(items_to_display)} (utilisez la recherche pour filtrer)", text_color="#888888", font=("Arial", 10))
-                    note.pack(pady=(4,8))
+                    # Rendre par petits lots
+                    for _ in range(min(batch_size, len(self._cards_pending_items))):
+                        it = self._cards_pending_items.pop(0)
+                        self._create_history_card(self.history_cards_container, it)
+                    if self._cards_pending_items:
+                        # Planifier le lot suivant pour laisser respirer l'UI
+                        self._cards_render_after_id = self.root.after(16, _render_next_batch)
+                    else:
+                        # Fin: ajouter la note si tronqué
+                        self._cards_render_after_id = None
+                        if self._cards_render_note_needed:
+                            try:
+                                note = ctk.CTkLabel(
+                                    self.history_cards_container,
+                                    text=f"Affichage de {limit} éléments sur {len(items_to_display)} (utilisez la recherche pour filtrer)",
+                                    text_color="#888888",
+                                    font=("Arial", 10)
+                                )
+                                note.pack(pady=(4,8))
+                            except Exception:
+                                pass
                 except Exception:
-                    pass
+                    self._cards_render_after_id = None
+
+            # Démarrer le rendu progressif
+            _render_next_batch()
 
         self._filtered_history_items = list(items_to_display)
         # Mettre à jour le compteur
@@ -2675,6 +2912,18 @@ class VisualizerWindowTkinter:
                 self.history_empty_label.pack(pady=(10,0))
             else:
                 self.history_empty_label.pack_forget()
+        except Exception:
+            pass
+
+        # Ajuster les colonnes de la table après filtrage pour une meilleure lisibilité
+        try:
+            if self.history_tree and self.history_tree.winfo_exists():
+                # Ajuster la largeur de la colonne texte selon la taille actuelle du frame
+                total_width = self.history_table_frame.winfo_width()
+                time_width = max(160, int(total_width * 0.25))
+                text_width = max(200, total_width - time_width - 30)
+                self.history_tree.column("time", width=time_width, stretch=False)
+                self.history_tree.column("text", width=text_width, stretch=True)
         except Exception:
             pass
 
