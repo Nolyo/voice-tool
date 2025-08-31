@@ -100,7 +100,7 @@ From `C:\\voice-tool` with a fresh virtualenv and dependencies installed:
   ```
 - Or directly with PyInstaller:
   ```powershell
-  .\\.venv\\Scripts\\python.exe -m PyInstaller --clean --noconfirm packaging/pyinstaller/voice_tool.spec
+  .\\.venv\\Scripts\\pTest du mode continue OK.ython.exe -m PyInstaller --clean --noconfirm packaging/pyinstaller/voice_tool.spec
   ```
 - Output: `dist\\Voice Tool.exe` (one‑file). Prefer `--distpath bin` to output to `bin\\`:
   ```powershell

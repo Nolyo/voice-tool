@@ -192,6 +192,7 @@ user_settings = {}  # Contiendra les paramètres utilisateur sauvegardés dans A
 is_recording = False
 hotkey_listener = None
 ptt_listener = None
+ptt_active_session = False
 audio_stream = None
 audio_stream_device_index = None
 audio_frames = []
@@ -921,31 +922,52 @@ def setup_hotkey(icon_pystray):
 
     active_keys = []
 
-    if record_mode == 'toggle' and record_key:
-        hotkey_map[record_key] = lambda: toggle_recording(icon_pystray)
-    elif record_mode == 'ptt' and ptt_key:
-        # Listener PTT custom: démarrer à l'appui de toute la combo, couper dès qu'un des éléments est relâché
-        combo_keys = set(keyboard.HotKey.parse(ptt_key))
+    # Nouveau comportement: activer Toggle et PTT en parallèle
+    # 1) Toggle via GlobalHotKeys si un record_key est défini
+    if record_key:
+        def _on_toggle_hotkey():
+            try:
+                global ptt_active_session
+                toggle_recording(icon_pystray)
+                # Si après toggle on est à l'arrêt, on réinitialise la session PTT éventuelle
+                if not is_recording:
+                    ptt_active_session = False
+            except Exception:
+                pass
+        hotkey_map[record_key] = _on_toggle_hotkey
+    # 2) PTT via Listener personnalisé si un ptt_key est défini
+    if ptt_key:
+        try:
+            combo_keys = set(keyboard.HotKey.parse(ptt_key))
+        except Exception:
+            combo_keys = set()
         pressed_keys = set()
 
         listener_ref = {'l': None}
 
         def on_press(key):
             try:
+                global ptt_active_session
                 k = listener_ref['l'].canonical(key)
                 pressed_keys.add(k)
-                if combo_keys.issubset(pressed_keys) and not is_recording:
-                    toggle_recording(icon_pystray)
+                if combo_keys and combo_keys.issubset(pressed_keys):
+                    # Démarrer une session PTT uniquement si on n'enregistre pas déjà
+                    if not is_recording:
+                        ptt_active_session = True
+                        toggle_recording(icon_pystray)
             except Exception:
                 pass
 
         def on_release(key):
             try:
+                global ptt_active_session
                 k = listener_ref['l'].canonical(key)
                 if k in pressed_keys:
                     pressed_keys.remove(k)
-                if is_recording and not combo_keys.issubset(pressed_keys):
+                # Arrêter uniquement si la session en cours a été démarrée par PTT
+                if ptt_active_session and is_recording and combo_keys and not combo_keys.issubset(pressed_keys):
                     toggle_recording(icon_pystray)
+                    ptt_active_session = False
             except Exception:
                 pass
 
@@ -953,6 +975,22 @@ def setup_hotkey(icon_pystray):
         ptt_listener = listener_ref['l']
         ptt_listener.start()
         active_keys.append(ptt_key)
+
+    # 3) Détection de conflit: si record_key et ptt_key sont identiques, désactiver PTT pour éviter le double déclenchement
+    try:
+        if record_key and ptt_key and record_key.strip().lower() == ptt_key.strip().lower():
+            # Arrêter le listener PTT si on vient de le démarrer
+            if ptt_listener:
+                try:
+                    ptt_listener.stop()
+                except Exception:
+                    pass
+                ptt_listener = None
+            logging.warning("Conflit de raccourcis: 'record_hotkey' et 'ptt_hotkey' sont identiques. Le mode PTT est ignoré.")
+            # Noter visuellement la clé active (toggle)
+            active_keys = [record_key]
+    except Exception:
+        pass
 
     # Toujours gérer le raccourci d'ouverture de fenêtre via GlobalHotKeys s'il existe
     if open_key:
