@@ -13,6 +13,7 @@ select = [
 ]
 ignore = [
   "E203",  # whitespace before ':' (Black compatible)
+  "E501",  # line too long (toléré pour éviter retouches massives)
 ]
 target-version = "py38"
 

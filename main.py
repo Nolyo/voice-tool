@@ -51,7 +51,7 @@ if platform.system() == 'Windows':
         # Essayer aussi de changer le nom du processus visible dans Task Manager
         try:
             ctypes.windll.kernel32.SetConsoleTitleW("Voice Tool")
-        except:
+        except Exception:
             pass
     except Exception as e:
         logging.warning(f"Impossible de configurer l'App ID Windows: {e}")
@@ -1023,7 +1023,7 @@ def quit_from_gui():
     if visualizer_window:
         try:
             visualizer_window.close()
-        except:
+        except Exception:
             pass
     
     # Libérer le verrou d'instance unique
@@ -1038,7 +1038,7 @@ def quit_from_gui():
             time.sleep(0.1)  # Petit délai pour que Tkinter se ferme complètement
             try:
                 global_icon_pystray.stop()
-            except:
+            except Exception:
                 pass
         
         threading.Thread(target=stop_icon, daemon=True).start()
