@@ -349,6 +349,28 @@ voice-tool/
 - Check internet connection
 - Verify microphone is not muted
 
+**"Build fails with PermissionError: [WinError 5] Access denied"**
+
+This error occurs when PyInstaller tries to overwrite an existing `Voice Tool.exe` file that is currently in use.
+
+**Cause**: One or more instances of `Voice Tool.exe` are running in the background.
+
+**Solution**:
+1. Check for running instances:
+   ```powershell
+   tasklist | findstr "Voice Tool"
+   ```
+2. Kill all running instances:
+   ```powershell
+   taskkill /F /IM "Voice Tool.exe"
+   ```
+3. Rebuild:
+   ```powershell
+   .\.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm --distpath bin packaging/pyinstaller/voice_tool.spec
+   ```
+
+**Prevention**: Always properly quit the application via the system tray menu (right-click → Quit) instead of killing the process or closing windows abruptly.
+
 ### Debug & Logs
 
 Production: `"C:\\path\\to\\Voice Tool.exe" --debug`  

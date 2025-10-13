@@ -163,6 +163,26 @@ def _initialize_persistent_logging() -> None:
                     _crash_fp.flush()
             except Exception:
                 pass
+            # Nettoyage du stream audio si encore ouvert
+            try:
+                global audio_stream
+                if audio_stream is not None:
+                    try:
+                        audio_stream.stop()
+                    except Exception:
+                        pass
+                    try:
+                        audio_stream.close()
+                    except Exception:
+                        pass
+                    audio_stream = None
+            except Exception:
+                pass
+            # Libérer le verrou d'instance
+            try:
+                release_lock()
+            except Exception:
+                pass
     except Exception:
         pass
 
@@ -1008,63 +1028,130 @@ def setup_hotkey(icon_pystray):
 
 def quit_from_gui():
     """Ferme l'application depuis l'interface GUI (fermeture synchrone)."""
-    global hotkey_listener, ptt_listener, visualizer_window, global_icon_pystray, audio_stream
+    global hotkey_listener, ptt_listener, visualizer_window, global_icon_pystray, audio_stream, is_recording, processing_worker_thread
     logging.info("Arrêt de l'application depuis l'interface GUI...")
-    
-    # Arrêter d'abord les services
-    if hotkey_listener:
-        hotkey_listener.stop()
-    if ptt_listener:
-        ptt_listener.stop()
-    if audio_stream:
-        audio_stream.close()
-    
+
+    # Arrêter l'enregistrement s'il est en cours
+    is_recording = False
+
+    # Arrêter les listeners de hotkeys
+    try:
+        if hotkey_listener:
+            hotkey_listener.stop()
+            hotkey_listener = None
+    except Exception as e:
+        logging.error(f"Erreur arrêt hotkey_listener: {e}")
+
+    try:
+        if ptt_listener:
+            ptt_listener.stop()
+            ptt_listener = None
+    except Exception as e:
+        logging.error(f"Erreur arrêt ptt_listener: {e}")
+
+    # Fermer le stream audio
+    try:
+        if audio_stream:
+            audio_stream.stop()
+            audio_stream.close()
+            audio_stream = None
+    except Exception as e:
+        logging.error(f"Erreur fermeture audio_stream: {e}")
+
+    # Arrêter le worker de traitement
+    try:
+        if processing_worker_thread and processing_worker_thread.is_alive():
+            processing_queue.put(None)  # Signal d'arrêt
+    except Exception as e:
+        logging.error(f"Erreur arrêt processing_worker: {e}")
+
     # Fermer Tkinter de façon synchrone (on est déjà dans le thread Tkinter)
-    if visualizer_window:
-        try:
+    try:
+        if visualizer_window:
             visualizer_window.close()
-        except Exception:
-            pass
-    
+            visualizer_window = None
+    except Exception as e:
+        logging.error(f"Erreur fermeture visualizer_window: {e}")
+
     # Libérer le verrou d'instance unique
-    release_lock()
-    
-    # Arrêter l'icône pystray en dernier avec un délai pour éviter le zombie
-    if global_icon_pystray:
-        # Utiliser un thread séparé pour arrêter l'icône avec un petit délai
-        import threading
-        def stop_icon():
-            import time
-            time.sleep(0.1)  # Petit délai pour que Tkinter se ferme complètement
-            try:
-                global_icon_pystray.stop()
-            except Exception:
-                pass
-        
-        threading.Thread(target=stop_icon, daemon=True).start()
-    
-    # Forcer la sortie du processus
-    import sys
-    import os
-    os._exit(0)
+    try:
+        release_lock()
+    except Exception as e:
+        logging.error(f"Erreur libération verrou: {e}")
+
+    # Arrêter l'icône pystray proprement
+    try:
+        if global_icon_pystray:
+            global_icon_pystray.stop()
+    except Exception as e:
+        logging.error(f"Erreur arrêt icon: {e}")
+
+    # Sortie propre du processus
+    logging.info("Application arrêtée proprement")
+    sys.exit(0)
 
 def on_quit(icon_pystray, item):
-    global hotkey_listener, ptt_listener, visualizer_window
-    logging.info("Arrêt de l'application...")
-    if hotkey_listener:
-        hotkey_listener.stop()
-    if ptt_listener:
-        ptt_listener.stop()
-    if audio_stream:
-        audio_stream.close()
-    if visualizer_window:
-        # Planifie la fermeture de la fenêtre Tkinter dans son propre thread
-        # pour éviter les problèmes de concurrence qui peuvent bloquer la fermeture.
-        visualizer_window.root.after(0, visualizer_window.close)
-    
+    global hotkey_listener, ptt_listener, visualizer_window, audio_stream, is_recording, processing_worker_thread
+    logging.info("Arrêt de l'application depuis l'icône système...")
+
+    # Arrêter l'enregistrement s'il est en cours
+    is_recording = False
+
+    # Arrêter les listeners de hotkeys
+    try:
+        if hotkey_listener:
+            hotkey_listener.stop()
+            hotkey_listener = None
+    except Exception as e:
+        logging.error(f"Erreur arrêt hotkey_listener: {e}")
+
+    try:
+        if ptt_listener:
+            ptt_listener.stop()
+            ptt_listener = None
+    except Exception as e:
+        logging.error(f"Erreur arrêt ptt_listener: {e}")
+
+    # Fermer le stream audio
+    try:
+        if audio_stream:
+            audio_stream.stop()
+            audio_stream.close()
+            audio_stream = None
+    except Exception as e:
+        logging.error(f"Erreur fermeture audio_stream: {e}")
+
+    # Arrêter le worker de traitement
+    try:
+        if processing_worker_thread and processing_worker_thread.is_alive():
+            processing_queue.put(None)  # Signal d'arrêt
+    except Exception as e:
+        logging.error(f"Erreur arrêt processing_worker: {e}")
+
+    # Fermer la fenêtre Tkinter si elle existe
+    try:
+        if visualizer_window and hasattr(visualizer_window, 'root'):
+            visualizer_window.root.after(0, visualizer_window.close)
+            # Attendre un peu pour laisser Tkinter se fermer
+            time.sleep(0.2)
+    except Exception as e:
+        logging.error(f"Erreur fermeture visualizer_window: {e}")
+
     # Libérer le verrou d'instance unique
-    release_lock()
-    icon_pystray.stop()
+    try:
+        release_lock()
+    except Exception as e:
+        logging.error(f"Erreur libération verrou: {e}")
+
+    # Arrêter l'icône
+    try:
+        icon_pystray.stop()
+    except Exception as e:
+        logging.error(f"Erreur arrêt icon: {e}")
+
+    # Sortie propre du processus
+    logging.info("Application arrêtée proprement")
+    sys.exit(0)
 
 def _ui_thread_entry(icon_path):
     """Point d'entrée du thread UI: crée la fenêtre et lance la boucle Tk."""
