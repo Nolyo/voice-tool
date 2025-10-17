@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { invoke } from "@tauri-apps/api/core"
 import { DashboardHeader } from "./dashboard-header"
 import { RecordingCard } from "./recording-card"
 import { TranscriptionList, type Transcription } from "./transcription-list"
@@ -36,8 +37,24 @@ export default function Dashboard() {
     navigator.clipboard.writeText(text)
   }
 
-  const handleToggleRecording = () => {
-    setIsRecording(!isRecording)
+  const handleToggleRecording = async () => {
+    try {
+      if (isRecording) {
+        // Stop recording
+        const audioData = await invoke<number[]>("stop_recording")
+        console.log("Audio data captured:", audioData.length, "samples")
+        setIsRecording(false)
+        // TODO: Process audio data (transcription)
+      } else {
+        // Start recording
+        await invoke("start_recording", { deviceIndex: null })
+        setIsRecording(true)
+      }
+    } catch (error) {
+      console.error("Recording error:", error)
+      alert(`Erreur d'enregistrement: ${error}`)
+      setIsRecording(false)
+    }
   }
 
   return (
