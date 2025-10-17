@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release-windows:
+    name: Build and Release (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build EXE (PyInstaller)
+        shell: pwsh
+        run: |
+          pyinstaller --clean --noconfirm packaging/pyinstaller/voice_tool.spec
+
+      - name: Prepare artifacts (zip + checksums)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          $version = $env:GITHUB_REF -replace '^refs/tags/', ''
+          $zipName = "Voice-Tool-$version-windows-x64.zip"
+          Compress-Archive -Path "dist/Voice Tool.exe", "user_settings.template.json", "README.md" -DestinationPath "release/$zipName"
+          Get-FileHash "release/$zipName" -Algorithm SHA256 | ForEach-Object { $_.Hash + " *$zipName" } | Out-File -Encoding ascii "release/$zipName.sha256"
+          Write-Host "Created release/$zipName and checksum"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+          generate_release_notes: true
+          files: |
+            release/*.zip
+            release/*.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+

@@ -1,0 +1,64 @@
+import json
+import logging
+import os
+import time
+from typing import List, Dict, Any, Optional
+
+from .paths import HISTORY_FILE
+
+
+def load_transcription_history() -> List[Dict[str, Any]]:
+    try:
+        if os.path.exists(HISTORY_FILE):
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict) and "transcriptions" in data:
+                    logging.info(f"Historique chargé: {len(data['transcriptions'])} transcriptions")
+                    return data["transcriptions"]
+                return []
+        return []
+    except Exception as exc:
+        logging.error(f"Erreur lors du chargement de l'historique: {exc}")
+        return []
+
+
+def save_transcription_history(transcriptions: List[Dict[str, Any]]) -> bool:
+    try:
+        history_data = {
+            "version": "1.0",
+            "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "transcriptions": transcriptions,
+        }
+        os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(history_data, f, ensure_ascii=False, indent=2)
+        logging.info(f"Historique sauvegardé: {len(transcriptions)} transcriptions")
+        return True
+    except Exception as exc:
+        logging.error(f"Erreur lors de la sauvegarde de l'historique: {exc}")
+        return False
+
+
+def add_to_transcription_history(current_history: List[Dict[str, Any]], text: str, audio_path: Optional[str] = None) -> Dict[str, Any]:
+    item: Dict[str, Any] = {
+        "text": text,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "date": time.strftime("%Y-%m-%d"),
+    }
+    if audio_path:
+        item["audio_path"] = audio_path
+    try:
+        # Nettoyage des doublons exacts timestamp+text pour réduire les réinsertions inattendues
+        for i in range(len(current_history)-1, -1, -1):
+            it = current_history[i]
+            if isinstance(it, dict) and it.get('timestamp') == item['timestamp'] and it.get('text') == item['text']:
+                current_history.pop(i)
+    except Exception:
+        pass
+    current_history.append(item)
+    if len(current_history) > 1000:
+        current_history[:] = current_history[-1000:]
+    save_transcription_history(current_history)
+    return item
+
+

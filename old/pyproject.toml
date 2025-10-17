@@ -1,0 +1,24 @@
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311"]
+
+[tool.ruff]
+line-length = 100
+select = [
+  "F",  # pyflakes
+  "E", "W",  # pycodestyle
+  "C90",  # mccabe complexity
+  "I",  # isort
+  "N",  # pep8-naming
+]
+ignore = [
+  "E203",  # whitespace before ':' (Black compatible)
+  "E501",  # line too long (toléré pour éviter retouches massives)
+]
+target-version = "py38"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+
