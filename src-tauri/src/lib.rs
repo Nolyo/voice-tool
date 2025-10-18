@@ -32,37 +32,13 @@ fn start_recording(
     app_handle: AppHandle,
     device_index: Option<usize>,
 ) -> Result<(), String> {
-    println!("[Command] start_recording called");
-
-    // Show mini window FIRST if main window is hidden
-    if let Some(main_window) = app_handle.get_webview_window("main") {
-        let is_visible = main_window.is_visible().unwrap_or(true);
-        println!("[Command] Main window visible: {}", is_visible);
-
-        if !is_visible {
-            println!("[Command] Creating mini window...");
-            let _ = show_mini_window(app_handle.clone());
-
-            // Wait longer for the window to load and register listeners
-            // TODO: In future, use event-based waiting for "mini-window-ready" event
-            println!("[Command] Waiting for mini window to initialize...");
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-            println!("[Command] Mini window should be ready");
-        }
-    }
-
     let mut recorder = state.inner().audio_recorder.lock().unwrap();
     let result = recorder
         .start_recording(device_index, app_handle.clone())
         .map_err(|e| e.to_string());
 
     // Emit recording state change
-    println!("[Command] Emitting recording-state: true");
-    if let Err(e) = app_handle.emit("recording-state", true) {
-        eprintln!("[Command] Failed to emit recording-state: {}", e);
-    } else {
-        println!("[Command] Successfully emitted recording-state");
-    }
+    let _ = app_handle.emit("recording-state", true);
 
     result
 }
@@ -76,11 +52,6 @@ fn stop_recording(state: State<AppState>, app_handle: AppHandle) -> Result<Vec<i
     // Emit recording state change
     let _ = app_handle.emit("recording-state", false);
 
-    // Hide mini window when recording stops
-    if let Some(mini_window) = app_handle.get_webview_window("mini") {
-        let _ = mini_window.hide();
-    }
-
     result
 }
 
@@ -91,29 +62,20 @@ fn is_recording(state: State<AppState>) -> bool {
     recorder.is_recording()
 }
 
-/// Show or create the mini visualizer window
-#[tauri::command]
-fn show_mini_window(app_handle: AppHandle) -> Result<(), String> {
+/// Create the mini visualizer window at startup (hidden by default)
+fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     use tauri::WebviewWindowBuilder;
     use tauri::WebviewUrl;
 
-    // Check if mini window already exists
-    if let Some(window) = app_handle.get_webview_window("mini") {
-        window.show().map_err(|e| e.to_string())?;
-        window.set_focus().map_err(|e| e.to_string())?;
-        return Ok(());
-    }
-
-    // Create new mini window
-    WebviewWindowBuilder::new(&app_handle, "mini", WebviewUrl::App("mini.html".into()))
+    WebviewWindowBuilder::new(app, "mini", WebviewUrl::App("mini.html".into()))
         .title("Voice Tool - Mini")
         .inner_size(250.0, 100.0)
         .resizable(false)
         .decorations(false)
         .always_on_top(true)
         .transparent(true)
-        .build()
-        .map_err(|e| e.to_string())?;
+        .visible(false) // Hidden by default!
+        .build()?;
 
     Ok(())
 }
@@ -130,11 +92,13 @@ pub fn run() {
             get_audio_devices,
             start_recording,
             stop_recording,
-            is_recording,
-            show_mini_window
+            is_recording
         ])
         .setup(|app| {
             use tauri_plugin_global_shortcut::ShortcutState;
+
+            // Create mini window at startup
+            create_mini_window(&app.handle())?;
 
             // Register global shortcut: Ctrl+Shift+Space to toggle recording
             app.handle()
@@ -155,8 +119,6 @@ pub fn run() {
                                     // Stop recording
                                     let mut recorder = state.inner().audio_recorder.lock().unwrap();
                                     let _ = recorder.stop_recording();
-
-                                    // Emit recording state change
                                     let _ = app_handle.emit("recording-state", false);
 
                                     // Hide mini window
@@ -164,24 +126,14 @@ pub fn run() {
                                         let _ = mini_window.hide();
                                     }
                                 } else {
-                                    // Show mini window FIRST if main window is hidden
-                                    if let Some(main_window) = app_handle.get_webview_window("main") {
-                                        if !main_window.is_visible().unwrap_or(true) {
-                                            println!("[Shortcut] Creating mini window...");
-                                            let _ = show_mini_window(app_handle.clone());
-                                            // Give the window time to initialize and load React
-                                            println!("[Shortcut] Waiting for mini window to initialize...");
-                                            std::thread::sleep(std::time::Duration::from_millis(1000));
-                                            println!("[Shortcut] Mini window should be ready");
-                                        }
+                                    // Show mini window INSTANTLY (already created, just show it)
+                                    if let Some(mini_window) = app_handle.get_webview_window("mini") {
+                                        let _ = mini_window.show();
                                     }
 
                                     // Start recording
                                     let mut recorder = state.inner().audio_recorder.lock().unwrap();
                                     let _ = recorder.start_recording(None, app_handle.clone());
-
-                                    // Emit recording state change
-                                    println!("[Shortcut] Emitting recording-state: true");
                                     let _ = app_handle.emit("recording-state", true);
                                 }
                             }
@@ -191,9 +143,8 @@ pub fn run() {
 
             // Create system tray menu
             let show_item = MenuItem::with_id(app, "show", "Afficher", true, None::<&str>)?;
-            let show_mini_item = MenuItem::with_id(app, "show_mini", "Mini visualiseur", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &show_mini_item, &quit_item])?;
+            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
 
             // Build the tray icon
             let _tray = TrayIconBuilder::new()
@@ -205,10 +156,6 @@ pub fn run() {
                             let _ = window.show();
                             let _ = window.set_focus();
                         }
-                    }
-                    "show_mini" => {
-                        // Create/show mini window
-                        let _ = show_mini_window(app.clone());
                     }
                     "quit" => {
                         app.exit(0);

@@ -8,8 +8,6 @@ function MiniWindow() {
   const [isRecording, setIsRecording] = useState(false)
 
   useEffect(() => {
-    console.log("[Mini] Component mounted, setting up listeners...")
-
     let unlistenAudioFn: (() => void) | null = null
     let unlistenRecordingFn: (() => void) | null = null
 
@@ -17,50 +15,33 @@ function MiniWindow() {
     const setupListeners = async () => {
       try {
         // Listen to audio level events
-        console.log("[Mini] Registering audio-level listener...")
         unlistenAudioFn = await listen<number>("audio-level", (event) => {
-          console.log("[Mini] ✅ Audio level received:", event.payload)
           setAudioLevel(event.payload)
         })
-        console.log("[Mini] Audio-level listener registered")
 
         // Listen to recording state changes
-        console.log("[Mini] Registering recording-state listener...")
         unlistenRecordingFn = await listen<boolean>("recording-state", (event) => {
-          console.log("[Mini] ✅ Recording state received:", event.payload)
           setIsRecording(event.payload)
         })
-        console.log("[Mini] Recording-state listener registered")
 
         // Notify backend we're ready
-        console.log("[Mini] 🎧 All listeners registered, notifying backend...")
         await emit("mini-window-ready", {})
-        console.log("[Mini] ✅ Backend notified that mini window is ready")
       } catch (e) {
-        console.error("[Mini] ❌ Failed to setup listeners:", e)
+        console.error("Failed to setup listeners:", e)
       }
     }
 
     setupListeners()
 
     return () => {
-      console.log("[Mini] Cleaning up listeners...")
       if (unlistenAudioFn) unlistenAudioFn()
       if (unlistenRecordingFn) unlistenRecordingFn()
     }
   }, [])
 
-  // Log when state changes
-  useEffect(() => {
-    console.log("[Mini] State update - isRecording:", isRecording, "audioLevel:", audioLevel)
-  }, [isRecording, audioLevel])
-
   return (
-    <div className="dark min-h-screen bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-2 gap-2">
-      <div className="text-white text-xs">
-        Recording: {isRecording ? "YES" : "NO"} | Level: {audioLevel.toFixed(2)}
-      </div>
-      <div className="flex items-center gap-1.5 h-full">
+    <div className="dark min-h-screen bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-2">
+      <div className="flex items-center gap-1.5">
         {Array.from({ length: 12 }).map((_, i) => {
           // Create a wave effect with slight delay per bar
           const delay = i * 0.05

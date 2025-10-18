@@ -62,8 +62,6 @@ impl AudioRecorder {
         device_index: Option<usize>,
         app_handle: tauri::AppHandle<R>,
     ) -> Result<()> {
-        println!("=== START RECORDING ===");
-
         // Clear previous buffer
         {
             let mut buffer = self.buffer.lock().unwrap();
@@ -73,14 +71,10 @@ impl AudioRecorder {
         let host = cpal::default_host();
         let device = self.get_device(&host, device_index)?;
 
-        println!("Device: {:?}", device.name());
-
         // Get the default input config
         let config = device
             .default_input_config()
             .map_err(|e| anyhow!("Failed to get default input config: {}", e))?;
-
-        println!("Using audio config: {:?}", config);
 
         let sample_format = config.sample_format();
         let config: StreamConfig = config.into();
@@ -119,13 +113,11 @@ impl AudioRecorder {
         };
 
         stream.play()?;
-        println!("Stream started successfully");
 
         // Keep the stream alive by leaking it intentionally
         // The stream will stop when is_recording is set to false
         std::mem::forget(stream);
 
-        println!("Recording active");
         Ok(())
     }
 
@@ -195,30 +187,14 @@ impl AudioRecorder {
                 // Typical speech RMS is around 0.01-0.05, so we need 20-50x amplification
                 let normalized_level = (rms * 50.0).min(1.0);
 
-                // Only log occasionally to avoid spam (every 100 callbacks)
-                use std::sync::atomic::{AtomicU32, Ordering};
-                static CALLBACK_COUNT: AtomicU32 = AtomicU32::new(0);
-                let count = CALLBACK_COUNT.fetch_add(1, Ordering::Relaxed);
-                if count % 100 == 0 {
-                    println!("Audio callback #{} - RMS: {}, Normalized: {}, Samples: {}", count, rms, normalized_level, samples.len());
-                }
-
                 // Store in buffer
                 {
                     let mut buf = buffer.lock().unwrap();
                     buf.extend_from_slice(&samples);
                 }
 
-                // Emit audio level event for visualization - emit to ALL windows
-                let emit_result = app_handle.emit("audio-level", normalized_level);
-                if let Err(e) = &emit_result {
-                    eprintln!("Failed to emit audio-level event: {}", e);
-                }
-
-                // Log every 500 callbacks to confirm emission
-                if count % 500 == 0 {
-                    println!("Emitted audio-level event: {:?}", emit_result);
-                }
+                // Emit audio level event for visualization
+                let _ = app_handle.emit("audio-level", normalized_level);
             },
             err_fn,
             None,
