@@ -7,7 +7,6 @@ use tauri::Emitter;
 /// Represents an audio recording session
 pub struct AudioRecorder {
     buffer: Arc<Mutex<Vec<i16>>>,
-    stream: Option<Stream>,
     sample_rate: u32,
     is_recording: Arc<Mutex<bool>>,
 }
@@ -24,7 +23,6 @@ impl AudioRecorder {
     pub fn new() -> Self {
         Self {
             buffer: Arc::new(Mutex::new(Vec::new())),
-            stream: None,
             sample_rate: 16000, // Standard for speech recognition
             is_recording: Arc::new(Mutex::new(false)),
         }
@@ -64,6 +62,8 @@ impl AudioRecorder {
         device_index: Option<usize>,
         app_handle: tauri::AppHandle<R>,
     ) -> Result<()> {
+        println!("=== START RECORDING ===");
+
         // Clear previous buffer
         {
             let mut buffer = self.buffer.lock().unwrap();
@@ -72,6 +72,8 @@ impl AudioRecorder {
 
         let host = cpal::default_host();
         let device = self.get_device(&host, device_index)?;
+
+        println!("Device: {:?}", device.name());
 
         // Get the default input config
         let config = device
@@ -92,21 +94,21 @@ impl AudioRecorder {
 
         // Build the input stream
         let stream = match sample_format {
-            cpal::SampleFormat::I16 => self.build_input_stream::<i16>(
+            cpal::SampleFormat::I16 => self.build_input_stream::<i16, R>(
                 &device,
                 &config,
                 buffer.clone(),
                 is_recording.clone(),
                 app_handle,
             )?,
-            cpal::SampleFormat::U16 => self.build_input_stream::<u16>(
+            cpal::SampleFormat::U16 => self.build_input_stream::<u16, R>(
                 &device,
                 &config,
                 buffer.clone(),
                 is_recording.clone(),
                 app_handle,
             )?,
-            cpal::SampleFormat::F32 => self.build_input_stream::<f32>(
+            cpal::SampleFormat::F32 => self.build_input_stream::<f32, R>(
                 &device,
                 &config,
                 buffer.clone(),
@@ -117,19 +119,19 @@ impl AudioRecorder {
         };
 
         stream.play()?;
-        self.stream = Some(stream);
+        println!("Stream started successfully");
 
+        // Keep the stream alive by leaking it intentionally
+        // The stream will stop when is_recording is set to false
+        std::mem::forget(stream);
+
+        println!("Recording active");
         Ok(())
     }
 
     /// Stop recording and return the captured audio data
     pub fn stop_recording(&mut self) -> Result<Vec<i16>> {
-        // Stop the stream
-        if let Some(stream) = self.stream.take() {
-            drop(stream);
-        }
-
-        // Set recording flag to false
+        // Set recording flag to false - this will stop the stream callback
         *self.is_recording.lock().unwrap() = false;
 
         // Get the buffer data
@@ -167,6 +169,7 @@ impl AudioRecorder {
     ) -> Result<Stream>
     where
         T: cpal::Sample + cpal::SizedSample,
+        i16: cpal::FromSample<T>,
     {
         let channels = config.channels as usize;
         let err_fn = |err| eprintln!("Audio stream error: {}", err);
@@ -182,11 +185,23 @@ impl AudioRecorder {
                 let samples: Vec<i16> = data
                     .iter()
                     .step_by(channels) // Take only first channel if stereo
-                    .map(|sample| sample.to_i16())
+                    .map(|&sample| sample.to_sample::<i16>())
                     .collect();
 
                 // Calculate RMS for visualization
                 let rms = calculate_rms(&samples);
+
+                // Normalize to 0-1 range with MUCH more amplification for typical speech levels
+                // Typical speech RMS is around 0.01-0.05, so we need 20-50x amplification
+                let normalized_level = (rms * 50.0).min(1.0);
+
+                // Only log occasionally to avoid spam (every 100 callbacks)
+                use std::sync::atomic::{AtomicU32, Ordering};
+                static CALLBACK_COUNT: AtomicU32 = AtomicU32::new(0);
+                let count = CALLBACK_COUNT.fetch_add(1, Ordering::Relaxed);
+                if count % 100 == 0 {
+                    println!("Audio callback #{} - RMS: {}, Normalized: {}, Samples: {}", count, rms, normalized_level, samples.len());
+                }
 
                 // Store in buffer
                 {
@@ -194,8 +209,16 @@ impl AudioRecorder {
                     buf.extend_from_slice(&samples);
                 }
 
-                // Emit audio level event for visualization
-                let _ = app_handle.emit("audio-level", rms);
+                // Emit audio level event for visualization - emit to ALL windows
+                let emit_result = app_handle.emit("audio-level", normalized_level);
+                if let Err(e) = &emit_result {
+                    eprintln!("Failed to emit audio-level event: {}", e);
+                }
+
+                // Log every 500 callbacks to confirm emission
+                if count % 500 == 0 {
+                    println!("Emitted audio-level event: {:?}", emit_result);
+                }
             },
             err_fn,
             None,
