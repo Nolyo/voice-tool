@@ -64,15 +64,9 @@ pub fn save_audio_to_wav(samples: &[i16], sample_rate: u32) -> Result<PathBuf> {
         println!("Check your microphone settings and volume!");
     }
 
-    // Apply gain to boost the signal (multiply by 8 = +18dB)
-    // This helps with low-volume recordings
-    let amplified_samples: Vec<i16> = samples.iter().map(|&sample| {
-        let amplified = (sample as i32) * 8;
-        // Clamp to prevent overflow
-        amplified.clamp(-32768, 32767) as i16
-    }).collect();
-
-    println!("Applied 8x gain amplification to audio");
+    // Use samples directly without amplification to avoid distortion
+    // If volume is too low, user should adjust their microphone settings
+    let final_samples = samples;
 
     // Generate filename with timestamp
     let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S");
@@ -90,8 +84,8 @@ pub fn save_audio_to_wav(samples: &[i16], sample_rate: u32) -> Result<PathBuf> {
     let mut writer = WavWriter::create(&wav_path, spec)
         .context("Failed to create WAV file")?;
 
-    // Write amplified samples
-    for &sample in &amplified_samples {
+    // Write samples directly (no amplification to avoid distortion)
+    for &sample in final_samples {
         writer.write_sample(sample)
             .context("Failed to write audio sample")?;
     }

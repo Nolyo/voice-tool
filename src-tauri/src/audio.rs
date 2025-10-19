@@ -9,6 +9,7 @@ pub struct AudioRecorder {
     buffer: Arc<Mutex<Vec<i16>>>,
     sample_rate: Arc<Mutex<u32>>,
     is_recording: Arc<Mutex<bool>>,
+    stream_id: Arc<Mutex<u64>>, // Counter to identify current stream
 }
 
 /// Information about an audio device
@@ -25,6 +26,7 @@ impl AudioRecorder {
             buffer: Arc::new(Mutex::new(Vec::new())),
             sample_rate: Arc::new(Mutex::new(16000)), // Default, will be updated when recording starts
             is_recording: Arc::new(Mutex::new(false)),
+            stream_id: Arc::new(Mutex::new(0)),
         }
     }
 
@@ -64,6 +66,17 @@ impl AudioRecorder {
     ) -> Result<()> {
         println!("start_recording called with device_index: {:?}", device_index);
 
+        // Increment stream ID to invalidate old streams
+        {
+            let mut stream_id = self.stream_id.lock().unwrap();
+            *stream_id = stream_id.wrapping_add(1);
+            println!("New stream ID: {}", *stream_id);
+        }
+
+        // Set recording flag to false briefly to stop old streams
+        *self.is_recording.lock().unwrap() = false;
+        std::thread::sleep(std::time::Duration::from_millis(50)); // Give time for old callbacks to stop
+
         // Clear previous buffer
         {
             let mut buffer = self.buffer.lock().unwrap();
@@ -101,6 +114,10 @@ impl AudioRecorder {
         // Clone Arc references for the closure
         let buffer = self.buffer.clone();
         let is_recording = self.is_recording.clone();
+        let stream_id = self.stream_id.clone();
+
+        // Get current stream ID for this stream
+        let current_stream_id = *stream_id.lock().unwrap();
 
         // Set recording flag
         *is_recording.lock().unwrap() = true;
@@ -112,6 +129,8 @@ impl AudioRecorder {
                 &config,
                 buffer.clone(),
                 is_recording.clone(),
+                stream_id.clone(),
+                current_stream_id,
                 app_handle,
             )?,
             cpal::SampleFormat::U16 => self.build_input_stream::<u16, R>(
@@ -119,6 +138,8 @@ impl AudioRecorder {
                 &config,
                 buffer.clone(),
                 is_recording.clone(),
+                stream_id.clone(),
+                current_stream_id,
                 app_handle,
             )?,
             cpal::SampleFormat::F32 => self.build_input_stream::<f32, R>(
@@ -126,6 +147,8 @@ impl AudioRecorder {
                 &config,
                 buffer.clone(),
                 is_recording.clone(),
+                stream_id.clone(),
+                current_stream_id,
                 app_handle,
             )?,
             _ => return Err(anyhow!("Unsupported sample format: {:?}", sample_format)),
@@ -133,8 +156,8 @@ impl AudioRecorder {
 
         stream.play()?;
 
-        // Keep the stream alive by leaking it intentionally
-        // The stream will stop when is_recording is set to false
+        // Keep the stream alive by leaking it
+        // Old streams will stop automatically because they check the stream_id
         std::mem::forget(stream);
 
         Ok(())
@@ -144,6 +167,9 @@ impl AudioRecorder {
     pub fn stop_recording(&mut self) -> Result<(Vec<i16>, u32)> {
         // Set recording flag to false - this will stop the stream callback
         *self.is_recording.lock().unwrap() = false;
+
+        // Wait a bit for the stream to stop
+        std::thread::sleep(std::time::Duration::from_millis(50));
 
         // Get the buffer data
         let mut buffer = self.buffer.lock().unwrap();
@@ -181,6 +207,8 @@ impl AudioRecorder {
         config: &StreamConfig,
         buffer: Arc<Mutex<Vec<i16>>>,
         is_recording: Arc<Mutex<bool>>,
+        stream_id: Arc<Mutex<u64>>,
+        my_stream_id: u64,
         app_handle: tauri::AppHandle<R>,
     ) -> Result<Stream>
     where
@@ -193,16 +221,38 @@ impl AudioRecorder {
         let stream = device.build_input_stream(
             config,
             move |data: &[T], _: &cpal::InputCallbackInfo| {
+                // Check if this stream is still the active one
+                if *stream_id.lock().unwrap() != my_stream_id {
+                    return; // This stream has been superseded, ignore callback
+                }
+
                 if !*is_recording.lock().unwrap() {
                     return;
                 }
 
-                // Convert samples to i16 and store in buffer
-                let samples: Vec<i16> = data
-                    .iter()
-                    .step_by(channels) // Take only first channel if stereo
-                    .map(|&sample| sample.to_sample::<i16>())
-                    .collect();
+                // Convert samples to i16 and mix channels to mono
+                let samples: Vec<i16> = if channels == 1 {
+                    // Mono: direct conversion
+                    data.iter()
+                        .map(|&sample| sample.to_sample::<i16>())
+                        .collect()
+                } else {
+                    // Stereo/Multi-channel: mix all channels by averaging
+                    data.chunks_exact(channels)
+                        .map(|chunk| {
+                            let sum: i32 = chunk.iter()
+                                .map(|&s| s.to_sample::<i16>() as i32)
+                                .sum();
+                            (sum / channels as i32) as i16
+                        })
+                        .collect()
+                };
+
+                // Debug: log first few samples on first callback
+                static FIRST_LOG: std::sync::Once = std::sync::Once::new();
+                FIRST_LOG.call_once(|| {
+                    println!("First 10 i16 samples: {:?}", &samples[..samples.len().min(10)]);
+                });
 
                 // Calculate RMS for visualization
                 let rms = calculate_rms(&samples);
