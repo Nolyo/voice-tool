@@ -1,177 +1,204 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { invoke } from "@tauri-apps/api/core"
-import { listen, type UnlistenFn } from "@tauri-apps/api/event"
-import { DashboardHeader } from "./dashboard-header"
-import { RecordingCard } from "./recording-card"
-import { TranscriptionList } from "./transcription-list"
-import { TranscriptionDetails } from "./transcription-details"
-import { useSettings } from "@/hooks/useSettings"
-import { useTranscriptionHistory, type Transcription } from "@/hooks/useTranscriptionHistory"
-import { useSoundEffects } from "@/hooks/useSoundEffects"
+import { useState, useEffect, useCallback, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { DashboardHeader } from "./dashboard-header";
+import { RecordingCard } from "./recording-card";
+import { TranscriptionList } from "./transcription-list";
+import { TranscriptionDetails } from "./transcription-details";
+import { useSettings } from "@/hooks/useSettings";
+import {
+  useTranscriptionHistory,
+  type Transcription,
+} from "@/hooks/useTranscriptionHistory";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type TranscriptionInvokeResult = {
-  text: string
-  audioPath: string
-}
+  text: string;
+  audioPath: string;
+};
 
 export default function Dashboard() {
-  const [isRecording, setIsRecording] = useState(false)
-  const [isTranscribing, setIsTranscribing] = useState(false)
-  const [selectedTranscription, setSelectedTranscription] = useState<Transcription | null>(null)
-  const { settings } = useSettings()
-  const { playStart, playStop, playSuccess } = useSoundEffects(settings.enable_sounds)
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [selectedTranscription, setSelectedTranscription] =
+    useState<Transcription | null>(null);
+  const { settings } = useSettings();
+  const { playStart, playStop, playSuccess } = useSoundEffects(
+    settings.enable_sounds
+  );
   const {
     transcriptions,
     addTranscription,
     deleteTranscription,
-    clearHistory
-  } = useTranscriptionHistory()
-  const previousRecordingRef = useRef(isRecording)
+    clearHistory,
+  } = useTranscriptionHistory();
+  const previousRecordingRef = useRef(isRecording);
 
   const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text)
-  }
+    navigator.clipboard.writeText(text);
+  };
 
   const handleDelete = async (id: string) => {
     // If deleting the selected transcription, deselect it
     if (selectedTranscription?.id === id) {
-      setSelectedTranscription(null)
+      setSelectedTranscription(null);
     }
-    await deleteTranscription(id)
-  }
+    await deleteTranscription(id);
+  };
 
   const handleClearAll = async () => {
-    setSelectedTranscription(null)
-    await clearHistory()
-  }
+    setSelectedTranscription(null);
+    await clearHistory();
+  };
 
   // Function to transcribe audio (used by both button and keyboard shortcuts)
-  const transcribeAudio = useCallback(async (audioData: number[], sampleRate: number) => {
-    setIsTranscribing(true)
-    try {
-      const result = await invoke<TranscriptionInvokeResult>("transcribe_audio", {
-        audioSamples: audioData,
-        sampleRate: sampleRate,
-        apiKey: settings.openai_api_key,
-        language: settings.language,
-        keepLast: settings.recordings_keep_last
-      })
+  const transcribeAudio = useCallback(
+    async (audioData: number[], sampleRate: number) => {
+      setIsTranscribing(true);
+      try {
+        const result = await invoke<TranscriptionInvokeResult>(
+          "transcribe_audio",
+          {
+            audioSamples: audioData,
+            sampleRate: sampleRate,
+            apiKey: settings.openai_api_key,
+            language: settings.language,
+            keepLast: settings.recordings_keep_last,
+          }
+        );
 
-      console.log("Transcription:", result.text)
+        console.log("Transcription:", result.text);
 
-      // Add to history
-      if (result.text && result.text.trim()) {
-        await addTranscription(result.text, 'whisper', result.audioPath)
-        playSuccess()
+        // Add to history
+        if (result.text && result.text.trim()) {
+          await addTranscription(result.text, "whisper", result.audioPath);
+          playSuccess();
+        }
+
+        // Copy to clipboard and paste if enabled
+        if (settings.paste_at_cursor && result.text) {
+          // Use clipboard plugin to write text
+          const { writeText } = await import(
+            "@tauri-apps/plugin-clipboard-manager"
+          );
+          await writeText(result.text);
+
+          // Simulate Ctrl+V
+          await invoke("paste_text_to_active_window", { text: result.text });
+        }
+      } catch (error) {
+        console.error("Transcription error:", error);
+        alert(`Erreur de transcription: ${error}`);
+      } finally {
+        setIsTranscribing(false);
       }
-
-      // Copy to clipboard and paste if enabled
-      if (settings.paste_at_cursor && result.text) {
-        // Use clipboard plugin to write text
-        const { writeText } = await import("@tauri-apps/plugin-clipboard-manager")
-        await writeText(result.text)
-
-        // Simulate Ctrl+V
-        await invoke("paste_text_to_active_window", { text: result.text })
-      }
-    } catch (error) {
-      console.error("Transcription error:", error)
-      alert(`Erreur de transcription: ${error}`)
-    } finally {
-      setIsTranscribing(false)
-    }
-  }, [settings, addTranscription, playSuccess])
+    },
+    [settings, addTranscription, playSuccess]
+  );
 
   // Keep latest transcription callback without re-subscribing window listeners
-  const transcribeAudioRef = useRef(transcribeAudio)
+  const transcribeAudioRef = useRef(transcribeAudio);
 
   useEffect(() => {
-    transcribeAudioRef.current = transcribeAudio
-  }, [transcribeAudio])
+    transcribeAudioRef.current = transcribeAudio;
+  }, [transcribeAudio]);
 
   // Listen for audio captured from keyboard shortcuts
   useEffect(() => {
-    let unlisten: UnlistenFn | null = null
-    let disposed = false
+    let unlisten: UnlistenFn | null = null;
+    let disposed = false;
 
     const setupListener = async () => {
       try {
-        const listener = await listen<{ samples: number[], sampleRate: number }>("audio-captured", (event) => {
-          console.log("Audio captured from keyboard shortcut")
-          const callback = transcribeAudioRef.current
+        const listener = await listen<{
+          samples: number[];
+          sampleRate: number;
+        }>("audio-captured", (event) => {
+          console.log("Audio captured from keyboard shortcut");
+          const callback = transcribeAudioRef.current;
           if (callback) {
-            callback(event.payload.samples, event.payload.sampleRate)
+            callback(event.payload.samples, event.payload.sampleRate);
           }
-        })
+        });
 
         if (disposed) {
-          listener()
+          listener();
         } else {
-          unlisten = listener
+          unlisten = listener;
         }
       } catch (error) {
-        console.error("Failed to register audio-captured listener:", error)
+        console.error("Failed to register audio-captured listener:", error);
       }
-    }
+    };
 
-    setupListener()
+    setupListener();
 
     return () => {
-      disposed = true
+      disposed = true;
       if (unlisten) {
-        unlisten()
-        unlisten = null
+        unlisten();
+        unlisten = null;
       }
-    }
-  }, [])
+    };
+  }, []);
 
   useEffect(() => {
     const unlisten = listen<boolean>("recording-state", (event) => {
-      setIsRecording(event.payload)
-    })
+      setIsRecording(event.payload);
+    });
 
     return () => {
-      unlisten.then(fn => fn())
-    }
-  }, [])
+      unlisten.then((fn) => fn());
+    };
+  }, []);
 
   useEffect(() => {
-    const previous = previousRecordingRef.current
+    const previous = previousRecordingRef.current;
     if (previous !== isRecording) {
       if (isRecording) {
-        playStart()
+        playStart();
       } else {
-        playStop()
+        playStop();
       }
     }
-    previousRecordingRef.current = isRecording
-  }, [isRecording, playStart, playStop])
+    previousRecordingRef.current = isRecording;
+  }, [isRecording, playStart, playStop]);
 
   const handleToggleRecording = async () => {
     try {
       if (isRecording) {
         // Stop recording
-        const [audioData, sampleRate] = await invoke<[number[], number]>("stop_recording")
-        console.log("Audio data captured:", audioData.length, "samples at", sampleRate, "Hz")
-        setIsRecording(false)
+        const [audioData, sampleRate] = await invoke<[number[], number]>(
+          "stop_recording"
+        );
+        console.log(
+          "Audio data captured:",
+          audioData.length,
+          "samples at",
+          sampleRate,
+          "Hz"
+        );
+        setIsRecording(false);
 
         // Transcribe audio
         if (audioData.length > 0) {
-          await transcribeAudio(audioData, sampleRate)
+          await transcribeAudio(audioData, sampleRate);
         }
       } else {
         // Start recording with selected device from settings
-        await invoke("start_recording", { deviceIndex: settings.input_device_index })
-        setIsRecording(true)
+        await invoke("start_recording", {
+          deviceIndex: settings.input_device_index,
+        });
+        setIsRecording(true);
       }
     } catch (error) {
-      console.error("Recording error:", error)
-      alert(`Erreur d'enregistrement: ${error}`)
-      setIsRecording(false)
+      console.error("Recording error:", error);
+      alert(`Erreur d'enregistrement: ${error}`);
+      setIsRecording(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,7 +213,10 @@ export default function Dashboard() {
               isTranscribing={isTranscribing}
               onToggleRecording={handleToggleRecording}
             />
-            <TranscriptionDetails transcription={selectedTranscription} onCopy={handleCopy} />
+            <TranscriptionDetails
+              transcription={selectedTranscription}
+              onCopy={handleCopy}
+            />
           </div>
 
           {/* Second row: Transcription list full width */}
@@ -201,5 +231,5 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
-  )
+  );
 }

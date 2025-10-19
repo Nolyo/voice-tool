@@ -258,7 +258,7 @@ export function SettingTabs() {
     );
   }
   return (
-    <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+    <div className="space-y-6">
       {/* Audio Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-4">
