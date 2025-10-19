@@ -1,48 +1,46 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
 import { DashboardHeader } from "./dashboard-header"
 import { RecordingCard } from "./recording-card"
-import { TranscriptionList, type Transcription } from "./transcription-list"
+import { TranscriptionList } from "./transcription-list"
 import { TranscriptionDetails } from "./transcription-details"
 import { useSettings } from "@/hooks/useSettings"
+import { useTranscriptionHistory, type Transcription } from "@/hooks/useTranscriptionHistory"
 
 export default function Dashboard() {
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [selectedTranscription, setSelectedTranscription] = useState<Transcription | null>(null)
   const { settings } = useSettings()
-
-  // Sample data - replace with real data
-  const transcriptions: Transcription[] = [
-    {
-      id: "1",
-      date: "2025-10-17",
-      time: "13:07:10",
-      text: "Des applications, des bases de données, etc. C'est très moderne.",
-    },
-    {
-      id: "2",
-      date: "2025-10-17",
-      time: "13:06:49",
-      text: "C'est une application open source qui permet de gérer plusieurs services dans son site web.",
-    },
-    {
-      id: "3",
-      date: "2025-10-17",
-      time: "13:06:09",
-      text: "C'est une application open source qui permet.",
-    },
-  ]
+  const {
+    transcriptions,
+    addTranscription,
+    deleteTranscription,
+    clearHistory
+  } = useTranscriptionHistory()
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text)
   }
 
+  const handleDelete = async (id: string) => {
+    // If deleting the selected transcription, deselect it
+    if (selectedTranscription?.id === id) {
+      setSelectedTranscription(null)
+    }
+    await deleteTranscription(id)
+  }
+
+  const handleClearAll = async () => {
+    setSelectedTranscription(null)
+    await clearHistory()
+  }
+
   // Function to transcribe audio (used by both button and keyboard shortcuts)
-  const transcribeAudio = async (audioData: number[], sampleRate: number) => {
+  const transcribeAudio = useCallback(async (audioData: number[], sampleRate: number) => {
     setIsTranscribing(true)
     try {
       const transcription = await invoke<string>("transcribe_audio", {
@@ -55,6 +53,11 @@ export default function Dashboard() {
 
       console.log("Transcription:", transcription)
 
+      // Add to history
+      if (transcription && transcription.trim()) {
+        await addTranscription(transcription, 'whisper')
+      }
+
       // Copy to clipboard and paste if enabled
       if (settings.paste_at_cursor && transcription) {
         // Use clipboard plugin to write text
@@ -64,15 +67,13 @@ export default function Dashboard() {
         // Simulate Ctrl+V
         await invoke("paste_text_to_active_window", { text: transcription })
       }
-
-      // TODO: Add to history
     } catch (error) {
       console.error("Transcription error:", error)
       alert(`Erreur de transcription: ${error}`)
     } finally {
       setIsTranscribing(false)
     }
-  }
+  }, [settings, addTranscription])
 
   // Listen for audio captured from keyboard shortcuts
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function Dashboard() {
     return () => {
       unlisten.then(fn => fn())
     }
-  }, [settings]) // Re-create listener when settings change
+  }, [transcribeAudio]) // Re-create listener when transcribeAudio changes
 
   const handleToggleRecording = async () => {
     try {
@@ -132,6 +133,8 @@ export default function Dashboard() {
             selectedId={selectedTranscription?.id}
             onSelectTranscription={setSelectedTranscription}
             onCopy={handleCopy}
+            onDelete={handleDelete}
+            onClearAll={handleClearAll}
           />
         </div>
       </div>

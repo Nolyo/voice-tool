@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Search, Copy, Play, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,19 +8,15 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { SettingTabs } from "./setting-tabs";
-
-export interface Transcription {
-  id: string;
-  date: string;
-  time: string;
-  text: string;
-}
+import { type Transcription } from "@/hooks/useTranscriptionHistory";
 
 interface TranscriptionListProps {
   transcriptions: Transcription[];
   selectedId?: string;
   onSelectTranscription: (transcription: Transcription) => void;
   onCopy: (text: string) => void;
+  onDelete?: (id: string) => void;
+  onClearAll?: () => void;
 }
 
 export function TranscriptionList({
@@ -28,8 +24,22 @@ export function TranscriptionList({
   selectedId,
   onSelectTranscription,
   onCopy,
+  onDelete,
+  onClearAll,
 }: TranscriptionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter transcriptions based on search query
+  const filteredTranscriptions = useMemo(() => {
+    if (!searchQuery.trim()) return transcriptions;
+
+    const lowerQuery = searchQuery.toLowerCase();
+    return transcriptions.filter(t =>
+      t.text.toLowerCase().includes(lowerQuery) ||
+      t.date.includes(searchQuery) ||
+      t.time.includes(searchQuery)
+    );
+  }, [transcriptions, searchQuery]);
 
   return (
     <Card className="p-6">
@@ -56,7 +66,13 @@ export function TranscriptionList({
 
           {/* Transcriptions */}
           <div className="space-y-2 max-h-[500px] overflow-y-auto">
-            {transcriptions.map((transcription) => (
+            {filteredTranscriptions.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">
+                <p>{searchQuery ? "Aucune transcription trouvée" : "Aucune transcription pour le moment"}</p>
+                <p className="text-sm mt-2">Enregistrez votre premier audio pour commencer</p>
+              </div>
+            ) : (
+              filteredTranscriptions.map((transcription) => (
               <button
                 key={transcription.id}
                 onClick={() => onSelectTranscription(transcription)}
@@ -91,22 +107,48 @@ export function TranscriptionList({
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="sm">
-                      <Play className="w-4 h-4" />
-                    </Button>
+                    {onDelete && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          if (confirm("Supprimer cette transcription ?")) {
+                            onDelete(transcription.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </button>
-            ))}
+            )))}
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" size="sm">
-              <Trash2 className="w-4 h-4 mr-2" />
-              Tout effacer
-            </Button>
-          </div>
+          {transcriptions.length > 0 && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <span className="text-sm text-muted-foreground">
+                {transcriptions.length} transcription{transcriptions.length > 1 ? 's' : ''}
+              </span>
+              {onClearAll && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (confirm(`Supprimer toutes les ${transcriptions.length} transcriptions ?`)) {
+                      onClearAll();
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Tout effacer
+                </Button>
+              )}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="parametres" className="space-y-6">
