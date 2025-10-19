@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import ReactDOM from "react-dom/client"
 import { listen, emit } from "@tauri-apps/api/event"
 import "./App.css"
@@ -6,6 +6,36 @@ import "./App.css"
 function MiniWindow() {
   const [audioLevel, setAudioLevel] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
+  const barModifiers = useMemo(
+    () => Array.from({ length: 16 }, () => 0.7 + Math.random() * 0.3),
+    []
+  )
+
+  useEffect(() => {
+    const rootEl = document.documentElement
+    const bodyEl = document.body
+    const previousRootBg = rootEl.style.backgroundColor
+    const previousBodyBg = bodyEl.style.backgroundColor
+
+    bodyEl.classList.add("mini-window-body")
+    rootEl.style.backgroundColor = "transparent"
+    bodyEl.style.backgroundColor = "transparent"
+
+    return () => {
+      bodyEl.classList.remove("mini-window-body")
+      if (previousRootBg) {
+        rootEl.style.backgroundColor = previousRootBg
+      } else {
+        rootEl.style.removeProperty("background-color")
+      }
+
+      if (previousBodyBg) {
+        bodyEl.style.backgroundColor = previousBodyBg
+      } else {
+        bodyEl.style.removeProperty("background-color")
+      }
+    }
+  }, [])
 
   useEffect(() => {
     let unlistenAudioFn: (() => void) | null = null
@@ -39,35 +69,47 @@ function MiniWindow() {
     }
   }, [])
 
-  return (
-    <div className="dark min-h-screen bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-2">
-      <div className="flex items-center gap-1.5">
-        {Array.from({ length: 12 }).map((_, i) => {
-          // Create a wave effect with slight delay per bar
-          const delay = i * 0.05
-          const randomFactor = 0.7 + Math.random() * 0.3
-          const minHeight = 15
-          const maxHeight = 60 // Increased from 50
-          // Amplify the audio level even more for visualization
-          const amplifiedLevel = Math.min(audioLevel * 2, 1.0)
-          const height = isRecording
-            ? Math.max(minHeight, amplifiedLevel * maxHeight * randomFactor + minHeight)
-            : minHeight
+  const bars = useMemo(() => {
+    const BAR_COUNT = barModifiers.length
+    const MIN_HEIGHT = 6
+    const MAX_HEIGHT = 36
+    const AMPLIFICATION = 2.4
 
-          return (
-            <div
-              key={i}
-              className="w-3 rounded-full transition-all duration-100"
-              style={{
-                height: `${height}px`,
-                backgroundColor: isRecording
-                  ? `rgba(239, 68, 68, ${0.7 + amplifiedLevel * 0.3})`
-                  : "rgba(100, 116, 139, 0.5)",
-                transitionDelay: `${delay}s`,
-              }}
-            />
-          )
-        })}
+    return Array.from({ length: BAR_COUNT }).map((_, i) => {
+      const delay = i * 0.03
+      const modifier = barModifiers[i]
+      const easedLevel = Math.pow(Math.min(audioLevel * AMPLIFICATION, 1.0), 0.75)
+      const dynamicHeight = easedLevel * (MAX_HEIGHT - MIN_HEIGHT) * modifier + MIN_HEIGHT
+      const height = isRecording ? dynamicHeight : MIN_HEIGHT
+
+      const color = isRecording
+        ? `linear-gradient(180deg, rgba(248, 113, 113, 0.95) 0%, rgba(248, 113, 113, 0.6) 100%)`
+        : `linear-gradient(180deg, rgba(148, 163, 184, 0.4) 0%, rgba(148, 163, 184, 0.2) 100%)`
+
+      return (
+        <div
+          key={i}
+          className="rounded-full transition-all duration-150 ease-out"
+          style={{
+            width: "3px",
+            height: `${height}px`,
+            backgroundImage: color,
+            transitionDelay: `${delay}s`,
+          }}
+        />
+      )
+    })
+  }, [audioLevel, barModifiers, isRecording])
+
+  return (
+    <div className="dark flex min-h-screen w-full items-center justify-center bg-transparent">
+      <div className="mini-shell flex items-center gap-3">
+        <span
+          className={`h-2.5 w-2.5 rounded-full ${isRecording ? "bg-red-400 animate-pulse" : "bg-slate-500/70"}`}
+        />
+        <div className="flex items-end gap-[3px] h-9">
+          {bars}
+        </div>
       </div>
     </div>
   )

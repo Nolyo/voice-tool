@@ -213,7 +213,7 @@ fn position_mini_window<R: Runtime>(app_handle: &AppHandle<R>, window: &WebviewW
     let window_size = window
         .outer_size()
         .ok()
-        .unwrap_or_else(|| PhysicalSize::new(250, 100));
+        .unwrap_or_else(|| PhysicalSize::new(320, 76));
 
     let target_monitor = app_handle
         .get_webview_window("main")
@@ -325,7 +325,7 @@ fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::
 
     let mini = WebviewWindowBuilder::new(app, "mini", WebviewUrl::App("mini.html".into()))
         .title("Voice Tool - Mini")
-        .inner_size(250.0, 100.0)
+        .inner_size(320.0, 76.0)
         .resizable(false)
         .decorations(false)
         .always_on_top(true)
