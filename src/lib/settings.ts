@@ -24,8 +24,8 @@ export interface AppSettings {
     paste_at_cursor: boolean;
 
     // System
-    auto_start: boolean;
     recordings_keep_last: number;
+    start_minimized_on_boot: boolean;
     main_window_state: string;
     main_window_geometry: string;
     history_cards_render_limit: number;
@@ -65,8 +65,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     paste_at_cursor: true,
 
     // System
-    auto_start: true,
     recordings_keep_last: 25,
+    start_minimized_on_boot: true,
     main_window_state: "normal",
     main_window_geometry: "800x600+0+0",
     history_cards_render_limit: 50,

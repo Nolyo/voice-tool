@@ -212,6 +212,20 @@ export function SettingTabs() {
   const { settings, isLoaded, updateSetting } = useSettings();
   const { devices, isLoading: devicesLoading, error: devicesError, refresh } = useAudioDevices();
   const [isUpdatingAutostart, setIsUpdatingAutostart] = useState(false);
+  const [autoStartEnabled, setAutoStartEnabled] = useState(false);
+
+  // Load autostart state from registry on mount
+  useEffect(() => {
+    const loadAutostartState = async () => {
+      try {
+        const enabled = await invoke<boolean>("is_autostart_enabled");
+        setAutoStartEnabled(enabled);
+      } catch (error) {
+        console.error("Failed to load autostart state:", error);
+      }
+    };
+    loadAutostartState();
+  }, []);
 
   const handleHotkeyChange = useCallback(
     async (
@@ -483,31 +497,51 @@ export function SettingTabs() {
 
         <div className="pl-10">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex items-center space-x-3">
-              <Checkbox
-                id="auto-start"
-                checked={settings.auto_start}
-                disabled={isUpdatingAutostart}
-                onCheckedChange={async (checked) => {
-                  setIsUpdatingAutostart(true);
-                  try {
-                    await invoke("set_autostart", { enable: checked as boolean });
-                    await updateSetting("auto_start", checked as boolean);
-                  } catch (error) {
-                    console.error("Failed to update autostart:", error);
-                    alert(`Erreur lors de la mise à jour du démarrage automatique: ${error}`);
-                  } finally {
-                    setIsUpdatingAutostart(false);
-                  }
-                }}
-              />
-              <Label
-                htmlFor="auto-start"
-                className="text-sm text-foreground cursor-pointer"
-              >
-                Démarrer automatiquement avec Windows
-                {isUpdatingAutostart && " (mise à jour...)"}
-              </Label>
+            <div className="flex flex-col space-y-3">
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="auto-start"
+                  checked={autoStartEnabled}
+                  disabled={isUpdatingAutostart}
+                  onCheckedChange={async (checked) => {
+                    setIsUpdatingAutostart(true);
+                    try {
+                      await invoke("set_autostart", { enable: checked as boolean });
+                      setAutoStartEnabled(checked as boolean);
+                    } catch (error) {
+                      console.error("Failed to update autostart:", error);
+                      alert(`Erreur lors de la mise à jour du démarrage automatique: ${error}`);
+                    } finally {
+                      setIsUpdatingAutostart(false);
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor="auto-start"
+                  className="text-sm text-foreground cursor-pointer"
+                >
+                  Démarrer automatiquement avec Windows
+                  {isUpdatingAutostart && " (mise à jour...)"}
+                </Label>
+              </div>
+
+              {autoStartEnabled && (
+                <div className="flex items-center space-x-3 pl-7">
+                  <Checkbox
+                    id="start-minimized"
+                    checked={settings.start_minimized_on_boot}
+                    onCheckedChange={(checked) =>
+                      updateSetting("start_minimized_on_boot", checked as boolean)
+                    }
+                  />
+                  <Label
+                    htmlFor="start-minimized"
+                    className="text-sm text-muted-foreground cursor-pointer"
+                  >
+                    Démarrer minimisé dans la barre système
+                  </Label>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

@@ -102,6 +102,17 @@ fn log_separator() {
     tracing::info!("────────────────────────────────────────────────────────────────");
 }
 
+/// Check if autostart is currently enabled
+#[tauri::command]
+fn is_autostart_enabled(app_handle: AppHandle) -> Result<bool, String> {
+    use tauri_plugin_autostart::ManagerExt;
+
+    let autostart_manager = app_handle.autolaunch();
+    autostart_manager
+        .is_enabled()
+        .map_err(|e| format!("Impossible de vérifier l'état du démarrage automatique: {}", e))
+}
+
 /// Enable or disable autostart on system boot
 #[tauri::command]
 fn set_autostart(app_handle: AppHandle, enable: bool) -> Result<(), String> {
@@ -689,7 +700,7 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec![])
+            Some(vec!["--minimized"])
         ))
         .manage(AppState {
             audio_recorder: Mutex::new(AudioRecorder::new()),
@@ -703,6 +714,7 @@ pub fn run() {
             is_recording,
             exit_app,
             log_separator,
+            is_autostart_enabled,
             set_autostart,
             update_hotkeys,
             transcribe_audio,
@@ -716,10 +728,37 @@ pub fn run() {
             // Create mini window at startup
             create_mini_window(&app.handle())?;
 
+            // Check if app was started with --minimized flag
+            let args: Vec<String> = std::env::args().collect();
+            let has_minimized_flag = args.iter().any(|arg| arg == "--minimized" || arg == "--hidden");
+
             // Prepare settings store to restore window state
             let window_store = StoreBuilder::new(app, "settings.json").build()?;
+
+            // Check if user wants to start minimized on boot
+            let should_start_minimized = if has_minimized_flag {
+                // App was started with --minimized, check the user's preference
+                let start_minimized = window_store.get("settings")
+                    .and_then(|settings_root| {
+                        settings_root.get("settings")
+                            .and_then(|settings_obj| {
+                                settings_obj.get("start_minimized_on_boot")
+                                    .and_then(|v| v.as_bool())
+                            })
+                    })
+                    .unwrap_or(true); // Default to true if setting not found
+                start_minimized
+            } else {
+                false
+            };
+
             if let Some(window) = app.get_webview_window("main") {
-                restore_window_state(&window, &window_store);
+                // Show window and restore state only if NOT starting minimized
+                if !should_start_minimized {
+                    restore_window_state(&window, &window_store);
+                    let _ = window.show();
+                }
+                // If should_start_minimized is true, window stays hidden (default state from config)
 
                 let events_store = window_store.clone();
                 let events_window = window.clone();

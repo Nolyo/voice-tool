@@ -3,7 +3,6 @@
     "allow": [
       "Bash(cargo build:*)",
       "Bash(pnpm tauri build:*)",
-      "Bash(pnpm tauri dev:*)",
       "Bash(pnpm build:*)",
       "Bash(cargo check:*)",
       "Bash(pnpm add:*)",
@@ -11,10 +10,10 @@
       "Bash(findstr /I \"node.exe\")",
       "Bash(netstat -ano)",
       "Bash(findstr :1420)",
-      "Bash(taskkill /F /PID 24660)",
+      "Bash(taskkill //F //PID *)",
       "WebFetch(domain:v2.tauri.app)"
     ],
-    "deny": [],
+    "deny": ["Bash(pnpm tauri dev:*)"],
     "ask": []
   }
 }
