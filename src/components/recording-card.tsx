@@ -7,10 +7,11 @@ import { AudioVisualizer } from "./audio-visualizer"
 
 interface RecordingCardProps {
   isRecording: boolean
+  isTranscribing?: boolean
   onToggleRecording: () => void
 }
 
-export function RecordingCard({ isRecording, onToggleRecording }: RecordingCardProps) {
+export function RecordingCard({ isRecording, isTranscribing = false, onToggleRecording }: RecordingCardProps) {
   const [duration, setDuration] = useState(0)
 
   useEffect(() => {
@@ -61,12 +62,18 @@ export function RecordingCard({ isRecording, onToggleRecording }: RecordingCardP
 
         <div className="text-center space-y-2">
           <p className="text-lg font-medium text-foreground">
-            {isRecording ? "Enregistrement en cours..." : "Cliquez pour commencer"}
+            {isTranscribing
+              ? "Transcription en cours..."
+              : isRecording
+                ? "Enregistrement en cours..."
+                : "Cliquez pour commencer"}
           </p>
           <p className="text-sm text-muted-foreground">
-            {isRecording
-              ? "Parlez clairement dans votre microphone"
-              : "Votre transcription apparaîtra automatiquement"}
+            {isTranscribing
+              ? "Traitement de votre audio avec OpenAI Whisper..."
+              : isRecording
+                ? "Parlez clairement dans votre microphone"
+                : "Votre transcription apparaîtra automatiquement"}
           </p>
         </div>
 

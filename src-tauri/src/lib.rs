@@ -1,6 +1,8 @@
 mod audio;
+mod transcription;
 
 use audio::{AudioDeviceInfo, AudioRecorder};
+use transcription::{save_audio_to_wav, cleanup_old_recordings, transcribe_with_openai};
 use std::sync::Mutex;
 use tauri::{
     AppHandle, Emitter, Manager, State,
@@ -43,9 +45,9 @@ fn start_recording(
     result
 }
 
-/// Stop recording and return the audio data
+/// Stop recording and return the audio data with sample rate
 #[tauri::command]
-fn stop_recording(state: State<AppState>, app_handle: AppHandle) -> Result<Vec<i16>, String> {
+fn stop_recording(state: State<AppState>, app_handle: AppHandle) -> Result<(Vec<i16>, u32), String> {
     let mut recorder = state.inner().audio_recorder.lock().unwrap();
     let result = recorder.stop_recording().map_err(|e| e.to_string());
 
@@ -66,6 +68,55 @@ fn is_recording(state: State<AppState>) -> bool {
 #[tauri::command]
 fn exit_app(app_handle: AppHandle) {
     app_handle.exit(0);
+}
+
+/// Transcribe audio samples using the configured provider
+#[tauri::command]
+async fn transcribe_audio(
+    audio_samples: Vec<i16>,
+    sample_rate: u32,
+    api_key: String,
+    language: String,
+    keep_last: usize,
+) -> Result<String, String> {
+    println!("transcribe_audio called with {} samples at {} Hz", audio_samples.len(), sample_rate);
+
+    // Save audio to WAV file
+    let wav_path = save_audio_to_wav(&audio_samples, sample_rate)
+        .map_err(|e| format!("Failed to save audio: {}", e))?;
+
+    // Transcribe using OpenAI Whisper
+    let transcription = transcribe_with_openai(&wav_path, &api_key, &language)
+        .await
+        .map_err(|e| format!("Transcription failed: {}", e))?;
+
+    // Clean up old recordings
+    let _ = cleanup_old_recordings(keep_last);
+
+    Ok(transcription)
+}
+
+/// Paste text to the active window by simulating Ctrl+V
+#[tauri::command]
+fn paste_text_to_active_window(_text: String) -> Result<(), String> {
+    use enigo::{Enigo, Key, Keyboard, Settings};
+    use std::thread;
+    use std::time::Duration;
+
+    // Copy text to clipboard first using the clipboard plugin
+    // (This will be handled by the clipboard-manager plugin)
+
+    // Small delay to ensure clipboard is set
+    thread::sleep(Duration::from_millis(50));
+
+    // Simulate Ctrl+V
+    let mut enigo = Enigo::new(&Settings::default()).map_err(|e| format!("Failed to initialize keyboard: {}", e))?;
+
+    enigo.key(Key::Control, enigo::Direction::Press).map_err(|e| e.to_string())?;
+    enigo.key(Key::Unicode('v'), enigo::Direction::Click).map_err(|e| e.to_string())?;
+    enigo.key(Key::Control, enigo::Direction::Release).map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 /// Create the mini visualizer window at startup (hidden by default)
@@ -91,6 +142,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(AppState {
             audio_recorder: Mutex::new(AudioRecorder::new()),
         })
@@ -100,7 +152,9 @@ pub fn run() {
             start_recording,
             stop_recording,
             is_recording,
-            exit_app
+            exit_app,
+            transcribe_audio,
+            paste_text_to_active_window
         ])
         .setup(|app| {
             use tauri_plugin_global_shortcut::ShortcutState;
@@ -148,14 +202,29 @@ pub fn run() {
                                     };
 
                                     if is_recording {
-                                        // Stop recording
+                                        // Stop recording and get audio data
                                         let mut recorder = state.inner().audio_recorder.lock().unwrap();
-                                        let _ = recorder.stop_recording();
-                                        let _ = app_handle.emit("recording-state", false);
+                                        match recorder.stop_recording() {
+                                            Ok((audio_data, sample_rate)) => {
+                                                drop(recorder); // Release lock before emitting events
 
-                                        // Hide mini window
-                                        if let Some(mini_window) = app_handle.get_webview_window("mini") {
-                                            let _ = mini_window.hide();
+                                                // Emit recording state change
+                                                let _ = app_handle.emit("recording-state", false);
+
+                                                // Emit audio data for transcription
+                                                let _ = app_handle.emit("audio-captured", serde_json::json!({
+                                                    "samples": audio_data,
+                                                    "sampleRate": sample_rate
+                                                }));
+
+                                                // Hide mini window
+                                                if let Some(mini_window) = app_handle.get_webview_window("mini") {
+                                                    let _ = mini_window.hide();
+                                                }
+                                            }
+                                            Err(e) => {
+                                                eprintln!("Error stopping recording: {}", e);
+                                            }
                                         }
                                     } else {
                                         // Show mini window INSTANTLY (already created, just show it)
@@ -186,15 +255,30 @@ pub fn run() {
                                         let _ = app_handle.emit("recording-state", true);
                                     }
                                 } else if event.state == ShortcutState::Released {
-                                    // Stop recording
+                                    // Stop recording and get audio data
                                     let mut recorder = state.inner().audio_recorder.lock().unwrap();
                                     if recorder.is_recording() {
-                                        let _ = recorder.stop_recording();
-                                        let _ = app_handle.emit("recording-state", false);
+                                        match recorder.stop_recording() {
+                                            Ok((audio_data, sample_rate)) => {
+                                                drop(recorder); // Release lock before emitting events
 
-                                        // Hide mini window
-                                        if let Some(mini_window) = app_handle.get_webview_window("mini") {
-                                            let _ = mini_window.hide();
+                                                // Emit recording state change
+                                                let _ = app_handle.emit("recording-state", false);
+
+                                                // Emit audio data for transcription
+                                                let _ = app_handle.emit("audio-captured", serde_json::json!({
+                                                    "samples": audio_data,
+                                                    "sampleRate": sample_rate
+                                                }));
+
+                                                // Hide mini window
+                                                if let Some(mini_window) = app_handle.get_webview_window("mini") {
+                                                    let _ = mini_window.hide();
+                                                }
+                                            }
+                                            Err(e) => {
+                                                eprintln!("Error stopping recording: {}", e);
+                                            }
                                         }
                                     }
                                 }

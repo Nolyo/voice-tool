@@ -1,10 +1,11 @@
 # Voice Tool - Spécification de Migration vers Tauri
 
-## 📋 Contexte et Motivation
+## 📋 Contexte et Mvoici leotivation
 
 ### Problèmes de la Stack Actuelle (Python)
 
 **Technologies problématiques:**
+
 - **Tkinter**: Interface vieillotte, difficile à styliser, bugs de threading
 - **pynput**: Gestion basique des hotkeys, instable
 - **sounddevice**: API bas niveau, crashs PortAudio fréquents (surtout à la réouverture de fenêtres)
@@ -13,6 +14,7 @@
 - **PyInstaller**: Exe lourd (80-150 MB), startup lent (2-4s), pas de hot-reload en dev
 
 **Problèmes architecturaux:**
+
 - Code monolithique (main.py > 1500 lignes)
 - Couplage fort entre UI et logique métier
 - Gestion manuelle du multi-threading fragile
@@ -20,6 +22,7 @@
 - Pas de hot-reload en développement
 
 **Problèmes de transcription:**
+
 - OpenAI Whisper API lent (2-4s pour 10s d'audio)
 - Pas de streaming temps réel (impossible de voir le texte défiler pendant qu'on parle)
 - Coût récurrent ($0.006/min)
@@ -39,6 +42,7 @@
 ## 🎯 Stack Technique Cible
 
 ### Frontend
+
 - **Framework**: React 18 + TypeScript
 - **Build**: Vite (hot-reload ultra-rapide)
 - **UI**: Tailwind CSS + shadcn/ui (composants modernes)
@@ -47,6 +51,7 @@
 - **Animations**: Framer Motion (optionnel)
 
 ### Backend
+
 - **Runtime**: Tauri 2.x (Rust)
 - **Audio Capture**: cpal (cross-platform audio library)
 - **Hotkeys**: global-hotkey (gestion native)
@@ -54,6 +59,7 @@
 - **HTTP Client**: reqwest (pour appels API)
 
 ### Transcription (Architecture Hybride)
+
 - **Mode 1 (Défaut)**: API Streaming (Deepgram) - Temps réel, aucun téléchargement
 - **Mode 2 (Optionnel)**: Whisper.cpp local - Rapide, gratuit, offline
 - **Mode 3 **: Whisper API (optionnel, legacy)
@@ -65,11 +71,13 @@
 ### Principe de Fonctionnement
 
 **Par défaut (Premier lancement):**
+
 1. L'exe embarque uniquement le binaire `whisper.cpp` (3 MB) - AUCUN modèle IA
 2. Mode actif: **Deepgram Streaming API**
 3. Aucun téléchargement requis, fonctionne immédiatement
 
 **Activation du mode local (à la demande):**
+
 1. L'utilisateur va dans Settings → Transcription
 2. Sélectionne "Mode Local (Offline)"
 3. Choix du modèle: Tiny (39 MB) / Base (74 MB) / Small (244 MB)
@@ -78,35 +86,38 @@
 6. Bascule automatique vers whisper.cpp local
 
 **Bascule entre modes:**
+
 - Switch dans l'UI (Settings)
 - Passage immédiat d'un mode à l'autre
 - Préférence sauvegardée dans `user_settings.json`
 
 ### Comparaison des Modes
 
-| Critère | Deepgram Streaming (Défaut) | Whisper.cpp Local (Optionnel) |
-|---------|----------------------------|-------------------------------|
-| **Téléchargement initial** | Aucun | 39-244 MB (modèle IA) |
-| **Vitesse** | Temps réel (streaming) | 0.5-1s après enregistrement |
-| **Latence** | 100-300ms | N/A (post-traitement) |
-| **Streaming live** | ✅ Oui (texte défile pendant l'enregistrement) | ❌ Non (traitement après) |
-| **Qualité** | ⭐⭐⭐⭐⭐ Excellente | ⭐⭐⭐⭐(tiny) à ⭐⭐⭐⭐⭐(small) |
-| **Coût** | $0.0043/min (~5€/mois usage normal) | GRATUIT |
-| **Offline** | ❌ Nécessite internet | ✅ Fonctionne offline |
-| **Langues** | 30+ langues | 90+ langues |
-| **Privacy** | Audio envoyé au cloud | 100% local |
+| Critère                    | Deepgram Streaming (Défaut)                    | Whisper.cpp Local (Optionnel)      |
+| -------------------------- | ---------------------------------------------- | ---------------------------------- |
+| **Téléchargement initial** | Aucun                                          | 39-244 MB (modèle IA)              |
+| **Vitesse**                | Temps réel (streaming)                         | 0.5-1s après enregistrement        |
+| **Latence**                | 100-300ms                                      | N/A (post-traitement)              |
+| **Streaming live**         | ✅ Oui (texte défile pendant l'enregistrement) | ❌ Non (traitement après)          |
+| **Qualité**                | ⭐⭐⭐⭐⭐ Excellente                          | ⭐⭐⭐⭐(tiny) à ⭐⭐⭐⭐⭐(small) |
+| **Coût**                   | $0.0043/min (~5€/mois usage normal)            | GRATUIT                            |
+| **Offline**                | ❌ Nécessite internet                          | ✅ Fonctionne offline              |
+| **Langues**                | 30+ langues                                    | 90+ langues                        |
+| **Privacy**                | Audio envoyé au cloud                          | 100% local                         |
 
 ### Configuration Technique
 
 #### Deepgram Streaming (Mode Défaut)
 
 **Fonctionnement:**
+
 1. Connexion WebSocket vers `wss://api.deepgram.com/v1/listen`
 2. Envoi de chunks audio en temps réel (pendant l'enregistrement)
 3. Réception de transcriptions partielles (`interim_results`) + finales
 4. Affichage live dans l'UI
 
 **Implémentation Rust:**
+
 ```rust
 // src-tauri/src/transcription/deepgram.rs
 
@@ -162,6 +173,7 @@ impl DeepgramStreaming {
 ```
 
 **Tauri Command (exposé au frontend):**
+
 ```rust
 #[tauri::command]
 async fn start_streaming_transcription(
@@ -207,12 +219,14 @@ fn send_audio_chunk(
 #### Whisper.cpp Local (Mode Optionnel)
 
 **Fonctionnement:**
+
 1. Modèle IA téléchargé une seule fois (stocké dans AppData)
 2. Transcription locale après arrêt de l'enregistrement
 3. Traitement ultra-rapide (0.5-1s)
 4. Zero dépendance réseau
 
 **Implémentation Rust:**
+
 ```rust
 // src-tauri/src/transcription/whisper.rs
 
@@ -266,6 +280,7 @@ impl WhisperLocal {
 ```
 
 **Tauri Commands:**
+
 ```rust
 #[tauri::command]
 async fn download_whisper_model(
@@ -340,28 +355,37 @@ fn check_model_downloaded(app: AppHandle, model_size: String) -> Result<bool, St
 ### Frontend React - Gestion des Modes
 
 **Settings UI:**
+
 ```tsx
 // src/components/TranscriptionSettings.tsx
 
-import { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { listen } from '@tauri-apps/api/event';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
+import { listen } from "@tauri-apps/api/event";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
-type TranscriptionMode = 'streaming' | 'local';
-type ModelSize = 'tiny' | 'base' | 'small';
+type TranscriptionMode = "streaming" | "local";
+type ModelSize = "tiny" | "base" | "small";
 
 export function TranscriptionSettings() {
-  const [mode, setMode] = useState<TranscriptionMode>('streaming');
-  const [modelSize, setModelSize] = useState<ModelSize>('base');
+  const [mode, setMode] = useState<TranscriptionMode>("streaming");
+  const [modelSize, setModelSize] = useState<ModelSize>("base");
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
-  const [modelsDownloaded, setModelsDownloaded] = useState<Record<ModelSize, boolean>>({
+  const [modelsDownloaded, setModelsDownloaded] = useState<
+    Record<ModelSize, boolean>
+  >({
     tiny: false,
     base: false,
     small: false,
@@ -374,19 +398,25 @@ export function TranscriptionSettings() {
 
   // Écouter le progress de téléchargement
   useEffect(() => {
-    const unlisten = listen('download-progress', (event) => {
+    const unlisten = listen("download-progress", (event) => {
       setDownloadProgress(event.payload as number);
     });
 
     return () => {
-      unlisten.then(fn => fn());
+      unlisten.then((fn) => fn());
     };
   }, []);
 
   const checkDownloadedModels = async () => {
-    const tiny = await invoke<boolean>('check_model_downloaded', { modelSize: 'tiny' });
-    const base = await invoke<boolean>('check_model_downloaded', { modelSize: 'base' });
-    const small = await invoke<boolean>('check_model_downloaded', { modelSize: 'small' });
+    const tiny = await invoke<boolean>("check_model_downloaded", {
+      modelSize: "tiny",
+    });
+    const base = await invoke<boolean>("check_model_downloaded", {
+      modelSize: "base",
+    });
+    const small = await invoke<boolean>("check_model_downloaded", {
+      modelSize: "small",
+    });
 
     setModelsDownloaded({ tiny, base, small });
   };
@@ -396,15 +426,15 @@ export function TranscriptionSettings() {
     setDownloadProgress(0);
 
     try {
-      await invoke('download_whisper_model', { modelSize: size });
+      await invoke("download_whisper_model", { modelSize: size });
       await checkDownloadedModels();
       // Basculer automatiquement vers le mode local
-      setMode('local');
+      setMode("local");
       setModelSize(size);
-      await saveSettings({ mode: 'local', modelSize: size });
+      await saveSettings({ mode: "local", modelSize: size });
     } catch (error) {
-      console.error('Download failed:', error);
-      alert('Échec du téléchargement. Vérifiez votre connexion.');
+      console.error("Download failed:", error);
+      alert("Échec du téléchargement. Vérifiez votre connexion.");
     } finally {
       setDownloading(false);
     }
@@ -412,8 +442,11 @@ export function TranscriptionSettings() {
 
   const handleModeChange = async (newMode: TranscriptionMode) => {
     // Si on bascule vers local mais aucun modèle n'est téléchargé
-    if (newMode === 'local' && !Object.values(modelsDownloaded).some(v => v)) {
-      alert('Veuillez d\'abord télécharger un modèle IA.');
+    if (
+      newMode === "local" &&
+      !Object.values(modelsDownloaded).some((v) => v)
+    ) {
+      alert("Veuillez d'abord télécharger un modèle IA.");
       return;
     }
 
@@ -421,14 +454,17 @@ export function TranscriptionSettings() {
     await saveSettings({ mode: newMode, modelSize });
   };
 
-  const saveSettings = async (settings: { mode: TranscriptionMode; modelSize: ModelSize }) => {
-    await invoke('save_transcription_settings', settings);
+  const saveSettings = async (settings: {
+    mode: TranscriptionMode;
+    modelSize: ModelSize;
+  }) => {
+    await invoke("save_transcription_settings", settings);
   };
 
   const modelInfo = {
-    tiny: { size: '39 MB', quality: 'Correcte', speed: 'Très rapide (0.3s)' },
-    base: { size: '74 MB', quality: 'Bonne', speed: 'Rapide (0.5s)' },
-    small: { size: '244 MB', quality: 'Excellente', speed: 'Modérée (1s)' },
+    tiny: { size: "39 MB", quality: "Correcte", speed: "Très rapide (0.3s)" },
+    base: { size: "74 MB", quality: "Bonne", speed: "Rapide (0.5s)" },
+    small: { size: "244 MB", quality: "Excellente", speed: "Modérée (1s)" },
   };
 
   return (
@@ -436,26 +472,41 @@ export function TranscriptionSettings() {
       <CardHeader>
         <CardTitle>Transcription</CardTitle>
         <CardDescription>
-          Choisissez entre la transcription en streaming (temps réel) ou locale (offline)
+          Choisissez entre la transcription en streaming (temps réel) ou locale
+          (offline)
         </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-6">
         {/* Sélection du mode */}
         <div>
-          <Label className="text-base font-semibold mb-3 block">Mode de transcription</Label>
+          <Label className="text-base font-semibold mb-3 block">
+            Mode de transcription
+          </Label>
           <RadioGroup value={mode} onValueChange={handleModeChange}>
             <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-accent">
-              <RadioGroupItem value="streaming" id="streaming" className="mt-1" />
+              <RadioGroupItem
+                value="streaming"
+                id="streaming"
+                className="mt-1"
+              />
               <div className="flex-1">
-                <Label htmlFor="streaming" className="font-medium cursor-pointer">
+                <Label
+                  htmlFor="streaming"
+                  className="font-medium cursor-pointer"
+                >
                   Streaming en temps réel (Deepgram)
-                  <Badge variant="default" className="ml-2">Recommandé</Badge>
+                  <Badge variant="default" className="ml-2">
+                    Recommandé
+                  </Badge>
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  ✅ Texte qui défile pendant l'enregistrement<br/>
-                  ✅ Qualité excellente<br/>
-                  ✅ Aucun téléchargement requis<br/>
+                  ✅ Texte qui défile pendant l'enregistrement
+                  <br />
+                  ✅ Qualité excellente
+                  <br />
+                  ✅ Aucun téléchargement requis
+                  <br />
                   ⚠️ Nécessite internet (~$0.004/min)
                 </p>
               </div>
@@ -468,9 +519,12 @@ export function TranscriptionSettings() {
                   Local offline (Whisper.cpp)
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  ✅ 100% gratuit et privé<br/>
-                  ✅ Fonctionne offline<br/>
-                  ✅ Ultra-rapide (0.3-1s)<br/>
+                  ✅ 100% gratuit et privé
+                  <br />
+                  ✅ Fonctionne offline
+                  <br />
+                  ✅ Ultra-rapide (0.3-1s)
+                  <br />
                   ⚠️ Requiert téléchargement modèle IA (39-244 MB)
                 </p>
               </div>
@@ -479,12 +533,17 @@ export function TranscriptionSettings() {
         </div>
 
         {/* Configuration mode local */}
-        {mode === 'local' && (
+        {mode === "local" && (
           <div className="space-y-3 pl-6 border-l-2 border-primary">
-            <Label className="text-sm font-semibold">Modèle IA (qualité vs vitesse)</Label>
+            <Label className="text-sm font-semibold">
+              Modèle IA (qualité vs vitesse)
+            </Label>
 
-            {(['tiny', 'base', 'small'] as ModelSize[]).map((size) => (
-              <div key={size} className="flex items-center justify-between p-3 border rounded-lg">
+            {(["tiny", "base", "small"] as ModelSize[]).map((size) => (
+              <div
+                key={size}
+                className="flex items-center justify-between p-3 border rounded-lg"
+              >
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium capitalize">{size}</span>
@@ -493,7 +552,8 @@ export function TranscriptionSettings() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {modelInfo[size].size} • Qualité: {modelInfo[size].quality} • Vitesse: {modelInfo[size].speed}
+                    {modelInfo[size].size} • Qualité: {modelInfo[size].quality}{" "}
+                    • Vitesse: {modelInfo[size].speed}
                   </p>
                 </div>
 
@@ -508,13 +568,13 @@ export function TranscriptionSettings() {
                 ) : (
                   <Button
                     size="sm"
-                    variant={modelSize === size ? 'default' : 'outline'}
+                    variant={modelSize === size ? "default" : "outline"}
                     onClick={() => {
                       setModelSize(size);
                       saveSettings({ mode, modelSize: size });
                     }}
                   >
-                    {modelSize === size ? 'Actif' : 'Utiliser'}
+                    {modelSize === size ? "Actif" : "Utiliser"}
                   </Button>
                 )}
               </div>
@@ -522,20 +582,24 @@ export function TranscriptionSettings() {
 
             {downloading && (
               <div className="space-y-2 p-3 bg-accent rounded-lg">
-                <p className="text-sm font-medium">Téléchargement en cours...</p>
+                <p className="text-sm font-medium">
+                  Téléchargement en cours...
+                </p>
                 <Progress value={downloadProgress} className="w-full" />
-                <p className="text-xs text-muted-foreground">{downloadProgress}%</p>
+                <p className="text-xs text-muted-foreground">
+                  {downloadProgress}%
+                </p>
               </div>
             )}
           </div>
         )}
 
         {/* Info carte API */}
-        {mode === 'streaming' && (
+        {mode === "streaming" && (
           <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-900 dark:text-blue-100">
-              💡 <strong>API Deepgram</strong>: 45 heures gratuites/mois incluses.
-              Configuration dans Settings → API Keys.
+              💡 <strong>API Deepgram</strong>: 45 heures gratuites/mois
+              incluses. Configuration dans Settings → API Keys.
             </p>
           </div>
         )}
@@ -546,13 +610,14 @@ export function TranscriptionSettings() {
 ```
 
 **Store Zustand (gestion d'état):**
+
 ```tsx
 // src/store/transcriptionStore.ts
 
-import { create } from 'zustand';
-import { invoke } from '@tauri-apps/api/tauri';
+import { create } from "zustand";
+import { invoke } from "@tauri-apps/api/tauri";
 
-type TranscriptionMode = 'streaming' | 'local';
+type TranscriptionMode = "streaming" | "local";
 
 interface TranscriptionState {
   mode: TranscriptionMode;
@@ -568,21 +633,21 @@ interface TranscriptionState {
 }
 
 export const useTranscriptionStore = create<TranscriptionState>((set, get) => ({
-  mode: 'streaming',
+  mode: "streaming",
   isRecording: false,
-  interimText: '',
-  finalText: '',
+  interimText: "",
+  finalText: "",
 
   setMode: (mode) => set({ mode }),
 
   startRecording: async () => {
     const { mode } = get();
-    set({ isRecording: true, interimText: '', finalText: '' });
+    set({ isRecording: true, interimText: "", finalText: "" });
 
-    if (mode === 'streaming') {
-      await invoke('start_streaming_transcription', { language: 'fr' });
+    if (mode === "streaming") {
+      await invoke("start_streaming_transcription", { language: "fr" });
     } else {
-      await invoke('start_local_recording');
+      await invoke("start_local_recording");
     }
   },
 
@@ -590,44 +655,46 @@ export const useTranscriptionStore = create<TranscriptionState>((set, get) => ({
     const { mode } = get();
     set({ isRecording: false });
 
-    if (mode === 'streaming') {
-      await invoke('stop_streaming_transcription');
+    if (mode === "streaming") {
+      await invoke("stop_streaming_transcription");
     } else {
       // Mode local: traitement post-enregistrement
-      await invoke('stop_local_recording');
+      await invoke("stop_local_recording");
     }
   },
 
   setInterimText: (text) => set({ interimText: text }),
-  setFinalText: (text) => set({ finalText: text, interimText: '' }),
+  setFinalText: (text) => set({ finalText: text, interimText: "" }),
 }));
 ```
 
 **Visualiseur avec texte live:**
+
 ```tsx
 // src/components/TranscriptionVisualizer.tsx
 
-import { useEffect } from 'react';
-import { listen } from '@tauri-apps/api/event';
-import { useTranscriptionStore } from '@/store/transcriptionStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { useTranscriptionStore } from "@/store/transcriptionStore";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function TranscriptionVisualizer() {
-  const { mode, interimText, finalText, setInterimText, setFinalText } = useTranscriptionStore();
+  const { mode, interimText, finalText, setInterimText, setFinalText } =
+    useTranscriptionStore();
 
   useEffect(() => {
     // Écouter les events de transcription
-    const unlistenInterim = listen('transcription-interim', (event) => {
+    const unlistenInterim = listen("transcription-interim", (event) => {
       setInterimText(event.payload as string);
     });
 
-    const unlistenFinal = listen('transcription-final', (event) => {
+    const unlistenFinal = listen("transcription-final", (event) => {
       setFinalText(event.payload as string);
     });
 
     return () => {
-      unlistenInterim.then(fn => fn());
-      unlistenFinal.then(fn => fn());
+      unlistenInterim.then((fn) => fn());
+      unlistenFinal.then((fn) => fn());
     };
   }, []);
 
@@ -636,14 +703,16 @@ export function TranscriptionVisualizer() {
       <div className="flex items-center gap-2">
         <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
         <span className="text-sm font-medium">
-          {mode === 'streaming' ? 'Streaming en temps réel' : 'Enregistrement local'}
+          {mode === "streaming"
+            ? "Streaming en temps réel"
+            : "Enregistrement local"}
         </span>
       </div>
 
       <div className="space-y-2">
         {/* Texte interim (streaming uniquement, grisé) */}
         <AnimatePresence>
-          {mode === 'streaming' && interimText && (
+          {mode === "streaming" && interimText && (
             <motion.p
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -687,6 +756,7 @@ export function TranscriptionVisualizer() {
 ### Exe Final
 
 **Contenu embarqué dans l'exe (5-8 MB):**
+
 ```
 voice-tool.exe
 ├── Frontend React compilé (app.asar, ~2 MB)
@@ -696,6 +766,7 @@ voice-tool.exe
 ```
 
 **Stockage utilisateur (%APPDATA%\VoiceTool\):**
+
 ```
 %APPDATA%\VoiceTool\
 ├── models/                     # Modèles IA (téléchargés à la demande)
@@ -725,7 +796,9 @@ voice-tool.exe
 **Objectif**: Setup environnement de développement Tauri
 
 **Tasks:**
+
 1. Installer Rust + Tauri CLI
+
    ```bash
    # Windows
    winget install Rustlang.Rustup
@@ -733,6 +806,7 @@ voice-tool.exe
    ```
 
 2. Créer le projet
+
    ```bash
    npm create tauri-app@latest voice-tool-v2
    # Choisir: React + TypeScript
@@ -740,6 +814,7 @@ voice-tool.exe
    ```
 
 3. Installer dépendances UI modernes
+
    ```bash
    npm install @radix-ui/react-* class-variance-authority clsx tailwind-merge
    npm install zustand lucide-react framer-motion
@@ -747,12 +822,14 @@ voice-tool.exe
    ```
 
 4. Configurer Tailwind CSS
+
    ```bash
    npm install -D tailwindcss postcss autoprefixer
    npx tailwindcss init -p
    ```
 
 5. Setup Rust dependencies dans `src-tauri/Cargo.toml`
+
    ```toml
    [dependencies]
    tauri = { version = "2.0", features = ["..." ] }
@@ -784,16 +861,19 @@ voice-tool.exe
 **Tasks:**
 
 1. **Backend Rust - Capture audio**
+
    - Implémenter `src-tauri/src/audio.rs`
    - Utiliser `cpal` pour capturer depuis le micro
    - Buffer audio en mémoire (format WAV, 16kHz mono)
    - Exposer Tauri commands: `start_recording()`, `stop_recording()`, `get_audio_devices()`
 
 2. **Backend Rust - Visualisation temps réel**
+
    - Calculer RMS des chunks audio
    - Émettre events `audio-level` vers le frontend (30 FPS)
 
 3. **Frontend React - Visualiseur**
+
    - Composant `AudioVisualizer.tsx` avec canvas
    - Animation fluide des niveaux audio
    - Indicateur d'enregistrement (pulsation rouge)
@@ -804,6 +884,7 @@ voice-tool.exe
    - Store Zustand pour l'état d'enregistrement
 
 **Code exemple - Audio capture Rust:**
+
 ```rust
 // src-tauri/src/audio.rs
 
@@ -886,6 +967,7 @@ fn calculate_rms(samples: &[i16]) -> f32 {
 **Tasks:**
 
 1. **Backend Rust - Deepgram WebSocket**
+
    - Implémenter `src-tauri/src/transcription/deepgram.rs`
    - Connexion WebSocket authentifiée
    - Envoi chunks audio en temps réel
@@ -893,18 +975,21 @@ fn calculate_rms(samples: &[i16]) -> f32 {
    - Gestion erreurs/reconnexion
 
 2. **Backend Rust - Tauri Commands**
+
    - `start_streaming_transcription(language: String)`
    - `send_audio_chunk(chunk: Vec<i16>)`
    - `stop_streaming_transcription()`
    - Events: `transcription-interim`, `transcription-final`
 
 3. **Frontend React - UI transcription live**
+
    - Composant `TranscriptionVisualizer.tsx`
    - Affichage texte interim (grisé, italic)
    - Affichage texte final (blanc, bold)
    - Animations d'apparition (Framer Motion)
 
 4. **Frontend React - Settings API**
+
    - Input pour clé API Deepgram
    - Validation de la clé (test call)
    - Stockage sécurisé dans user_settings.json
@@ -915,43 +1000,44 @@ fn calculate_rms(samples: &[i16]) -> f32 {
    - Robustesse (coupure réseau, reconnexion)
 
 **Code exemple - Frontend React:**
+
 ```tsx
 // src/hooks/useStreamingTranscription.ts
 
-import { useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { listen } from '@tauri-apps/api/event';
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
+import { listen } from "@tauri-apps/api/event";
 
 export function useStreamingTranscription() {
-  const [interimText, setInterimText] = useState('');
-  const [finalText, setFinalText] = useState('');
+  const [interimText, setInterimText] = useState("");
+  const [finalText, setFinalText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
 
   useEffect(() => {
-    const unlistenInterim = listen('transcription-interim', (event) => {
+    const unlistenInterim = listen("transcription-interim", (event) => {
       setInterimText(event.payload as string);
     });
 
-    const unlistenFinal = listen('transcription-final', (event) => {
-      setFinalText(prev => prev + ' ' + event.payload);
-      setInterimText('');
+    const unlistenFinal = listen("transcription-final", (event) => {
+      setFinalText((prev) => prev + " " + event.payload);
+      setInterimText("");
     });
 
     return () => {
-      unlistenInterim.then(fn => fn());
-      unlistenFinal.then(fn => fn());
+      unlistenInterim.then((fn) => fn());
+      unlistenFinal.then((fn) => fn());
     };
   }, []);
 
-  const startStreaming = async (language: string = 'fr') => {
-    setFinalText('');
-    setInterimText('');
-    await invoke('start_streaming_transcription', { language });
+  const startStreaming = async (language: string = "fr") => {
+    setFinalText("");
+    setInterimText("");
+    await invoke("start_streaming_transcription", { language });
     setIsStreaming(true);
   };
 
   const stopStreaming = async () => {
-    await invoke('stop_streaming_transcription');
+    await invoke("stop_streaming_transcription");
     setIsStreaming(false);
   };
 
@@ -976,29 +1062,34 @@ export function useStreamingTranscription() {
 **Tasks:**
 
 1. **Backend Rust - Whisper.cpp intégration**
+
    - Dépendance `whisper-rs` dans Cargo.toml
    - Implémenter `src-tauri/src/transcription/whisper.rs`
    - Chargement modèle depuis AppData
    - Transcription audio (post-enregistrement)
 
 2. **Backend Rust - Téléchargement modèles**
+
    - Command `download_whisper_model(model_size: String)`
    - Stream depuis HuggingFace avec progress
    - Stockage dans `%APPDATA%\VoiceTool\models\`
    - Validation checksum (optionnel)
 
 3. **Backend Rust - Tauri Commands**
+
    - `transcribe_with_whisper(audio: Vec<f32>, language: String)`
    - `check_model_downloaded(model_size: String) -> bool`
    - `get_downloaded_models() -> Vec<String>`
 
 4. **Frontend React - Settings modèles**
+
    - UI de sélection modèle (tiny/base/small)
    - Boutons "Télécharger" avec progress bar
    - Bascule mode streaming ↔ local
    - Indication modèles téléchargés (badges)
 
 5. **Frontend React - Post-transcription**
+
    - Après arrêt enregistrement → "Traitement..."
    - Appel `transcribe_with_whisper()`
    - Affichage résultat (animation d'apparition)
@@ -1009,6 +1100,7 @@ export function useStreamingTranscription() {
    - Consommation mémoire
 
 **Code exemple - Téléchargement modèle:**
+
 ```rust
 // src-tauri/src/transcription/model_downloader.rs
 
@@ -1058,23 +1150,27 @@ pub async fn download_model(
 **Tasks:**
 
 1. **Hotkeys globaux**
+
    - Intégration `global-hotkey` (Rust)
    - Command `register_hotkey(keys: String, action: String)`
    - Actions: `toggle_recording`, `open_window`
    - UI de configuration (key binding input)
 
 2. **System Tray**
+
    - Plugin `tauri-plugin-system-tray`
    - Icône + menu contextuel
    - Actions: Ouvrir, Settings, Quitter
    - Indicateur d'enregistrement (icône rouge)
 
 3. **Historique**
+
    - Stockage JSON dans AppData
    - Composant `History.tsx` (liste déroulante)
    - Actions: Copier, Supprimer, Rejouer audio
 
 4. **Clipboard auto-paste**
+
    - Copie automatique après transcription
    - Option "Coller au curseur" (simulation Ctrl+V)
    - Cross-platform (Windows/macOS/Linux)
@@ -1095,23 +1191,27 @@ pub async fn download_model(
 **Tasks:**
 
 1. **UI/UX Polish**
+
    - Animations fluides (Framer Motion)
    - Dark mode (système ou manuel)
    - Responsive design
    - Error states et loading indicators
 
 2. **Gestion d'erreurs**
+
    - Toasts notifications (shadcn/ui)
    - Fallbacks (mode streaming échoue → suggérer mode local)
    - Logs détaillés (fichier + console)
 
 3. **Build & Packaging**
+
    - Optimisation bundle (tree-shaking)
    - Génération icônes (multi-résolutions)
    - Configuration tauri.conf.json (identifiers, permissions)
    - Build .exe + .msi
 
 4. **CI/CD**
+
    - GitHub Actions pour build automatique
    - Release workflow (tags → artifacts)
    - Code signing (optionnel, certificat Windows)
@@ -1122,6 +1222,7 @@ pub async fn download_model(
    - FAQ et troubleshooting
 
 **Commandes de build:**
+
 ```bash
 # Dev
 npm run tauri dev
@@ -1140,15 +1241,15 @@ npm run tauri build
 
 ## 📊 Estimations Totales
 
-| Phase | Durée | Complexité |
-|-------|-------|------------|
-| Phase 0: Setup | 1 jour | Facile |
-| Phase 1: Audio | 2-3 jours | Moyenne |
-| Phase 2: Streaming | 3-4 jours | Difficile |
-| Phase 3: Local | 3-4 jours | Moyenne |
-| Phase 4: Features | 2-3 jours | Facile |
-| Phase 5: Polish | 2 jours | Facile |
-| **TOTAL** | **13-17 jours** | - |
+| Phase              | Durée           | Complexité |
+| ------------------ | --------------- | ---------- |
+| Phase 0: Setup     | 1 jour          | Facile     |
+| Phase 1: Audio     | 2-3 jours       | Moyenne    |
+| Phase 2: Streaming | 3-4 jours       | Difficile  |
+| Phase 3: Local     | 3-4 jours       | Moyenne    |
+| Phase 4: Features  | 2-3 jours       | Facile     |
+| Phase 5: Polish    | 2 jours         | Facile     |
+| **TOTAL**          | **13-17 jours** | -          |
 
 **Estimation réaliste avec buffer**: **3-4 semaines**
 
@@ -1157,6 +1258,7 @@ npm run tauri build
 ## 🎯 Critères de Succès
 
 ### Fonctionnels
+
 - ✅ Exe standalone <10 MB (sans modèles)
 - ✅ Startup <1s
 - ✅ Mode streaming avec latence <300ms
@@ -1167,6 +1269,7 @@ npm run tauri build
 - ✅ Historique persistant
 
 ### Techniques
+
 - ✅ Architecture propre (séparation frontend/backend)
 - ✅ Code TypeScript + Rust type-safe
 - ✅ Tests unitaires critiques (audio, transcription)
@@ -1174,6 +1277,7 @@ npm run tauri build
 - ✅ Gestion d'erreurs robuste
 
 ### Distribution
+
 - ✅ Build automatisé (CI/CD)
 - ✅ .msi installer professionnel
 - ✅ Documentation complète
@@ -1182,24 +1286,25 @@ npm run tauri build
 
 ## 🔄 Comparaison Avant/Après
 
-| Aspect | Avant (Python/Tkinter) | Après (Tauri/React) |
-|--------|------------------------|---------------------|
-| **Taille exe** | 80-150 MB | 5-50 MB |
-| **Startup** | 2-4s | <1s |
-| **UI** | Tkinter (vieillot) | React moderne |
-| **Hot reload** | ❌ | ✅ |
-| **Transcription** | API lente (2-4s) | Streaming (<300ms) ou local (<1s) |
-| **Coût** | $0.006/min | $0.004/min ou gratuit |
-| **Offline** | ❌ | ✅ (mode local) |
-| **Crashes** | Fréquents (PortAudio) | Rares (Rust stable) |
-| **Maintenabilité** | Difficile (1500+ lignes) | Facile (modularisé) |
-| **CI/CD** | Basique | Complet (auto-release) |
+| Aspect             | Avant (Python/Tkinter)   | Après (Tauri/React)               |
+| ------------------ | ------------------------ | --------------------------------- |
+| **Taille exe**     | 80-150 MB                | 5-50 MB                           |
+| **Startup**        | 2-4s                     | <1s                               |
+| **UI**             | Tkinter (vieillot)       | React moderne                     |
+| **Hot reload**     | ❌                       | ✅                                |
+| **Transcription**  | API lente (2-4s)         | Streaming (<300ms) ou local (<1s) |
+| **Coût**           | $0.006/min               | $0.004/min ou gratuit             |
+| **Offline**        | ❌                       | ✅ (mode local)                   |
+| **Crashes**        | Fréquents (PortAudio)    | Rares (Rust stable)               |
+| **Maintenabilité** | Difficile (1500+ lignes) | Facile (modularisé)               |
+| **CI/CD**          | Basique                  | Complet (auto-release)            |
 
 ---
 
 ## 📚 Ressources & Références
 
 ### Documentation
+
 - [Tauri Docs](https://tauri.app/v2/)
 - [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
 - [whisper-rs](https://github.com/tazz4843/whisper-rs)
@@ -1208,10 +1313,12 @@ npm run tauri build
 - [cpal Audio Library](https://docs.rs/cpal/)
 
 ### Exemples de code
+
 - [Tauri + React Template](https://github.com/tauri-apps/tauri/tree/dev/examples/api)
 - [whisper-rs Examples](https://github.com/tazz4843/whisper-rs/tree/master/examples)
 
 ### APIs
+
 - [Deepgram](https://deepgram.com/) - 45h gratuit/mois
 - [HuggingFace Whisper Models](https://huggingface.co/ggerganov/whisper.cpp)
 
@@ -1220,18 +1327,22 @@ npm run tauri build
 ## ⚠️ Points d'Attention
 
 ### Dépendances
+
 - **WebView2** (Windows): Pré-installé sur Win10/11 récent. Si absent, popup d'installation (100 MB, une fois).
 - **Modèles Whisper**: Téléchargement uniquement si mode local activé.
 
 ### Performance
+
 - **GPU**: whisper.cpp bénéficie du GPU (CUDA/Metal) pour 10x vitesse. Détecter automatiquement.
 - **RAM**: Mode local consomme ~500 MB (modèle chargé en mémoire). Acceptable pour usage desktop.
 
 ### Sécurité
+
 - **API Keys**: Stocker dans user_settings.json (plaintext local). Pour production avancée, utiliser OS keychain (optionnel).
 - **Audio**: Jamais stocké permanent (sauf option "Garder enregistrements").
 
 ### Limitations
+
 - **Streaming local**: whisper.cpp ne supporte pas nativement le streaming. Possible avec chunking mais qualité moindre.
 - **Langues rares**: Deepgram supporte 30+ langues vs 90+ pour Whisper.
 
@@ -1240,6 +1351,7 @@ npm run tauri build
 ## 🚀 Next Steps (Après Migration)
 
 ### Améliorations Futures
+
 1. **Auto-update intégré** (tauri-plugin-updater)
 2. **Multi-langues UI** (i18n)
 3. **Thèmes personnalisables**
@@ -1249,6 +1361,7 @@ npm run tauri build
 7. **Commandes vocales** (meta-actions: "annuler", "nouveau paragraphe")
 
 ### Expansion Plateforme
+
 - **macOS**: Build .dmg (déjà supporté par Tauri)
 - **Linux**: Build .AppImage / .deb
 - **Mobile** (futur): Tauri supporte iOS/Android (beta)
@@ -1258,6 +1371,7 @@ npm run tauri build
 ## 📞 Support & Questions
 
 Pour toute question durant la migration:
+
 1. Référer à cette spec
 2. Consulter la doc Tauri/whisper-rs
 3. Tester progressivement (une phase à la fois)

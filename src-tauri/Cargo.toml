@@ -22,6 +22,7 @@ tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-store = "2"
+tauri-plugin-clipboard-manager = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
@@ -32,4 +33,16 @@ cpal = "0.15"
 
 # For async audio streaming
 futures = "0.3"
+
+# Audio file writing
+hound = "3.5"
+
+# HTTP client for API calls
+reqwest = { version = "0.12", features = ["multipart", "json"] }
+
+# Keyboard simulation
+enigo = "0.2"
+
+# Date/time for timestamps
+chrono = "0.4"
 

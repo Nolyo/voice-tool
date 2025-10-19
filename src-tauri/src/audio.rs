@@ -7,7 +7,7 @@ use tauri::Emitter;
 /// Represents an audio recording session
 pub struct AudioRecorder {
     buffer: Arc<Mutex<Vec<i16>>>,
-    sample_rate: u32,
+    sample_rate: Arc<Mutex<u32>>,
     is_recording: Arc<Mutex<bool>>,
 }
 
@@ -23,7 +23,7 @@ impl AudioRecorder {
     pub fn new() -> Self {
         Self {
             buffer: Arc::new(Mutex::new(Vec::new())),
-            sample_rate: 16000, // Standard for speech recognition
+            sample_rate: Arc::new(Mutex::new(16000)), // Default, will be updated when recording starts
             is_recording: Arc::new(Mutex::new(false)),
         }
     }
@@ -62,6 +62,8 @@ impl AudioRecorder {
         device_index: Option<usize>,
         app_handle: tauri::AppHandle<R>,
     ) -> Result<()> {
+        println!("start_recording called with device_index: {:?}", device_index);
+
         // Clear previous buffer
         {
             let mut buffer = self.buffer.lock().unwrap();
@@ -71,13 +73,25 @@ impl AudioRecorder {
         let host = cpal::default_host();
         let device = self.get_device(&host, device_index)?;
 
+        // Log device name
+        if let Ok(name) = device.name() {
+            println!("Using audio device: {}", name);
+        }
+
         // Get the default input config
         let config = device
             .default_input_config()
             .map_err(|e| anyhow!("Failed to get default input config: {}", e))?;
 
         let sample_format = config.sample_format();
+        let device_sample_rate = config.sample_rate().0;
+        println!("Device sample format: {:?}, sample rate: {}, channels: {}",
+                 sample_format, device_sample_rate, config.channels());
+
         let config: StreamConfig = config.into();
+
+        // Store the sample rate
+        *self.sample_rate.lock().unwrap() = device_sample_rate;
 
         // Clone Arc references for the closure
         let buffer = self.buffer.clone();
@@ -121,16 +135,21 @@ impl AudioRecorder {
         Ok(())
     }
 
-    /// Stop recording and return the captured audio data
-    pub fn stop_recording(&mut self) -> Result<Vec<i16>> {
+    /// Stop recording and return the captured audio data with sample rate
+    pub fn stop_recording(&mut self) -> Result<(Vec<i16>, u32)> {
         // Set recording flag to false - this will stop the stream callback
         *self.is_recording.lock().unwrap() = false;
 
         // Get the buffer data
         let mut buffer = self.buffer.lock().unwrap();
-        let audio_data = buffer.drain(..).collect();
+        let audio_data: Vec<i16> = buffer.drain(..).collect();
 
-        Ok(audio_data)
+        // Get the sample rate
+        let sample_rate = *self.sample_rate.lock().unwrap();
+
+        println!("stop_recording: captured {} samples at {} Hz", audio_data.len(), sample_rate);
+
+        Ok((audio_data, sample_rate))
     }
 
     /// Check if currently recording
