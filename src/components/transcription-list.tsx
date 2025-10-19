@@ -1,25 +1,26 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Search, Copy, Play, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
+import { useState } from "react";
+import { Search, Copy, Play, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { SettingTabs } from "./setting-tabs";
 
 export interface Transcription {
-  id: string
-  date: string
-  time: string
-  text: string
+  id: string;
+  date: string;
+  time: string;
+  text: string;
 }
 
 interface TranscriptionListProps {
-  transcriptions: Transcription[]
-  selectedId?: string
-  onSelectTranscription: (transcription: Transcription) => void
-  onCopy: (text: string) => void
+  transcriptions: Transcription[];
+  selectedId?: string;
+  onSelectTranscription: (transcription: Transcription) => void;
+  onCopy: (text: string) => void;
 }
 
 export function TranscriptionList({
@@ -28,7 +29,7 @@ export function TranscriptionList({
   onSelectTranscription,
   onCopy,
 }: TranscriptionListProps) {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <Card className="p-6">
@@ -46,7 +47,9 @@ export function TranscriptionList({
             <Input
               placeholder="Rechercher dans les transcriptions..."
               value={searchQuery}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setSearchQuery(e.target.value)
+              }
               className="pl-10"
             />
           </div>
@@ -69,17 +72,21 @@ export function TranscriptionList({
                       <Badge variant="outline" className="text-xs font-mono">
                         {transcription.time}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">{transcription.date}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {transcription.date}
+                      </span>
                     </div>
-                    <p className="text-sm text-foreground line-clamp-2 leading-relaxed">{transcription.text}</p>
+                    <p className="text-sm text-foreground line-clamp-2 leading-relaxed">
+                      {transcription.text}
+                    </p>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation()
-                        onCopy(transcription.text)
+                        e.stopPropagation();
+                        onCopy(transcription.text);
                       }}
                     >
                       <Copy className="w-4 h-4" />
@@ -102,10 +109,8 @@ export function TranscriptionList({
           </div>
         </TabsContent>
 
-        <TabsContent value="parametres">
-          <div className="py-8 text-center text-muted-foreground">
-            <p>Paramètres de l&apos;application</p>
-          </div>
+        <TabsContent value="parametres" className="space-y-6">
+          <SettingTabs />
         </TabsContent>
 
         <TabsContent value="logs">
@@ -115,5 +120,5 @@ export function TranscriptionList({
         </TabsContent>
       </Tabs>
     </Card>
-  )
+  );
 }
