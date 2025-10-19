@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { Store } from '@tauri-apps/plugin-store';
+import { useState, useEffect } from "react";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { Store } from "@tauri-apps/plugin-store";
 
 export interface AppLog {
   id: string;
   timestamp: string;
-  level: 'info' | 'warn' | 'error' | 'debug' | 'trace';
+  level: "info" | "warn" | "error" | "debug" | "trace";
   message: string;
 }
 
-const LOGS_KEY = 'app_logs';
-const MAX_LOGS = 500;
+const LOGS_KEY = "app_logs";
+const MAX_LOGS = 100;
 
 export function useAppLogs() {
   const [logs, setLogs] = useState<AppLog[]>([]);
@@ -23,14 +23,14 @@ export function useAppLogs() {
 
   const loadLogs = async () => {
     try {
-      const store = await Store.load('settings.json');
+      const store = await Store.load("settings.json");
       const storedLogs = await store.get<AppLog[]>(LOGS_KEY);
 
       if (storedLogs && Array.isArray(storedLogs)) {
         setLogs(storedLogs);
       }
     } catch (error) {
-      console.error('Failed to load app logs:', error);
+      console.error("Failed to load app logs:", error);
     } finally {
       setIsLoading(false);
     }
@@ -38,11 +38,11 @@ export function useAppLogs() {
 
   const saveLogs = async (newLogs: AppLog[]) => {
     try {
-      const store = await Store.load('settings.json');
+      const store = await Store.load("settings.json");
       await store.set(LOGS_KEY, newLogs);
       await store.save();
     } catch (error) {
-      console.error('Failed to save app logs:', error);
+      console.error("Failed to save app logs:", error);
     }
   };
 
@@ -57,11 +57,11 @@ export function useAppLogs() {
           timestamp: string;
           level: string;
           message: string;
-        }>('app-log', (event) => {
+        }>("app-log", (event) => {
           const newLog: AppLog = {
             id: crypto.randomUUID(),
             timestamp: event.payload.timestamp,
-            level: event.payload.level as AppLog['level'],
+            level: event.payload.level as AppLog["level"],
             message: event.payload.message,
           };
 
@@ -82,7 +82,7 @@ export function useAppLogs() {
           unlisten = listener;
         }
       } catch (error) {
-        console.error('Failed to register app-log listener:', error);
+        console.error("Failed to register app-log listener:", error);
       }
     };
 
