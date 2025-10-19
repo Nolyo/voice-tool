@@ -62,6 +62,12 @@ fn is_recording(state: State<AppState>) -> bool {
     recorder.is_recording()
 }
 
+/// Exit the application completely
+#[tauri::command]
+fn exit_app(app_handle: AppHandle) {
+    app_handle.exit(0);
+}
+
 /// Create the mini visualizer window at startup (hidden by default)
 fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     use tauri::WebviewWindowBuilder;
@@ -93,7 +99,8 @@ pub fn run() {
             get_audio_devices,
             start_recording,
             stop_recording,
-            is_recording
+            is_recording,
+            exit_app
         ])
         .setup(|app| {
             use tauri_plugin_global_shortcut::ShortcutState;
@@ -101,46 +108,101 @@ pub fn run() {
             // Create mini window at startup
             create_mini_window(&app.handle())?;
 
-            // Register global shortcut: Ctrl+F11 to toggle recording
+            // Register global shortcuts: Toggle (Ctrl+F11) and Push-to-Talk (Ctrl+F12)
+            println!("Registering global shortcuts...");
+
+            // Use a Mutex to store the IDs of the first shortcut we see (toggle)
+            use std::sync::{Arc, Mutex as StdMutex};
+            let first_shortcut_id: Arc<StdMutex<Option<u32>>> = Arc::new(StdMutex::new(None));
+            let first_shortcut_id_clone = first_shortcut_id.clone();
+
             app.handle()
                 .plugin(
                     tauri_plugin_global_shortcut::Builder::new()
                         .with_shortcut("Ctrl+F11")?
-                        .with_handler(move |app, _shortcut, event| {
-                            if event.state == ShortcutState::Pressed {
-                                let app_handle = app.clone();
-                                let state: tauri::State<AppState> = app_handle.state();
+                        .with_shortcut("Ctrl+F12")?
+                        .with_handler(move |app, shortcut, event| {
+                            let app_handle = app.clone();
+                            let state: tauri::State<AppState> = app_handle.state();
 
-                                let is_recording = {
-                                    let recorder = state.inner().audio_recorder.lock().unwrap();
-                                    recorder.is_recording()
-                                };
+                            // Get shortcut ID to differentiate between shortcuts
+                            let shortcut_id = shortcut.id();
+                            println!("Shortcut triggered! ID: {}, State: {:?}", shortcut_id, event.state);
 
-                                if is_recording {
-                                    // Stop recording
-                                    let mut recorder = state.inner().audio_recorder.lock().unwrap();
-                                    let _ = recorder.stop_recording();
-                                    let _ = app_handle.emit("recording-state", false);
+                            // Store the first shortcut ID we see (this will be Ctrl+F11)
+                            let mut first_id = first_shortcut_id_clone.lock().unwrap();
+                            if first_id.is_none() {
+                                *first_id = Some(shortcut_id);
+                                println!("Stored toggle shortcut ID: {}", shortcut_id);
+                            }
+                            let is_toggle = *first_id == Some(shortcut_id);
+                            drop(first_id);
 
-                                    // Hide mini window
-                                    if let Some(mini_window) = app_handle.get_webview_window("mini") {
-                                        let _ = mini_window.hide();
+                            // Toggle mode shortcut
+                            if is_toggle {
+                                // Toggle mode: only on Pressed
+                                if event.state == ShortcutState::Pressed {
+                                    let is_recording = {
+                                        let recorder = state.inner().audio_recorder.lock().unwrap();
+                                        recorder.is_recording()
+                                    };
+
+                                    if is_recording {
+                                        // Stop recording
+                                        let mut recorder = state.inner().audio_recorder.lock().unwrap();
+                                        let _ = recorder.stop_recording();
+                                        let _ = app_handle.emit("recording-state", false);
+
+                                        // Hide mini window
+                                        if let Some(mini_window) = app_handle.get_webview_window("mini") {
+                                            let _ = mini_window.hide();
+                                        }
+                                    } else {
+                                        // Show mini window INSTANTLY (already created, just show it)
+                                        if let Some(mini_window) = app_handle.get_webview_window("mini") {
+                                            let _ = mini_window.show();
+                                        }
+
+                                        // Start recording
+                                        let mut recorder = state.inner().audio_recorder.lock().unwrap();
+                                        let _ = recorder.start_recording(None, app_handle.clone());
+                                        let _ = app_handle.emit("recording-state", true);
                                     }
-                                } else {
-                                    // Show mini window INSTANTLY (already created, just show it)
+                                }
+                            }
+                            // Push-to-Talk shortcut (any other ID)
+                            else {
+                                // Push-to-Talk mode: start on Pressed, stop on Released
+                                if event.state == ShortcutState::Pressed {
+                                    // Show mini window
                                     if let Some(mini_window) = app_handle.get_webview_window("mini") {
                                         let _ = mini_window.show();
                                     }
 
                                     // Start recording
                                     let mut recorder = state.inner().audio_recorder.lock().unwrap();
-                                    let _ = recorder.start_recording(None, app_handle.clone());
-                                    let _ = app_handle.emit("recording-state", true);
+                                    if !recorder.is_recording() {
+                                        let _ = recorder.start_recording(None, app_handle.clone());
+                                        let _ = app_handle.emit("recording-state", true);
+                                    }
+                                } else if event.state == ShortcutState::Released {
+                                    // Stop recording
+                                    let mut recorder = state.inner().audio_recorder.lock().unwrap();
+                                    if recorder.is_recording() {
+                                        let _ = recorder.stop_recording();
+                                        let _ = app_handle.emit("recording-state", false);
+
+                                        // Hide mini window
+                                        if let Some(mini_window) = app_handle.get_webview_window("mini") {
+                                            let _ = mini_window.hide();
+                                        }
+                                    }
                                 }
                             }
                         })
                         .build(),
                 )?;
+            println!("Global shortcuts registered successfully!");
 
             // Create system tray menu
             let show_item = MenuItem::with_id(app, "show", "Afficher", true, None::<&str>)?;

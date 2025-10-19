@@ -15,6 +15,11 @@ export interface AppSettings {
     language: string;
     smart_formatting: boolean;
 
+    // API Keys
+    openai_api_key: string;
+    deepgram_api_key: string;
+    google_api_key: string;
+
     // Text
     paste_at_cursor: boolean;
 
@@ -50,6 +55,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
     transcription_provider: "OpenAI",
     language: "fr-FR",
     smart_formatting: true,
+
+    // API Keys
+    openai_api_key: "",
+    deepgram_api_key: "",
+    google_api_key: "",
 
     // Text
     paste_at_cursor: true,

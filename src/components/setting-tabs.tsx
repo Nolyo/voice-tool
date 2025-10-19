@@ -14,6 +14,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useSettings } from "@/hooks/useSettings";
 import { useAudioDevices } from "@/hooks/useAudioDevices";
+import { ApiConfigDialog } from "./api-config-dialog";
 
 export function SettingTabs() {
   const { settings, isLoaded, updateSetting } = useSettings();
@@ -177,9 +178,7 @@ export function SettingTabs() {
             </Select>
           </div>
 
-          <Button variant="outline" className="w-full bg-transparent">
-            Configurer les accès API...
-          </Button>
+          <ApiConfigDialog />
         </div>
       </div>
 
@@ -324,34 +323,36 @@ export function SettingTabs() {
             >
               Raccourci pour Démarrer/Arrêter l'enregistrement
             </Label>
-            <div className="flex gap-2">
-              <Input
-                id="shortcut-record"
-                value={settings.record_hotkey}
-                onChange={(e) =>
-                  updateSetting("record_hotkey", e.target.value)
-                }
-                className="font-mono"
-              />
-              <Button variant="outline">Définir...</Button>
-            </div>
+            <Input
+              id="shortcut-record"
+              value={settings.record_hotkey}
+              onChange={(e) =>
+                updateSetting("record_hotkey", e.target.value)
+              }
+              className="font-mono"
+              readOnly
+            />
+            <p className="text-xs text-muted-foreground">
+              Actuellement : {settings.record_hotkey} (non modifiable pour l'instant)
+            </p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="shortcut-push" className="text-sm text-foreground">
               Raccourci Push-to-talk (maintenir)
             </Label>
-            <div className="flex gap-2">
-              <Input
-                id="shortcut-push"
-                value={settings.ptt_hotkey}
-                onChange={(e) =>
-                  updateSetting("ptt_hotkey", e.target.value)
-                }
-                className="font-mono"
-              />
-              <Button variant="outline">Définir...</Button>
-            </div>
+            <Input
+              id="shortcut-push"
+              value={settings.ptt_hotkey}
+              onChange={(e) =>
+                updateSetting("ptt_hotkey", e.target.value)
+              }
+              className="font-mono"
+              readOnly
+            />
+            <p className="text-xs text-muted-foreground">
+              Actuellement : {settings.ptt_hotkey} (non modifiable pour l'instant)
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -361,17 +362,18 @@ export function SettingTabs() {
             >
               Raccourci pour Ouvrir cette fenêtre
             </Label>
-            <div className="flex gap-2">
-              <Input
-                id="shortcut-window"
-                value={settings.open_window_hotkey}
-                onChange={(e) =>
-                  updateSetting("open_window_hotkey", e.target.value)
-                }
-                className="font-mono"
-              />
-              <Button variant="outline">Définir...</Button>
-            </div>
+            <Input
+              id="shortcut-window"
+              value={settings.open_window_hotkey}
+              onChange={(e) =>
+                updateSetting("open_window_hotkey", e.target.value)
+              }
+              className="font-mono"
+              readOnly
+            />
+            <p className="text-xs text-muted-foreground">
+              Actuellement : {settings.open_window_hotkey} (non implémenté)
+            </p>
           </div>
 
           <div className="p-3 rounded-lg bg-muted/50 border border-border">
@@ -388,7 +390,14 @@ export function SettingTabs() {
 
       {/* Close Application Button */}
       <div className="pt-6 border-t border-border">
-        <Button variant="destructive" className="w-full">
+        <Button
+          variant="destructive"
+          className="w-full"
+          onClick={async () => {
+            const { invoke } = await import("@tauri-apps/api/core");
+            await invoke("exit_app");
+          }}
+        >
           Fermer complètement l'application
         </Button>
       </div>
