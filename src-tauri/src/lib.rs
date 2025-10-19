@@ -675,8 +675,8 @@ fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::
 
     let mini = WebviewWindowBuilder::new(app, "mini", WebviewUrl::App("mini.html".into()))
         .title("Voice Tool - Mini")
-        .inner_size(320.0, 76.0)
-        .resizable(false)
+        .inner_size(233.0, 42.0)
+        .resizable(true)
         .decorations(false)
         .always_on_top(true)
         .transparent(true)
