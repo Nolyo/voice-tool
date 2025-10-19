@@ -1,6 +1,6 @@
 "use client";
 
-import { Mic, Settings, Minus, Plus, Keyboard } from "lucide-react";
+import { Mic, Settings, Minus, Plus, Keyboard, RefreshCw } from "lucide-react";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
 import {
@@ -13,9 +13,11 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useSettings } from "@/hooks/useSettings";
+import { useAudioDevices } from "@/hooks/useAudioDevices";
 
 export function SettingTabs() {
   const { settings, isLoaded, updateSetting } = useSettings();
+  const { devices, isLoading: devicesLoading, error: devicesError, refresh } = useAudioDevices();
 
   if (!isLoaded) {
     return (
@@ -69,24 +71,48 @@ export function SettingTabs() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="microphone" className="text-sm text-foreground">
-              Microphone d'entrée
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="microphone" className="text-sm text-foreground">
+                Microphone d'entrée
+              </Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refresh}
+                disabled={devicesLoading}
+                className="h-6 px-2"
+              >
+                <RefreshCw className={`w-3 h-3 ${devicesLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
             <Select
               value={settings.input_device_index?.toString() ?? "null"}
               onValueChange={(value) =>
                 updateSetting("input_device_index", value === "null" ? null : Number.parseInt(value))
               }
+              disabled={devicesLoading || !!devicesError}
             >
               <SelectTrigger id="microphone">
-                <SelectValue />
+                <SelectValue placeholder={
+                  devicesLoading ? "Chargement..." :
+                  devicesError ? "Erreur de chargement" :
+                  "Sélectionner un microphone"
+                } />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="null">Par défaut (Windows)</SelectItem>
-                <SelectItem value="0">Microphone 1</SelectItem>
-                <SelectItem value="1">Microphone 2</SelectItem>
+                <SelectItem value="null">Par défaut (Système)</SelectItem>
+                {devices.map((device) => (
+                  <SelectItem key={device.index} value={device.index.toString()}>
+                    {device.name} {device.is_default ? "(par défaut)" : ""}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            {devicesError && (
+              <p className="text-xs text-destructive">
+                Erreur : {devicesError}
+              </p>
+            )}
           </div>
         </div>
       </div>

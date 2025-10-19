@@ -6,10 +6,12 @@ import { DashboardHeader } from "./dashboard-header"
 import { RecordingCard } from "./recording-card"
 import { TranscriptionList, type Transcription } from "./transcription-list"
 import { TranscriptionDetails } from "./transcription-details"
+import { useSettings } from "@/hooks/useSettings"
 
 export default function Dashboard() {
   const [isRecording, setIsRecording] = useState(false)
   const [selectedTranscription, setSelectedTranscription] = useState<Transcription | null>(null)
+  const { settings } = useSettings()
 
   // Sample data - replace with real data
   const transcriptions: Transcription[] = [
@@ -46,8 +48,8 @@ export default function Dashboard() {
         setIsRecording(false)
         // TODO: Process audio data (transcription)
       } else {
-        // Start recording
-        await invoke("start_recording", { deviceIndex: null })
+        // Start recording with selected device from settings
+        await invoke("start_recording", { deviceIndex: settings.input_device_index })
         setIsRecording(true)
       }
     } catch (error) {
