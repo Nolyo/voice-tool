@@ -96,6 +96,12 @@ fn exit_app(app_handle: AppHandle) {
     app_handle.exit(0);
 }
 
+/// Log a separator line to mark the end of a transcription process
+#[tauri::command]
+fn log_separator() {
+    tracing::info!("────────────────────────────────────────────────────────────────");
+}
+
 /// Update global hotkeys dynamically from the frontend
 #[tauri::command]
 fn update_hotkeys(
@@ -603,6 +609,8 @@ fn paste_text_to_active_window(_text: String) -> Result<(), String> {
     use std::thread;
     use std::time::Duration;
 
+    tracing::info!("Pasting transcription to cursor position");
+
     // Copy text to clipboard first using the clipboard plugin
     // (This will be handled by the clipboard-manager plugin)
 
@@ -610,11 +618,16 @@ fn paste_text_to_active_window(_text: String) -> Result<(), String> {
     thread::sleep(Duration::from_millis(50));
 
     // Simulate Ctrl+V
-    let mut enigo = Enigo::new(&Settings::default()).map_err(|e| format!("Failed to initialize keyboard: {}", e))?;
+    let mut enigo = Enigo::new(&Settings::default()).map_err(|e| {
+        tracing::error!("Failed to initialize keyboard simulation: {}", e);
+        format!("Failed to initialize keyboard: {}", e)
+    })?;
 
     enigo.key(Key::Control, enigo::Direction::Press).map_err(|e| e.to_string())?;
     enigo.key(Key::Unicode('v'), enigo::Direction::Click).map_err(|e| e.to_string())?;
     enigo.key(Key::Control, enigo::Direction::Release).map_err(|e| e.to_string())?;
+
+    tracing::info!("Text pasted successfully at cursor position");
 
     Ok(())
 }
@@ -660,6 +673,7 @@ pub fn run() {
             stop_recording,
             is_recording,
             exit_app,
+            log_separator,
             update_hotkeys,
             transcribe_audio,
             load_recording,

@@ -36,11 +36,11 @@ pub fn get_recordings_dir() -> Result<PathBuf> {
 pub fn save_audio_to_wav(samples: &[i16], sample_rate: u32) -> Result<PathBuf> {
     let recordings_dir = get_recordings_dir()?;
 
-    println!("Saving {} audio samples to WAV at {} Hz", samples.len(), sample_rate);
+    tracing::info!("Saving {} audio samples to WAV at {} Hz", samples.len(), sample_rate);
 
     // Calculate duration
     let duration_seconds = samples.len() as f32 / sample_rate as f32;
-    println!("Audio duration: {:.2} seconds", duration_seconds);
+    tracing::info!("Audio duration: {:.2} seconds", duration_seconds);
 
     // Calculate RMS to check if there's actual sound
     let rms: f32 = if samples.is_empty() {
@@ -52,7 +52,7 @@ pub fn save_audio_to_wav(samples: &[i16], sample_rate: u32) -> Result<PathBuf> {
         }).sum();
         ((sum / samples.len() as f64).sqrt() * 100.0) as f32
     };
-    println!("Audio RMS level: {:.2}%", rms);
+    tracing::info!("Audio RMS level: {:.2}%", rms);
 
     if samples.is_empty() {
         return Err(anyhow!("No audio samples to save"));
@@ -60,8 +60,8 @@ pub fn save_audio_to_wav(samples: &[i16], sample_rate: u32) -> Result<PathBuf> {
 
     // Warn if audio level is too low
     if rms < 0.5 {
-        println!("WARNING: Audio level is extremely low ({:.2}%). Transcription may fail.", rms);
-        println!("Check your microphone settings and volume!");
+        tracing::warn!("Audio level is extremely low ({:.2}%). Transcription may fail", rms);
+        tracing::warn!("Check your microphone settings and volume!");
     }
 
     // Use samples directly without amplification to avoid distortion
@@ -93,7 +93,7 @@ pub fn save_audio_to_wav(samples: &[i16], sample_rate: u32) -> Result<PathBuf> {
     writer.finalize()
         .context("Failed to finalize WAV file")?;
 
-    println!("Saved audio to: {:?}", wav_path);
+    tracing::info!("Audio file saved successfully: {}", wav_path.display());
     Ok(wav_path)
 }
 
@@ -123,7 +123,7 @@ pub fn cleanup_old_recordings(keep_last: usize) -> Result<()> {
 
     // Delete files beyond keep_last
     for (path, _) in files.iter().skip(keep_last) {
-        println!("Deleting old recording: {:?}", path);
+        tracing::info!("Deleting old recording: {}", path.display());
         fs::remove_file(path)
             .context(format!("Failed to delete file: {:?}", path))?;
     }
@@ -141,9 +141,13 @@ pub async fn transcribe_with_openai(
         return Err(anyhow!("OpenAI API key not configured"));
     }
 
+    tracing::info!("Reading audio file for transcription");
     // Read the audio file
     let audio_bytes = fs::read(wav_path)
         .context("Failed to read WAV file")?;
+
+    let file_size_kb = audio_bytes.len() / 1024;
+    tracing::info!("Audio file size: {} KB", file_size_kb);
 
     // Extract ISO-639-1 language code (first 2 characters)
     // "fr-FR" -> "fr", "en-US" -> "en"
@@ -152,6 +156,8 @@ pub async fn transcribe_with_openai(
     } else {
         language
     };
+
+    tracing::info!("Preparing transcription request (language: {})", lang_code);
 
     // Create multipart form
     let file_part = multipart::Part::bytes(audio_bytes)
@@ -164,6 +170,7 @@ pub async fn transcribe_with_openai(
         .text("language", lang_code.to_string())
         .text("response_format", "json");
 
+    tracing::info!("Sending request to OpenAI Whisper API...");
     // Send request to OpenAI
     let client = reqwest::Client::new();
     let response = client
@@ -174,16 +181,21 @@ pub async fn transcribe_with_openai(
         .await
         .context("Failed to send request to OpenAI")?;
 
+    tracing::info!("Received response from OpenAI (status: {})", response.status());
+
     // Check for errors
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        tracing::error!("OpenAI API error {}: {}", status, error_text);
         return Err(anyhow!("OpenAI API error {}: {}", status, error_text));
     }
 
+    tracing::info!("Parsing transcription response...");
     // Parse response
     let whisper_response: WhisperResponse = response.json().await
         .context("Failed to parse OpenAI response")?;
 
+    tracing::info!("Transcription text received ({} characters)", whisper_response.text.len());
     Ok(whisper_response.text)
 }

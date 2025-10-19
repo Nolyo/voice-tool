@@ -99,9 +99,14 @@ export default function Dashboard() {
           // Simulate Ctrl+V
           await invoke("paste_text_to_active_window", { text: result.text });
         }
+
+        // Log separator to mark end of transcription process
+        await invoke("log_separator");
       } catch (error) {
         console.error("Transcription error:", error);
         alert(`Erreur de transcription: ${error}`);
+        // Log separator even on error
+        await invoke("log_separator");
       } finally {
         setIsTranscribing(false);
       }
