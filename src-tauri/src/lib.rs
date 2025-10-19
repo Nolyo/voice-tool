@@ -1,5 +1,6 @@
 mod audio;
 mod transcription;
+mod logging;
 
 use audio::{AudioDeviceInfo, AudioRecorder};
 use transcription::{save_audio_to_wav, cleanup_old_recordings, transcribe_with_openai, get_recordings_dir};
@@ -47,10 +48,14 @@ fn start_recording(
     app_handle: AppHandle,
     device_index: Option<usize>,
 ) -> Result<(), String> {
+    tracing::info!("Starting audio recording (device_index: {:?})", device_index);
     let mut recorder = state.inner().audio_recorder.lock().unwrap();
     let result = recorder
         .start_recording(device_index, app_handle.clone())
-        .map_err(|e| e.to_string());
+        .map_err(|e| {
+            tracing::error!("Failed to start recording: {}", e);
+            e.to_string()
+        });
 
     // Emit recording state change
     let _ = app_handle.emit("recording-state", true);
@@ -61,8 +66,16 @@ fn start_recording(
 /// Stop recording and return the audio data with sample rate
 #[tauri::command]
 fn stop_recording(state: State<AppState>, app_handle: AppHandle) -> Result<(Vec<i16>, u32), String> {
+    tracing::info!("Stopping audio recording");
     let mut recorder = state.inner().audio_recorder.lock().unwrap();
-    let result = recorder.stop_recording().map_err(|e| e.to_string());
+    let result = recorder.stop_recording().map_err(|e| {
+        tracing::error!("Failed to stop recording: {}", e);
+        e.to_string()
+    });
+
+    if let Ok((samples, rate)) = &result {
+        tracing::info!("Recording stopped: {} samples at {} Hz", samples.len(), rate);
+    }
 
     // Emit recording state change
     let _ = app_handle.emit("recording-state", false);
@@ -533,7 +546,7 @@ async fn transcribe_audio(
     language: String,
     keep_last: usize,
 ) -> Result<TranscriptionResponse, String> {
-    println!("transcribe_audio called with {} samples at {} Hz", audio_samples.len(), sample_rate);
+    tracing::info!("transcribe_audio called with {} samples at {} Hz", audio_samples.len(), sample_rate);
 
     // Save audio to WAV file
     let wav_path = save_audio_to_wav(&audio_samples, sample_rate)
@@ -542,10 +555,15 @@ async fn transcribe_audio(
     // Transcribe using OpenAI Whisper
     let transcription = transcribe_with_openai(&wav_path, &api_key, &language)
         .await
-        .map_err(|e| format!("Transcription failed: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("Transcription failed: {}", e);
+            format!("Transcription failed: {}", e)
+        })?;
 
     // Clean up old recordings
     let _ = cleanup_old_recordings(keep_last);
+
+    tracing::info!("Transcription completed successfully: {} characters", transcription.len());
 
     Ok(TranscriptionResponse {
         text: transcription,
@@ -623,6 +641,9 @@ fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize logging system
+    let log_layer = logging::init_logging();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -644,7 +665,10 @@ pub fn run() {
             load_recording,
             paste_text_to_active_window
         ])
-        .setup(|app| {
+        .setup(move |app| {
+            // Enable logging to frontend
+            log_layer.set_app_handle(app.handle().clone());
+
             // Create mini window at startup
             create_mini_window(&app.handle())?;
 

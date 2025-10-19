@@ -8,7 +8,10 @@
       "Bash(cargo check:*)",
       "Bash(pnpm add:*)",
       "Bash(tasklist)",
-      "Bash(findstr /I \"node.exe\")"
+      "Bash(findstr /I \"node.exe\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr :1420)",
+      "Bash(taskkill /F /PID 24660)"
     ],
     "deny": [],
     "ask": []

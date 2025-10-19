@@ -8,7 +8,9 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { SettingTabs } from "./setting-tabs";
+import { LogsTab } from "./logs-tab";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
+import { useAppLogs } from "@/hooks/useAppLogs";
 
 interface TranscriptionListProps {
   transcriptions: Transcription[];
@@ -28,6 +30,7 @@ export function TranscriptionList({
   onClearAll,
 }: TranscriptionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const { logs, clearLogs } = useAppLogs();
 
   // Filter transcriptions based on search query
   const filteredTranscriptions = useMemo(() => {
@@ -189,9 +192,7 @@ export function TranscriptionList({
         </TabsContent>
 
         <TabsContent value="logs">
-          <div className="py-8 text-center text-muted-foreground">
-            <p>Journaux système</p>
-          </div>
+          <LogsTab logs={logs} onClearLogs={clearLogs} />
         </TabsContent>
       </Tabs>
     </Card>

@@ -46,3 +46,8 @@ enigo = "0.2"
 # Date/time for timestamps
 chrono = "0.4"
 
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+parking_lot = "0.12"
+
