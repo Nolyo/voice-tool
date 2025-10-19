@@ -100,11 +100,11 @@ pub fn run() {
             // Create mini window at startup
             create_mini_window(&app.handle())?;
 
-            // Register global shortcut: Ctrl+Shift+Space to toggle recording
+            // Register global shortcut: Ctrl+F11 to toggle recording
             app.handle()
                 .plugin(
                     tauri_plugin_global_shortcut::Builder::new()
-                        .with_shortcut("Ctrl+Shift+Space")?
+                        .with_shortcut("Ctrl+F11")?
                         .with_handler(move |app, _shortcut, event| {
                             if event.state == ShortcutState::Pressed {
                                 let app_handle = app.clone();
