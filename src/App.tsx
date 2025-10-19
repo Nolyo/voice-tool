@@ -1,11 +1,14 @@
 import "./App.css";
 import Dashboard from "./components/dashboard";
+import { SettingsProvider } from "./contexts/SettingsContext";
 
 function App() {
   return (
-    <main className="dark">
-      <Dashboard />
-    </main>
+    <SettingsProvider>
+      <main className="dark">
+        <Dashboard />
+      </main>
+    </SettingsProvider>
   );
 }
 

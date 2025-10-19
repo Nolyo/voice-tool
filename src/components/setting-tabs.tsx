@@ -1,17 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Search,
-  Copy,
-  Play,
-  Trash2,
-  Mic,
-  Settings,
-  Minus,
-  Plus,
-  Keyboard,
-} from "lucide-react";
+import { Mic, Settings, Minus, Plus, Keyboard } from "lucide-react";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
 import {
@@ -23,22 +12,18 @@ import {
 } from "./ui/select";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { useSettings } from "@/hooks/useSettings";
 
 export function SettingTabs() {
-  const [settings, setSettings] = useState({
-    interfaceSounds: true,
-    showListenButton: true,
-    inputMicrophone: "default",
-    serviceProvider: "openai-whisper",
-    transcriptionLanguage: "fr",
-    autoInsertCursor: true,
-    smartFormatting: true,
-    autoStartWindows: true,
-    keepRecordings: 25,
-    shortcutRecord: "<alt>+<f1>",
-    shortcutPushToTalk: "<ctrl>+<f1>",
-    shortcutOpenWindow: "<ctrl>+<alt>+o",
-  });
+  const { settings, isLoaded, updateSetting } = useSettings();
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Chargement des paramètres...</p>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
       {/* Audio Section */}
@@ -54,12 +39,9 @@ export function SettingTabs() {
           <div className="flex items-center space-x-3">
             <Checkbox
               id="interface-sounds"
-              checked={settings.interfaceSounds}
+              checked={settings.enable_sounds}
               onCheckedChange={(checked) =>
-                setSettings({
-                  ...settings,
-                  interfaceSounds: checked as boolean,
-                })
+                updateSetting("enable_sounds", checked as boolean)
               }
             />
             <Label
@@ -73,12 +55,9 @@ export function SettingTabs() {
           <div className="flex items-center space-x-3">
             <Checkbox
               id="show-listen"
-              checked={settings.showListenButton}
+              checked={settings.enable_history_audio_preview}
               onCheckedChange={(checked) =>
-                setSettings({
-                  ...settings,
-                  showListenButton: checked as boolean,
-                })
+                updateSetting("enable_history_audio_preview", checked as boolean)
               }
             />
             <Label
@@ -94,18 +73,18 @@ export function SettingTabs() {
               Microphone d'entrée
             </Label>
             <Select
-              value={settings.inputMicrophone}
+              value={settings.input_device_index?.toString() ?? "null"}
               onValueChange={(value) =>
-                setSettings({ ...settings, inputMicrophone: value })
+                updateSetting("input_device_index", value === "null" ? null : Number.parseInt(value))
               }
             >
               <SelectTrigger id="microphone">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="default">Par défaut (Windows)</SelectItem>
-                <SelectItem value="microphone-1">Microphone 1</SelectItem>
-                <SelectItem value="microphone-2">Microphone 2</SelectItem>
+                <SelectItem value="null">Par défaut (Windows)</SelectItem>
+                <SelectItem value="0">Microphone 1</SelectItem>
+                <SelectItem value="1">Microphone 2</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -132,24 +111,20 @@ export function SettingTabs() {
               Fournisseur de service
             </Label>
             <Select
-              value={settings.serviceProvider}
+              value={settings.transcription_provider}
               onValueChange={(value) =>
-                setSettings({ ...settings, serviceProvider: value })
+                updateSetting("transcription_provider", value as "OpenAI" | "Deepgram" | "Google")
               }
             >
               <SelectTrigger id="service-provider">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="openai-whisper">
-                  OpenAI Whisper (recommandé)
-                </SelectItem>
-                <SelectItem value="google-speech">
+                <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
+                <SelectItem value="Google">
                   Google Speech-to-Text
                 </SelectItem>
-                <SelectItem value="azure-speech">
-                  Azure Speech Services
-                </SelectItem>
+                <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -159,19 +134,19 @@ export function SettingTabs() {
               Langue de transcription
             </Label>
             <Select
-              value={settings.transcriptionLanguage}
+              value={settings.language}
               onValueChange={(value) =>
-                setSettings({ ...settings, transcriptionLanguage: value })
+                updateSetting("language", value)
               }
             >
               <SelectTrigger id="language">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="fr">Français</SelectItem>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="es">Español</SelectItem>
-                <SelectItem value="de">Deutsch</SelectItem>
+                <SelectItem value="fr-FR">Français</SelectItem>
+                <SelectItem value="en-US">English</SelectItem>
+                <SelectItem value="es-ES">Español</SelectItem>
+                <SelectItem value="de-DE">Deutsch</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -195,12 +170,9 @@ export function SettingTabs() {
           <div className="flex items-start space-x-3">
             <Checkbox
               id="auto-insert"
-              checked={settings.autoInsertCursor}
+              checked={settings.paste_at_cursor}
               onCheckedChange={(checked) =>
-                setSettings({
-                  ...settings,
-                  autoInsertCursor: checked as boolean,
-                })
+                updateSetting("paste_at_cursor", checked as boolean)
               }
               className="mt-1"
             />
@@ -216,12 +188,9 @@ export function SettingTabs() {
           <div className="flex items-start space-x-3">
             <Checkbox
               id="smart-formatting"
-              checked={settings.smartFormatting}
+              checked={settings.smart_formatting}
               onCheckedChange={(checked) =>
-                setSettings({
-                  ...settings,
-                  smartFormatting: checked as boolean,
-                })
+                updateSetting("smart_formatting", checked as boolean)
               }
               className="mt-1"
             />
@@ -248,12 +217,9 @@ export function SettingTabs() {
           <div className="flex items-center space-x-3">
             <Checkbox
               id="auto-start"
-              checked={settings.autoStartWindows}
+              checked={settings.auto_start}
               onCheckedChange={(checked) =>
-                setSettings({
-                  ...settings,
-                  autoStartWindows: checked as boolean,
-                })
+                updateSetting("auto_start", checked as boolean)
               }
             />
             <Label
@@ -276,10 +242,7 @@ export function SettingTabs() {
                 variant="outline"
                 size="icon"
                 onClick={() =>
-                  setSettings({
-                    ...settings,
-                    keepRecordings: Math.max(0, settings.keepRecordings - 1),
-                  })
+                  updateSetting("recordings_keep_last", Math.max(0, settings.recordings_keep_last - 1))
                 }
               >
                 <Minus className="w-4 h-4" />
@@ -287,12 +250,9 @@ export function SettingTabs() {
               <Input
                 id="keep-recordings"
                 type="number"
-                value={settings.keepRecordings}
+                value={settings.recordings_keep_last}
                 onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    keepRecordings: Number.parseInt(e.target.value) || 0,
-                  })
+                  updateSetting("recordings_keep_last", Number.parseInt(e.target.value) || 0)
                 }
                 className="w-20 text-center"
               />
@@ -300,10 +260,7 @@ export function SettingTabs() {
                 variant="outline"
                 size="icon"
                 onClick={() =>
-                  setSettings({
-                    ...settings,
-                    keepRecordings: settings.keepRecordings + 1,
-                  })
+                  updateSetting("recordings_keep_last", settings.recordings_keep_last + 1)
                 }
               >
                 <Plus className="w-4 h-4" />
@@ -344,12 +301,9 @@ export function SettingTabs() {
             <div className="flex gap-2">
               <Input
                 id="shortcut-record"
-                value={settings.shortcutRecord}
+                value={settings.record_hotkey}
                 onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    shortcutRecord: e.target.value,
-                  })
+                  updateSetting("record_hotkey", e.target.value)
                 }
                 className="font-mono"
               />
@@ -364,12 +318,9 @@ export function SettingTabs() {
             <div className="flex gap-2">
               <Input
                 id="shortcut-push"
-                value={settings.shortcutPushToTalk}
+                value={settings.ptt_hotkey}
                 onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    shortcutPushToTalk: e.target.value,
-                  })
+                  updateSetting("ptt_hotkey", e.target.value)
                 }
                 className="font-mono"
               />
@@ -387,12 +338,9 @@ export function SettingTabs() {
             <div className="flex gap-2">
               <Input
                 id="shortcut-window"
-                value={settings.shortcutOpenWindow}
+                value={settings.open_window_hotkey}
                 onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    shortcutOpenWindow: e.target.value,
-                  })
+                  updateSetting("open_window_hotkey", e.target.value)
                 }
                 className="font-mono"
               />
