@@ -65,18 +65,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     key: K,
     value: AppSettings["settings"][K]
   ) => {
-    const newSettings: AppSettings = {
-      ...settings,
-      settings: {
-        ...settings.settings,
-        [key]: value,
-      },
-    };
-
-    setSettings(newSettings);
-
     try {
       const storeInstance = await getStore();
+      const current = await storeInstance.get<AppSettings>("settings");
+      const base = current ? mergeSettings(current) : settings;
+
+      const newSettings: AppSettings = {
+        ...base,
+        settings: {
+          ...base.settings,
+          [key]: value,
+        },
+      };
+
+      setSettings(newSettings);
       await storeInstance.set("settings", newSettings);
       await storeInstance.save();
     } catch (error) {
@@ -90,18 +92,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const updateSettings = async (
     updates: Partial<AppSettings["settings"]>
   ) => {
-    const newSettings: AppSettings = {
-      ...settings,
-      settings: {
-        ...settings.settings,
-        ...updates,
-      },
-    };
-
-    setSettings(newSettings);
-
     try {
       const storeInstance = await getStore();
+      const current = await storeInstance.get<AppSettings>("settings");
+      const base = current ? mergeSettings(current) : settings;
+
+      const newSettings: AppSettings = {
+        ...base,
+        settings: {
+          ...base.settings,
+          ...updates,
+        },
+      };
+
+      setSettings(newSettings);
       await storeInstance.set("settings", newSettings);
       await storeInstance.save();
     } catch (error) {
