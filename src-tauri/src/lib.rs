@@ -753,12 +753,14 @@ pub fn run() {
             };
 
             if let Some(window) = app.get_webview_window("main") {
-                // Show window and restore state only if NOT starting minimized
+                // Always restore window state (position/size) even when starting hidden
+                restore_window_state(&window, &window_store);
+
+                // Show window only if NOT starting minimized
                 if !should_start_minimized {
-                    restore_window_state(&window, &window_store);
                     let _ = window.show();
                 }
-                // If should_start_minimized is true, window stays hidden (default state from config)
+                // If should_start_minimized is true, window stays hidden but state is restored
 
                 let events_store = window_store.clone();
                 let events_window = window.clone();

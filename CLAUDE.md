@@ -127,3 +127,4 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - Audio stream is intentionally leaked via `std::mem::forget()` and controlled by the `is_recording` flag
 - The mini window must be created at startup for instant display; creating on-demand causes noticeable lag
 - Transcription functionality is stubbed (TODO in dashboard.tsx:47)
+- utilise pnpm tauri build pour builder pas cargo build sinonca ne marche pas
