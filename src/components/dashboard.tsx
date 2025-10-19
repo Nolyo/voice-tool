@@ -62,23 +62,20 @@ export default function Dashboard() {
       <DashboardHeader />
 
       <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6">
+          {/* First row: Recording and Details side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <RecordingCard isRecording={isRecording} onToggleRecording={handleToggleRecording} />
-
-            <TranscriptionList
-              transcriptions={transcriptions}
-              selectedId={selectedTranscription?.id}
-              onSelectTranscription={setSelectedTranscription}
-              onCopy={handleCopy}
-            />
-          </div>
-
-          {/* Sidebar - Details */}
-          <div className="lg:col-span-1">
             <TranscriptionDetails transcription={selectedTranscription} onCopy={handleCopy} />
           </div>
+
+          {/* Second row: Transcription list full width */}
+          <TranscriptionList
+            transcriptions={transcriptions}
+            selectedId={selectedTranscription?.id}
+            onSelectTranscription={setSelectedTranscription}
+            onCopy={handleCopy}
+          />
         </div>
       </div>
     </div>
