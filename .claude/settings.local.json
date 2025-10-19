@@ -6,7 +6,9 @@
       "Bash(pnpm tauri dev:*)",
       "Bash(pnpm build:*)",
       "Bash(cargo check:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(tasklist)",
+      "Bash(findstr /I \"node.exe\")"
     ],
     "deny": [],
     "ask": []

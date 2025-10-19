@@ -165,11 +165,6 @@ pub fn run() {
             // Register global shortcuts: Toggle (Ctrl+F11) and Push-to-Talk (Ctrl+F12)
             println!("Registering global shortcuts...");
 
-            // Use a Mutex to store the IDs of the first shortcut we see (toggle)
-            use std::sync::{Arc, Mutex as StdMutex};
-            let first_shortcut_id: Arc<StdMutex<Option<u32>>> = Arc::new(StdMutex::new(None));
-            let first_shortcut_id_clone = first_shortcut_id.clone();
-
             app.handle()
                 .plugin(
                     tauri_plugin_global_shortcut::Builder::new()
@@ -179,20 +174,13 @@ pub fn run() {
                             let app_handle = app.clone();
                             let state: tauri::State<AppState> = app_handle.state();
 
-                            // Get shortcut ID to differentiate between shortcuts
-                            let shortcut_id = shortcut.id();
-                            println!("Shortcut triggered! ID: {}, State: {:?}", shortcut_id, event.state);
+                            // Identify shortcuts by their actual key combination
+                            let shortcut_str = format!("{:?}", shortcut);
+                            let is_toggle = shortcut_str.contains("F11");
 
-                            // Store the first shortcut ID we see (this will be Ctrl+F11)
-                            let mut first_id = first_shortcut_id_clone.lock().unwrap();
-                            if first_id.is_none() {
-                                *first_id = Some(shortcut_id);
-                                println!("Stored toggle shortcut ID: {}", shortcut_id);
-                            }
-                            let is_toggle = *first_id == Some(shortcut_id);
-                            drop(first_id);
+                            println!("Shortcut triggered! Keys: {}, State: {:?}, IsToggle: {}", shortcut_str, event.state, is_toggle);
 
-                            // Toggle mode shortcut
+                            // Toggle mode shortcut (Ctrl+F11)
                             if is_toggle {
                                 // Toggle mode: only on Pressed
                                 if event.state == ShortcutState::Pressed {
@@ -239,7 +227,7 @@ pub fn run() {
                                     }
                                 }
                             }
-                            // Push-to-Talk shortcut (any other ID)
+                            // Push-to-Talk shortcut (Ctrl+F12)
                             else {
                                 // Push-to-Talk mode: start on Pressed, stop on Released
                                 if event.state == ShortcutState::Pressed {

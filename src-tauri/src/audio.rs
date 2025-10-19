@@ -79,19 +79,24 @@ impl AudioRecorder {
         }
 
         // Get the default input config
-        let config = device
+        let default_config = device
             .default_input_config()
             .map_err(|e| anyhow!("Failed to get default input config: {}", e))?;
 
-        let sample_format = config.sample_format();
-        let device_sample_rate = config.sample_rate().0;
-        println!("Device sample format: {:?}, sample rate: {}, channels: {}",
-                 sample_format, device_sample_rate, config.channels());
+        let sample_format = default_config.sample_format();
+        let device_sample_rate = default_config.sample_rate().0;
+        println!("Device default: format={:?}, sample_rate={}, channels={}",
+                 sample_format, device_sample_rate, default_config.channels());
 
-        let config: StreamConfig = config.into();
+        // Use the device's native sample rate for compatibility
+        // Whisper works well with various sample rates (16000, 44100, 48000, etc.)
+        let config: StreamConfig = default_config.into();
 
-        // Store the sample rate
-        *self.sample_rate.lock().unwrap() = device_sample_rate;
+        println!("Using device native config: sample_rate={}, channels={}",
+                 config.sample_rate.0, config.channels);
+
+        // Store the actual sample rate we're using
+        *self.sample_rate.lock().unwrap() = config.sample_rate.0;
 
         // Clone Arc references for the closure
         let buffer = self.buffer.clone();
