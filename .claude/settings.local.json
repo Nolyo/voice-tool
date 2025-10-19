@@ -11,7 +11,8 @@
       "Bash(findstr /I \"node.exe\")",
       "Bash(netstat -ano)",
       "Bash(findstr :1420)",
-      "Bash(taskkill /F /PID 24660)"
+      "Bash(taskkill /F /PID 24660)",
+      "WebFetch(domain:v2.tauri.app)"
     ],
     "deny": [],
     "ask": []

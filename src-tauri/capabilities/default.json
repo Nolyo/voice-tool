@@ -13,7 +13,10 @@
     "global-shortcut:allow-unregister",
     "global-shortcut:allow-unregister-all",
     "clipboard-manager:allow-read-text",
-    "clipboard-manager:allow-write-text"
+    "clipboard-manager:allow-write-text",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
   ],
   "platforms": ["windows", "linux", "macOS"]
 }

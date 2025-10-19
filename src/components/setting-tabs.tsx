@@ -211,6 +211,7 @@ function HotkeyInput({
 export function SettingTabs() {
   const { settings, isLoaded, updateSetting } = useSettings();
   const { devices, isLoading: devicesLoading, error: devicesError, refresh } = useAudioDevices();
+  const [isUpdatingAutostart, setIsUpdatingAutostart] = useState(false);
 
   const handleHotkeyChange = useCallback(
     async (
@@ -486,15 +487,26 @@ export function SettingTabs() {
               <Checkbox
                 id="auto-start"
                 checked={settings.auto_start}
-                onCheckedChange={(checked) =>
-                  updateSetting("auto_start", checked as boolean)
-                }
+                disabled={isUpdatingAutostart}
+                onCheckedChange={async (checked) => {
+                  setIsUpdatingAutostart(true);
+                  try {
+                    await invoke("set_autostart", { enable: checked as boolean });
+                    await updateSetting("auto_start", checked as boolean);
+                  } catch (error) {
+                    console.error("Failed to update autostart:", error);
+                    alert(`Erreur lors de la mise à jour du démarrage automatique: ${error}`);
+                  } finally {
+                    setIsUpdatingAutostart(false);
+                  }
+                }}
               />
               <Label
                 htmlFor="auto-start"
                 className="text-sm text-foreground cursor-pointer"
               >
                 Démarrer automatiquement avec Windows
+                {isUpdatingAutostart && " (mise à jour...)"}
               </Label>
             </div>
 

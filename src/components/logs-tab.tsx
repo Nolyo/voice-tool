@@ -52,7 +52,7 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
         minute: "2-digit",
         second: "2-digit",
         fractionalSecondDigits: 3,
-      });
+      } as any);
     } catch {
       return timestamp;
     }

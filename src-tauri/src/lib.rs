@@ -102,6 +102,31 @@ fn log_separator() {
     tracing::info!("────────────────────────────────────────────────────────────────");
 }
 
+/// Enable or disable autostart on system boot
+#[tauri::command]
+fn set_autostart(app_handle: AppHandle, enable: bool) -> Result<(), String> {
+    use tauri_plugin_autostart::ManagerExt;
+
+    let autostart_manager = app_handle.autolaunch();
+
+    if enable {
+        autostart_manager
+            .enable()
+            .map_err(|e| format!("Impossible d'activer le démarrage automatique: {}", e))?;
+    } else {
+        // Ignore the error if the entry doesn't exist (it's already disabled)
+        if let Err(e) = autostart_manager.disable() {
+            let error_msg = e.to_string();
+            // On Windows, "Le fichier spécifié est introuvable" (os error 2) means it's already disabled
+            if !error_msg.contains("os error 2") && !error_msg.contains("not found") {
+                return Err(format!("Impossible de désactiver le démarrage automatique: {}", e));
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// Update global hotkeys dynamically from the frontend
 #[tauri::command]
 fn update_hotkeys(
@@ -662,6 +687,10 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec![])
+        ))
         .manage(AppState {
             audio_recorder: Mutex::new(AudioRecorder::new()),
             hotkeys: Mutex::new(HotkeyConfig::default()),
@@ -674,6 +703,7 @@ pub fn run() {
             is_recording,
             exit_app,
             log_separator,
+            set_autostart,
             update_hotkeys,
             transcribe_audio,
             load_recording,
