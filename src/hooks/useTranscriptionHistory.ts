@@ -9,6 +9,7 @@ export interface Transcription {
   provider?: 'whisper' | 'deepgram';
   duration?: number;
   isStreaming?: boolean;
+  audioPath?: string;
 }
 
 const HISTORY_KEY = 'transcription_history';
@@ -55,7 +56,8 @@ export function useTranscriptionHistory() {
 
   const addTranscription = async (
     text: string,
-    provider: 'whisper' | 'deepgram' = 'whisper'
+    provider: 'whisper' | 'deepgram' = 'whisper',
+    audioPath?: string
   ) => {
     const now = new Date();
     const newTranscription: Transcription = {
@@ -68,6 +70,7 @@ export function useTranscriptionHistory() {
       }),
       text,
       provider,
+      audioPath,
     };
 
     const newHistory = [newTranscription, ...transcriptions];

@@ -16,7 +16,7 @@ struct WhisperResponse {
 }
 
 /// Get the recordings directory, creating it if it doesn't exist
-fn get_recordings_dir() -> Result<PathBuf> {
+pub fn get_recordings_dir() -> Result<PathBuf> {
     let app_data = std::env::var("APPDATA")
         .or_else(|_| std::env::var("HOME"))
         .context("Could not find application data directory")?;

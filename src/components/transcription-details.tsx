@@ -1,9 +1,12 @@
 "use client"
 
-import { Mic, Copy, Play } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Mic, Copy, Play, Pause } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import type { Transcription } from "./transcription-list"
+import type { Transcription } from "@/hooks/useTranscriptionHistory"
+import { useSettings } from "@/hooks/useSettings"
+import { invoke } from "@tauri-apps/api/core"
 
 interface TranscriptionDetailsProps {
   transcription: Transcription | null
@@ -11,6 +14,107 @@ interface TranscriptionDetailsProps {
 }
 
 export function TranscriptionDetails({ transcription, onCopy }: TranscriptionDetailsProps) {
+  const { settings } = useSettings()
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const objectUrlRef = useRef<string | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const stopPlayback = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+      audioRef.current = null
+    }
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current)
+      objectUrlRef.current = null
+    }
+    setIsPlaying(false)
+    setIsLoading(false)
+  }, [])
+
+  useEffect(() => {
+    stopPlayback()
+  }, [transcription?.id, stopPlayback])
+
+  useEffect(() => {
+    if (!settings.enable_history_audio_preview) {
+      stopPlayback()
+    }
+  }, [settings.enable_history_audio_preview, stopPlayback])
+
+  useEffect(() => {
+    return () => {
+      stopPlayback()
+    }
+  }, [stopPlayback])
+
+  const handleListen = useCallback(async () => {
+    if (!transcription?.audioPath) {
+      alert("Aucun enregistrement audio associé à cette transcription.")
+      return
+    }
+
+    if (!settings.enable_history_audio_preview) {
+      alert("La pré-écoute audio est désactivée dans les paramètres.")
+      return
+    }
+
+    if (isPlaying) {
+      stopPlayback()
+      return
+    }
+
+    try {
+      if (audioRef.current) {
+        stopPlayback()
+      }
+
+      setIsLoading(true)
+
+      const normalizedPath = transcription.audioPath.replace(/\\/g, "/")
+      const rawData = await invoke<Uint8Array | number[]>("load_recording", { audioPath: normalizedPath })
+      const bytes = rawData instanceof Uint8Array ? rawData : new Uint8Array(rawData)
+      if (!bytes || bytes.length === 0) {
+        throw new Error("Fichier audio vide")
+      }
+
+      const audioBlob = new Blob([bytes], { type: "audio/wav" })
+      const objectUrl = URL.createObjectURL(audioBlob)
+      objectUrlRef.current = objectUrl
+
+      const audio = new Audio(objectUrl)
+      audioRef.current = audio
+
+      audio.onended = () => {
+        setIsPlaying(false)
+        audioRef.current = null
+        if (objectUrlRef.current) {
+          URL.revokeObjectURL(objectUrlRef.current)
+          objectUrlRef.current = null
+        }
+      }
+
+      audio.onerror = () => {
+        console.error("Audio playback error")
+        alert("Impossible de lire l'audio.")
+        stopPlayback()
+      }
+
+      await audio.play()
+      setIsPlaying(true)
+    } catch (error: unknown) {
+      console.error("Failed to play audio preview:", error)
+      alert("Impossible de lire l'audio.")
+      stopPlayback()
+    } finally {
+      setIsLoading(false)
+    }
+  }, [transcription, settings.enable_history_audio_preview, isPlaying, stopPlayback])
+
+  const canListen = Boolean(transcription?.audioPath) && settings.enable_history_audio_preview
+
   return (
     <Card className="p-6 sticky top-24">
       <h3 className="text-sm font-semibold text-foreground mb-4">Détails</h3>
@@ -33,10 +137,25 @@ export function TranscriptionDetails({ transcription, onCopy }: TranscriptionDet
               <Copy className="w-4 h-4 mr-2" />
               Copier
             </Button>
-            <Button variant="outline" className="w-full bg-transparent">
-              <Play className="w-4 h-4 mr-2" />
-              Écouter
+            <Button
+              variant="outline"
+              className="w-full bg-transparent"
+              onClick={handleListen}
+              disabled={!canListen || isLoading}
+            >
+              {isPlaying ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+              {isPlaying ? "Arrêter" : "Écouter"}
             </Button>
+            {transcription.audioPath && !settings.enable_history_audio_preview && (
+              <p className="text-xs text-muted-foreground">
+                Pré-écoute désactivée dans les paramètres audio.
+              </p>
+            )}
+            {!transcription.audioPath && (
+              <p className="text-xs text-muted-foreground">
+                Aucun audio sauvegardé pour cette transcription.
+              </p>
+            )}
           </div>
         </div>
       ) : (

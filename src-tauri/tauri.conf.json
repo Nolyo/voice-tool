@@ -19,7 +19,14 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "scope": [
+          "$APP/*",
+          "$RESOURCE/*",
+          "$APPDATA/voice-tool/recordings/*"
+        ]
+      }
     }
   },
   "bundle": {

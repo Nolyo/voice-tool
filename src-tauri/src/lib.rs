@@ -2,13 +2,14 @@ mod audio;
 mod transcription;
 
 use audio::{AudioDeviceInfo, AudioRecorder};
-use transcription::{save_audio_to_wav, cleanup_old_recordings, transcribe_with_openai};
-use std::sync::Mutex;
+use transcription::{save_audio_to_wav, cleanup_old_recordings, transcribe_with_openai, get_recordings_dir};
+use std::{fs, path::PathBuf, sync::Mutex};
 use tauri::{
     AppHandle, Emitter, Manager, State,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
+use serde::Serialize;
 
 /// Application state that holds the audio recorder
 pub struct AppState {
@@ -71,6 +72,13 @@ fn exit_app(app_handle: AppHandle) {
 }
 
 /// Transcribe audio samples using the configured provider
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TranscriptionResponse {
+    text: String,
+    audio_path: String,
+}
+
 #[tauri::command]
 async fn transcribe_audio(
     audio_samples: Vec<i16>,
@@ -78,7 +86,7 @@ async fn transcribe_audio(
     api_key: String,
     language: String,
     keep_last: usize,
-) -> Result<String, String> {
+) -> Result<TranscriptionResponse, String> {
     println!("transcribe_audio called with {} samples at {} Hz", audio_samples.len(), sample_rate);
 
     // Save audio to WAV file
@@ -93,7 +101,35 @@ async fn transcribe_audio(
     // Clean up old recordings
     let _ = cleanup_old_recordings(keep_last);
 
-    Ok(transcription)
+    Ok(TranscriptionResponse {
+        text: transcription,
+        audio_path: wav_path
+            .to_string_lossy()
+            .replace('\\', "/")
+            .to_string(),
+    })
+}
+
+/// Load a recorded audio file and return its raw bytes for playback.
+#[tauri::command]
+fn load_recording(audio_path: String) -> Result<Vec<u8>, String> {
+    let requested_path = PathBuf::from(&audio_path);
+
+    // Ensure the requested path is inside the recordings directory
+    let recordings_dir = get_recordings_dir().map_err(|e| e.to_string())?;
+    let canonical_dir = recordings_dir
+        .canonicalize()
+        .unwrap_or(recordings_dir.clone());
+
+    let canonical_file = requested_path
+        .canonicalize()
+        .map_err(|e| format!("Audio introuvable: {}", e))?;
+
+    if !canonical_file.starts_with(&canonical_dir) {
+        return Err("Accès au fichier audio refusé.".to_string());
+    }
+
+    fs::read(&canonical_file).map_err(|e| format!("Lecture audio impossible: {}", e))
 }
 
 /// Paste text to the active window by simulating Ctrl+V
@@ -154,6 +190,7 @@ pub fn run() {
             is_recording,
             exit_app,
             transcribe_audio,
+            load_recording,
             paste_text_to_active_window
         ])
         .setup(|app| {

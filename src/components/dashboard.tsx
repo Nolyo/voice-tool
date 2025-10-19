@@ -11,6 +11,11 @@ import { useSettings } from "@/hooks/useSettings"
 import { useTranscriptionHistory, type Transcription } from "@/hooks/useTranscriptionHistory"
 import { useSoundEffects } from "@/hooks/useSoundEffects"
 
+type TranscriptionInvokeResult = {
+  text: string
+  audioPath: string
+}
+
 export default function Dashboard() {
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
@@ -46,7 +51,7 @@ export default function Dashboard() {
   const transcribeAudio = useCallback(async (audioData: number[], sampleRate: number) => {
     setIsTranscribing(true)
     try {
-      const transcription = await invoke<string>("transcribe_audio", {
+      const result = await invoke<TranscriptionInvokeResult>("transcribe_audio", {
         audioSamples: audioData,
         sampleRate: sampleRate,
         apiKey: settings.openai_api_key,
@@ -54,22 +59,22 @@ export default function Dashboard() {
         keepLast: settings.recordings_keep_last
       })
 
-      console.log("Transcription:", transcription)
+      console.log("Transcription:", result.text)
 
       // Add to history
-      if (transcription && transcription.trim()) {
-        await addTranscription(transcription, 'whisper')
+      if (result.text && result.text.trim()) {
+        await addTranscription(result.text, 'whisper', result.audioPath)
         playSuccess()
       }
 
       // Copy to clipboard and paste if enabled
-      if (settings.paste_at_cursor && transcription) {
+      if (settings.paste_at_cursor && result.text) {
         // Use clipboard plugin to write text
         const { writeText } = await import("@tauri-apps/plugin-clipboard-manager")
-        await writeText(transcription)
+        await writeText(result.text)
 
         // Simulate Ctrl+V
-        await invoke("paste_text_to_active_window", { text: transcription })
+        await invoke("paste_text_to_active_window", { text: result.text })
       }
     } catch (error) {
       console.error("Transcription error:", error)
