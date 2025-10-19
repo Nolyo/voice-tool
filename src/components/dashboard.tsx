@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
 import { DashboardHeader } from "./dashboard-header"
@@ -9,18 +9,21 @@ import { TranscriptionList } from "./transcription-list"
 import { TranscriptionDetails } from "./transcription-details"
 import { useSettings } from "@/hooks/useSettings"
 import { useTranscriptionHistory, type Transcription } from "@/hooks/useTranscriptionHistory"
+import { useSoundEffects } from "@/hooks/useSoundEffects"
 
 export default function Dashboard() {
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [selectedTranscription, setSelectedTranscription] = useState<Transcription | null>(null)
   const { settings } = useSettings()
+  const { playStart, playStop, playSuccess } = useSoundEffects(settings.enable_sounds)
   const {
     transcriptions,
     addTranscription,
     deleteTranscription,
     clearHistory
   } = useTranscriptionHistory()
+  const previousRecordingRef = useRef(isRecording)
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -56,6 +59,7 @@ export default function Dashboard() {
       // Add to history
       if (transcription && transcription.trim()) {
         await addTranscription(transcription, 'whisper')
+        playSuccess()
       }
 
       // Copy to clipboard and paste if enabled
@@ -73,7 +77,7 @@ export default function Dashboard() {
     } finally {
       setIsTranscribing(false)
     }
-  }, [settings, addTranscription])
+  }, [settings, addTranscription, playSuccess])
 
   // Listen for audio captured from keyboard shortcuts
   useEffect(() => {
@@ -86,6 +90,28 @@ export default function Dashboard() {
       unlisten.then(fn => fn())
     }
   }, [transcribeAudio]) // Re-create listener when transcribeAudio changes
+
+  useEffect(() => {
+    const unlisten = listen<boolean>("recording-state", (event) => {
+      setIsRecording(event.payload)
+    })
+
+    return () => {
+      unlisten.then(fn => fn())
+    }
+  }, [])
+
+  useEffect(() => {
+    const previous = previousRecordingRef.current
+    if (previous !== isRecording) {
+      if (isRecording) {
+        playStart()
+      } else {
+        playStop()
+      }
+    }
+    previousRecordingRef.current = isRecording
+  }, [isRecording, playStart, playStop])
 
   const handleToggleRecording = async () => {
     try {
