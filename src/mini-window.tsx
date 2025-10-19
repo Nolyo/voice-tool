@@ -6,10 +6,38 @@ import "./App.css"
 function MiniWindow() {
   const [audioLevel, setAudioLevel] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
   const barModifiers = useMemo(
     () => Array.from({ length: 16 }, () => 0.7 + Math.random() * 0.3),
     []
   )
+
+  // Timer for recording duration
+  useEffect(() => {
+    let interval: number | null = null
+
+    if (isRecording) {
+      setRecordingTime(0)
+      interval = window.setInterval(() => {
+        setRecordingTime((prev) => prev + 1)
+      }, 1000)
+    } else {
+      setRecordingTime(0)
+    }
+
+    return () => {
+      if (interval !== null) {
+        clearInterval(interval)
+      }
+    }
+  }, [isRecording])
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
 
   useEffect(() => {
     const rootEl = document.documentElement
@@ -71,8 +99,8 @@ function MiniWindow() {
 
   const bars = useMemo(() => {
     const BAR_COUNT = barModifiers.length
-    const MIN_HEIGHT = 6
-    const MAX_HEIGHT = 36
+    const MIN_HEIGHT = 4
+    const MAX_HEIGHT = 28
     const AMPLIFICATION = 2.4
 
     return Array.from({ length: BAR_COUNT }).map((_, i) => {
@@ -91,7 +119,7 @@ function MiniWindow() {
           key={i}
           className="rounded-full transition-all duration-150 ease-out"
           style={{
-            width: "3px",
+            width: "2.5px",
             height: `${height}px`,
             backgroundImage: color,
             transitionDelay: `${delay}s`,
@@ -107,9 +135,14 @@ function MiniWindow() {
         <span
           className={`h-2.5 w-2.5 rounded-full ${isRecording ? "bg-red-400 animate-pulse" : "bg-slate-500/70"}`}
         />
-        <div className="flex items-end gap-[3px] h-9">
+        <div className="flex items-end gap-[2.5px] h-7">
           {bars}
         </div>
+        {isRecording && (
+          <span className="text-sm font-mono text-slate-300 tabular-nums">
+            {formatTime(recordingTime)}
+          </span>
+        )}
       </div>
     </div>
   )
