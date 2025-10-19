@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { Mic, Settings, Minus, Plus, Keyboard, RefreshCw } from "lucide-react";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
@@ -15,10 +16,239 @@ import { Input } from "./ui/input";
 import { useSettings } from "@/hooks/useSettings";
 import { useAudioDevices } from "@/hooks/useAudioDevices";
 import { ApiConfigDialog } from "./api-config-dialog";
+import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { invoke } from "@tauri-apps/api/core";
+
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
+
+const isMacPlatform = () =>
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
+function normalizeKey(key: string): string | null {
+  if (!key || key === "Unidentified" || key.toLowerCase() === "dead") {
+    return null;
+  }
+
+  if (key === " ") {
+    return "Space";
+  }
+
+  if (key.length === 1) {
+    return key.toUpperCase();
+  }
+
+  return key;
+}
+
+function buildShortcutFromEvent(event: KeyboardEvent): string | null {
+  if (MODIFIER_KEYS.has(event.key)) {
+    return null;
+  }
+
+  const parts: string[] = [];
+  if (event.ctrlKey) {
+    parts.push("Ctrl");
+  }
+  if (event.altKey) {
+    parts.push("Alt");
+  }
+  if (event.shiftKey) {
+    parts.push("Shift");
+  }
+  if (event.metaKey) {
+    parts.push(isMacPlatform() ? "Cmd" : "Super");
+  }
+
+  const key = normalizeKey(event.key);
+  if (!key) {
+    return null;
+  }
+
+  parts.push(key);
+  return parts.join("+");
+}
+
+function formatShortcutDisplay(value?: string) {
+  if (!value) {
+    return "Aucun";
+  }
+  return value
+    .split("+")
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .join(" + ");
+}
+
+type HotkeyInputProps = {
+  id: string;
+  label: string;
+  value: string;
+  defaultValue: string;
+  description?: string;
+  onChange: (shortcut: string) => Promise<void>;
+};
+
+function HotkeyInput({
+  id,
+  label,
+  value,
+  defaultValue,
+  description,
+  onChange,
+}: HotkeyInputProps) {
+  const [isListening, setIsListening] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isListening) {
+      return;
+    }
+
+    const handler = async (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.key === "Escape") {
+        setIsListening(false);
+        setError(null);
+        return;
+      }
+
+      const shortcut = buildShortcutFromEvent(event);
+      if (!shortcut) {
+        return;
+      }
+
+      if (value && value.toLowerCase() === shortcut.toLowerCase()) {
+        setIsListening(false);
+        setError(null);
+        return;
+      }
+
+      setIsSaving(true);
+      try {
+        await onChange(shortcut);
+        setError(null);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
+      } finally {
+        setIsSaving(false);
+        setIsListening(false);
+      }
+    };
+
+    window.addEventListener("keydown", handler, true);
+    return () => {
+      window.removeEventListener("keydown", handler, true);
+    };
+  }, [isListening, onChange, value]);
+
+  const handleReset = useCallback(async () => {
+    if (!defaultValue || value.toLowerCase() === defaultValue.toLowerCase()) {
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await onChange(defaultValue);
+      setError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+    } finally {
+      setIsSaving(false);
+      setIsListening(false);
+    }
+  }, [defaultValue, onChange, value]);
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id} className="text-sm text-foreground">
+        {label}
+      </Label>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          id={id}
+          variant={isListening ? "default" : "outline"}
+          onClick={() => {
+            if (isSaving) return;
+            setError(null);
+            setIsListening((prev) => !prev);
+          }}
+          disabled={isSaving}
+          className="flex-1 justify-start font-mono min-w-0"
+        >
+          {isListening
+            ? "Appuyez sur une combinaison... (Échap pour annuler)"
+            : formatShortcutDisplay(value)}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={handleReset}
+          disabled={isSaving || value.toLowerCase() === defaultValue.toLowerCase()}
+          className="flex-shrink-0"
+        >
+          Réinitialiser
+        </Button>
+      </div>
+      {error ? (
+        <p className="text-xs text-destructive">{error}</p>
+      ) : isListening ? (
+        <p className="text-xs text-muted-foreground">
+          Appuyez sur la combinaison souhaitée, ou Échap pour annuler.
+        </p>
+      ) : description ? (
+        <p className="text-xs text-muted-foreground">{description}</p>
+      ) : null}
+    </div>
+  );
+}
 
 export function SettingTabs() {
   const { settings, isLoaded, updateSetting } = useSettings();
   const { devices, isLoading: devicesLoading, error: devicesError, refresh } = useAudioDevices();
+
+  const handleHotkeyChange = useCallback(
+    async (
+      key: "record_hotkey" | "ptt_hotkey" | "open_window_hotkey",
+      shortcut: string,
+    ) => {
+      const normalized = shortcut
+        .split("+")
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .join("+");
+
+      if (!normalized) {
+        throw new Error("Le raccourci ne peut pas être vide.");
+      }
+
+      const currentValue = settings[key];
+      if (
+        currentValue &&
+        currentValue.toLowerCase() === normalized.toLowerCase()
+      ) {
+        return;
+      }
+
+      await invoke("update_hotkeys", {
+        recordHotkey:
+          key === "record_hotkey" ? normalized : settings.record_hotkey,
+        pttHotkey: key === "ptt_hotkey" ? normalized : settings.ptt_hotkey,
+        openWindowHotkey:
+          key === "open_window_hotkey"
+            ? normalized
+            : settings.open_window_hotkey,
+      });
+
+      await updateSetting(key, normalized);
+    },
+    [settings, updateSetting],
+  );
 
   if (!isLoaded) {
     return (
@@ -316,65 +546,32 @@ export function SettingTabs() {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label
-              htmlFor="shortcut-record"
-              className="text-sm text-foreground"
-            >
-              Raccourci pour Démarrer/Arrêter l'enregistrement
-            </Label>
-            <Input
-              id="shortcut-record"
-              value={settings.record_hotkey}
-              onChange={(e) =>
-                updateSetting("record_hotkey", e.target.value)
-              }
-              className="font-mono"
-              readOnly
-            />
-            <p className="text-xs text-muted-foreground">
-              Actuellement : {settings.record_hotkey} (non modifiable pour l'instant)
-            </p>
-          </div>
+          <HotkeyInput
+            id="shortcut-record"
+            label="Raccourci pour Démarrer/Arrêter l'enregistrement"
+            value={settings.record_hotkey}
+            defaultValue={DEFAULT_SETTINGS.settings.record_hotkey}
+            description="Mode toggle : une pression pour démarrer, une seconde pour arrêter."
+            onChange={(shortcut) => handleHotkeyChange("record_hotkey", shortcut)}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="shortcut-push" className="text-sm text-foreground">
-              Raccourci Push-to-talk (maintenir)
-            </Label>
-            <Input
-              id="shortcut-push"
-              value={settings.ptt_hotkey}
-              onChange={(e) =>
-                updateSetting("ptt_hotkey", e.target.value)
-              }
-              className="font-mono"
-              readOnly
-            />
-            <p className="text-xs text-muted-foreground">
-              Actuellement : {settings.ptt_hotkey} (non modifiable pour l'instant)
-            </p>
-          </div>
+          <HotkeyInput
+            id="shortcut-push"
+            label="Raccourci Push-to-talk (maintenir)"
+            value={settings.ptt_hotkey}
+            defaultValue={DEFAULT_SETTINGS.settings.ptt_hotkey}
+            description="Maintenez le raccourci pour enregistrer, relâchez pour arrêter."
+            onChange={(shortcut) => handleHotkeyChange("ptt_hotkey", shortcut)}
+          />
 
-          <div className="space-y-2">
-            <Label
-              htmlFor="shortcut-window"
-              className="text-sm text-foreground"
-            >
-              Raccourci pour Ouvrir cette fenêtre
-            </Label>
-            <Input
-              id="shortcut-window"
-              value={settings.open_window_hotkey}
-              onChange={(e) =>
-                updateSetting("open_window_hotkey", e.target.value)
-              }
-              className="font-mono"
-              readOnly
-            />
-            <p className="text-xs text-muted-foreground">
-              Actuellement : {settings.open_window_hotkey} (non implémenté)
-            </p>
-          </div>
+          <HotkeyInput
+            id="shortcut-window"
+            label="Raccourci pour Ouvrir la fenêtre principale"
+            value={settings.open_window_hotkey}
+            defaultValue={DEFAULT_SETTINGS.settings.open_window_hotkey}
+            description="Affiche la fenêtre principale et lui donne le focus instantanément."
+            onChange={(shortcut) => handleHotkeyChange("open_window_hotkey", shortcut)}
+          />
 
           <div className="p-3 rounded-lg bg-muted/50 border border-border">
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -404,3 +601,7 @@ export function SettingTabs() {
     </div>
   );
 }
+
+
+
+

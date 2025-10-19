@@ -12,11 +12,20 @@ use tauri::{
 };
 use serde::Serialize;
 use serde_json::{json, Value};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutEvent, ShortcutState};
 use tauri_plugin_store::StoreBuilder;
 
-/// Application state that holds the audio recorder
+#[derive(Clone, Default)]
+struct HotkeyConfig {
+    record: Option<String>,
+    ptt: Option<String>,
+    open_window: Option<String>,
+}
+
+/// Application state that holds the audio recorder and active hotkeys
 pub struct AppState {
     audio_recorder: Mutex<AudioRecorder>,
+    hotkeys: Mutex<HotkeyConfig>,
 }
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -72,6 +81,45 @@ fn is_recording(state: State<AppState>) -> bool {
 #[tauri::command]
 fn exit_app(app_handle: AppHandle) {
     app_handle.exit(0);
+}
+
+/// Update global hotkeys dynamically from the frontend
+#[tauri::command]
+fn update_hotkeys(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    record_hotkey: Option<String>,
+    ptt_hotkey: Option<String>,
+    open_window_hotkey: Option<String>,
+) -> Result<(), String> {
+    let current = state
+        .inner()
+        .hotkeys
+        .lock()
+        .map(|hotkeys| hotkeys.clone())
+        .unwrap_or_default();
+
+    let mut next = current.clone();
+    if let Some(value) = record_hotkey {
+        next.record = normalize_hotkey_value(Some(value));
+    }
+    if let Some(value) = ptt_hotkey {
+        next.ptt = normalize_hotkey_value(Some(value));
+    }
+    if let Some(value) = open_window_hotkey {
+        next.open_window = normalize_hotkey_value(Some(value));
+    }
+
+    if let Err(err) = apply_hotkeys(&app_handle, &next) {
+        let _ = apply_hotkeys(&app_handle, &current);
+        return Err(err);
+    }
+
+    if let Ok(mut guard) = state.inner().hotkeys.lock() {
+        *guard = next;
+    }
+
+    Ok(())
 }
 
 /// Transcribe audio samples using the configured provider
@@ -242,6 +290,241 @@ fn position_mini_window<R: Runtime>(app_handle: &AppHandle<R>, window: &WebviewW
     let _ = window.set_position(Position::Physical(new_position));
 }
 
+fn show_mini_window<R: Runtime>(app_handle: &AppHandle<R>) {
+    if let Some(mini_window) = app_handle.get_webview_window("mini") {
+        position_mini_window(app_handle, &mini_window);
+        let _ = mini_window.show();
+    }
+}
+
+fn hide_mini_window<R: Runtime>(app_handle: &AppHandle<R>) {
+    if let Some(mini_window) = app_handle.get_webview_window("mini") {
+        let _ = mini_window.hide();
+    }
+}
+
+fn is_recorder_active<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
+    let state: State<AppState> = app_handle.state();
+    state
+        .inner()
+        .audio_recorder
+        .lock()
+        .map(|recorder| recorder.is_recording())
+        .unwrap_or(false)
+}
+
+fn start_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
+    let state: State<AppState> = app_handle.state();
+    if let Ok(mut recorder) = state.inner().audio_recorder.lock() {
+        if recorder.is_recording() {
+            return true;
+        }
+        match recorder.start_recording(None, app_handle.clone()) {
+            Ok(_) => {
+                drop(recorder);
+                let _ = app_handle.emit("recording-state", true);
+                true
+            }
+            Err(err) => {
+                eprintln!("Error starting recording: {}", err);
+                drop(recorder);
+                let _ = app_handle.emit("recording-state", false);
+                false
+            }
+        }
+    } else {
+        false
+    }
+}
+
+fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<(Vec<i16>, u32)> {
+    let state: State<AppState> = app_handle.state();
+    let result = if let Ok(mut recorder) = state.inner().audio_recorder.lock() {
+        if !recorder.is_recording() {
+            None
+        } else {
+            Some(recorder.stop_recording())
+        }
+    } else {
+        None
+    };
+
+    let _ = app_handle.emit("recording-state", false);
+
+    match result {
+        Some(Ok((audio, rate))) => Some((audio, rate)),
+        Some(Err(err)) => {
+            eprintln!("Error stopping recording: {}", err);
+            None
+        }
+        None => None,
+    }
+}
+
+fn emit_audio_samples<R: Runtime>(app_handle: &AppHandle<R>, audio_data: Vec<i16>, sample_rate: u32) {
+    let _ = app_handle.emit(
+        "audio-captured",
+        json!({
+            "samples": audio_data,
+            "sampleRate": sample_rate
+        }),
+    );
+}
+
+fn hotkeys_conflict(config: &HotkeyConfig) -> Option<String> {
+    let equals = |a: &Option<String>, b: &Option<String>| {
+        match (a, b) {
+            (Some(lhs), Some(rhs)) => lhs.eq_ignore_ascii_case(rhs),
+            _ => false,
+        }
+    };
+
+    if equals(&config.record, &config.ptt) {
+        return Some("Les raccourcis Toggle et Push-to-talk doivent être différents.".into());
+    }
+    if equals(&config.record, &config.open_window) || equals(&config.ptt, &config.open_window) {
+        return Some("Le raccourci d'ouverture de fenêtre doit être distinct des raccourcis d'enregistrement.".into());
+    }
+
+    None
+}
+
+fn parse_hotkey_str(value: &str) -> Result<Shortcut, String> {
+    value
+        .parse::<Shortcut>()
+        .map_err(|err| format!("Raccourci invalide \"{}\": {}", value, err))
+}
+
+fn apply_hotkeys<R: Runtime>(app_handle: &AppHandle<R>, config: &HotkeyConfig) -> Result<(), String> {
+    if let Some(message) = hotkeys_conflict(config) {
+        return Err(message);
+    }
+
+    let manager = app_handle.global_shortcut();
+
+    if let Err(err) = manager.unregister_all() {
+        eprintln!("Failed to clear existing shortcuts: {}", err);
+    }
+
+    let record_hotkey = config
+        .record
+        .as_ref()
+        .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
+        .transpose()?;
+
+    let ptt_hotkey = config
+        .ptt
+        .as_ref()
+        .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
+        .transpose()?;
+
+    let open_hotkey = config
+        .open_window
+        .as_ref()
+        .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
+        .transpose()?;
+
+    if let Some((record_label, record_shortcut)) = record_hotkey {
+        let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
+            if event.state == ShortcutState::Pressed {
+                if is_recorder_active(app) {
+                    if let Some((audio, rate)) = stop_recording_shortcut(app) {
+                        emit_audio_samples(app, audio, rate);
+                    }
+                    hide_mini_window(app);
+                } else {
+                    show_mini_window(app);
+                    if !start_recording_shortcut(app) {
+                        hide_mini_window(app);
+                    }
+                }
+            }
+        };
+
+        manager
+            .on_shortcut(record_shortcut.clone(), handler)
+            .map_err(|e| format!("Impossible d'enregistrer le raccourci \"{}\": {}", record_label, e))?;
+    }
+
+    if let Some((ptt_label, ptt_shortcut)) = ptt_hotkey {
+        let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| match event.state {
+            ShortcutState::Pressed => {
+                show_mini_window(app);
+                if !start_recording_shortcut(app) {
+                    hide_mini_window(app);
+                }
+            }
+            ShortcutState::Released => {
+                if let Some((audio, rate)) = stop_recording_shortcut(app) {
+                    emit_audio_samples(app, audio, rate);
+                }
+                hide_mini_window(app);
+            }
+        };
+
+        manager
+            .on_shortcut(ptt_shortcut.clone(), handler)
+            .map_err(|e| format!("Impossible d'enregistrer le raccourci \"{}\": {}", ptt_label, e))?;
+    }
+
+    if let Some((open_label, open_shortcut)) = open_hotkey {
+        let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
+            if event.state == ShortcutState::Pressed {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+        };
+
+        manager
+            .on_shortcut(open_shortcut.clone(), handler)
+            .map_err(|e| format!("Impossible d'enregistrer le raccourci \"{}\": {}", open_label, e))?;
+    }
+
+    Ok(())
+}
+
+fn normalize_hotkey_value(value: Option<String>) -> Option<String> {
+    value.and_then(|raw| {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
+fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Store<R>>) -> HotkeyConfig {
+    let mut config = HotkeyConfig::default();
+
+    if let Some(settings_value) = store.get("settings") {
+        if let Some(settings_obj) = settings_value.get("settings").and_then(Value::as_object) {
+            if let Some(value) = settings_obj.get("record_hotkey").and_then(Value::as_str) {
+                config.record = normalize_hotkey_value(Some(value.to_string()));
+            }
+            if let Some(value) = settings_obj.get("ptt_hotkey").and_then(Value::as_str) {
+                config.ptt = normalize_hotkey_value(Some(value.to_string()));
+            }
+            if let Some(value) = settings_obj.get("open_window_hotkey").and_then(Value::as_str) {
+                config.open_window = normalize_hotkey_value(Some(value.to_string()));
+            }
+        }
+    }
+
+    if config.record.is_none() {
+        config.record = Some("Ctrl+F11".into());
+    }
+    if config.ptt.is_none() {
+        config.ptt = Some("Ctrl+F12".into());
+    }
+    if config.open_window.is_none() {
+        config.open_window = Some("Ctrl+Alt+O".into());
+    }
+
+    config
+}
 #[tauri::command]
 async fn transcribe_audio(
     audio_samples: Vec<i16>,
@@ -344,8 +627,10 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(AppState {
             audio_recorder: Mutex::new(AudioRecorder::new()),
+            hotkeys: Mutex::new(HotkeyConfig::default()),
         })
         .invoke_handler(tauri::generate_handler![
             greet,
@@ -354,13 +639,12 @@ pub fn run() {
             stop_recording,
             is_recording,
             exit_app,
+            update_hotkeys,
             transcribe_audio,
             load_recording,
             paste_text_to_active_window
         ])
         .setup(|app| {
-            use tauri_plugin_global_shortcut::ShortcutState;
-
             // Create mini window at startup
             create_mini_window(&app.handle())?;
 
@@ -390,121 +674,18 @@ pub fn run() {
                 });
             }
 
-            // Register global shortcuts: Toggle (Ctrl+F11) and Push-to-Talk (Ctrl+F12)
-            println!("Registering global shortcuts...");
-
-            app.handle()
-                .plugin(
-                    tauri_plugin_global_shortcut::Builder::new()
-                        .with_shortcut("Ctrl+F11")?
-                        .with_shortcut("Ctrl+F12")?
-                        .with_handler(move |app, shortcut, event| {
-                            let app_handle = app.clone();
-                            let state: tauri::State<AppState> = app_handle.state();
-
-                            // Identify shortcuts by their actual key combination
-                            let shortcut_str = format!("{:?}", shortcut);
-                            let is_toggle = shortcut_str.contains("F11");
-
-                            println!("Shortcut triggered! Keys: {}, State: {:?}, IsToggle: {}", shortcut_str, event.state, is_toggle);
-
-                            // Toggle mode shortcut (Ctrl+F11)
-                            if is_toggle {
-                                // Toggle mode: only on Pressed
-                                if event.state == ShortcutState::Pressed {
-                                    let is_recording = {
-                                        let recorder = state.inner().audio_recorder.lock().unwrap();
-                                        recorder.is_recording()
-                                    };
-
-                                    if is_recording {
-                                        // Stop recording and get audio data
-                                        let mut recorder = state.inner().audio_recorder.lock().unwrap();
-                                        match recorder.stop_recording() {
-                                            Ok((audio_data, sample_rate)) => {
-                                                drop(recorder); // Release lock before emitting events
-
-                                                // Emit recording state change
-                                                let _ = app_handle.emit("recording-state", false);
-
-                                                // Emit audio data for transcription
-                                                let _ = app_handle.emit("audio-captured", serde_json::json!({
-                                                    "samples": audio_data,
-                                                    "sampleRate": sample_rate
-                                                }));
-
-                                                // Hide mini window
-                                                if let Some(mini_window) = app_handle.get_webview_window("mini") {
-                                                    let _ = mini_window.hide();
-                                                }
-                                            }
-                                            Err(e) => {
-                                                eprintln!("Error stopping recording: {}", e);
-                                            }
-                                        }
-                                    } else {
-                                        // Show mini window INSTANTLY (already created, just show it)
-                                        if let Some(mini_window) = app_handle.get_webview_window("mini") {
-                                            position_mini_window(&app_handle, &mini_window);
-                                            let _ = mini_window.show();
-                                        }
-
-                                        // Start recording
-                                        let mut recorder = state.inner().audio_recorder.lock().unwrap();
-                                        let _ = recorder.start_recording(None, app_handle.clone());
-                                        let _ = app_handle.emit("recording-state", true);
-                                    }
-                                }
-                            }
-                            // Push-to-Talk shortcut (Ctrl+F12)
-                            else {
-                                // Push-to-Talk mode: start on Pressed, stop on Released
-                                if event.state == ShortcutState::Pressed {
-                                    // Show mini window
-                                    if let Some(mini_window) = app_handle.get_webview_window("mini") {
-                                        position_mini_window(&app_handle, &mini_window);
-                                        let _ = mini_window.show();
-                                    }
-
-                                    // Start recording
-                                    let mut recorder = state.inner().audio_recorder.lock().unwrap();
-                                    if !recorder.is_recording() {
-                                        let _ = recorder.start_recording(None, app_handle.clone());
-                                        let _ = app_handle.emit("recording-state", true);
-                                    }
-                                } else if event.state == ShortcutState::Released {
-                                    // Stop recording and get audio data
-                                    let mut recorder = state.inner().audio_recorder.lock().unwrap();
-                                    if recorder.is_recording() {
-                                        match recorder.stop_recording() {
-                                            Ok((audio_data, sample_rate)) => {
-                                                drop(recorder); // Release lock before emitting events
-
-                                                // Emit recording state change
-                                                let _ = app_handle.emit("recording-state", false);
-
-                                                // Emit audio data for transcription
-                                                let _ = app_handle.emit("audio-captured", serde_json::json!({
-                                                    "samples": audio_data,
-                                                    "sampleRate": sample_rate
-                                                }));
-
-                                                // Hide mini window
-                                                if let Some(mini_window) = app_handle.get_webview_window("mini") {
-                                                    let _ = mini_window.hide();
-                                                }
-                                            }
-                                            Err(e) => {
-                                                eprintln!("Error stopping recording: {}", e);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        })
-                        .build(),
-                )?;
-            println!("Global shortcuts registered successfully!");
+            // Register global shortcuts based on stored configuration
+            let initial_hotkeys = load_hotkey_config(&window_store);
+            match apply_hotkeys(&app.handle(), &initial_hotkeys) {
+                Ok(_) => {
+                    if let Ok(mut guard) = app.state::<AppState>().inner().hotkeys.lock() {
+                        *guard = initial_hotkeys;
+                    }
+                }
+                Err(err) => {
+                    eprintln!("[hotkeys] Initial registration failed: {}", err);
+                }
+            }
 
             // Create system tray menu
             let show_item = MenuItem::with_id(app, "show", "Afficher", true, None::<&str>)?;
