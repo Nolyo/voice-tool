@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { invoke } from "@tauri-apps/api/core"
-import { listen } from "@tauri-apps/api/event"
+import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { DashboardHeader } from "./dashboard-header"
 import { RecordingCard } from "./recording-card"
 import { TranscriptionList } from "./transcription-list"
@@ -84,17 +84,48 @@ export default function Dashboard() {
     }
   }, [settings, addTranscription, playSuccess])
 
+  // Keep latest transcription callback without re-subscribing window listeners
+  const transcribeAudioRef = useRef(transcribeAudio)
+
+  useEffect(() => {
+    transcribeAudioRef.current = transcribeAudio
+  }, [transcribeAudio])
+
   // Listen for audio captured from keyboard shortcuts
   useEffect(() => {
-    const unlisten = listen<{ samples: number[], sampleRate: number }>("audio-captured", (event) => {
-      console.log("Audio captured from keyboard shortcut")
-      transcribeAudio(event.payload.samples, event.payload.sampleRate)
-    })
+    let unlisten: UnlistenFn | null = null
+    let disposed = false
+
+    const setupListener = async () => {
+      try {
+        const listener = await listen<{ samples: number[], sampleRate: number }>("audio-captured", (event) => {
+          console.log("Audio captured from keyboard shortcut")
+          const callback = transcribeAudioRef.current
+          if (callback) {
+            callback(event.payload.samples, event.payload.sampleRate)
+          }
+        })
+
+        if (disposed) {
+          listener()
+        } else {
+          unlisten = listener
+        }
+      } catch (error) {
+        console.error("Failed to register audio-captured listener:", error)
+      }
+    }
+
+    setupListener()
 
     return () => {
-      unlisten.then(fn => fn())
+      disposed = true
+      if (unlisten) {
+        unlisten()
+        unlisten = null
+      }
     }
-  }, [transcribeAudio]) // Re-create listener when transcribeAudio changes
+  }, [])
 
   useEffect(() => {
     const unlisten = listen<boolean>("recording-state", (event) => {
