@@ -138,6 +138,14 @@ export function TranscriptionDetails({
               {transcription.date} {transcription.time}
             </p>
           </div>
+          {transcription.apiCost !== undefined && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Coût de l'API</p>
+              <p className="text-sm font-mono text-foreground">
+                ${transcription.apiCost.toFixed(4)} USD
+              </p>
+            </div>
+          )}
           <div>
             <p className="text-xs text-muted-foreground mb-2">Transcription</p>
             <p className="text-sm text-foreground leading-relaxed bg-muted/50 p-4 rounded-lg">

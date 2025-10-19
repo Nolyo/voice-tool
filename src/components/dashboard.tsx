@@ -71,9 +71,20 @@ export default function Dashboard() {
 
         console.log("Transcription:", result.text);
 
+        // Calculate API cost (Whisper API: $0.006 per minute)
+        const durationSeconds = audioData.length / sampleRate;
+        const durationMinutes = durationSeconds / 60;
+        const apiCost = durationMinutes * 0.006;
+
         // Add to history
         if (result.text && result.text.trim()) {
-          await addTranscription(result.text, "whisper", result.audioPath);
+          const newEntry = await addTranscription(
+            result.text,
+            "whisper",
+            result.audioPath,
+            apiCost
+          );
+          setSelectedTranscription(newEntry);
           playSuccess();
         }
 
@@ -165,6 +176,28 @@ export default function Dashboard() {
     }
     previousRecordingRef.current = isRecording;
   }, [isRecording, playStart, playStop]);
+
+  useEffect(() => {
+    if (!transcriptions.length) {
+      if (selectedTranscription !== null) {
+        setSelectedTranscription(null);
+      }
+      return;
+    }
+
+    if (!selectedTranscription) {
+      setSelectedTranscription(transcriptions[0]);
+      return;
+    }
+
+    const stillExists = transcriptions.some(
+      (item) => item.id === selectedTranscription.id
+    );
+
+    if (!stillExists) {
+      setSelectedTranscription(transcriptions[0]);
+    }
+  }, [transcriptions, selectedTranscription]);
 
   const handleToggleRecording = async () => {
     try {

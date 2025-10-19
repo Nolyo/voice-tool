@@ -10,6 +10,7 @@ export interface Transcription {
   duration?: number;
   isStreaming?: boolean;
   audioPath?: string;
+  apiCost?: number; // Cost in USD
 }
 
 const HISTORY_KEY = 'transcription_history';
@@ -57,7 +58,8 @@ export function useTranscriptionHistory() {
   const addTranscription = async (
     text: string,
     provider: 'whisper' | 'deepgram' = 'whisper',
-    audioPath?: string
+    audioPath?: string,
+    apiCost?: number
   ) => {
     const now = new Date();
     const newTranscription: Transcription = {
@@ -71,6 +73,7 @@ export function useTranscriptionHistory() {
       text,
       provider,
       audioPath,
+      apiCost,
     };
 
     const newHistory = [newTranscription, ...transcriptions];

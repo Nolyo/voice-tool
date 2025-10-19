@@ -268,82 +268,88 @@ export function SettingTabs() {
           <h3 className="text-sm font-semibold text-foreground">Audio</h3>
         </div>
 
-        <div className="space-y-4 pl-10">
-          <div className="flex items-center space-x-3">
-            <Checkbox
-              id="interface-sounds"
-              checked={settings.enable_sounds}
-              onCheckedChange={(checked) =>
-                updateSetting("enable_sounds", checked as boolean)
-              }
-            />
-            <Label
-              htmlFor="interface-sounds"
-              className="text-sm text-foreground cursor-pointer"
-            >
-              Activer les sons d'interface
-            </Label>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <Checkbox
-              id="show-listen"
-              checked={settings.enable_history_audio_preview}
-              onCheckedChange={(checked) =>
-                updateSetting("enable_history_audio_preview", checked as boolean)
-              }
-            />
-            <Label
-              htmlFor="show-listen"
-              className="text-sm text-foreground cursor-pointer"
-            >
-              Afficher le bouton Écouter dans l'historique
-            </Label>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="microphone" className="text-sm text-foreground">
-                Microphone d'entrée
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={refresh}
-                disabled={devicesLoading}
-                className="h-6 px-2"
+        <div className="pl-10">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                id="interface-sounds"
+                checked={settings.enable_sounds}
+                onCheckedChange={(checked) =>
+                  updateSetting("enable_sounds", checked as boolean)
+                }
+              />
+              <Label
+                htmlFor="interface-sounds"
+                className="text-sm text-foreground cursor-pointer"
               >
-                <RefreshCw className={`w-3 h-3 ${devicesLoading ? 'animate-spin' : ''}`} />
-              </Button>
+                Activer les sons d'interface
+              </Label>
             </div>
-            <Select
-              value={settings.input_device_index?.toString() ?? "null"}
-              onValueChange={(value) =>
-                updateSetting("input_device_index", value === "null" ? null : Number.parseInt(value))
-              }
-              disabled={devicesLoading || !!devicesError}
-            >
-              <SelectTrigger id="microphone">
-                <SelectValue placeholder={
-                  devicesLoading ? "Chargement..." :
-                  devicesError ? "Erreur de chargement" :
-                  "Sélectionner un microphone"
-                } />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="null">Par défaut (Système)</SelectItem>
-                {devices.map((device) => (
-                  <SelectItem key={device.index} value={device.index.toString()}>
-                    {device.name} {device.is_default ? "(par défaut)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {devicesError && (
-              <p className="text-xs text-destructive">
-                Erreur : {devicesError}
-              </p>
-            )}
+
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                id="show-listen"
+                checked={settings.enable_history_audio_preview}
+                onCheckedChange={(checked) =>
+                  updateSetting("enable_history_audio_preview", checked as boolean)
+                }
+              />
+              <Label
+                htmlFor="show-listen"
+                className="text-sm text-foreground cursor-pointer"
+              >
+                Afficher le bouton Écouter dans l'historique
+              </Label>
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="microphone" className="text-sm text-foreground">
+                  Microphone d'entrée
+                </Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={refresh}
+                  disabled={devicesLoading}
+                  className="h-6 px-2"
+                >
+                  <RefreshCw className={`w-3 h-3 ${devicesLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+              <Select
+                value={settings.input_device_index?.toString() ?? "null"}
+                onValueChange={(value) =>
+                  updateSetting("input_device_index", value === "null" ? null : Number.parseInt(value))
+                }
+                disabled={devicesLoading || !!devicesError}
+              >
+                <SelectTrigger id="microphone">
+                  <SelectValue
+                    placeholder={
+                      devicesLoading
+                        ? "Chargement..."
+                        : devicesError
+                          ? "Erreur de chargement"
+                          : "Sélectionner un microphone"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="null">Par défaut (Système)</SelectItem>
+                  {devices.map((device) => (
+                    <SelectItem key={device.index} value={device.index.toString()}>
+                      {device.name} {device.is_default ? "(par défaut)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {devicesError && (
+                <p className="text-xs text-destructive">
+                  Erreur : {devicesError}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -359,56 +365,60 @@ export function SettingTabs() {
           </h3>
         </div>
 
-        <div className="space-y-4 pl-10">
-          <div className="space-y-2">
-            <Label
-              htmlFor="service-provider"
-              className="text-sm text-foreground"
-            >
-              Fournisseur de service
-            </Label>
-            <Select
-              value={settings.transcription_provider}
-              onValueChange={(value) =>
-                updateSetting("transcription_provider", value as "OpenAI" | "Deepgram" | "Google")
-              }
-            >
-              <SelectTrigger id="service-provider">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
-                <SelectItem value="Google">
-                  Google Speech-to-Text
-                </SelectItem>
-                <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="pl-10">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label
+                htmlFor="service-provider"
+                className="text-sm text-foreground"
+              >
+                Fournisseur de service
+              </Label>
+              <Select
+                value={settings.transcription_provider}
+                onValueChange={(value) =>
+                  updateSetting("transcription_provider", value as "OpenAI" | "Deepgram" | "Google")
+                }
+              >
+                <SelectTrigger id="service-provider">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
+                  <SelectItem value="Google">
+                    Google Speech-to-Text
+                  </SelectItem>
+                  <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="language" className="text-sm text-foreground">
-              Langue de transcription
-            </Label>
-            <Select
-              value={settings.language}
-              onValueChange={(value) =>
-                updateSetting("language", value)
-              }
-            >
-              <SelectTrigger id="language">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fr-FR">Français</SelectItem>
-                <SelectItem value="en-US">English</SelectItem>
-                <SelectItem value="es-ES">Español</SelectItem>
-                <SelectItem value="de-DE">Deutsch</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="language" className="text-sm text-foreground">
+                Langue de transcription
+              </Label>
+              <Select
+                value={settings.language}
+                onValueChange={(value) =>
+                  updateSetting("language", value)
+                }
+              >
+                <SelectTrigger id="language">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fr-FR">Français</SelectItem>
+                  <SelectItem value="en-US">English</SelectItem>
+                  <SelectItem value="es-ES">Español</SelectItem>
+                  <SelectItem value="de-DE">Deutsch</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <ApiConfigDialog />
+            <div className="md:col-span-2">
+              <ApiConfigDialog />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -421,40 +431,42 @@ export function SettingTabs() {
           <h3 className="text-sm font-semibold text-foreground">Texte</h3>
         </div>
 
-        <div className="space-y-4 pl-10">
-          <div className="flex items-start space-x-3">
-            <Checkbox
-              id="auto-insert"
-              checked={settings.paste_at_cursor}
-              onCheckedChange={(checked) =>
-                updateSetting("paste_at_cursor", checked as boolean)
-              }
-              className="mt-1"
-            />
-            <Label
-              htmlFor="auto-insert"
-              className="text-sm text-foreground cursor-pointer leading-relaxed"
-            >
-              Insérer automatiquement au curseur après la transcription / copie
-              depuis l'historique
-            </Label>
-          </div>
+        <div className="pl-10">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="auto-insert"
+                checked={settings.paste_at_cursor}
+                onCheckedChange={(checked) =>
+                  updateSetting("paste_at_cursor", checked as boolean)
+                }
+                className="mt-1"
+              />
+              <Label
+                htmlFor="auto-insert"
+                className="text-sm text-foreground cursor-pointer leading-relaxed"
+              >
+                Insérer automatiquement au curseur après la transcription / copie
+                depuis l'historique
+              </Label>
+            </div>
 
-          <div className="flex items-start space-x-3">
-            <Checkbox
-              id="smart-formatting"
-              checked={settings.smart_formatting}
-              onCheckedChange={(checked) =>
-                updateSetting("smart_formatting", checked as boolean)
-              }
-              className="mt-1"
-            />
-            <Label
-              htmlFor="smart-formatting"
-              className="text-sm text-foreground cursor-pointer leading-relaxed"
-            >
-              Activer le formatage intelligent (ponctuation, majuscule, espaces)
-            </Label>
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="smart-formatting"
+                checked={settings.smart_formatting}
+                onCheckedChange={(checked) =>
+                  updateSetting("smart_formatting", checked as boolean)
+                }
+                className="mt-1"
+              />
+              <Label
+                htmlFor="smart-formatting"
+                className="text-sm text-foreground cursor-pointer leading-relaxed"
+              >
+                Activer le formatage intelligent (ponctuation, majuscule, espaces)
+              </Label>
+            </div>
           </div>
         </div>
       </div>
@@ -468,58 +480,60 @@ export function SettingTabs() {
           <h3 className="text-sm font-semibold text-foreground">Système</h3>
         </div>
 
-        <div className="space-y-4 pl-10">
-          <div className="flex items-center space-x-3">
-            <Checkbox
-              id="auto-start"
-              checked={settings.auto_start}
-              onCheckedChange={(checked) =>
-                updateSetting("auto_start", checked as boolean)
-              }
-            />
-            <Label
-              htmlFor="auto-start"
-              className="text-sm text-foreground cursor-pointer"
-            >
-              Démarrer automatiquement avec Windows
-            </Label>
-          </div>
-
-          <div className="space-y-2">
-            <Label
-              htmlFor="keep-recordings"
-              className="text-sm text-foreground"
-            >
-              Conserver les N derniers enregistrements (WAV)
-            </Label>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() =>
-                  updateSetting("recordings_keep_last", Math.max(0, settings.recordings_keep_last - 1))
+        <div className="pl-10">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                id="auto-start"
+                checked={settings.auto_start}
+                onCheckedChange={(checked) =>
+                  updateSetting("auto_start", checked as boolean)
                 }
-              >
-                <Minus className="w-4 h-4" />
-              </Button>
-              <Input
-                id="keep-recordings"
-                type="number"
-                value={settings.recordings_keep_last}
-                onChange={(e) =>
-                  updateSetting("recordings_keep_last", Number.parseInt(e.target.value) || 0)
-                }
-                className="w-20 text-center"
               />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() =>
-                  updateSetting("recordings_keep_last", settings.recordings_keep_last + 1)
-                }
+              <Label
+                htmlFor="auto-start"
+                className="text-sm text-foreground cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
-              </Button>
+                Démarrer automatiquement avec Windows
+              </Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="keep-recordings"
+                className="text-sm text-foreground"
+              >
+                Conserver les N derniers enregistrements (WAV)
+              </Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    updateSetting("recordings_keep_last", Math.max(0, settings.recordings_keep_last - 1))
+                  }
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <Input
+                  id="keep-recordings"
+                  type="number"
+                  value={settings.recordings_keep_last}
+                  onChange={(e) =>
+                    updateSetting("recordings_keep_last", Number.parseInt(e.target.value) || 0)
+                  }
+                  className="w-20 text-center"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    updateSetting("recordings_keep_last", settings.recordings_keep_last + 1)
+                  }
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
