@@ -2,8 +2,8 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tracing::{Level, Subscriber};
-use tracing_subscriber::layer::{Context, SubscriberExt};
 use tracing_subscriber::Layer;
+use tracing_subscriber::layer::{Context, SubscriberExt};
 
 /// Custom tracing layer that emits log events to the frontend
 pub struct TauriLogLayer {
@@ -26,11 +26,7 @@ impl<S> Layer<S> for TauriLogLayer
 where
     S: Subscriber,
 {
-    fn on_event(
-        &self,
-        event: &tracing::Event<'_>,
-        _ctx: Context<'_, S>,
-    ) {
+    fn on_event(&self, event: &tracing::Event<'_>, _ctx: Context<'_, S>) {
         let metadata = event.metadata();
         let level = match *metadata.level() {
             Level::ERROR => "error",
@@ -46,7 +42,9 @@ where
         let message = visitor.message;
 
         // Get current timestamp
-        let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
+        let timestamp = chrono::Local::now()
+            .format("%Y-%m-%d %H:%M:%S%.3f")
+            .to_string();
 
         // Emit event to frontend
         if let Some(app) = self.app_handle.read().as_ref() {
@@ -93,12 +91,11 @@ pub fn init_logging() -> TauriLogLayer {
                 .with_target(false)
                 .with_thread_ids(false)
                 .with_line_number(false)
-                .with_file(false)
+                .with_file(false),
         )
         .with(tauri_layer.clone());
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to set tracing subscriber");
+    tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
 
     tauri_layer
 }

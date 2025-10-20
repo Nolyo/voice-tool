@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, Host, Stream, StreamConfig};
 use std::sync::{Arc, Mutex};
@@ -64,7 +64,10 @@ impl AudioRecorder {
         device_index: Option<usize>,
         app_handle: tauri::AppHandle<R>,
     ) -> Result<()> {
-        println!("start_recording called with device_index: {:?}", device_index);
+        println!(
+            "start_recording called with device_index: {:?}",
+            device_index
+        );
 
         // Increment stream ID to invalidate old streams
         {
@@ -98,15 +101,21 @@ impl AudioRecorder {
 
         let sample_format = default_config.sample_format();
         let device_sample_rate = default_config.sample_rate().0;
-        println!("Device default: format={:?}, sample_rate={}, channels={}",
-                 sample_format, device_sample_rate, default_config.channels());
+        println!(
+            "Device default: format={:?}, sample_rate={}, channels={}",
+            sample_format,
+            device_sample_rate,
+            default_config.channels()
+        );
 
         // Use the device's native sample rate for compatibility
         // Whisper works well with various sample rates (16000, 44100, 48000, etc.)
         let config: StreamConfig = default_config.into();
 
-        println!("Using device native config: sample_rate={}, channels={}",
-                 config.sample_rate.0, config.channels);
+        println!(
+            "Using device native config: sample_rate={}, channels={}",
+            config.sample_rate.0, config.channels
+        );
 
         // Store the actual sample rate we're using
         *self.sample_rate.lock().unwrap() = config.sample_rate.0;
@@ -178,7 +187,11 @@ impl AudioRecorder {
         // Get the sample rate
         let sample_rate = *self.sample_rate.lock().unwrap();
 
-        println!("stop_recording: captured {} samples at {} Hz", audio_data.len(), sample_rate);
+        println!(
+            "stop_recording: captured {} samples at {} Hz",
+            audio_data.len(),
+            sample_rate
+        );
 
         Ok((audio_data, sample_rate))
     }
@@ -240,9 +253,7 @@ impl AudioRecorder {
                     // Stereo/Multi-channel: mix all channels by averaging
                     data.chunks_exact(channels)
                         .map(|chunk| {
-                            let sum: i32 = chunk.iter()
-                                .map(|&s| s.to_sample::<i16>() as i32)
-                                .sum();
+                            let sum: i32 = chunk.iter().map(|&s| s.to_sample::<i16>() as i32).sum();
                             (sum / channels as i32) as i16
                         })
                         .collect()
@@ -251,7 +262,10 @@ impl AudioRecorder {
                 // Debug: log first few samples on first callback
                 static FIRST_LOG: std::sync::Once = std::sync::Once::new();
                 FIRST_LOG.call_once(|| {
-                    println!("First 10 i16 samples: {:?}", &samples[..samples.len().min(10)]);
+                    println!(
+                        "First 10 i16 samples: {:?}",
+                        &samples[..samples.len().min(10)]
+                    );
                 });
 
                 // Calculate RMS for visualization

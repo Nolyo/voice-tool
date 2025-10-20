@@ -1,20 +1,26 @@
 mod audio;
-mod transcription;
 mod logging;
+mod transcription;
 
 use audio::{AudioDeviceInfo, AudioRecorder};
-use transcription::{save_audio_to_wav, cleanup_old_recordings, transcribe_with_openai, get_recordings_dir};
-use std::{fs, path::PathBuf, sync::{Arc, Mutex}};
+use serde::Serialize;
+use serde_json::{Value, json};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 use tauri::{
-    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Runtime, State, WebviewWindow, WindowEvent,
+    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, Size, State,
+    WebviewWindow, WindowEvent,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Position, Size,
 };
-use serde::Serialize;
-use serde_json::{json, Value};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutEvent, ShortcutState};
 use tauri_plugin_store::StoreBuilder;
+use transcription::{
+    cleanup_old_recordings, get_recordings_dir, save_audio_to_wav, transcribe_with_openai,
+};
 
 #[derive(Clone, Default)]
 struct HotkeyConfig {
@@ -48,7 +54,10 @@ fn start_recording(
     app_handle: AppHandle,
     device_index: Option<usize>,
 ) -> Result<(), String> {
-    tracing::info!("Starting audio recording (device_index: {:?})", device_index);
+    tracing::info!(
+        "Starting audio recording (device_index: {:?})",
+        device_index
+    );
     let mut recorder = state.inner().audio_recorder.lock().unwrap();
     let result = recorder
         .start_recording(device_index, app_handle.clone())
@@ -65,7 +74,10 @@ fn start_recording(
 
 /// Stop recording and return the audio data with sample rate
 #[tauri::command]
-fn stop_recording(state: State<AppState>, app_handle: AppHandle) -> Result<(Vec<i16>, u32), String> {
+fn stop_recording(
+    state: State<AppState>,
+    app_handle: AppHandle,
+) -> Result<(Vec<i16>, u32), String> {
     tracing::info!("Stopping audio recording");
     let mut recorder = state.inner().audio_recorder.lock().unwrap();
     let result = recorder.stop_recording().map_err(|e| {
@@ -74,7 +86,11 @@ fn stop_recording(state: State<AppState>, app_handle: AppHandle) -> Result<(Vec<
     });
 
     if let Ok((samples, rate)) = &result {
-        tracing::info!("Recording stopped: {} samples at {} Hz", samples.len(), rate);
+        tracing::info!(
+            "Recording stopped: {} samples at {} Hz",
+            samples.len(),
+            rate
+        );
     }
 
     // Emit recording state change
@@ -108,9 +124,12 @@ fn is_autostart_enabled(app_handle: AppHandle) -> Result<bool, String> {
     use tauri_plugin_autostart::ManagerExt;
 
     let autostart_manager = app_handle.autolaunch();
-    autostart_manager
-        .is_enabled()
-        .map_err(|e| format!("Impossible de vérifier l'état du démarrage automatique: {}", e))
+    autostart_manager.is_enabled().map_err(|e| {
+        format!(
+            "Impossible de vérifier l'état du démarrage automatique: {}",
+            e
+        )
+    })
 }
 
 /// Enable or disable autostart on system boot
@@ -130,7 +149,10 @@ fn set_autostart(app_handle: AppHandle, enable: bool) -> Result<(), String> {
             let error_msg = e.to_string();
             // On Windows, "Le fichier spécifié est introuvable" (os error 2) means it's already disabled
             if !error_msg.contains("os error 2") && !error_msg.contains("not found") {
-                return Err(format!("Impossible de désactiver le démarrage automatique: {}", e));
+                return Err(format!(
+                    "Impossible de désactiver le démarrage automatique: {}",
+                    e
+                ));
             }
         }
     }
@@ -198,7 +220,10 @@ fn parse_geometry(value: &str) -> Option<(u32, u32, i32, i32)> {
 }
 
 fn format_geometry(size: PhysicalSize<u32>, position: PhysicalPosition<i32>) -> String {
-    format!("{}x{}+{}+{}", size.width, size.height, position.x, position.y)
+    format!(
+        "{}x{}+{}+{}",
+        size.width, size.height, position.x, position.y
+    )
 }
 
 fn update_window_settings<R: Runtime>(
@@ -212,10 +237,10 @@ fn update_window_settings<R: Runtime>(
     }
 
     {
-        let root = data.as_object_mut().expect("settings root should be an object");
-        let settings_value = root
-            .entry("settings")
-            .or_insert_with(|| json!({}));
+        let root = data
+            .as_object_mut()
+            .expect("settings root should be an object");
+        let settings_value = root.entry("settings").or_insert_with(|| json!({}));
 
         if !settings_value.is_object() {
             *settings_value = json!({});
@@ -416,7 +441,11 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<(Vec
     }
 }
 
-fn emit_audio_samples<R: Runtime>(app_handle: &AppHandle<R>, audio_data: Vec<i16>, sample_rate: u32) {
+fn emit_audio_samples<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    audio_data: Vec<i16>,
+    sample_rate: u32,
+) {
     let _ = app_handle.emit(
         "audio-captured",
         json!({
@@ -427,11 +456,9 @@ fn emit_audio_samples<R: Runtime>(app_handle: &AppHandle<R>, audio_data: Vec<i16
 }
 
 fn hotkeys_conflict(config: &HotkeyConfig) -> Option<String> {
-    let equals = |a: &Option<String>, b: &Option<String>| {
-        match (a, b) {
-            (Some(lhs), Some(rhs)) => lhs.eq_ignore_ascii_case(rhs),
-            _ => false,
-        }
+    let equals = |a: &Option<String>, b: &Option<String>| match (a, b) {
+        (Some(lhs), Some(rhs)) => lhs.eq_ignore_ascii_case(rhs),
+        _ => false,
     };
 
     if equals(&config.record, &config.ptt) {
@@ -450,7 +477,10 @@ fn parse_hotkey_str(value: &str) -> Result<Shortcut, String> {
         .map_err(|err| format!("Raccourci invalide \"{}\": {}", value, err))
 }
 
-fn apply_hotkeys<R: Runtime>(app_handle: &AppHandle<R>, config: &HotkeyConfig) -> Result<(), String> {
+fn apply_hotkeys<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    config: &HotkeyConfig,
+) -> Result<(), String> {
     if let Some(message) = hotkeys_conflict(config) {
         return Err(message);
     }
@@ -498,28 +528,40 @@ fn apply_hotkeys<R: Runtime>(app_handle: &AppHandle<R>, config: &HotkeyConfig) -
 
         manager
             .on_shortcut(record_shortcut.clone(), handler)
-            .map_err(|e| format!("Impossible d'enregistrer le raccourci \"{}\": {}", record_label, e))?;
+            .map_err(|e| {
+                format!(
+                    "Impossible d'enregistrer le raccourci \"{}\": {}",
+                    record_label, e
+                )
+            })?;
     }
 
     if let Some((ptt_label, ptt_shortcut)) = ptt_hotkey {
-        let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| match event.state {
-            ShortcutState::Pressed => {
-                show_mini_window(app);
-                if !start_recording_shortcut(app) {
+        let handler =
+            move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| match event.state
+            {
+                ShortcutState::Pressed => {
+                    show_mini_window(app);
+                    if !start_recording_shortcut(app) {
+                        hide_mini_window(app);
+                    }
+                }
+                ShortcutState::Released => {
+                    if let Some((audio, rate)) = stop_recording_shortcut(app) {
+                        emit_audio_samples(app, audio, rate);
+                    }
                     hide_mini_window(app);
                 }
-            }
-            ShortcutState::Released => {
-                if let Some((audio, rate)) = stop_recording_shortcut(app) {
-                    emit_audio_samples(app, audio, rate);
-                }
-                hide_mini_window(app);
-            }
-        };
+            };
 
         manager
             .on_shortcut(ptt_shortcut.clone(), handler)
-            .map_err(|e| format!("Impossible d'enregistrer le raccourci \"{}\": {}", ptt_label, e))?;
+            .map_err(|e| {
+                format!(
+                    "Impossible d'enregistrer le raccourci \"{}\": {}",
+                    ptt_label, e
+                )
+            })?;
     }
 
     if let Some((open_label, open_shortcut)) = open_hotkey {
@@ -534,7 +576,12 @@ fn apply_hotkeys<R: Runtime>(app_handle: &AppHandle<R>, config: &HotkeyConfig) -
 
         manager
             .on_shortcut(open_shortcut.clone(), handler)
-            .map_err(|e| format!("Impossible d'enregistrer le raccourci \"{}\": {}", open_label, e))?;
+            .map_err(|e| {
+                format!(
+                    "Impossible d'enregistrer le raccourci \"{}\": {}",
+                    open_label, e
+                )
+            })?;
     }
 
     Ok(())
@@ -562,7 +609,10 @@ fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Store<R>>) -> 
             if let Some(value) = settings_obj.get("ptt_hotkey").and_then(Value::as_str) {
                 config.ptt = normalize_hotkey_value(Some(value.to_string()));
             }
-            if let Some(value) = settings_obj.get("open_window_hotkey").and_then(Value::as_str) {
+            if let Some(value) = settings_obj
+                .get("open_window_hotkey")
+                .and_then(Value::as_str)
+            {
                 config.open_window = normalize_hotkey_value(Some(value.to_string()));
             }
         }
@@ -588,7 +638,11 @@ async fn transcribe_audio(
     language: String,
     keep_last: usize,
 ) -> Result<TranscriptionResponse, String> {
-    tracing::info!("transcribe_audio called with {} samples at {} Hz", audio_samples.len(), sample_rate);
+    tracing::info!(
+        "transcribe_audio called with {} samples at {} Hz",
+        audio_samples.len(),
+        sample_rate
+    );
 
     // Save audio to WAV file
     let wav_path = save_audio_to_wav(&audio_samples, sample_rate)
@@ -605,14 +659,14 @@ async fn transcribe_audio(
     // Clean up old recordings
     let _ = cleanup_old_recordings(keep_last);
 
-    tracing::info!("Transcription completed successfully: {} characters", transcription.len());
+    tracing::info!(
+        "Transcription completed successfully: {} characters",
+        transcription.len()
+    );
 
     Ok(TranscriptionResponse {
         text: transcription,
-        audio_path: wav_path
-            .to_string_lossy()
-            .replace('\\', "/")
-            .to_string(),
+        audio_path: wav_path.to_string_lossy().replace('\\', "/").to_string(),
     })
 }
 
@@ -659,9 +713,15 @@ fn paste_text_to_active_window(_text: String) -> Result<(), String> {
         format!("Failed to initialize keyboard: {}", e)
     })?;
 
-    enigo.key(Key::Control, enigo::Direction::Press).map_err(|e| e.to_string())?;
-    enigo.key(Key::Unicode('v'), enigo::Direction::Click).map_err(|e| e.to_string())?;
-    enigo.key(Key::Control, enigo::Direction::Release).map_err(|e| e.to_string())?;
+    enigo
+        .key(Key::Control, enigo::Direction::Press)
+        .map_err(|e| e.to_string())?;
+    enigo
+        .key(Key::Unicode('v'), enigo::Direction::Click)
+        .map_err(|e| e.to_string())?;
+    enigo
+        .key(Key::Control, enigo::Direction::Release)
+        .map_err(|e| e.to_string())?;
 
     tracing::info!("Text pasted successfully at cursor position");
 
@@ -670,8 +730,8 @@ fn paste_text_to_active_window(_text: String) -> Result<(), String> {
 
 /// Create the mini visualizer window at startup (hidden by default)
 fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri::WebviewWindowBuilder;
     use tauri::WebviewUrl;
+    use tauri::WebviewWindowBuilder;
 
     let mini = WebviewWindowBuilder::new(app, "mini", WebviewUrl::App("mini.html".into()))
         .title("Voice Tool - Mini")
@@ -700,7 +760,7 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--minimized"])
+            Some(vec!["--minimized"]),
         ))
         .manage(AppState {
             audio_recorder: Mutex::new(AudioRecorder::new()),
@@ -730,7 +790,9 @@ pub fn run() {
 
             // Check if app was started with --minimized flag
             let args: Vec<String> = std::env::args().collect();
-            let has_minimized_flag = args.iter().any(|arg| arg == "--minimized" || arg == "--hidden");
+            let has_minimized_flag = args
+                .iter()
+                .any(|arg| arg == "--minimized" || arg == "--hidden");
 
             // Prepare settings store to restore window state
             let window_store = StoreBuilder::new(app, "settings.json").build()?;
@@ -738,13 +800,14 @@ pub fn run() {
             // Check if user wants to start minimized on boot
             let should_start_minimized = if has_minimized_flag {
                 // App was started with --minimized, check the user's preference
-                let start_minimized = window_store.get("settings")
+                let start_minimized = window_store
+                    .get("settings")
                     .and_then(|settings_root| {
-                        settings_root.get("settings")
-                            .and_then(|settings_obj| {
-                                settings_obj.get("start_minimized_on_boot")
-                                    .and_then(|v| v.as_bool())
-                            })
+                        settings_root.get("settings").and_then(|settings_obj| {
+                            settings_obj
+                                .get("start_minimized_on_boot")
+                                .and_then(|v| v.as_bool())
+                        })
                     })
                     .unwrap_or(true); // Default to true if setting not found
                 start_minimized
@@ -775,7 +838,9 @@ pub fn run() {
                             let _ = events_window.hide();
                             // Note: Mini window will be shown automatically when recording starts
                         }
-                        WindowEvent::Resized(_) | WindowEvent::Moved(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                        WindowEvent::Resized(_)
+                        | WindowEvent::Moved(_)
+                        | WindowEvent::ScaleFactorChanged { .. } => {
                             capture_window_state(&events_window, &events_store);
                         }
                         _ => {}

@@ -25,7 +25,7 @@
         "scope": [
           "$APP/*",
           "$RESOURCE/*",
-          "$APPDATA/voice-tool/recordings/*"
+          "$APPDATA/com.nolyo.voice-tool/recordings/*"
         ]
       }
     }
