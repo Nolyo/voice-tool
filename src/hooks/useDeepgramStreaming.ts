@@ -14,6 +14,11 @@ interface DeepgramError {
   message: string;
 }
 
+interface CompletedTranscript {
+  id: string;
+  text: string;
+}
+
 function appendUtterance(existing: string, addition: string) {
   const trimmedAddition = addition.trim();
   if (!trimmedAddition) {
@@ -44,18 +49,80 @@ function appendUtterance(existing: string, addition: string) {
   return `${trimmedExisting}${needsSpace ? " " : ""}${newPortion}`;
 }
 
+function mergeTranscriptParts(finalPart: string, current: string, interim: string) {
+  let merged = finalPart;
+
+  if (current) {
+    merged = appendUtterance(merged, current);
+  }
+
+  if (interim) {
+    merged = appendUtterance(merged, interim);
+  }
+
+  return merged;
+}
+
 export function useDeepgramStreaming() {
   const [interimText, setInterimText] = useState("");
   const [finalText, setFinalText] = useState("");
   const [currentUtterance, setCurrentUtterance] = useState(""); // Current utterance being built
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [completedTranscript, setCompletedTranscript] = useState<CompletedTranscript | null>(null);
+  const finalTextRef = useRef(finalText);
   const currentUtteranceRef = useRef(currentUtterance);
+  const interimTextRef = useRef(interimText);
   const { settings } = useSettings();
+
+  useEffect(() => {
+    finalTextRef.current = finalText;
+  }, [finalText]);
 
   useEffect(() => {
     currentUtteranceRef.current = currentUtterance;
   }, [currentUtterance]);
+
+  useEffect(() => {
+    interimTextRef.current = interimText;
+  }, [interimText]);
+
+  const finalizePendingSpeech = useCallback(() => {
+    const merged = mergeTranscriptParts(
+      finalTextRef.current,
+      currentUtteranceRef.current,
+      interimTextRef.current
+    );
+
+    if (merged !== finalTextRef.current) {
+      finalTextRef.current = merged;
+      setFinalText(merged);
+    }
+
+    if (currentUtteranceRef.current) {
+      currentUtteranceRef.current = "";
+      setCurrentUtterance("");
+    }
+
+    if (interimTextRef.current) {
+      interimTextRef.current = "";
+      setInterimText("");
+    }
+
+    return merged.trim();
+  }, []);
+
+  const clearCompletedTranscript = useCallback(() => {
+    setCompletedTranscript(null);
+  }, []);
+
+  const getTranscript = useCallback(() => {
+    return mergeTranscriptParts(
+      finalTextRef.current,
+      currentUtteranceRef.current,
+      interimTextRef.current
+    );
+  }, []);
 
   useEffect(() => {
     let unlistenInterim: UnlistenFn | null = null;
@@ -70,7 +137,9 @@ export function useDeepgramStreaming() {
         unlistenInterim = await listen<TranscriptionEvent>(
           "transcription-interim",
           (event) => {
-            setInterimText(event.payload.text);
+            const text = event.payload.text;
+            setInterimText(text);
+            interimTextRef.current = text;
           }
         );
 
@@ -89,12 +158,18 @@ export function useDeepgramStreaming() {
                   : currentUtteranceSnapshot;
 
               if (textToAdd) {
-                setFinalText((prev) => appendUtterance(prev, textToAdd));
+                setFinalText((prev) => {
+                  const updated = appendUtterance(prev, textToAdd);
+                  finalTextRef.current = updated;
+                  return updated;
+                });
               }
 
               // Clear current utterance for next speech
-              setCurrentUtterance("");
-              currentUtteranceRef.current = "";
+              if (currentUtteranceRef.current) {
+                currentUtteranceRef.current = "";
+                setCurrentUtterance("");
+              }
             } else {
               // is_final but not speech_final: update current utterance
               // Only keep the longest version (Deepgram sends incremental updates)
@@ -106,7 +181,10 @@ export function useDeepgramStreaming() {
             }
 
             // Clear interim text
-            setInterimText("");
+            if (interimTextRef.current) {
+              interimTextRef.current = "";
+              setInterimText("");
+            }
           }
         );
 
@@ -114,16 +192,19 @@ export function useDeepgramStreaming() {
         unlistenConnected = await listen("deepgram-connected", () => {
           setIsConnected(true);
           setError(null);
+          setCompletedTranscript(null);
         });
 
         unlistenDisconnected = await listen("deepgram-disconnected", () => {
           setIsConnected(false);
+          finalizePendingSpeech();
         });
 
         // Listen for errors
         unlistenError = await listen<DeepgramError>("deepgram-error", (event) => {
           setError(event.payload.message);
           setIsConnected(false);
+          finalizePendingSpeech();
           console.error("Deepgram error:", event.payload);
         });
       } catch (e) {
@@ -141,14 +222,18 @@ export function useDeepgramStreaming() {
       if (unlistenDisconnected) unlistenDisconnected();
       if (unlistenError) unlistenError();
     };
-  }, []);
+  }, [finalizePendingSpeech]);
 
   const startStreaming = useCallback(async () => {
     try {
       setError(null);
       setFinalText("");
+      finalTextRef.current = "";
       setCurrentUtterance("");
+      currentUtteranceRef.current = "";
       setInterimText("");
+      interimTextRef.current = "";
+      setCompletedTranscript(null);
 
       // Extract language code (e.g., "fr-FR" -> "fr")
       const languageCode = settings.language.substring(0, 2).toLowerCase();
@@ -168,14 +253,29 @@ export function useDeepgramStreaming() {
   }, [settings.deepgram_api_key, settings.language]);
 
   const stopStreaming = useCallback(async () => {
+    let transcript = "";
     try {
       await invoke("stop_deepgram_streaming");
-      setIsConnected(false);
-      console.log("Deepgram streaming stopped");
     } catch (e) {
       console.error("Failed to stop Deepgram:", e);
+    } finally {
+      setIsConnected(false);
+      transcript = finalizePendingSpeech();
+
+      if (transcript) {
+        setCompletedTranscript({
+          id: crypto.randomUUID(),
+          text: transcript,
+        });
+      } else {
+        setCompletedTranscript(null);
+      }
+
+      console.log("Deepgram streaming stopped");
     }
-  }, []);
+
+    return transcript;
+  }, [finalizePendingSpeech]);
 
   const sendAudioChunk = useCallback(
     async (audioChunk: number[]) => {
@@ -195,8 +295,12 @@ export function useDeepgramStreaming() {
 
   const clearTranscription = useCallback(() => {
     setFinalText("");
+    finalTextRef.current = "";
     setCurrentUtterance("");
+    currentUtteranceRef.current = "";
     setInterimText("");
+    interimTextRef.current = "";
+    setCompletedTranscript(null);
   }, []);
 
   return {
@@ -209,5 +313,8 @@ export function useDeepgramStreaming() {
     stopStreaming,
     sendAudioChunk,
     clearTranscription,
+    getTranscript,
+    completedTranscript,
+    clearCompletedTranscript,
   };
 }

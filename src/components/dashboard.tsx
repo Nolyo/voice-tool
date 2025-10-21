@@ -31,6 +31,7 @@ export default function Dashboard() {
     settings.enable_sounds
   );
   const deepgram = useDeepgramStreaming();
+  const { completedTranscript, clearCompletedTranscript } = deepgram;
   const deepgramRef = useRef(deepgram);
   const {
     transcriptions,
@@ -62,6 +63,82 @@ export default function Dashboard() {
     await clearHistory();
   };
 
+  const handleTranscriptionFinal = useCallback(
+    async (
+      text: string,
+      provider: "whisper" | "deepgram",
+      audioPath?: string,
+      apiCost?: number
+    ) => {
+      const trimmed = text?.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      const newEntry = await addTranscription(trimmed, provider, audioPath, apiCost);
+      setSelectedTranscription(newEntry);
+      playSuccess();
+
+      if (settings.paste_at_cursor) {
+        const { writeText } = await import("@tauri-apps/plugin-clipboard-manager");
+        await writeText(trimmed);
+        await invoke("paste_text_to_active_window", { text: trimmed });
+      }
+
+      return newEntry;
+    },
+    [addTranscription, playSuccess, settings.paste_at_cursor]
+  );
+
+  const handleTranscriptionFinalRef = useRef(handleTranscriptionFinal);
+
+  useEffect(() => {
+    handleTranscriptionFinalRef.current = handleTranscriptionFinal;
+  }, [handleTranscriptionFinal]);
+
+  useEffect(() => {
+    if (settings.transcription_provider !== "Deepgram") {
+      return;
+    }
+
+    if (!completedTranscript) {
+      return;
+    }
+
+    const trimmed = completedTranscript.text.trim();
+    clearCompletedTranscript();
+
+    let isCancelled = false;
+
+    const processTranscript = async () => {
+      try {
+        if (trimmed) {
+          await handleTranscriptionFinalRef.current?.(trimmed, "deepgram");
+        }
+      } catch (error) {
+        console.error("Failed to finalize Deepgram transcription:", error);
+      } finally {
+        if (!isCancelled) {
+          try {
+            await invoke("log_separator");
+          } catch (logError) {
+            console.error("Failed to log separator:", logError);
+          }
+        }
+      }
+    };
+
+    processTranscript();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    completedTranscript,
+    clearCompletedTranscript,
+    settings.transcription_provider,
+  ]);
+
   // Function to transcribe audio (used by both button and keyboard shortcuts)
   const transcribeAudio = useCallback(
     async (audioData: number[], sampleRate: number) => {
@@ -91,29 +168,7 @@ export default function Dashboard() {
         const durationMinutes = durationSeconds / 60;
         const apiCost = durationMinutes * 0.006;
 
-        // Add to history
-        if (result.text && result.text.trim()) {
-          const newEntry = await addTranscription(
-            result.text,
-            "whisper",
-            result.audioPath,
-            apiCost
-          );
-          setSelectedTranscription(newEntry);
-          playSuccess();
-        }
-
-        // Copy to clipboard and paste if enabled
-        if (settings.paste_at_cursor && result.text) {
-          // Use clipboard plugin to write text
-          const { writeText } = await import(
-            "@tauri-apps/plugin-clipboard-manager"
-          );
-          await writeText(result.text);
-
-          // Simulate Ctrl+V
-          await invoke("paste_text_to_active_window", { text: result.text });
-        }
+        await handleTranscriptionFinal(result.text, "whisper", result.audioPath, apiCost);
 
         // Log separator to mark end of transcription process
         await invoke("log_separator");
@@ -126,7 +181,7 @@ export default function Dashboard() {
         setIsTranscribing(false);
       }
     },
-    [settings, addTranscription, playSuccess]
+    [settings, handleTranscriptionFinal]
   );
 
   // Keep latest transcription callback without re-subscribing window listeners
