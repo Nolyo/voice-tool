@@ -11,9 +11,13 @@
       "Bash(netstat -ano)",
       "Bash(findstr :1420)",
       "Bash(taskkill //F //PID *)",
-      "WebFetch(domain:v2.tauri.app)"
+      "WebFetch(domain:v2.tauri.app)",
+      "WebFetch(domain:developers.deepgram.com)",
+      "WebSearch"
     ],
-    "deny": ["Bash(pnpm tauri dev:*)"],
+    "deny": [
+      "Bash(pnpm tauri dev:*)"
+    ],
     "ask": []
   }
 }

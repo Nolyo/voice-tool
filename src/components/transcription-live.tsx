@@ -2,12 +2,17 @@ import { useDeepgramStreaming } from "@/hooks/useDeepgramStreaming";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function TranscriptionLive() {
-  const { interimText, finalText, isConnected, error } = useDeepgramStreaming();
+  const { interimText, finalText, currentUtterance, isConnected, error } = useDeepgramStreaming();
 
   // Don't render if not connected and no text
-  if (!isConnected && !finalText && !interimText) {
+  if (!isConnected && !finalText && !currentUtterance && !interimText) {
     return null;
   }
+
+  // Combine completed utterances (finalText) with current utterance being built
+  const displayText = finalText && currentUtterance
+    ? `${finalText} ${currentUtterance}`
+    : finalText || currentUtterance;
 
   return (
     <Card className="w-full">
@@ -40,15 +45,15 @@ export function TranscriptionLive() {
           </p>
         )}
 
-        {/* Final text (confirmed, white, bold) */}
-        {finalText && (
+        {/* Final text (confirmed, white, bold) - shows accumulated + current utterance */}
+        {displayText && (
           <p className="text-lg font-medium text-gray-900 dark:text-white leading-relaxed">
-            {finalText}
+            {displayText}
           </p>
         )}
 
         {/* Placeholder when nothing */}
-        {!interimText && !finalText && !error && (
+        {!interimText && !displayText && !error && (
           <p className="text-gray-400 dark:text-gray-600 text-center py-8 italic">
             En attente de transcription...
           </p>

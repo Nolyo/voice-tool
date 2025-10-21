@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useSettings } from "./useSettings";
@@ -6,6 +6,7 @@ import { useSettings } from "./useSettings";
 interface TranscriptionEvent {
   text: string;
   confidence?: number;
+  speech_final?: boolean;
 }
 
 interface DeepgramError {
@@ -13,12 +14,48 @@ interface DeepgramError {
   message: string;
 }
 
+function appendUtterance(existing: string, addition: string) {
+  const trimmedAddition = addition.trim();
+  if (!trimmedAddition) {
+    return existing;
+  }
+
+  if (!existing) {
+    return trimmedAddition;
+  }
+
+  const trimmedExisting = existing.trimEnd();
+  const maxOverlap = Math.min(trimmedExisting.length, trimmedAddition.length);
+  let overlap = maxOverlap;
+
+  while (overlap > 0) {
+    if (trimmedExisting.endsWith(trimmedAddition.slice(0, overlap))) {
+      break;
+    }
+    overlap -= 1;
+  }
+
+  const newPortion = trimmedAddition.slice(overlap).trimStart();
+  if (!newPortion) {
+    return trimmedExisting;
+  }
+
+  const needsSpace = !/\s$/.test(trimmedExisting);
+  return `${trimmedExisting}${needsSpace ? " " : ""}${newPortion}`;
+}
+
 export function useDeepgramStreaming() {
   const [interimText, setInterimText] = useState("");
   const [finalText, setFinalText] = useState("");
+  const [currentUtterance, setCurrentUtterance] = useState(""); // Current utterance being built
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const currentUtteranceRef = useRef(currentUtterance);
   const { settings } = useSettings();
+
+  useEffect(() => {
+    currentUtteranceRef.current = currentUtterance;
+  }, [currentUtterance]);
 
   useEffect(() => {
     let unlistenInterim: UnlistenFn | null = null;
@@ -41,11 +78,33 @@ export function useDeepgramStreaming() {
         unlistenFinal = await listen<TranscriptionEvent>(
           "transcription-final",
           (event) => {
-            // Append to final text
-            setFinalText((prev) => {
-              const newText = event.payload.text;
-              return prev ? `${prev} ${newText}` : newText;
-            });
+            const newText = event.payload.text;
+            const isSpeechFinal = event.payload.speech_final || false;
+
+            if (isSpeechFinal) {
+              const currentUtteranceSnapshot = currentUtteranceRef.current;
+              const textToAdd =
+                newText.length >= currentUtteranceSnapshot.length
+                  ? newText
+                  : currentUtteranceSnapshot;
+
+              if (textToAdd) {
+                setFinalText((prev) => appendUtterance(prev, textToAdd));
+              }
+
+              // Clear current utterance for next speech
+              setCurrentUtterance("");
+              currentUtteranceRef.current = "";
+            } else {
+              // is_final but not speech_final: update current utterance
+              // Only keep the longest version (Deepgram sends incremental updates)
+              const currentSnapshot = currentUtteranceRef.current;
+              if (newText.length > currentSnapshot.length) {
+                setCurrentUtterance(newText);
+                currentUtteranceRef.current = newText;
+              }
+            }
+
             // Clear interim text
             setInterimText("");
           }
@@ -88,6 +147,7 @@ export function useDeepgramStreaming() {
     try {
       setError(null);
       setFinalText("");
+      setCurrentUtterance("");
       setInterimText("");
 
       // Extract language code (e.g., "fr-FR" -> "fr")
@@ -135,12 +195,14 @@ export function useDeepgramStreaming() {
 
   const clearTranscription = useCallback(() => {
     setFinalText("");
+    setCurrentUtterance("");
     setInterimText("");
   }, []);
 
   return {
     interimText,
     finalText,
+    currentUtterance,
     isConnected,
     error,
     startStreaming,

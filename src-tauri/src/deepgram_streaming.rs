@@ -301,19 +301,22 @@ impl DeepgramStreamer {
         }
 
         let is_final = response.is_final.unwrap_or(false);
+        let speech_final = response.speech_final.unwrap_or(false);
         let confidence = response.channel.alternatives[0].confidence;
 
         if is_final {
             tracing::info!(
-                "Deepgram final: \"{}\" (confidence: {:?})",
+                "Deepgram final: \"{}\" (confidence: {:?}, speech_final: {})",
                 transcript,
-                confidence
+                confidence,
+                speech_final
             );
             let _ = app_handle.emit(
                 "transcription-final",
                 json!({
                     "text": transcript,
-                    "confidence": confidence
+                    "confidence": confidence,
+                    "speech_final": speech_final
                 }),
             );
         } else {

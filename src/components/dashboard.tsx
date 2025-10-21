@@ -31,6 +31,7 @@ export default function Dashboard() {
     settings.enable_sounds
   );
   const deepgram = useDeepgramStreaming();
+  const deepgramRef = useRef(deepgram);
   const {
     transcriptions,
     addTranscription,
@@ -38,6 +39,11 @@ export default function Dashboard() {
     clearHistory,
   } = useTranscriptionHistory();
   const previousRecordingRef = useRef(isRecording);
+
+  // Keep deepgram ref updated
+  useEffect(() => {
+    deepgramRef.current = deepgram;
+  }, [deepgram]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -181,25 +187,30 @@ export default function Dashboard() {
 
   // Listen for shortcut-triggered recording events to manage Deepgram
   useEffect(() => {
-    let unlistenStart: UnlistenFn | null = null;
-    let unlistenStop: UnlistenFn | null = null;
+    let unlistenRecordingState: UnlistenFn | null = null;
+    let previousState = false;
 
     const setupListeners = async () => {
-      // Start Deepgram when recording starts via shortcut
-      unlistenStart = await listen("shortcut-recording-started", async () => {
-        if (settings.transcription_provider === "Deepgram") {
-          try {
-            await deepgram.startStreaming();
-          } catch (error) {
-            console.error("Failed to start Deepgram from shortcut:", error);
-          }
-        }
-      });
+      // Listen to recording-state changes (emitted by both UI button and shortcuts)
+      unlistenRecordingState = await listen<boolean>("recording-state", async (event) => {
+        const isRecording = event.payload;
 
-      // Stop Deepgram when recording stops via shortcut
-      unlistenStop = await listen("shortcut-recording-stopped", async () => {
+        // Only trigger on state change
+        if (isRecording === previousState) {
+          return;
+        }
+        previousState = isRecording;
+
         if (settings.transcription_provider === "Deepgram") {
-          await deepgram.stopStreaming();
+          if (isRecording) {
+            try {
+              await deepgramRef.current.startStreaming();
+            } catch (error) {
+              console.error("Failed to start Deepgram:", error);
+            }
+          } else {
+            await deepgramRef.current.stopStreaming();
+          }
         }
       });
     };
@@ -207,10 +218,9 @@ export default function Dashboard() {
     setupListeners();
 
     return () => {
-      if (unlistenStart) unlistenStart();
-      if (unlistenStop) unlistenStop();
+      if (unlistenRecordingState) unlistenRecordingState();
     };
-  }, [settings.transcription_provider, deepgram]);
+  }, [settings.transcription_provider]); // Removed 'deepgram' to prevent re-subscribing
 
   useEffect(() => {
     const previous = previousRecordingRef.current;
@@ -262,10 +272,8 @@ export default function Dashboard() {
         );
         setIsRecording(false);
 
-        // Stop Deepgram streaming if enabled
-        if (settings.transcription_provider === "Deepgram") {
-          await deepgram.stopStreaming();
-        }
+        // Deepgram will be stopped by the "recording-state" event listener
+        // No need to stop it manually here
 
         // Transcribe audio (only if not using Deepgram streaming)
         if (audioData.length > 0 && settings.transcription_provider !== "Deepgram") {
@@ -278,15 +286,8 @@ export default function Dashboard() {
         });
         setIsRecording(true);
 
-        // Start Deepgram streaming if enabled
-        if (settings.transcription_provider === "Deepgram") {
-          try {
-            await deepgram.startStreaming();
-          } catch (error) {
-            console.error("Failed to start Deepgram:", error);
-            // Continue recording even if Deepgram fails
-          }
-        }
+        // Deepgram will be started by the "recording-state" event listener
+        // No need to start it manually here
       }
     } catch (error) {
       console.error("Recording error:", error);
