@@ -7,7 +7,9 @@ import { DashboardHeader } from "./dashboard-header";
 import { RecordingCard } from "./recording-card";
 import { TranscriptionList } from "./transcription-list";
 import { TranscriptionDetails } from "./transcription-details";
+import { TranscriptionLive } from "./transcription-live";
 import { useSettings } from "@/hooks/useSettings";
+import { useDeepgramStreaming } from "@/hooks/useDeepgramStreaming";
 import {
   useTranscriptionHistory,
   type Transcription,
@@ -28,6 +30,7 @@ export default function Dashboard() {
   const { playStart, playStop, playSuccess } = useSoundEffects(
     settings.enable_sounds
   );
+  const deepgram = useDeepgramStreaming();
   const {
     transcriptions,
     addTranscription,
@@ -56,6 +59,12 @@ export default function Dashboard() {
   // Function to transcribe audio (used by both button and keyboard shortcuts)
   const transcribeAudio = useCallback(
     async (audioData: number[], sampleRate: number) => {
+      // Skip if using Deepgram streaming - transcription already done in real-time
+      if (settings.transcription_provider === "Deepgram") {
+        console.log("Skipping post-transcription (Deepgram streaming already handled it)");
+        return;
+      }
+
       setIsTranscribing(true);
       try {
         const result = await invoke<TranscriptionInvokeResult>(
@@ -170,6 +179,39 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Listen for shortcut-triggered recording events to manage Deepgram
+  useEffect(() => {
+    let unlistenStart: UnlistenFn | null = null;
+    let unlistenStop: UnlistenFn | null = null;
+
+    const setupListeners = async () => {
+      // Start Deepgram when recording starts via shortcut
+      unlistenStart = await listen("shortcut-recording-started", async () => {
+        if (settings.transcription_provider === "Deepgram") {
+          try {
+            await deepgram.startStreaming();
+          } catch (error) {
+            console.error("Failed to start Deepgram from shortcut:", error);
+          }
+        }
+      });
+
+      // Stop Deepgram when recording stops via shortcut
+      unlistenStop = await listen("shortcut-recording-stopped", async () => {
+        if (settings.transcription_provider === "Deepgram") {
+          await deepgram.stopStreaming();
+        }
+      });
+    };
+
+    setupListeners();
+
+    return () => {
+      if (unlistenStart) unlistenStart();
+      if (unlistenStop) unlistenStop();
+    };
+  }, [settings.transcription_provider, deepgram]);
+
   useEffect(() => {
     const previous = previousRecordingRef.current;
     if (previous !== isRecording) {
@@ -220,8 +262,13 @@ export default function Dashboard() {
         );
         setIsRecording(false);
 
-        // Transcribe audio
-        if (audioData.length > 0) {
+        // Stop Deepgram streaming if enabled
+        if (settings.transcription_provider === "Deepgram") {
+          await deepgram.stopStreaming();
+        }
+
+        // Transcribe audio (only if not using Deepgram streaming)
+        if (audioData.length > 0 && settings.transcription_provider !== "Deepgram") {
           await transcribeAudio(audioData, sampleRate);
         }
       } else {
@@ -230,6 +277,16 @@ export default function Dashboard() {
           deviceIndex: settings.input_device_index,
         });
         setIsRecording(true);
+
+        // Start Deepgram streaming if enabled
+        if (settings.transcription_provider === "Deepgram") {
+          try {
+            await deepgram.startStreaming();
+          } catch (error) {
+            console.error("Failed to start Deepgram:", error);
+            // Continue recording even if Deepgram fails
+          }
+        }
       }
     } catch (error) {
       console.error("Recording error:", error);
@@ -256,6 +313,9 @@ export default function Dashboard() {
               onCopy={handleCopy}
             />
           </div>
+
+          {/* Live transcription (Deepgram streaming) - shown only when provider is Deepgram */}
+          {settings.transcription_provider === "Deepgram" && <TranscriptionLive />}
 
           {/* Second row: Transcription list full width */}
           <TranscriptionList

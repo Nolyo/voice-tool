@@ -1,8 +1,11 @@
 mod audio;
+mod deepgram_streaming;
+mod deepgram_types;
 mod logging;
 mod transcription;
 
 use audio::{AudioDeviceInfo, AudioRecorder};
+use deepgram_streaming::DeepgramStreamer;
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::{
@@ -10,8 +13,9 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
+use tokio::sync::Mutex as TokioMutex;
 use tauri::{
-    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, Size, State,
+    AppHandle, Emitter, Listener, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, Size, State,
     WebviewWindow, WindowEvent,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -29,9 +33,10 @@ struct HotkeyConfig {
     open_window: Option<String>,
 }
 
-/// Application state that holds the audio recorder and active hotkeys
+/// Application state that holds the audio recorder, Deepgram streamer, and active hotkeys
 pub struct AppState {
     audio_recorder: Mutex<AudioRecorder>,
+    deepgram_streamer: Arc<TokioMutex<DeepgramStreamer>>,
     hotkeys: Mutex<HotkeyConfig>,
 }
 
@@ -403,6 +408,8 @@ fn start_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
             Ok(_) => {
                 drop(recorder);
                 let _ = app_handle.emit("recording-state", true);
+                // Emit event for frontend to start Deepgram if needed
+                let _ = app_handle.emit("shortcut-recording-started", true);
                 true
             }
             Err(err) => {
@@ -430,6 +437,8 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<(Vec
     };
 
     let _ = app_handle.emit("recording-state", false);
+    // Emit event for frontend to stop Deepgram if needed
+    let _ = app_handle.emit("shortcut-recording-stopped", true);
 
     match result {
         Some(Ok((audio, rate))) => Some((audio, rate)),
@@ -670,6 +679,65 @@ async fn transcribe_audio(
     })
 }
 
+/// Start Deepgram streaming transcription
+#[tauri::command]
+async fn start_deepgram_streaming(
+    state: State<'_, AppState>,
+    app_handle: AppHandle,
+    api_key: String,
+    language: String,
+) -> Result<(), String> {
+    tracing::info!("Starting Deepgram streaming transcription");
+
+    // Get current sample rate from audio recorder
+    let sample_rate = {
+        let recorder = state.audio_recorder.lock().unwrap();
+        recorder.get_sample_rate()
+    };
+
+    tracing::info!("Using sample rate: {} Hz for Deepgram", sample_rate);
+
+    let mut streamer = state.deepgram_streamer.lock().await;
+    streamer
+        .connect(api_key, language, sample_rate, app_handle)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to connect to Deepgram: {}", e);
+            format!("Failed to connect to Deepgram: {}", e)
+        })
+}
+
+/// Stop Deepgram streaming transcription
+#[tauri::command]
+async fn stop_deepgram_streaming(state: State<'_, AppState>) -> Result<(), String> {
+    tracing::info!("Stopping Deepgram streaming transcription");
+
+    let mut streamer = state.deepgram_streamer.lock().await;
+    streamer.disconnect().await;
+
+    Ok(())
+}
+
+/// Check if Deepgram is currently connected
+#[tauri::command]
+async fn is_deepgram_connected(state: State<'_, AppState>) -> Result<bool, String> {
+    let streamer = state.deepgram_streamer.lock().await;
+    Ok(streamer.is_connected())
+}
+
+/// Send audio chunk to Deepgram for streaming transcription
+#[tauri::command]
+async fn send_audio_to_deepgram(
+    state: State<'_, AppState>,
+    audio_chunk: Vec<i16>,
+) -> Result<(), String> {
+    let streamer = state.deepgram_streamer.lock().await;
+    streamer
+        .send_audio(audio_chunk)
+        .await
+        .map_err(|e| format!("Failed to send audio to Deepgram: {}", e))
+}
+
 /// Load a recorded audio file and return its raw bytes for playback.
 #[tauri::command]
 fn load_recording(audio_path: String) -> Result<Vec<u8>, String> {
@@ -764,6 +832,7 @@ pub fn run() {
         ))
         .manage(AppState {
             audio_recorder: Mutex::new(AudioRecorder::new()),
+            deepgram_streamer: Arc::new(TokioMutex::new(DeepgramStreamer::new())),
             hotkeys: Mutex::new(HotkeyConfig::default()),
         })
         .invoke_handler(tauri::generate_handler![
@@ -779,7 +848,11 @@ pub fn run() {
             update_hotkeys,
             transcribe_audio,
             load_recording,
-            paste_text_to_active_window
+            paste_text_to_active_window,
+            start_deepgram_streaming,
+            stop_deepgram_streaming,
+            is_deepgram_connected,
+            send_audio_to_deepgram
         ])
         .setup(move |app| {
             // Enable logging to frontend
@@ -860,6 +933,33 @@ pub fn run() {
                     eprintln!("[hotkeys] Initial registration failed: {}", err);
                 }
             }
+
+            // Setup audio-chunk listener to send directly to Deepgram
+            let app_handle_audio = app.handle().clone();
+            let _unlisten = app.listen("audio-chunk", move |event| {
+                // Parse JSON payload
+                if let Ok(json_value) = serde_json::from_str::<Value>(event.payload()) {
+                    if let Some(payload) = json_value.as_array() {
+                        let chunk: Vec<i16> = payload
+                            .iter()
+                            .filter_map(|v| v.as_i64().map(|n| n as i16))
+                            .collect();
+
+                        if !chunk.is_empty() {
+                            let state = app_handle_audio.state::<AppState>();
+                            let streamer = Arc::clone(&state.deepgram_streamer);
+
+                            // Use tauri's async runtime to spawn the task
+                            tauri::async_runtime::spawn(async move {
+                                let streamer_guard = streamer.lock().await;
+                                if streamer_guard.is_connected() {
+                                    let _ = streamer_guard.send_audio(chunk).await;
+                                }
+                            });
+                        }
+                    }
+                }
+            });
 
             // Create system tray menu
             let show_item = MenuItem::with_id(app, "show", "Afficher", true, None::<&str>)?;

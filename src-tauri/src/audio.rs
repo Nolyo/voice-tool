@@ -201,6 +201,11 @@ impl AudioRecorder {
         *self.is_recording.lock().unwrap()
     }
 
+    /// Get current sample rate
+    pub fn get_sample_rate(&self) -> u32 {
+        *self.sample_rate.lock().unwrap()
+    }
+
     /// Get the appropriate device
     fn get_device(&self, host: &Host, device_index: Option<usize>) -> Result<Device> {
         if let Some(idx) = device_index {
@@ -283,6 +288,9 @@ impl AudioRecorder {
 
                 // Emit audio level event for visualization
                 let _ = app_handle.emit("audio-level", normalized_level);
+
+                // Emit audio chunk for streaming (e.g., Deepgram)
+                let _ = app_handle.emit("audio-chunk", samples.clone());
             },
             err_fn,
             None,

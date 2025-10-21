@@ -38,6 +38,10 @@ cpal = "0.15"
 
 # For async audio streaming
 futures = "0.3"
+futures-util = "0.3"
+
+# WebSocket for Deepgram streaming
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 
 # Audio file writing
 hound = "3.5"
