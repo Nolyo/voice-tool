@@ -4,7 +4,7 @@ mod deepgram_types;
 mod logging;
 mod transcription;
 
-use audio::{AudioDeviceInfo, AudioRecorder};
+use audio::{AudioDeviceInfo, AudioRecorder, RecordingResult};
 use deepgram_streaming::DeepgramStreamer;
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -13,15 +13,15 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
-use tokio::sync::Mutex as TokioMutex;
 use tauri::{
-    AppHandle, Emitter, Listener, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, Size, State,
-    WebviewWindow, WindowEvent,
+    AppHandle, Emitter, Listener, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, Size,
+    State, WebviewWindow, WindowEvent,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutEvent, ShortcutState};
 use tauri_plugin_store::StoreBuilder;
+use tokio::sync::Mutex as TokioMutex;
 use transcription::{
     cleanup_old_recordings, get_recordings_dir, save_audio_to_wav, transcribe_with_openai,
 };
@@ -77,25 +77,40 @@ fn start_recording(
     result
 }
 
-/// Stop recording and return the audio data with sample rate
+/// Stop recording and return the audio data with sample rate and silence detection
 #[tauri::command]
 fn stop_recording(
     state: State<AppState>,
     app_handle: AppHandle,
-) -> Result<(Vec<i16>, u32), String> {
+    silence_threshold: Option<f32>,
+) -> Result<RecordingResult, String> {
     tracing::info!("Stopping audio recording");
+
+    // Use provided threshold or default to 0.01 (typical silence level)
+    let threshold = silence_threshold.unwrap_or(0.01);
+
     let mut recorder = state.inner().audio_recorder.lock().unwrap();
-    let result = recorder.stop_recording().map_err(|e| {
+    let result = recorder.stop_recording(threshold).map_err(|e| {
         tracing::error!("Failed to stop recording: {}", e);
         e.to_string()
     });
 
-    if let Ok((samples, rate)) = &result {
-        tracing::info!(
-            "Recording stopped: {} samples at {} Hz",
-            samples.len(),
-            rate
-        );
+    if let Ok(ref recording) = result {
+        if recording.is_silent {
+            tracing::warn!(
+                "Recording stopped: {} samples at {} Hz (RMS: {:.4}, SILENT - transcription skipped)",
+                recording.audio_data.len(),
+                recording.sample_rate,
+                recording.avg_rms
+            );
+        } else {
+            tracing::info!(
+                "Recording stopped: {} samples at {} Hz (RMS: {:.4})",
+                recording.audio_data.len(),
+                recording.sample_rate,
+                recording.avg_rms
+            );
+        }
     }
 
     // Emit recording state change
@@ -424,13 +439,17 @@ fn start_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
     }
 }
 
-fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<(Vec<i16>, u32)> {
+fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<RecordingResult> {
     let state: State<AppState> = app_handle.state();
+
+    // Default silence threshold (will be configurable via settings later)
+    let silence_threshold = 0.01;
+
     let result = if let Ok(mut recorder) = state.inner().audio_recorder.lock() {
         if !recorder.is_recording() {
             None
         } else {
-            Some(recorder.stop_recording())
+            Some(recorder.stop_recording(silence_threshold))
         }
     } else {
         None
@@ -441,7 +460,7 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<(Vec
     let _ = app_handle.emit("shortcut-recording-stopped", true);
 
     match result {
-        Some(Ok((audio, rate))) => Some((audio, rate)),
+        Some(Ok(recording)) => Some(recording),
         Some(Err(err)) => {
             eprintln!("Error stopping recording: {}", err);
             None
@@ -450,16 +469,14 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<(Vec
     }
 }
 
-fn emit_audio_samples<R: Runtime>(
-    app_handle: &AppHandle<R>,
-    audio_data: Vec<i16>,
-    sample_rate: u32,
-) {
+fn emit_audio_samples<R: Runtime>(app_handle: &AppHandle<R>, recording: RecordingResult) {
     let _ = app_handle.emit(
         "audio-captured",
         json!({
-            "samples": audio_data,
-            "sampleRate": sample_rate
+            "samples": recording.audio_data,
+            "sampleRate": recording.sample_rate,
+            "avgRms": recording.avg_rms,
+            "isSilent": recording.is_silent
         }),
     );
 }
@@ -522,8 +539,8 @@ fn apply_hotkeys<R: Runtime>(
         let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
             if event.state == ShortcutState::Pressed {
                 if is_recorder_active(app) {
-                    if let Some((audio, rate)) = stop_recording_shortcut(app) {
-                        emit_audio_samples(app, audio, rate);
+                    if let Some(recording) = stop_recording_shortcut(app) {
+                        emit_audio_samples(app, recording);
                     }
                     hide_mini_window(app);
                 } else {
@@ -556,8 +573,8 @@ fn apply_hotkeys<R: Runtime>(
                     }
                 }
                 ShortcutState::Released => {
-                    if let Some((audio, rate)) = stop_recording_shortcut(app) {
-                        emit_audio_samples(app, audio, rate);
+                    if let Some(recording) = stop_recording_shortcut(app) {
+                        emit_audio_samples(app, recording);
                     }
                     hide_mini_window(app);
                 }

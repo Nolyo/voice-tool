@@ -22,7 +22,8 @@ import { invoke } from "@tauri-apps/api/core";
 const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
 
 const isMacPlatform = () =>
-  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad/.test(navigator.platform);
 
 function normalizeKey(key: string): string | null {
   if (!key || key === "Unidentified" || key.toLowerCase() === "dead") {
@@ -189,7 +190,9 @@ function HotkeyInput({
           variant="ghost"
           size="sm"
           onClick={handleReset}
-          disabled={isSaving || value.toLowerCase() === defaultValue.toLowerCase()}
+          disabled={
+            isSaving || value.toLowerCase() === defaultValue.toLowerCase()
+          }
           className="flex-shrink-0"
         >
           Réinitialiser
@@ -210,7 +213,12 @@ function HotkeyInput({
 
 export function SettingTabs() {
   const { settings, isLoaded, updateSetting } = useSettings();
-  const { devices, isLoading: devicesLoading, error: devicesError, refresh } = useAudioDevices();
+  const {
+    devices,
+    isLoading: devicesLoading,
+    error: devicesError,
+    refresh,
+  } = useAudioDevices();
   const [isUpdatingAutostart, setIsUpdatingAutostart] = useState(false);
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
 
@@ -306,7 +314,10 @@ export function SettingTabs() {
                 id="show-listen"
                 checked={settings.enable_history_audio_preview}
                 onCheckedChange={(checked) =>
-                  updateSetting("enable_history_audio_preview", checked as boolean)
+                  updateSetting(
+                    "enable_history_audio_preview",
+                    checked as boolean,
+                  )
                 }
               />
               <Label
@@ -315,6 +326,40 @@ export function SettingTabs() {
               >
                 Afficher le bouton Écouter dans l'historique
               </Label>
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label
+                htmlFor="silence-threshold"
+                className="text-sm text-foreground"
+              >
+                Seuil de détection du silence (
+                {(settings.silence_threshold * 100).toFixed(1)}%)
+              </Label>
+              <div className="flex items-center gap-3">
+                <input
+                  id="silence-threshold"
+                  type="range"
+                  min="0"
+                  max="0.1"
+                  step="0.001"
+                  value={settings.silence_threshold}
+                  onChange={(e) =>
+                    updateSetting(
+                      "silence_threshold",
+                      parseFloat(e.target.value),
+                    )
+                  }
+                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <span className="text-xs text-muted-foreground min-w-[4rem] text-right">
+                  {(settings.silence_threshold * 100).toFixed(1)}%
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Les enregistrements avec un niveau sonore inférieur à ce seuil
+                seront considérés comme vides
+              </p>
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -329,13 +374,18 @@ export function SettingTabs() {
                   disabled={devicesLoading}
                   className="h-6 px-2"
                 >
-                  <RefreshCw className={`w-3 h-3 ${devicesLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`w-3 h-3 ${devicesLoading ? "animate-spin" : ""}`}
+                  />
                 </Button>
               </div>
               <Select
                 value={settings.input_device_index?.toString() ?? "null"}
                 onValueChange={(value) =>
-                  updateSetting("input_device_index", value === "null" ? null : Number.parseInt(value))
+                  updateSetting(
+                    "input_device_index",
+                    value === "null" ? null : Number.parseInt(value),
+                  )
                 }
                 disabled={devicesLoading || !!devicesError}
               >
@@ -353,7 +403,10 @@ export function SettingTabs() {
                 <SelectContent>
                   <SelectItem value="null">Par défaut (Système)</SelectItem>
                   {devices.map((device) => (
-                    <SelectItem key={device.index} value={device.index.toString()}>
+                    <SelectItem
+                      key={device.index}
+                      value={device.index.toString()}
+                    >
                       {device.name} {device.is_default ? "(par défaut)" : ""}
                     </SelectItem>
                   ))}
@@ -392,7 +445,10 @@ export function SettingTabs() {
               <Select
                 value={settings.transcription_provider}
                 onValueChange={(value) =>
-                  updateSetting("transcription_provider", value as "OpenAI" | "Deepgram" | "Google")
+                  updateSetting(
+                    "transcription_provider",
+                    value as "OpenAI" | "Deepgram" | "Google",
+                  )
                 }
               >
                 <SelectTrigger id="service-provider">
@@ -400,9 +456,7 @@ export function SettingTabs() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
-                  <SelectItem value="Google">
-                    Google Speech-to-Text
-                  </SelectItem>
+                  <SelectItem value="Google">Google Speech-to-Text</SelectItem>
                   <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
                 </SelectContent>
               </Select>
@@ -414,9 +468,7 @@ export function SettingTabs() {
               </Label>
               <Select
                 value={settings.language}
-                onValueChange={(value) =>
-                  updateSetting("language", value)
-                }
+                onValueChange={(value) => updateSetting("language", value)}
               >
                 <SelectTrigger id="language">
                   <SelectValue />
@@ -461,8 +513,8 @@ export function SettingTabs() {
                 htmlFor="auto-insert"
                 className="text-sm text-foreground cursor-pointer leading-relaxed"
               >
-                Insérer automatiquement au curseur après la transcription / copie
-                depuis l'historique
+                Insérer automatiquement au curseur après la transcription /
+                copie depuis l'historique
               </Label>
             </div>
 
@@ -479,7 +531,8 @@ export function SettingTabs() {
                 htmlFor="smart-formatting"
                 className="text-sm text-foreground cursor-pointer leading-relaxed"
               >
-                Activer le formatage intelligent (ponctuation, majuscule, espaces)
+                Activer le formatage intelligent (ponctuation, majuscule,
+                espaces)
               </Label>
             </div>
           </div>
@@ -506,11 +559,15 @@ export function SettingTabs() {
                   onCheckedChange={async (checked) => {
                     setIsUpdatingAutostart(true);
                     try {
-                      await invoke("set_autostart", { enable: checked as boolean });
+                      await invoke("set_autostart", {
+                        enable: checked as boolean,
+                      });
                       setAutoStartEnabled(checked as boolean);
                     } catch (error) {
                       console.error("Failed to update autostart:", error);
-                      alert(`Erreur lors de la mise à jour du démarrage automatique: ${error}`);
+                      alert(
+                        `Erreur lors de la mise à jour du démarrage automatique: ${error}`,
+                      );
                     } finally {
                       setIsUpdatingAutostart(false);
                     }
@@ -531,7 +588,10 @@ export function SettingTabs() {
                     id="start-minimized"
                     checked={settings.start_minimized_on_boot}
                     onCheckedChange={(checked) =>
-                      updateSetting("start_minimized_on_boot", checked as boolean)
+                      updateSetting(
+                        "start_minimized_on_boot",
+                        checked as boolean,
+                      )
                     }
                   />
                   <Label
@@ -556,7 +616,10 @@ export function SettingTabs() {
                   variant="outline"
                   size="icon"
                   onClick={() =>
-                    updateSetting("recordings_keep_last", Math.max(0, settings.recordings_keep_last - 1))
+                    updateSetting(
+                      "recordings_keep_last",
+                      Math.max(0, settings.recordings_keep_last - 1),
+                    )
                   }
                 >
                   <Minus className="w-4 h-4" />
@@ -566,7 +629,10 @@ export function SettingTabs() {
                   type="number"
                   value={settings.recordings_keep_last}
                   onChange={(e) =>
-                    updateSetting("recordings_keep_last", Number.parseInt(e.target.value) || 0)
+                    updateSetting(
+                      "recordings_keep_last",
+                      Number.parseInt(e.target.value) || 0,
+                    )
                   }
                   className="w-20 text-center"
                 />
@@ -574,7 +640,10 @@ export function SettingTabs() {
                   variant="outline"
                   size="icon"
                   onClick={() =>
-                    updateSetting("recordings_keep_last", settings.recordings_keep_last + 1)
+                    updateSetting(
+                      "recordings_keep_last",
+                      settings.recordings_keep_last + 1,
+                    )
                   }
                 >
                   <Plus className="w-4 h-4" />
@@ -612,7 +681,9 @@ export function SettingTabs() {
             value={settings.record_hotkey}
             defaultValue={DEFAULT_SETTINGS.settings.record_hotkey}
             description="Mode toggle : une pression pour démarrer, une seconde pour arrêter."
-            onChange={(shortcut) => handleHotkeyChange("record_hotkey", shortcut)}
+            onChange={(shortcut) =>
+              handleHotkeyChange("record_hotkey", shortcut)
+            }
           />
 
           <HotkeyInput
@@ -630,7 +701,9 @@ export function SettingTabs() {
             value={settings.open_window_hotkey}
             defaultValue={DEFAULT_SETTINGS.settings.open_window_hotkey}
             description="Affiche la fenêtre principale et lui donne le focus instantanément."
-            onChange={(shortcut) => handleHotkeyChange("open_window_hotkey", shortcut)}
+            onChange={(shortcut) =>
+              handleHotkeyChange("open_window_hotkey", shortcut)
+            }
           />
 
           <div className="p-3 rounded-lg bg-muted/50 border border-border">
@@ -661,7 +734,3 @@ export function SettingTabs() {
     </div>
   );
 }
-
-
-
-

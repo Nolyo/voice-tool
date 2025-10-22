@@ -9,6 +9,7 @@ export interface AppSettings {
     enable_sounds: boolean;
     enable_history_audio_preview: boolean;
     input_device_index: number | null;
+    silence_threshold: number;
 
     // Transcription
     transcription_provider: "OpenAI" | "Deepgram" | "Google";
@@ -50,6 +51,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     enable_sounds: true,
     enable_history_audio_preview: true,
     input_device_index: null,
+    silence_threshold: 0.01, // RMS threshold below which audio is considered silent
 
     // Transcription
     transcription_provider: "OpenAI",
@@ -83,9 +85,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 /**
  * Merge partial settings with defaults
  */
-export function mergeSettings(
-  partial: Partial<AppSettings>
-): AppSettings {
+export function mergeSettings(partial: Partial<AppSettings>): AppSettings {
   return {
     ...DEFAULT_SETTINGS,
     ...partial,

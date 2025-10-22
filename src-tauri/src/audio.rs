@@ -20,6 +20,15 @@ pub struct AudioDeviceInfo {
     pub is_default: bool,
 }
 
+/// Result of a recording session
+#[derive(serde::Serialize)]
+pub struct RecordingResult {
+    pub audio_data: Vec<i16>,
+    pub sample_rate: u32,
+    pub avg_rms: f32,
+    pub is_silent: bool,
+}
+
 impl AudioRecorder {
     pub fn new() -> Self {
         Self {
@@ -172,8 +181,8 @@ impl AudioRecorder {
         Ok(())
     }
 
-    /// Stop recording and return the captured audio data with sample rate
-    pub fn stop_recording(&mut self) -> Result<(Vec<i16>, u32)> {
+    /// Stop recording and return the captured audio data with sample rate and silence detection
+    pub fn stop_recording(&mut self, silence_threshold: f32) -> Result<RecordingResult> {
         // Set recording flag to false - this will stop the stream callback
         *self.is_recording.lock().unwrap() = false;
 
@@ -187,13 +196,25 @@ impl AudioRecorder {
         // Get the sample rate
         let sample_rate = *self.sample_rate.lock().unwrap();
 
+        // Calculate average RMS to detect silence
+        let avg_rms = calculate_rms(&audio_data);
+        let is_silent = avg_rms < silence_threshold;
+
         println!(
-            "stop_recording: captured {} samples at {} Hz",
+            "stop_recording: captured {} samples at {} Hz (avg RMS: {:.4}, threshold: {:.4}, silent: {})",
             audio_data.len(),
-            sample_rate
+            sample_rate,
+            avg_rms,
+            silence_threshold,
+            is_silent
         );
 
-        Ok((audio_data, sample_rate))
+        Ok(RecordingResult {
+            audio_data,
+            sample_rate,
+            avg_rms,
+            is_silent,
+        })
     }
 
     /// Check if currently recording

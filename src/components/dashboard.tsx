@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { toast } from "sonner";
 import { DashboardHeader } from "./dashboard-header";
 import { RecordingCard } from "./recording-card";
 import { TranscriptionList } from "./transcription-list";
@@ -21,6 +22,13 @@ type TranscriptionInvokeResult = {
   audioPath: string;
 };
 
+type RecordingResult = {
+  audio_data: number[];
+  sample_rate: number;
+  avg_rms: number;
+  is_silent: boolean;
+};
+
 export default function Dashboard() {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -28,7 +36,7 @@ export default function Dashboard() {
     useState<Transcription | null>(null);
   const { settings } = useSettings();
   const { playStart, playStop, playSuccess } = useSoundEffects(
-    settings.enable_sounds
+    settings.enable_sounds,
   );
   const deepgram = useDeepgramStreaming();
   const { completedTranscript, clearCompletedTranscript } = deepgram;
@@ -68,26 +76,33 @@ export default function Dashboard() {
       text: string,
       provider: "whisper" | "deepgram",
       audioPath?: string,
-      apiCost?: number
+      apiCost?: number,
     ) => {
       const trimmed = text?.trim();
       if (!trimmed) {
         return null;
       }
 
-      const newEntry = await addTranscription(trimmed, provider, audioPath, apiCost);
+      const newEntry = await addTranscription(
+        trimmed,
+        provider,
+        audioPath,
+        apiCost,
+      );
       setSelectedTranscription(newEntry);
       playSuccess();
 
       if (settings.paste_at_cursor) {
-        const { writeText } = await import("@tauri-apps/plugin-clipboard-manager");
+        const { writeText } = await import(
+          "@tauri-apps/plugin-clipboard-manager"
+        );
         await writeText(trimmed);
         await invoke("paste_text_to_active_window", { text: trimmed });
       }
 
       return newEntry;
     },
-    [addTranscription, playSuccess, settings.paste_at_cursor]
+    [addTranscription, playSuccess, settings.paste_at_cursor],
   );
 
   const handleTranscriptionFinalRef = useRef(handleTranscriptionFinal);
@@ -144,7 +159,9 @@ export default function Dashboard() {
     async (audioData: number[], sampleRate: number) => {
       // Skip if using Deepgram streaming - transcription already done in real-time
       if (settings.transcription_provider === "Deepgram") {
-        console.log("Skipping post-transcription (Deepgram streaming already handled it)");
+        console.log(
+          "Skipping post-transcription (Deepgram streaming already handled it)",
+        );
         return;
       }
 
@@ -158,7 +175,7 @@ export default function Dashboard() {
             apiKey: settings.openai_api_key,
             language: settings.language,
             keepLast: settings.recordings_keep_last,
-          }
+          },
         );
 
         console.log("Transcription:", result.text);
@@ -168,7 +185,12 @@ export default function Dashboard() {
         const durationMinutes = durationSeconds / 60;
         const apiCost = durationMinutes * 0.006;
 
-        await handleTranscriptionFinal(result.text, "whisper", result.audioPath, apiCost);
+        await handleTranscriptionFinal(
+          result.text,
+          "whisper",
+          result.audioPath,
+          apiCost,
+        );
 
         // Log separator to mark end of transcription process
         await invoke("log_separator");
@@ -181,7 +203,7 @@ export default function Dashboard() {
         setIsTranscribing(false);
       }
     },
-    [settings, handleTranscriptionFinal]
+    [settings, handleTranscriptionFinal],
   );
 
   // Keep latest transcription callback without re-subscribing window listeners
@@ -201,8 +223,24 @@ export default function Dashboard() {
         const listener = await listen<{
           samples: number[];
           sampleRate: number;
+          avgRms: number;
+          isSilent: boolean;
         }>("audio-captured", (event) => {
-          console.log("Audio captured from keyboard shortcut");
+          console.log(
+            "Audio captured from keyboard shortcut",
+            `(RMS: ${event.payload.avgRms.toFixed(4)}, silent: ${event.payload.isSilent})`,
+          );
+
+          // Check if recording is silent
+          if (event.payload.isSilent) {
+            console.log("Enregistrement vide détecté, transcription annulée");
+            toast.info("Aucun son détecté dans l'enregistrement", {
+              description:
+                "Le niveau sonore est trop faible pour être transcrit",
+            });
+            return;
+          }
+
           const callback = transcribeAudioRef.current;
           if (callback) {
             callback(event.payload.samples, event.payload.sampleRate);
@@ -247,27 +285,30 @@ export default function Dashboard() {
 
     const setupListeners = async () => {
       // Listen to recording-state changes (emitted by both UI button and shortcuts)
-      unlistenRecordingState = await listen<boolean>("recording-state", async (event) => {
-        const isRecording = event.payload;
+      unlistenRecordingState = await listen<boolean>(
+        "recording-state",
+        async (event) => {
+          const isRecording = event.payload;
 
-        // Only trigger on state change
-        if (isRecording === previousState) {
-          return;
-        }
-        previousState = isRecording;
-
-        if (settings.transcription_provider === "Deepgram") {
-          if (isRecording) {
-            try {
-              await deepgramRef.current.startStreaming();
-            } catch (error) {
-              console.error("Failed to start Deepgram:", error);
-            }
-          } else {
-            await deepgramRef.current.stopStreaming();
+          // Only trigger on state change
+          if (isRecording === previousState) {
+            return;
           }
-        }
-      });
+          previousState = isRecording;
+
+          if (settings.transcription_provider === "Deepgram") {
+            if (isRecording) {
+              try {
+                await deepgramRef.current.startStreaming();
+              } catch (error) {
+                console.error("Failed to start Deepgram:", error);
+              }
+            } else {
+              await deepgramRef.current.stopStreaming();
+            }
+          }
+        },
+      );
     };
 
     setupListeners();
@@ -303,7 +344,7 @@ export default function Dashboard() {
     }
 
     const stillExists = transcriptions.some(
-      (item) => item.id === selectedTranscription.id
+      (item) => item.id === selectedTranscription.id,
     );
 
     if (!stillExists) {
@@ -314,25 +355,39 @@ export default function Dashboard() {
   const handleToggleRecording = async () => {
     try {
       if (isRecording) {
-        // Stop recording
-        const [audioData, sampleRate] = await invoke<[number[], number]>(
-          "stop_recording"
-        );
+        // Stop recording with silence detection
+        const result = await invoke<RecordingResult>("stop_recording", {
+          silenceThreshold: settings.silence_threshold,
+        });
+
         console.log(
           "Audio data captured:",
-          audioData.length,
+          result.audio_data.length,
           "samples at",
-          sampleRate,
-          "Hz"
+          result.sample_rate,
+          "Hz",
+          `(RMS: ${result.avg_rms.toFixed(4)}, silent: ${result.is_silent})`,
         );
         setIsRecording(false);
 
         // Deepgram will be stopped by the "recording-state" event listener
         // No need to stop it manually here
 
+        // Check if recording is silent
+        if (result.is_silent) {
+          console.log("Enregistrement vide détecté, transcription annulée");
+          toast.info("Aucun son détecté dans l'enregistrement", {
+            description: "Le niveau sonore est trop faible pour être transcrit",
+          });
+          return;
+        }
+
         // Transcribe audio (only if not using Deepgram streaming)
-        if (audioData.length > 0 && settings.transcription_provider !== "Deepgram") {
-          await transcribeAudio(audioData, sampleRate);
+        if (
+          result.audio_data.length > 0 &&
+          settings.transcription_provider !== "Deepgram"
+        ) {
+          await transcribeAudio(result.audio_data, result.sample_rate);
         }
       } else {
         // Start recording with selected device from settings
@@ -371,7 +426,9 @@ export default function Dashboard() {
           </div>
 
           {/* Live transcription (Deepgram streaming) - shown only when provider is Deepgram */}
-          {settings.transcription_provider === "Deepgram" && <TranscriptionLive />}
+          {settings.transcription_provider === "Deepgram" && (
+            <TranscriptionLive />
+          )}
 
           {/* Second row: Transcription list full width */}
           <TranscriptionList
