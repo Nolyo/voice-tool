@@ -191,11 +191,16 @@ impl DeepgramStreamer {
                                 }
                             }
 
-                            // Send close frame to gracefully terminate the stream
+                            // Notify Deepgram that the stream is complete before closing
                             let mut sink = ws_sink.lock().await;
-                            if let Err(e) = sink.send(Message::Close(None)).await {
-                                tracing::debug!("Failed to send Deepgram close frame: {}", e);
+                            if let Err(e) = sink.send(Message::Text(r#"{"type":"CloseStream"}"#.into())).await {
+                                tracing::debug!("Failed to send Deepgram CloseStream message: {}", e);
                             }
+
+                            if let Err(e) = sink.close().await {
+                                tracing::debug!("Failed to close Deepgram WebSocket cleanly: {}", e);
+                            }
+
                             break;
                         }
                     }
