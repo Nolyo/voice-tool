@@ -126,12 +126,21 @@ impl DeepgramStreamer {
         // Drop audio sender to signal tasks to stop
         self.audio_tx = None;
 
-        // Abort tasks
+        // Allow background tasks to finish gracefully
         if let Some(task) = self.audio_task.take() {
-            task.abort();
+            if let Err(err) = task.await {
+                if !err.is_cancelled() {
+                    tracing::debug!("Audio sender task ended with error: {}", err);
+                }
+            }
         }
+
         if let Some(task) = self.ws_task.take() {
-            task.abort();
+            if let Err(err) = task.await {
+                if !err.is_cancelled() {
+                    tracing::debug!("Transcription receiver task ended with error: {}", err);
+                }
+            }
         }
 
         tracing::info!("Deepgram disconnected");
@@ -153,8 +162,8 @@ impl DeepgramStreamer {
         tracing::info!("Audio sender task started");
 
         let mut buffer: Vec<i16> = Vec::with_capacity(4800); // ~100ms at 48kHz
-        let mut last_send = tokio::time::Instant::now();
         let send_interval = tokio::time::Duration::from_millis(100); // Send every 100ms
+        let mut next_flush_deadline = tokio::time::Instant::now() + send_interval;
 
         loop {
             tokio::select! {
@@ -165,62 +174,74 @@ impl DeepgramStreamer {
                             buffer.extend_from_slice(&chunk);
 
                             // Send if buffer is large enough or enough time has passed
-                            if buffer.len() >= 4800 || last_send.elapsed() >= send_interval {
+                            if buffer.len() >= 4800 || tokio::time::Instant::now() >= next_flush_deadline {
                                 if !buffer.is_empty() {
-                                    // Convert i16 samples to bytes (little-endian)
-                                    let bytes: Vec<u8> = buffer.iter().flat_map(|s| s.to_le_bytes()).collect();
-
-                                    // Send to WebSocket
-                                    let mut sink = ws_sink.lock().await;
-                                    if let Err(e) = sink.send(Message::Binary(bytes)).await {
-                                        tracing::error!("Failed to send audio to Deepgram: {}", e);
-                                        let _ = app_handle.emit(
-                                            "deepgram-error",
-                                            json!({
-                                                "code": "SEND_ERROR",
-                                                "message": format!("Failed to send audio: {}", e)
-                                            }),
-                                        );
+                                    if Self::flush_audio_buffer(&mut buffer, &ws_sink, &app_handle).await.is_err() {
                                         break;
                                     }
-
-                                    buffer.clear();
-                                    last_send = tokio::time::Instant::now();
+                                    next_flush_deadline = tokio::time::Instant::now() + send_interval;
                                 }
                             }
                         }
-                        None => break, // Channel closed
+                        None => {
+                            // Flush remaining samples before closing
+                            if !buffer.is_empty() {
+                                if Self::flush_audio_buffer(&mut buffer, &ws_sink, &app_handle).await.is_err() {
+                                    break;
+                                }
+                            }
+
+                            // Send close frame to gracefully terminate the stream
+                            let mut sink = ws_sink.lock().await;
+                            if let Err(e) = sink.send(Message::Close(None)).await {
+                                tracing::debug!("Failed to send Deepgram close frame: {}", e);
+                            }
+                            break;
+                        }
                     }
                 }
 
                 // Timeout to flush buffer periodically even if not full
                 _ = tokio::time::sleep(send_interval) => {
-                    if !buffer.is_empty() && last_send.elapsed() >= send_interval {
-                        // Convert i16 samples to bytes (little-endian)
-                        let bytes: Vec<u8> = buffer.iter().flat_map(|s| s.to_le_bytes()).collect();
-
-                        // Send to WebSocket
-                        let mut sink = ws_sink.lock().await;
-                        if let Err(e) = sink.send(Message::Binary(bytes)).await {
-                            tracing::error!("Failed to send audio to Deepgram: {}", e);
-                            let _ = app_handle.emit(
-                                "deepgram-error",
-                                json!({
-                                    "code": "SEND_ERROR",
-                                    "message": format!("Failed to send audio: {}", e)
-                                }),
-                            );
+                    if !buffer.is_empty() && tokio::time::Instant::now() >= next_flush_deadline {
+                        if Self::flush_audio_buffer(&mut buffer, &ws_sink, &app_handle).await.is_err() {
                             break;
                         }
-
-                        buffer.clear();
-                        last_send = tokio::time::Instant::now();
+                        next_flush_deadline = tokio::time::Instant::now() + send_interval;
                     }
                 }
             }
         }
 
         tracing::info!("Audio sender task stopped");
+    }
+
+    async fn flush_audio_buffer<R: Runtime>(
+        buffer: &mut Vec<i16>,
+        ws_sink: &Arc<Mutex<futures_util::stream::SplitSink<WsStream, Message>>>,
+        app_handle: &AppHandle<R>,
+    ) -> Result<(), ()> {
+        if buffer.is_empty() {
+            return Ok(());
+        }
+
+        let bytes: Vec<u8> = buffer.iter().flat_map(|s| s.to_le_bytes()).collect();
+
+        let mut sink = ws_sink.lock().await;
+        if let Err(e) = sink.send(Message::Binary(bytes)).await {
+            tracing::error!("Failed to send audio to Deepgram: {}", e);
+            let _ = app_handle.emit(
+                "deepgram-error",
+                json!({
+                    "code": "SEND_ERROR",
+                    "message": format!("Failed to send audio: {}", e)
+                }),
+            );
+            return Err(());
+        }
+
+        buffer.clear();
+        Ok(())
     }
 
     /// Task to receive transcriptions from WebSocket
