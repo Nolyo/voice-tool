@@ -1,0 +1,13 @@
+{
+  "name": "release-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for generating releases metadata",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate-releases-json.js",
+    "test": "node generate-releases-json.js"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.0.2"
+  }
+}
