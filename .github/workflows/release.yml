@@ -5,7 +5,7 @@ on:
     tags:
       - "v*"
     branches:
-      - "ci-test"
+      - "*-ci-test"
   workflow_dispatch:
 
 permissions:
@@ -173,6 +173,9 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          git fetch origin main
+          git checkout main
+          git pull origin main
           git add docs/releases.json
           git diff --staged --quiet || git commit -m "chore: update releases.json for ${{ github.ref_name }}"
-          git push origin HEAD:main
+          git push origin main
