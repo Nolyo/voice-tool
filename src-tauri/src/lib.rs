@@ -3,6 +3,7 @@ mod deepgram_streaming;
 mod deepgram_types;
 mod logging;
 mod transcription;
+mod updater;
 
 use audio::{AudioDeviceInfo, AudioRecorder, RecordingResult};
 use deepgram_streaming::DeepgramStreamer;
@@ -847,6 +848,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
             audio_recorder: Mutex::new(AudioRecorder::new()),
             deepgram_streamer: Arc::new(TokioMutex::new(DeepgramStreamer::new())),
@@ -869,7 +871,9 @@ pub fn run() {
             start_deepgram_streaming,
             stop_deepgram_streaming,
             is_deepgram_connected,
-            send_audio_to_deepgram
+            send_audio_to_deepgram,
+            updater::check_for_updates,
+            updater::download_and_install_update
         ])
         .setup(move |app| {
             // Enable logging to frontend

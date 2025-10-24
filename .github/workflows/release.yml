@@ -42,10 +42,35 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
+      # Determine if this is a prerelease (ci-test branch or tag with -test/-beta/-alpha suffix)
+      - name: Check if prerelease
+        id: check_prerelease
+        shell: pwsh
+        run: |
+          $isPrerelease = $false
+          $refName = "${{ github.ref_name }}"
+
+          # Check if triggered by a ci-test branch
+          if ($refName -match '-ci-test$') {
+            $isPrerelease = $true
+            Write-Host "Detected CI test branch: $refName"
+          }
+
+          # Check if tag contains -test, -beta, -alpha, -rc
+          if ($refName -match '-(test|beta|alpha|rc)') {
+            $isPrerelease = $true
+            Write-Host "Detected prerelease tag: $refName"
+          }
+
+          echo "IS_PRERELEASE=$($isPrerelease.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          Write-Host "Is prerelease: $isPrerelease"
+
       - name: Build with Tauri Action
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Voice Tool ${{ github.ref_name }}"
@@ -59,9 +84,15 @@ jobs:
             - **voice-tool-${{ github.ref_name }}-setup.msi** : MSI installer (Windows Installer)
 
             Verify file integrity using the provided SHA256 checksums.
+
+            ## Auto-Update Support
+
+            This release includes signed update artifacts for automatic in-app updates.
+
+            ${{ steps.check_prerelease.outputs.IS_PRERELEASE == 'true' && '⚠️ **This is a pre-release version for testing purposes only.**' || '' }}
           releaseDraft: false
-          prerelease: false
-          includeUpdaterJson: false
+          prerelease: ${{ steps.check_prerelease.outputs.IS_PRERELEASE }}
+          includeUpdaterJson: true
 
       - name: Get version from tag
         id: get_version

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { SettingTabs } from "./setting-tabs";
 import { LogsTab } from "./logs-tab";
+import { UpdaterTab } from "./updater-tab";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
 import { useAppLogs } from "@/hooks/useAppLogs";
 
@@ -19,6 +20,8 @@ interface TranscriptionListProps {
   onCopy: (text: string) => void;
   onDelete?: (id: string) => void;
   onClearAll?: () => void;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
 export function TranscriptionList({
@@ -28,6 +31,8 @@ export function TranscriptionList({
   onCopy,
   onDelete,
   onClearAll,
+  activeTab = "historique",
+  onTabChange,
 }: TranscriptionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { logs, clearLogs } = useAppLogs();
@@ -47,8 +52,8 @@ export function TranscriptionList({
 
   return (
     <Card className="p-6">
-      <Tabs defaultValue="historique" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+      <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger
             value="historique"
             className="cursor-pointer dark:hover:bg-neutral-900"
@@ -60,6 +65,12 @@ export function TranscriptionList({
             className="cursor-pointer dark:hover:bg-neutral-900"
           >
             Paramètres
+          </TabsTrigger>
+          <TabsTrigger
+            value="mises-a-jour"
+            className="cursor-pointer dark:hover:bg-neutral-900"
+          >
+            Mises à jour
           </TabsTrigger>
           <TabsTrigger
             value="logs"
@@ -189,6 +200,10 @@ export function TranscriptionList({
 
         <TabsContent value="parametres" className="space-y-6">
           <SettingTabs />
+        </TabsContent>
+
+        <TabsContent value="mises-a-jour" className="space-y-6">
+          <UpdaterTab />
         </TabsContent>
 
         <TabsContent value="logs">

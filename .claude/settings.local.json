@@ -13,7 +13,9 @@
       "Bash(taskkill //F //PID *)",
       "WebFetch(domain:v2.tauri.app)",
       "WebFetch(domain:developers.deepgram.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(pnpm tauri signer:*)",
+      "Bash(dir:*)"
     ],
     "deny": [
       "Bash(pnpm tauri dev:*)"
