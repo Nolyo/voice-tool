@@ -8,22 +8,31 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 ## [Unreleased]
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Fixed
-- 
+
+-
 
 ### Removed
-- 
 
----
+- ***
+
+## [2.0.1] - 2025-10-24
+
+### Fixed
+
+- Correction d'un bug dans la CI/CD empêchant la génération correcte du fichier `releases.json`
 
 ## [2.0.0] - 2025-10-22
 
 ### Added
+
 - Application Tauri avec enregistrement audio en temps réel
 - Visualisation des niveaux audio (fenêtre principale + mini fenêtre flottante)
 - Intégration OpenAI Whisper pour la transcription
@@ -42,6 +51,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - Génération automatique du fichier `releases.json` pour le site web
 
 ### Technical
+
 - Stack: React 19, TypeScript, Tailwind CSS v4
 - Backend: Rust avec cpal pour l'audio
 - Build: Tauri v2, Vite, pnpm
@@ -69,16 +79,19 @@ Ajoutez une entrée **à chaque modification significative** sous la section `[U
 1. **Pendant le développement** : Ajoutez vos changements sous `[Unreleased]`
 
 2. **Avant une release** :
+
    ```markdown
    ## [Unreleased]
-   
+
    ## [2.1.0] - 2025-11-15
-   
+
    ### Added
+
    - Nouveau thème sombre
    - Support de macOS
-   
+
    ### Fixed
+
    - Correction du bug de crash au démarrage
    ```
 
@@ -93,20 +106,24 @@ Ajoutez une entrée **à chaque modification significative** sous la section `[U
 
 ```markdown
 ### Added
+
 - Nouveau raccourci Ctrl+Shift+R pour redémarrer l'enregistrement
 - Support des langues espagnol et allemand pour la transcription
 - Paramètre pour ajuster la sensibilité du micro
 
 ### Changed
+
 - La mini fenêtre est maintenant redimensionnable
 - Amélioration des performances de la visualisation audio (réduction de 30% CPU)
 
 ### Fixed
+
 - Correction du crash lors de la déconnexion du micro USB
 - Résolution du problème d'échappement des caractères spéciaux dans les transcriptions
 - La fenêtre principale ne se cache plus au démarrage si `--minimized` n'est pas passé
 
 ### Removed
+
 - Suppression du support de Windows 7 (EOL)
 ```
 

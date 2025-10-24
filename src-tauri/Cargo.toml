@@ -1,6 +1,6 @@
 [package]
 name = "voice-tool"
-version = "2.0.0"
+version = "2.0.1"
 description = "Transform your voice in text in real-time using AI models."
 authors = ["Yohann JAFFRES <contact@yohann-jaffres.fr>"]
 edition = "2024"
