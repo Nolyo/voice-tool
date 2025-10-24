@@ -5,8 +5,7 @@ on:
     tags:
       - "v*"
     branches:
-      - "*-ci-test"
-      - "**/*-ci-test"
+      - "*-ci-test"  # Branch names should not contain slashes (e.g., updater-ci-test, not feat/updater-ci-test)
   workflow_dispatch:
 
 permissions:
