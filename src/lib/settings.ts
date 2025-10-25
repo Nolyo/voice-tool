@@ -30,6 +30,7 @@ export interface AppSettings {
     main_window_state: string;
     main_window_geometry: string;
     history_cards_render_limit: number;
+    auto_check_updates: boolean;
 
     // Shortcuts & Recording Modes
     record_hotkey: string;
@@ -72,6 +73,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     main_window_state: "normal",
     main_window_geometry: "800x600+0+0",
     history_cards_render_limit: 50,
+    auto_check_updates: true,
 
     // Shortcuts & Recording Modes
     record_hotkey: "Ctrl+F11",

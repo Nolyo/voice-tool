@@ -16,6 +16,7 @@ import {
   type Transcription,
 } from "@/hooks/useTranscriptionHistory";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useUpdaterContext } from "@/contexts/UpdaterContext";
 
 type TranscriptionInvokeResult = {
   text: string;
@@ -34,7 +35,9 @@ export default function Dashboard() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [selectedTranscription, setSelectedTranscription] =
     useState<Transcription | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("historique");
   const { settings } = useSettings();
+  const { updateAvailable } = useUpdaterContext();
   const { playStart, playStop, playSuccess } = useSoundEffects(
     settings.enable_sounds,
   );
@@ -406,9 +409,16 @@ export default function Dashboard() {
     }
   };
 
+  const handleUpdateClick = () => {
+    setActiveTab("mises-a-jour");
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader />
+      <DashboardHeader
+        updateAvailable={updateAvailable}
+        onUpdateClick={handleUpdateClick}
+      />
 
       <div className="container mx-auto px-6 py-8">
         <div className="space-y-6">
@@ -438,6 +448,8 @@ export default function Dashboard() {
             onCopy={handleCopy}
             onDelete={handleDelete}
             onClearAll={handleClearAll}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
           />
         </div>
       </div>

@@ -1,9 +1,15 @@
 "use client"
 
-import { Mic, Upload, Download } from "lucide-react"
+import { Mic, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
-export function DashboardHeader() {
+interface DashboardHeaderProps {
+  updateAvailable?: boolean;
+  onUpdateClick?: () => void;
+}
+
+export function DashboardHeader({ updateAvailable, onUpdateClick }: DashboardHeaderProps) {
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
       <div className="container mx-auto px-6 py-4">
@@ -18,14 +24,20 @@ export function DashboardHeader() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <Upload className="w-4 h-4 mr-2" />
-              Import
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
+            {updateAvailable && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={onUpdateClick}
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Nouvelle version disponible</span>
+                <Badge variant="secondary" className="ml-1 bg-white/20 text-white border-0">
+                  Nouveau
+                </Badge>
+              </Button>
+            )}
           </div>
         </div>
       </div>
