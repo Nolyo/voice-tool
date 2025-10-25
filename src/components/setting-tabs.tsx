@@ -326,7 +326,7 @@ export function SettingTabs() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
-                  <SelectItem value="Google">Google Speech-to-Text</SelectItem>
+                  {/* <SelectItem value="Google">Google Speech-to-Text</SelectItem> */}
                   <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
                 </SelectContent>
               </Select>
@@ -734,14 +734,14 @@ export function SettingTabs() {
         </div>
 
         <div className="p-5 space-y-5">
-          <div className="p-3.5 rounded-lg bg-primary/5 border border-primary/10">
+          {/* <div className="p-3.5 rounded-lg bg-primary/5 border border-primary/10">
             <p className="text-xs text-muted-foreground leading-relaxed">
               <span className="font-semibold text-foreground">
                 Deux modes disponibles :
               </span>{" "}
               Toggle (appui simple) et Push-to-talk (maintenir)
             </p>
-          </div>
+          </div> */}
 
           <HotkeyInput
             id="shortcut-record"
