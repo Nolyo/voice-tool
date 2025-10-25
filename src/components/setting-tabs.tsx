@@ -238,7 +238,7 @@ export function SettingTabs() {
   const handleHotkeyChange = useCallback(
     async (
       key: "record_hotkey" | "ptt_hotkey" | "open_window_hotkey",
-      shortcut: string,
+      shortcut: string
     ) => {
       const normalized = shortcut
         .split("+")
@@ -270,7 +270,7 @@ export function SettingTabs() {
 
       await updateSetting(key, normalized);
     },
-    [settings, updateSetting],
+    [settings, updateSetting]
   );
 
   if (!isLoaded) {
@@ -281,177 +281,47 @@ export function SettingTabs() {
     );
   }
   return (
-    <div className="space-y-6">
-      {/* Audio Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Mic className="w-4 h-4 text-primary" />
-          </div>
-          <h3 className="text-sm font-semibold text-foreground">Audio</h3>
-        </div>
-
-        <div className="pl-10">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex items-center space-x-3">
-              <Checkbox
-                id="interface-sounds"
-                checked={settings.enable_sounds}
-                onCheckedChange={(checked) =>
-                  updateSetting("enable_sounds", checked as boolean)
-                }
-              />
-              <Label
-                htmlFor="interface-sounds"
-                className="text-sm text-foreground cursor-pointer"
-              >
-                Activer les sons d'interface
-              </Label>
+    <div className="space-y-4 pb-6">
+      {/* Transcription Service Card */}
+      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
+        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
+              <Settings className="w-5 h-5 text-primary" />
             </div>
-
-            <div className="flex items-center space-x-3">
-              <Checkbox
-                id="show-listen"
-                checked={settings.enable_history_audio_preview}
-                onCheckedChange={(checked) =>
-                  updateSetting(
-                    "enable_history_audio_preview",
-                    checked as boolean,
-                  )
-                }
-              />
-              <Label
-                htmlFor="show-listen"
-                className="text-sm text-foreground cursor-pointer"
-              >
-                Afficher le bouton Écouter dans l'historique
-              </Label>
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label
-                htmlFor="silence-threshold"
-                className="text-sm text-foreground"
-              >
-                Seuil de détection du silence (
-                {(settings.silence_threshold * 100).toFixed(1)}%)
-              </Label>
-              <div className="flex items-center gap-3">
-                <input
-                  id="silence-threshold"
-                  type="range"
-                  min="0"
-                  max="0.1"
-                  step="0.001"
-                  value={settings.silence_threshold}
-                  onChange={(e) =>
-                    updateSetting(
-                      "silence_threshold",
-                      parseFloat(e.target.value),
-                    )
-                  }
-                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-                />
-                <span className="text-xs text-muted-foreground min-w-[4rem] text-right">
-                  {(settings.silence_threshold * 100).toFixed(1)}%
-                </span>
-              </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Transcription
+              </h3>
               <p className="text-xs text-muted-foreground">
-                Les enregistrements avec un niveau sonore inférieur à ce seuil
-                seront considérés comme vides
+                Service de reconnaissance vocale
               </p>
             </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="microphone" className="text-sm text-foreground">
-                  Microphone d'entrée
-                </Label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={refresh}
-                  disabled={devicesLoading}
-                  className="h-6 px-2"
-                >
-                  <RefreshCw
-                    className={`w-3 h-3 ${devicesLoading ? "animate-spin" : ""}`}
-                  />
-                </Button>
-              </div>
-              <Select
-                value={settings.input_device_index?.toString() ?? "null"}
-                onValueChange={(value) =>
-                  updateSetting(
-                    "input_device_index",
-                    value === "null" ? null : Number.parseInt(value),
-                  )
-                }
-                disabled={devicesLoading || !!devicesError}
-              >
-                <SelectTrigger id="microphone">
-                  <SelectValue
-                    placeholder={
-                      devicesLoading
-                        ? "Chargement..."
-                        : devicesError
-                          ? "Erreur de chargement"
-                          : "Sélectionner un microphone"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="null">Par défaut (Système)</SelectItem>
-                  {devices.map((device) => (
-                    <SelectItem
-                      key={device.index}
-                      value={device.index.toString()}
-                    >
-                      {device.name} {device.is_default ? "(par défaut)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {devicesError && (
-                <p className="text-xs text-destructive">
-                  Erreur : {devicesError}
-                </p>
-              )}
-            </div>
           </div>
         </div>
-      </div>
 
-      {/* Transcription Service Section */}
-      <div className="space-y-4 pt-6 border-t border-border">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Settings className="w-4 h-4 text-primary" />
-          </div>
-          <h3 className="text-sm font-semibold text-foreground">
-            Service de Transcription
-          </h3>
-        </div>
-
-        <div className="pl-10">
+        <div className="p-5 space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <Label
                 htmlFor="service-provider"
-                className="text-sm text-foreground"
+                className="text-sm font-medium text-foreground"
               >
-                Fournisseur de service
+                Fournisseur
               </Label>
               <Select
                 value={settings.transcription_provider}
                 onValueChange={(value) =>
                   updateSetting(
                     "transcription_provider",
-                    value as "OpenAI" | "Deepgram" | "Google",
+                    value as "OpenAI" | "Deepgram" | "Google"
                   )
                 }
               >
-                <SelectTrigger id="service-provider">
+                <SelectTrigger
+                  id="service-provider"
+                  className="h-10 bg-background/50"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -462,15 +332,18 @@ export function SettingTabs() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="language" className="text-sm text-foreground">
-                Langue de transcription
+            <div className="space-y-2.5">
+              <Label
+                htmlFor="language"
+                className="text-sm font-medium text-foreground"
+              >
+                Langue
               </Label>
               <Select
                 value={settings.language}
                 onValueChange={(value) => updateSetting("language", value)}
               >
-                <SelectTrigger id="language">
+                <SelectTrigger id="language" className="h-10 bg-background/50">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -481,206 +354,401 @@ export function SettingTabs() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
-            <div className="md:col-span-2">
-              <ApiConfigDialog />
+          <ApiConfigDialog />
+        </div>
+      </div>
+
+      {/* Audio Card */}
+      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
+        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
+              <Mic className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Audio</h3>
+              <p className="text-xs text-muted-foreground">
+                Configuration de l'enregistrement et des sons
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* Microphone Selection */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="microphone"
+                className="text-sm font-medium text-foreground"
+              >
+                Périphérique d'entrée
+              </Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refresh}
+                disabled={devicesLoading}
+                className="h-7 px-2.5 -mr-2 hover:bg-primary/10"
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 ${
+                    devicesLoading ? "animate-spin" : ""
+                  }`}
+                />
+              </Button>
+            </div>
+            <Select
+              value={settings.input_device_index?.toString() ?? "null"}
+              onValueChange={(value) =>
+                updateSetting(
+                  "input_device_index",
+                  value === "null" ? null : Number.parseInt(value)
+                )
+              }
+              disabled={devicesLoading || !!devicesError}
+            >
+              <SelectTrigger id="microphone" className="h-10 bg-background/50">
+                <SelectValue
+                  placeholder={
+                    devicesLoading
+                      ? "Chargement..."
+                      : devicesError
+                      ? "Erreur de chargement"
+                      : "Sélectionner un microphone"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="null">Par défaut (Système)</SelectItem>
+                {devices.map((device) => (
+                  <SelectItem
+                    key={device.index}
+                    value={device.index.toString()}
+                  >
+                    {device.name} {device.is_default ? "(par défaut)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {devicesError && (
+              <p className="text-xs text-destructive">
+                Erreur : {devicesError}
+              </p>
+            )}
+          </div>
+
+          {/* Silence Threshold */}
+          <div className="space-y-2.5 p-4 rounded-lg bg-muted/30 border border-border/50">
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="silence-threshold"
+                className="text-sm font-medium text-foreground"
+              >
+                Seuil de détection du silence
+              </Label>
+              <span className="text-sm font-mono font-semibold text-primary tabular-nums">
+                {(settings.silence_threshold * 100).toFixed(1)}%
+              </span>
+            </div>
+            <input
+              id="silence-threshold"
+              type="range"
+              min="0"
+              max="0.1"
+              step="0.001"
+              value={settings.silence_threshold}
+              onChange={(e) =>
+                updateSetting("silence_threshold", parseFloat(e.target.value))
+              }
+              className="w-full h-2.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-primary/20 [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110"
+            />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Les enregistrements en dessous de ce seuil seront considérés comme
+              silence
+            </p>
+          </div>
+
+          {/* Audio Options */}
+          <div className="space-y-3 pt-1">
+            <div
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() =>
+                updateSetting("enable_sounds", !settings.enable_sounds)
+              }
+            >
+              <Checkbox
+                id="interface-sounds"
+                checked={settings.enable_sounds}
+                onCheckedChange={(checked) =>
+                  updateSetting("enable_sounds", checked as boolean)
+                }
+              />
+              <Label
+                htmlFor="interface-sounds"
+                className="text-sm text-foreground cursor-pointer flex-1"
+              >
+                Sons d'interface
+              </Label>
+            </div>
+
+            <div
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() =>
+                updateSetting(
+                  "enable_history_audio_preview",
+                  !settings.enable_history_audio_preview
+                )
+              }
+            >
+              <Checkbox
+                id="show-listen"
+                checked={settings.enable_history_audio_preview}
+                onCheckedChange={(checked) =>
+                  updateSetting(
+                    "enable_history_audio_preview",
+                    checked as boolean
+                  )
+                }
+              />
+              <Label
+                htmlFor="show-listen"
+                className="text-sm text-foreground cursor-pointer flex-1"
+              >
+                Bouton Écouter dans l'historique
+              </Label>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Text Section */}
-      <div className="space-y-4 pt-6 border-t border-border">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <span className="text-sm font-semibold text-primary">T</span>
+      {/* Text Settings Card */}
+      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
+        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
+              <span className="text-lg font-bold text-primary">T</span>
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Texte</h3>
+              <p className="text-xs text-muted-foreground">
+                Formatage et insertion automatique
+              </p>
+            </div>
           </div>
-          <h3 className="text-sm font-semibold text-foreground">Texte</h3>
         </div>
 
-        <div className="pl-10">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                id="auto-insert"
-                checked={settings.paste_at_cursor}
-                onCheckedChange={(checked) =>
-                  updateSetting("paste_at_cursor", checked as boolean)
-                }
-                className="mt-1"
-              />
-              <Label
-                htmlFor="auto-insert"
-                className="text-sm text-foreground cursor-pointer leading-relaxed"
-              >
-                Insérer automatiquement au curseur après la transcription /
-                copie depuis l'historique
-              </Label>
-            </div>
+        <div className="p-5 space-y-3">
+          <div
+            className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+            onClick={() =>
+              updateSetting("paste_at_cursor", !settings.paste_at_cursor)
+            }
+          >
+            <Checkbox
+              id="auto-insert"
+              checked={settings.paste_at_cursor}
+              onCheckedChange={(checked) =>
+                updateSetting("paste_at_cursor", checked as boolean)
+              }
+              className="mt-0.5"
+            />
+            <Label
+              htmlFor="auto-insert"
+              className="text-sm text-foreground cursor-pointer leading-relaxed flex-1"
+            >
+              Insertion automatique au curseur après transcription
+            </Label>
+          </div>
 
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                id="smart-formatting"
-                checked={settings.smart_formatting}
-                onCheckedChange={(checked) =>
-                  updateSetting("smart_formatting", checked as boolean)
-                }
-                className="mt-1"
-              />
-              <Label
-                htmlFor="smart-formatting"
-                className="text-sm text-foreground cursor-pointer leading-relaxed"
-              >
-                Activer le formatage intelligent (ponctuation, majuscule,
-                espaces)
-              </Label>
-            </div>
+          <div
+            className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+            onClick={() =>
+              updateSetting("smart_formatting", !settings.smart_formatting)
+            }
+          >
+            <Checkbox
+              id="smart-formatting"
+              checked={settings.smart_formatting}
+              onCheckedChange={(checked) =>
+                updateSetting("smart_formatting", checked as boolean)
+              }
+              className="mt-0.5"
+            />
+            <Label
+              htmlFor="smart-formatting"
+              className="text-sm text-foreground cursor-pointer leading-relaxed flex-1"
+            >
+              Formatage intelligent (ponctuation, majuscules, espaces)
+            </Label>
           </div>
         </div>
       </div>
 
-      {/* System Section */}
-      <div className="space-y-4 pt-6 border-t border-border">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Settings className="w-4 h-4 text-primary" />
+      {/* System Card */}
+      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
+        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
+              <Settings className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Système
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Démarrage et gestion des fichiers
+              </p>
+            </div>
           </div>
-          <h3 className="text-sm font-semibold text-foreground">Système</h3>
         </div>
 
-        <div className="pl-10">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col space-y-3">
-              <div className="flex items-center space-x-3">
+        <div className="p-5 space-y-5">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
+              <Checkbox
+                id="auto-start"
+                checked={autoStartEnabled}
+                disabled={isUpdatingAutostart}
+                onCheckedChange={async (checked) => {
+                  setIsUpdatingAutostart(true);
+                  try {
+                    await invoke("set_autostart", {
+                      enable: checked as boolean,
+                    });
+                    setAutoStartEnabled(checked as boolean);
+                  } catch (error) {
+                    console.error("Failed to update autostart:", error);
+                    alert(
+                      `Erreur lors de la mise à jour du démarrage automatique: ${error}`
+                    );
+                  } finally {
+                    setIsUpdatingAutostart(false);
+                  }
+                }}
+              />
+              <Label
+                htmlFor="auto-start"
+                className="text-sm text-foreground cursor-pointer flex-1"
+              >
+                Démarrer avec Windows
+                {isUpdatingAutostart && (
+                  <span className="text-muted-foreground ml-1">
+                    (mise à jour...)
+                  </span>
+                )}
+              </Label>
+            </div>
+
+            {autoStartEnabled && (
+              <div className="flex items-center gap-3 p-3 pl-12 rounded-lg hover:bg-muted/30 transition-colors">
                 <Checkbox
-                  id="auto-start"
-                  checked={autoStartEnabled}
-                  disabled={isUpdatingAutostart}
-                  onCheckedChange={async (checked) => {
-                    setIsUpdatingAutostart(true);
-                    try {
-                      await invoke("set_autostart", {
-                        enable: checked as boolean,
-                      });
-                      setAutoStartEnabled(checked as boolean);
-                    } catch (error) {
-                      console.error("Failed to update autostart:", error);
-                      alert(
-                        `Erreur lors de la mise à jour du démarrage automatique: ${error}`,
-                      );
-                    } finally {
-                      setIsUpdatingAutostart(false);
-                    }
-                  }}
+                  id="start-minimized"
+                  checked={settings.start_minimized_on_boot}
+                  onCheckedChange={(checked) =>
+                    updateSetting("start_minimized_on_boot", checked as boolean)
+                  }
                 />
                 <Label
-                  htmlFor="auto-start"
-                  className="text-sm text-foreground cursor-pointer"
+                  htmlFor="start-minimized"
+                  className="text-sm text-muted-foreground cursor-pointer flex-1"
                 >
-                  Démarrer automatiquement avec Windows
-                  {isUpdatingAutostart && " (mise à jour...)"}
+                  Démarrer minimisé dans la barre système
                 </Label>
               </div>
+            )}
+          </div>
 
-              {autoStartEnabled && (
-                <div className="flex items-center space-x-3 pl-7">
-                  <Checkbox
-                    id="start-minimized"
-                    checked={settings.start_minimized_on_boot}
-                    onCheckedChange={(checked) =>
-                      updateSetting(
-                        "start_minimized_on_boot",
-                        checked as boolean,
-                      )
-                    }
-                  />
-                  <Label
-                    htmlFor="start-minimized"
-                    className="text-sm text-muted-foreground cursor-pointer"
-                  >
-                    Démarrer minimisé dans la barre système
-                  </Label>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="keep-recordings"
-                className="text-sm text-foreground"
+          <div className="p-4 rounded-lg bg-muted/30 border border-border/50 space-y-2.5">
+            <Label
+              htmlFor="keep-recordings"
+              className="text-sm font-medium text-foreground"
+            >
+              Enregistrements conservés (WAV)
+            </Label>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  updateSetting(
+                    "recordings_keep_last",
+                    Math.max(0, settings.recordings_keep_last - 1)
+                  )
+                }
+                className="h-10 w-10 shrink-0"
               >
-                Conserver les N derniers enregistrements (WAV)
-              </Label>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    updateSetting(
-                      "recordings_keep_last",
-                      Math.max(0, settings.recordings_keep_last - 1),
-                    )
-                  }
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-                <Input
-                  id="keep-recordings"
-                  type="number"
-                  value={settings.recordings_keep_last}
-                  onChange={(e) =>
-                    updateSetting(
-                      "recordings_keep_last",
-                      Number.parseInt(e.target.value) || 0,
-                    )
-                  }
-                  className="w-20 text-center"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    updateSetting(
-                      "recordings_keep_last",
-                      settings.recordings_keep_last + 1,
-                    )
-                  }
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
+                <Minus className="w-4 h-4" />
+              </Button>
+              <Input
+                id="keep-recordings"
+                type="number"
+                value={settings.recordings_keep_last}
+                onChange={(e) =>
+                  updateSetting(
+                    "recordings_keep_last",
+                    Number.parseInt(e.target.value) || 0
+                  )
+                }
+                className="h-10 text-center font-mono text-base bg-background/50"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  updateSetting(
+                    "recordings_keep_last",
+                    settings.recordings_keep_last + 1
+                  )
+                }
+                className="h-10 w-10 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Nombre de fichiers audio à conserver localement
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Shortcuts Section */}
-      <div className="space-y-4 pt-6 border-t border-border">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Keyboard className="w-4 h-4 text-primary" />
+      {/* Keyboard Shortcuts Card */}
+      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
+        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
+              <Keyboard className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Raccourcis clavier
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Contrôle global de l'enregistrement
+              </p>
+            </div>
           </div>
-          <h3 className="text-sm font-semibold text-foreground">
-            Raccourcis & modes d'enregistrement
-          </h3>
         </div>
 
-        <div className="space-y-4 pl-10">
-          <div className="p-3 rounded-lg bg-muted/50 border border-border">
+        <div className="p-5 space-y-5">
+          <div className="p-3.5 rounded-lg bg-primary/5 border border-primary/10">
             <p className="text-xs text-muted-foreground leading-relaxed">
               <span className="font-semibold text-foreground">
-                Modes d'enregistrement :
+                Deux modes disponibles :
               </span>{" "}
-              Toggle et Push-to-talk sont actifs
+              Toggle (appui simple) et Push-to-talk (maintenir)
             </p>
           </div>
 
           <HotkeyInput
             id="shortcut-record"
-            label="Raccourci pour Démarrer/Arrêter l'enregistrement"
+            label="Toggle enregistrement"
             value={settings.record_hotkey}
             defaultValue={DEFAULT_SETTINGS.settings.record_hotkey}
-            description="Mode toggle : une pression pour démarrer, une seconde pour arrêter."
+            description="Démarrer et arrêter l'enregistrement avec le même raccourci"
             onChange={(shortcut) =>
               handleHotkeyChange("record_hotkey", shortcut)
             }
@@ -688,41 +756,45 @@ export function SettingTabs() {
 
           <HotkeyInput
             id="shortcut-push"
-            label="Raccourci Push-to-talk (maintenir)"
+            label="Push-to-talk"
             value={settings.ptt_hotkey}
             defaultValue={DEFAULT_SETTINGS.settings.ptt_hotkey}
-            description="Maintenez le raccourci pour enregistrer, relâchez pour arrêter."
+            description="Enregistrer tant que le raccourci est maintenu"
             onChange={(shortcut) => handleHotkeyChange("ptt_hotkey", shortcut)}
           />
 
           <HotkeyInput
             id="shortcut-window"
-            label="Raccourci pour Ouvrir la fenêtre principale"
+            label="Afficher la fenêtre"
             value={settings.open_window_hotkey}
             defaultValue={DEFAULT_SETTINGS.settings.open_window_hotkey}
-            description="Affiche la fenêtre principale et lui donne le focus instantanément."
+            description="Ouvre et met au premier plan la fenêtre principale"
             onChange={(shortcut) =>
               handleHotkeyChange("open_window_hotkey", shortcut)
             }
           />
 
-          <div className="p-3 rounded-lg bg-muted/50 border border-border">
+          <div className="p-3.5 rounded-lg bg-muted/30 border border-border/50">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Modificateurs : {"<ctrl>"}, {"<alt>"}, {"<shift>"}, {"<cmd>"}{" "}
-              (Mac)
+              <span className="font-medium text-foreground">
+                Modificateurs disponibles :
+              </span>{" "}
+              Ctrl, Alt, Shift, Cmd (Mac)
               <br />
-              Exemples : {"<ctrl>+<shift>+r"}, {"<f1>"}, {"<f2>"},{" "}
-              {"<ctrl>+<space>"}, {"<f9>"}
+              <span className="font-medium text-foreground">
+                Exemples :
+              </span>{" "}
+              Ctrl+Shift+R, F1-F12, Ctrl+Space
             </p>
           </div>
         </div>
       </div>
 
-      {/* Close Application Button */}
-      <div className="pt-6 border-t border-border">
+      {/* Exit Button */}
+      <div className="pt-2">
         <Button
           variant="destructive"
-          className="w-full"
+          className="w-full h-11 font-medium shadow-lg shadow-destructive/20 hover:shadow-xl hover:shadow-destructive/30 transition-all"
           onClick={async () => {
             const { invoke } = await import("@tauri-apps/api/core");
             await invoke("exit_app");
