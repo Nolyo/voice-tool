@@ -22,6 +22,22 @@ export function useUpdater() {
   const [downloadProgress, setDownloadProgress] =
     useState<DownloadProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [updaterAvailable, setUpdaterAvailable] = useState<boolean | null>(null);
+
+  /**
+   * Check if updater is available (not in dev or portable mode)
+   */
+  const checkUpdaterAvailability = useCallback(async () => {
+    try {
+      const available = await invoke<boolean>("is_updater_available");
+      setUpdaterAvailable(available);
+      return available;
+    } catch (err) {
+      console.error("Failed to check updater availability:", err);
+      setUpdaterAvailable(false);
+      return false;
+    }
+  }, []);
 
   /**
    * Check for available updates
@@ -31,6 +47,13 @@ export function useUpdater() {
     setError(null);
 
     try {
+      // First check if updater is available
+      const available = await checkUpdaterAvailability();
+      if (!available) {
+        setError("Mise à jour non disponible en mode développement ou portable");
+        return null;
+      }
+
       const info = await invoke<UpdateInfo>("check_for_updates");
       setUpdateInfo(info);
       return info;
@@ -43,7 +66,7 @@ export function useUpdater() {
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [checkUpdaterAvailability]);
 
   /**
    * Download and install the update
@@ -100,10 +123,12 @@ export function useUpdater() {
     isDownloading,
     downloadProgress,
     error,
+    updaterAvailable,
 
     // Actions
     checkForUpdates,
     downloadAndInstall,
+    checkUpdaterAvailability,
     reset,
   };
 }

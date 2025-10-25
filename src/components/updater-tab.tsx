@@ -17,12 +17,14 @@ export function UpdaterTab() {
     error,
     checkForUpdates,
     downloadAndInstall,
+    updaterAvailable,
+    checkUpdaterAvailability,
   } = useUpdaterContext();
 
   const { settings, updateSetting } = useSettings();
   const [currentVersion, setCurrentVersion] = useState<string>("");
 
-  // Load current version
+  // Load current version and check updater availability
   useEffect(() => {
     const loadVersion = async () => {
       try {
@@ -34,7 +36,8 @@ export function UpdaterTab() {
       }
     };
     loadVersion();
-  }, []);
+    checkUpdaterAvailability();
+  }, [checkUpdaterAvailability]);
 
   return (
     <div className="space-y-6">
@@ -70,9 +73,27 @@ export function UpdaterTab() {
         </div>
 
         <div className="pl-10 space-y-4">
+          {/* Warning for dev/portable mode */}
+          {updaterAvailable === false && (
+            <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-foreground">
+                  Mise à jour automatique désactivée
+                </h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  La mise à jour automatique n'est pas disponible en mode développement ou en version portable.
+                  Téléchargez manuellement la dernière version depuis GitHub.
+                </p>
+              </div>
+            </div>
+          )}
+
           <Button
             onClick={checkForUpdates}
-            disabled={isChecking || isDownloading}
+            disabled={isChecking || isDownloading || updaterAvailable === false}
             className="w-full"
           >
             <RefreshCw

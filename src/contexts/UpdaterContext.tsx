@@ -19,6 +19,8 @@ interface UpdaterContextType {
   isDownloading: boolean;
   downloadProgress: { downloaded: number; total: number | null; percentage: number } | null;
   error: string | null;
+  updaterAvailable: boolean | null;
+  checkUpdaterAvailability: () => Promise<boolean>;
 }
 
 const UpdaterContext = createContext<UpdaterContextType | undefined>(undefined);
@@ -101,6 +103,8 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
         isDownloading: updater.isDownloading,
         downloadProgress: updater.downloadProgress,
         error: updater.error,
+        updaterAvailable: updater.updaterAvailable,
+        checkUpdaterAvailability: updater.checkUpdaterAvailability,
       }}
     >
       {children}

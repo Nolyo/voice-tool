@@ -26,10 +26,51 @@ pub struct DownloadProgress {
     pub percentage: u8,
 }
 
+/// Check if the updater should be enabled
+/// Returns false in development mode or when running as portable
+#[tauri::command]
+pub fn is_updater_available(_app: AppHandle) -> bool {
+    // Disable updater in development mode
+    if tauri::is_dev() {
+        tracing::info!("Updater disabled: running in development mode");
+        return false;
+    }
+
+    // Check if running in portable mode (not installed in Program Files or AppData)
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let exe_dir_str = exe_dir.to_string_lossy().to_lowercase();
+
+            // Installed apps are typically in Program Files or AppData
+            let is_installed = exe_dir_str.contains("program files")
+                || exe_dir_str.contains("programfiles")
+                || exe_dir_str.contains(r"appdata\local\programs");
+
+            if !is_installed {
+                tracing::info!("Updater disabled: running in portable mode from {:?}", exe_dir);
+                return false;
+            }
+        }
+    }
+
+    tracing::info!("Updater available");
+    true
+}
+
 /// Check for available updates
 #[tauri::command]
 pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
     tracing::info!("Checking for updates...");
+
+    // Check if updater is available
+    if !is_updater_available(app.clone()) {
+        return Ok(UpdateInfo {
+            version: String::new(),
+            date: None,
+            body: None,
+            available: false,
+        });
+    }
 
     let update = app
         .updater()

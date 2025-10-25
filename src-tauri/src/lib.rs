@@ -873,7 +873,8 @@ pub fn run() {
             is_deepgram_connected,
             send_audio_to_deepgram,
             updater::check_for_updates,
-            updater::download_and_install_update
+            updater::download_and_install_update,
+            updater::is_updater_available
         ])
         .setup(move |app| {
             // Enable logging to frontend
