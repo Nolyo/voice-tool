@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Download, RefreshCw, Check, AlertCircle } from "lucide-react";
 import { Button } from "./ui/button";
-import { useUpdater } from "@/hooks/useUpdater";
+import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { useSettings } from "@/hooks/useSettings";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
@@ -17,7 +17,7 @@ export function UpdaterTab() {
     error,
     checkForUpdates,
     downloadAndInstall,
-  } = useUpdater();
+  } = useUpdaterContext();
 
   const { settings, updateSetting } = useSettings();
   const [currentVersion, setCurrentVersion] = useState<string>("");

@@ -17,6 +17,7 @@ interface UpdaterContextType {
   downloadAndInstall: () => Promise<void>;
   isChecking: boolean;
   isDownloading: boolean;
+  downloadProgress: { downloaded: number; total: number | null; percentage: number } | null;
   error: string | null;
 }
 
@@ -24,34 +25,59 @@ const UpdaterContext = createContext<UpdaterContextType | undefined>(undefined);
 
 export function UpdaterProvider({ children }: { children: ReactNode }) {
   const updater = useUpdater();
-  const { settings } = useSettings();
+  const { settings, isLoaded } = useSettings();
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const hasCheckedOnStartup = useRef(false);
+  const updaterRef = useRef(updater);
+
+  // Keep updater ref up to date
+  useEffect(() => {
+    updaterRef.current = updater;
+  }, [updater]);
 
   // Check for updates on startup (with delay)
   useEffect(() => {
-    if (hasCheckedOnStartup.current || !settings.auto_check_updates) {
+    // Wait for settings to be loaded before checking
+    if (!isLoaded) {
+      console.log("UpdaterContext: Waiting for settings to load...");
+      return;
+    }
+
+    if (hasCheckedOnStartup.current) {
+      console.log("UpdaterContext: Already checked for updates on startup");
+      return;
+    }
+
+    if (!settings.auto_check_updates) {
+      console.log("UpdaterContext: Auto-check updates is disabled");
       return;
     }
 
     hasCheckedOnStartup.current = true;
+    console.log("UpdaterContext: Scheduling update check in 10 seconds...");
 
     // Wait 10 seconds after startup to avoid interfering with app initialization
     const timer = setTimeout(async () => {
-      console.log("Checking for updates on startup...");
+      console.log("UpdaterContext: Checking for updates on startup...");
       try {
-        const info = await updater.checkForUpdates();
+        const info = await updaterRef.current.checkForUpdates();
+        console.log("UpdaterContext: Check result:", info);
         if (info?.available) {
-          console.log("Update available:", info.version);
+          console.log("UpdaterContext: Update available:", info.version);
           setUpdateAvailable(true);
+        } else {
+          console.log("UpdaterContext: No update available");
         }
       } catch (error) {
-        console.error("Failed to check for updates on startup:", error);
+        console.error("UpdaterContext: Failed to check for updates on startup:", error);
       }
     }, 10000); // 10 seconds
 
-    return () => clearTimeout(timer);
-  }, [settings.auto_check_updates, updater]);
+    return () => {
+      console.log("UpdaterContext: Clearing update check timer");
+      clearTimeout(timer);
+    };
+  }, [isLoaded, settings.auto_check_updates]);
 
   // Update the updateAvailable state when updater.updateInfo changes
   useEffect(() => {
@@ -73,6 +99,7 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
         downloadAndInstall: updater.downloadAndInstall,
         isChecking: updater.isChecking,
         isDownloading: updater.isDownloading,
+        downloadProgress: updater.downloadProgress,
         error: updater.error,
       }}
     >
