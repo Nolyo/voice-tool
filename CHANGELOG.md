@@ -5,23 +5,12 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
-## [Unreleased]
-
-### Added
-
--
-
-### Changed
-
--
-
-### Fixed
-
--
-
-### Removed
-
 - ***
+## [2.0.3] - 2025-10-25
+ - Patch Mineur
+
+## [2.0.2] - 2025-10-24
+ - Correction de la CI
 
 ## [2.0.1] - 2025-10-24
 

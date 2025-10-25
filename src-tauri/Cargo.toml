@@ -1,6 +1,6 @@
 [package]
 name = "voice-tool"
-version = "2.0.1"
+version = "2.0.3"
 description = "Transform your voice in text in real-time using AI models."
 authors = ["Yohann JAFFRES <contact@yohann-jaffres.fr>"]
 edition = "2024"
@@ -60,4 +60,3 @@ chrono = "0.4"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 parking_lot = "0.12"
-
