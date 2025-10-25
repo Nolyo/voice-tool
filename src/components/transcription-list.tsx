@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Search, Copy, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,14 @@ export function TranscriptionList({
 }: TranscriptionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { logs, clearLogs } = useAppLogs();
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to tabs when activeTab changes (especially for "mises-a-jour")
+  useEffect(() => {
+    if (activeTab === "mises-a-jour" && tabsRef.current) {
+      tabsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [activeTab]);
 
   // Filter transcriptions based on search query
   const filteredTranscriptions = useMemo(() => {
@@ -51,7 +59,7 @@ export function TranscriptionList({
   }, [transcriptions, searchQuery]);
 
   return (
-    <Card className="p-6">
+    <Card className="p-6" ref={tabsRef}>
       <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger
