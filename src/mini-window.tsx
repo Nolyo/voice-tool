@@ -1,12 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { listen, emit } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
+
+interface TranscriptionEvent {
+  text: string;
+  confidence?: number;
+  speech_final?: boolean;
+}
 
 function MiniWindow() {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [isExtended, setIsExtended] = useState(false);
+  const [interimText, setInterimText] = useState("");
+  const [finalText, setFinalText] = useState("");
+  const [currentUtterance, setCurrentUtterance] = useState("");
   const barModifiers = useMemo(
     () => Array.from({ length: 16 }, () => 0.7 + Math.random() * 0.3),
     []
@@ -70,6 +81,10 @@ function MiniWindow() {
   useEffect(() => {
     let unlistenAudioFn: (() => void) | null = null;
     let unlistenRecordingFn: (() => void) | null = null;
+    let unlistenDeepgramConnectedFn: (() => void) | null = null;
+    let unlistenDeepgramDisconnectedFn: (() => void) | null = null;
+    let unlistenTranscriptionInterimFn: (() => void) | null = null;
+    let unlistenTranscriptionFinalFn: (() => void) | null = null;
 
     // Setup listeners asynchronously
     const setupListeners = async () => {
@@ -87,6 +102,65 @@ function MiniWindow() {
           }
         );
 
+        // Listen to Deepgram connection events
+        unlistenDeepgramConnectedFn = await listen(
+          "deepgram-connected",
+          async () => {
+            setIsExtended(true);
+            setFinalText("");
+            setCurrentUtterance("");
+            setInterimText("");
+            try {
+              await invoke("set_mini_window_mode", { mode: "extended" });
+            } catch (e) {
+              console.error("Failed to set mini window to extended mode:", e);
+            }
+          }
+        );
+
+        unlistenDeepgramDisconnectedFn = await listen(
+          "deepgram-disconnected",
+          async () => {
+            setIsExtended(false);
+            try {
+              await invoke("set_mini_window_mode", { mode: "compact" });
+            } catch (e) {
+              console.error("Failed to set mini window to compact mode:", e);
+            }
+          }
+        );
+
+        // Listen to Deepgram transcription events
+        unlistenTranscriptionInterimFn = await listen<TranscriptionEvent>(
+          "transcription-interim",
+          (event) => {
+            setInterimText(event.payload.text);
+          }
+        );
+
+        unlistenTranscriptionFinalFn = await listen<TranscriptionEvent>(
+          "transcription-final",
+          (event) => {
+            const newText = event.payload.text;
+            const isSpeechFinal = event.payload.speech_final || false;
+
+            if (isSpeechFinal) {
+              // Add to final text
+              setFinalText((prev) => {
+                const trimmed = prev.trim();
+                return trimmed ? `${trimmed} ${newText}` : newText;
+              });
+              setCurrentUtterance("");
+            } else {
+              // Update current utterance
+              setCurrentUtterance(newText);
+            }
+
+            // Clear interim text
+            setInterimText("");
+          }
+        );
+
         // Notify backend we're ready
         await emit("mini-window-ready", {});
       } catch (e) {
@@ -99,6 +173,10 @@ function MiniWindow() {
     return () => {
       if (unlistenAudioFn) unlistenAudioFn();
       if (unlistenRecordingFn) unlistenRecordingFn();
+      if (unlistenDeepgramConnectedFn) unlistenDeepgramConnectedFn();
+      if (unlistenDeepgramDisconnectedFn) unlistenDeepgramDisconnectedFn();
+      if (unlistenTranscriptionInterimFn) unlistenTranscriptionInterimFn();
+      if (unlistenTranscriptionFinalFn) unlistenTranscriptionFinalFn();
     };
   }, []);
 
@@ -138,24 +216,59 @@ function MiniWindow() {
     });
   }, [audioLevel, barModifiers, isRecording]);
 
+  // Combine final text and current utterance for display
+  const displayText =
+    finalText && currentUtterance
+      ? `${finalText} ${currentUtterance}`
+      : finalText || currentUtterance;
+
   return (
     <div className="dark flex min-h-screen w-full items-center justify-center bg-transparent">
-      <div className="mini-shell flex w-full max-w-[240px] items-center gap-4">
-        <span
-          className={`h-2.5 w-2.5 rounded-full ${
-            isRecording ? "bg-red-400 animate-pulse" : "bg-slate-500/70"
-          } flex-shrink-0`}
-        />
-        <div className="flex h-7 flex-1 items-end gap-[3px] px-2">{bars}</div>
-        {isRecording && (
-          <span className="w-12 text-right text-sm font-mono text-slate-300 tabular-nums flex-shrink-0">
-            {formatTime(recordingTime)}
-          </span>
-        )}
-        {!isRecording && (
-          <span className="w-12 text-right text-sm font-mono text-slate-500 italic flex-shrink-0">
-            00:00
-          </span>
+      <div className="mini-shell flex w-full max-w-[240px] flex-col gap-0">
+        {/* Audio visualizer section (always visible) */}
+        <div className="flex items-center gap-4">
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${
+              isRecording ? "bg-red-400 animate-pulse" : "bg-slate-500/70"
+            } flex-shrink-0`}
+          />
+          <div className="flex h-7 flex-1 items-end gap-[3px] px-2">{bars}</div>
+          {isRecording && (
+            <span className="w-12 text-right text-sm font-mono text-slate-300 tabular-nums flex-shrink-0">
+              {formatTime(recordingTime)}
+            </span>
+          )}
+          {!isRecording && (
+            <span className="w-12 text-right text-sm font-mono text-slate-500 italic flex-shrink-0">
+              00:00
+            </span>
+          )}
+        </div>
+
+        {/* Transcription section (only in extended mode) */}
+        {isExtended && (
+          <div className="mt-2 w-full overflow-y-auto px-3 py-2" style={{ maxHeight: "100px" }}>
+            {/* Interim text (partial, gray, italic) */}
+            {interimText && (
+              <p className="text-xs text-gray-400 italic mb-1">
+                {interimText}
+              </p>
+            )}
+
+            {/* Final text (confirmed) */}
+            {displayText && (
+              <p className="text-sm text-white leading-relaxed">
+                {displayText}
+              </p>
+            )}
+
+            {/* Placeholder when no text */}
+            {!interimText && !displayText && (
+              <p className="text-xs text-gray-500 italic text-center">
+                En attente...
+              </p>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -71,14 +71,17 @@ export function ApiConfigDialog() {
             />
             <p className="text-xs text-muted-foreground">
               Obtenir une clé sur{" "}
-              <a
-                href="https://platform.openai.com/api-keys"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-foreground"
+              <button
+                type="button"
+                className="text-blue-500 underline hover:text-blue-400 cursor-pointer inline"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  const { openUrl } = await import("@tauri-apps/plugin-opener");
+                  await openUrl("https://platform.openai.com/api-keys");
+                }}
               >
                 platform.openai.com
-              </a>
+              </button>
             </p>
           </div>
 
@@ -98,18 +101,21 @@ export function ApiConfigDialog() {
             />
             <p className="text-xs text-muted-foreground">
               Obtenir une clé sur{" "}
-              <a
-                href="https://console.deepgram.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-foreground"
+              <button
+                type="button"
+                className="text-blue-500 underline hover:text-blue-400 cursor-pointer inline"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  const { openUrl } = await import("@tauri-apps/plugin-opener");
+                  await openUrl("https://console.deepgram.com/");
+                }}
               >
                 console.deepgram.com
-              </a>
+              </button>
             </p>
           </div>
 
-          <div className="grid gap-2">
+          {/* <div className="grid gap-2">
             <Label htmlFor="google" className="text-sm font-medium">
               Google Cloud API Key
             </Label>
@@ -134,7 +140,7 @@ export function ApiConfigDialog() {
                 console.cloud.google.com
               </a>
             </p>
-          </div>
+          </div> */}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>

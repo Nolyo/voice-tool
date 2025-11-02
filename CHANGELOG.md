@@ -9,6 +9,16 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ##
 
+## [2.2.0] - 2025-11-02
+
+### Added
+
+- Mode compact vs étendu pour la mini fenêtre lors du streaming Deepgram
+- Basculement automatique de la mini fenêtre (42px → 150px) au démarrage/arrêt de Deepgram
+- Affichage de la transcription en temps réel dans la mini fenêtre en mode étendu
+- Commande backend `set_mini_window_mode` pour redimensionner la mini fenêtre dynamiquement
+- Support des événements `transcription-interim` et `transcription-final` dans la mini fenêtre
+
 ## [2.1.0] - 2025-10-25
 
 - Automatisation des mise à jour
