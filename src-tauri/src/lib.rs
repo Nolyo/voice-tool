@@ -133,6 +133,32 @@ fn exit_app(app_handle: AppHandle) {
     app_handle.exit(0);
 }
 
+/// Set mini window mode (compact or extended)
+#[tauri::command]
+fn set_mini_window_mode(app_handle: AppHandle, mode: String) -> Result<(), String> {
+    use tauri::Size;
+
+    if let Some(mini_window) = app_handle.get_webview_window("mini") {
+        let (width, height) = match mode.as_str() {
+            "compact" => (233, 42),
+            "extended" => (233, 150),
+            _ => return Err(format!("Invalid mode: {}. Use 'compact' or 'extended'", mode)),
+        };
+
+        mini_window
+            .set_size(Size::Physical(PhysicalSize { width, height }))
+            .map_err(|e| format!("Failed to resize mini window: {}", e))?;
+
+        // Reposition to maintain bottom-center alignment
+        position_mini_window(&app_handle, &mini_window);
+
+        tracing::info!("Mini window mode set to: {}", mode);
+        Ok(())
+    } else {
+        Err("Mini window not found".to_string())
+    }
+}
+
 /// Log a separator line to mark the end of a transcription process
 #[tauri::command]
 fn log_separator() {
@@ -861,6 +887,7 @@ pub fn run() {
             stop_recording,
             is_recording,
             exit_app,
+            set_mini_window_mode,
             log_separator,
             is_autostart_enabled,
             set_autostart,
