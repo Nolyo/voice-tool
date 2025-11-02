@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 This is a Tauri-based desktop voice recording application with real-time audio visualization and AI-powered transcription. The application features:
+
 - Audio capture from system microphones using Rust (cpal library)
 - Real-time audio level visualization
 - OpenAI Whisper API integration for transcription
@@ -18,25 +19,31 @@ This is a Tauri-based desktop voice recording application with real-time audio v
 ## Development Commands
 
 ### Running the Application
+
 ```bash
 pnpm tauri dev
 ```
+
 This runs both the Vite dev server (frontend) and Tauri development build (Rust backend).
 
 ### Building for Production
+
 ```bash
 pnpm build           # Build frontend (TypeScript compilation + Vite build)
 pnpm tauri build     # Build complete application bundle
 ```
+
 **IMPORTANT**: Always use `pnpm tauri build` for production builds, NOT `cargo build`. The Tauri CLI orchestrates the full build process including frontend bundling.
 
 ### Frontend Only
+
 ```bash
 pnpm dev            # Vite dev server only (port 1420)
 pnpm build          # TypeScript + Vite build
 ```
 
 ### Rust Only
+
 ```bash
 cd src-tauri
 cargo build         # Debug build
@@ -50,6 +57,7 @@ cargo check         # Fast type checking
 The application uses a dual-window architecture:
 
 1. **Main Window** (`index.html` → `src/main.tsx` → `App.tsx`)
+
    - Full dashboard with recording controls and transcription history
    - Settings dialog for API configuration, hotkeys, and preferences
    - Hides to system tray on close (doesn't quit)
@@ -98,11 +106,13 @@ Located in `src-tauri/src/`:
 Located in `lib.rs:458-588`:
 
 The application supports three configurable hotkeys:
+
 - **Toggle Recording** (default: Ctrl+F11): Start/stop recording, show/hide mini window
 - **Push-to-Talk** (default: Ctrl+F12): Record while pressed, transcribe on release
 - **Open Window** (default: Ctrl+Alt+O): Show and focus main window
 
 **Hotkey Management Flow**:
+
 1. Hotkeys loaded from settings store on startup (`load_hotkey_config`)
 2. Frontend can update hotkeys via `update_hotkeys()` command
 3. Conflict validation prevents duplicate shortcuts
@@ -111,6 +121,7 @@ The application supports three configurable hotkeys:
 6. Hotkey handlers use shared helper functions (`start_recording_shortcut`, `stop_recording_shortcut`, `show_mini_window`, `hide_mini_window`)
 
 **Recording from Shortcuts**:
+
 - Toggle/PTT shortcuts trigger audio capture in Rust
 - On stop, audio samples emitted via "audio-captured" event to frontend
 - Frontend's Dashboard listens and auto-transcribes via `transcribe_audio()` callback
@@ -131,6 +142,7 @@ Located in `lib.rs:209-336`:
 Located in `lib.rs:633-729` and `transcription.rs`:
 
 **Transcription Flow**:
+
 1. Frontend calls `transcribe_audio()` with samples, sample rate, API key, language, keep_last count
 2. Audio saved to WAV file in `%APPDATA%/com.nolyo.voice-tool/recordings/` with timestamp filename
 3. Legacy recordings directory (`%APPDATA%/voice-tool/recordings/`) migrated on first run
@@ -139,6 +151,7 @@ Located in `lib.rs:633-729` and `transcription.rs`:
 6. Transcription text and audio path returned to frontend
 
 **Auto-Paste Feature**:
+
 - If enabled, transcription copied to clipboard via `clipboard-manager` plugin
 - `paste_text_to_active_window()` simulates Ctrl+V using enigo library
 - 50ms delay between clipboard write and paste for reliability
@@ -158,6 +171,7 @@ Located in `logging.rs`:
 Built with React 19, TypeScript, and Tailwind CSS v4.
 
 **Component Structure**:
+
 - `Dashboard` (main orchestrator): Manages recording state, handles Tauri commands, listens for "audio-captured" and "recording-state" events
 - `RecordingCard`: Recording controls UI with toggle button and status
 - `TranscriptionList`: List of past transcriptions with delete/copy actions
@@ -167,6 +181,7 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - `LogsTab`: Real-time Rust log viewer in settings dialog
 
 **State Management**:
+
 - React Context for settings (`SettingsContext`) and shared state
 - Custom hooks for data persistence and logic:
   - `useSettings`: Settings CRUD via Tauri Store plugin
@@ -176,6 +191,7 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
   - `useAppLogs`: Subscribe to Rust tracing logs
 
 **Tauri Integration**:
+
 - Commands invoked via `@tauri-apps/api/core` invoke()
 - Events via `@tauri-apps/api/event` listen()/emit()
 - Persistent storage via `@tauri-apps/plugin-store` Store
@@ -184,6 +200,7 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 ### Key Technical Details
 
 **Audio Processing**:
+
 - Sample rate: Uses device native rate (typically 16000, 44100, or 48000 Hz)
 - Buffer type: `Vec<i16>`
 - RMS calculation for visualization with 50x amplification factor (src-tauri/src/audio.rs:276)
@@ -191,17 +208,20 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - Stream lifecycle managed via stream ID counter to prevent callback interference
 
 **Window Lifecycle**:
+
 - Main window close prevented, hidden instead (lib.rs:832-840)
 - Mini window created at startup (`create_mini_window`, lib.rs:732-749), toggled via show()/hide()
 - Mini window positioned at bottom-center of current monitor (lib.rs:338-371)
 - System tray provides "Afficher" (Show) and "Quitter" (Quit) menu items (French UI)
 
 **Recordings Directory Migration**:
+
 - Legacy path: `%APPDATA%/voice-tool/recordings/`
 - New path: `%APPDATA%/com.nolyo.voice-tool/recordings/`
 - Automatic migration via rename (fallback to copy) on first run (transcription.rs:38-78)
 
 **Build System**:
+
 - Vite for frontend bundling
 - Tauri CLI orchestrates Rust compilation and frontend bundling
 - Frontend dev server runs on port 1420
@@ -216,3 +236,15 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - UI text is primarily in French (menu items, error messages, etc.)
 - Autostart feature uses `tauri-plugin-autostart` with `--minimized` flag support
 - Settings and transcription history are persisted separately (Store plugin for settings, IndexedDB for transcriptions)
+
+## Commit and Push
+
+- Use conventional commits: - Format: `<type>: <message>`
+  - feat for new features
+  - fix for bug fixes
+  - docs for documentation changes
+  - style for code style changes
+  - refactor for code refactoring
+  - test for adding or updating tests
+  - chore for maintenance tasks
+- Always in English, short and precise.
