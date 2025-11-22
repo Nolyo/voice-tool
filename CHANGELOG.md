@@ -7,7 +7,11 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 - ***
 
-##
+## [2.3.1] - 2025-11-22
+
+### Fixed
+
+- Fix de mise à jour automatique
 
 ## [2.2.0] - 2025-11-02
 
