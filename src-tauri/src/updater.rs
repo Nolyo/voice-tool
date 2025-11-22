@@ -46,8 +46,15 @@ pub fn is_updater_available(_app: AppHandle) -> bool {
                 || exe_dir_str.contains("programfiles")
                 || exe_dir_str.contains(r"appdata\local\programs");
 
-            if !is_installed {
-                tracing::info!("Updater disabled: running in portable mode from {:?}", exe_dir);
+            // Also check for common uninstaller names which indicate an installation
+            let has_uninstaller =
+                exe_dir.join("unins000.exe").exists() || exe_dir.join("uninstall.exe").exists();
+
+            if !is_installed && !has_uninstaller {
+                tracing::info!(
+                    "Updater disabled: running in portable mode from {:?}",
+                    exe_dir
+                );
                 return false;
             }
         }
