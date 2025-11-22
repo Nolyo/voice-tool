@@ -8,10 +8,13 @@ This is a Tauri-based desktop voice recording application with real-time audio v
 
 - Audio capture from system microphones using Rust (cpal library)
 - Real-time audio level visualization
-- OpenAI Whisper API integration for transcription
+- Dual transcription providers:
+  - OpenAI Whisper API (batch processing via WAV file upload)
+  - Deepgram Streaming API (real-time WebSocket streaming)
 - Configurable global keyboard shortcuts (toggle, push-to-talk, show window)
 - Multi-window architecture with a main dashboard and floating mini visualizer
 - System tray integration with hide-to-tray behavior
+- Auto-update system with cryptographic signature verification (tauri-plugin-updater)
 - Persistent settings and transcription history using Tauri Store plugin
 - Auto-paste transcriptions to active window via keyboard simulation
 - Structured logging from Rust to frontend
@@ -21,7 +24,7 @@ This is a Tauri-based desktop voice recording application with real-time audio v
 ### Running the Application
 
 ```bash
-pnpm tauri dev
+pnpm tauri dev (not allowed, ask to user to use the command)
 ```
 
 This runs both the Vite dev server (frontend) and Tauri development build (Rust backend).
@@ -48,7 +51,25 @@ pnpm build          # TypeScript + Vite build
 cd src-tauri
 cargo build         # Debug build
 cargo check         # Fast type checking
+cargo tree | grep tauri-plugin-updater  # Verify updater plugin
 ```
+
+### Release Management
+
+```bash
+# Generate update signing keys (only needed once)
+pnpm tauri signer generate --write-keys src-tauri/private.key --ci -p ""
+
+# Create a release (triggers CI/CD)
+git tag v2.x.x
+git push origin v2.x.x
+
+# Create a pre-release test
+git checkout -b my-feature-ci-test
+git push origin my-feature-ci-test
+```
+
+**Note**: Pushing a tag starting with `v` triggers the release workflow that builds NSIS, MSI, and portable installers, signs them, and publishes to GitHub Releases with auto-generated `latest.json` for updates.
 
 ## Architecture
 
@@ -83,6 +104,9 @@ Located in `src-tauri/src/`:
 - **`lib.rs`**: Tauri setup, window management, global shortcuts, system tray, window state persistence, and all Tauri command handlers
 - **`audio.rs`**: Audio recording implementation using cpal with stream lifecycle management
 - **`transcription.rs`**: Audio file I/O (WAV), OpenAI Whisper API integration, recordings cleanup, and legacy directory migration
+- **`deepgram_streaming.rs`**: WebSocket-based real-time transcription using Deepgram API
+- **`deepgram_types.rs`**: Type definitions for Deepgram API requests and responses
+- **`updater.rs`**: Auto-update functionality with download progress tracking and signature verification
 - **`logging.rs`**: Custom tracing layer that emits structured logs to frontend via Tauri events
 
 #### Audio Recording Flow
@@ -156,6 +180,65 @@ Located in `lib.rs:633-729` and `transcription.rs`:
 - `paste_text_to_active_window()` simulates Ctrl+V using enigo library
 - 50ms delay between clipboard write and paste for reliability
 
+#### Deepgram Streaming Transcription
+
+Located in `deepgram_streaming.rs` and `deepgram_types.rs`:
+
+**Streaming Flow**:
+
+1. Frontend initiates WebSocket connection via `deepgram_connect()` command with API key, language, and sample rate
+2. WebSocket established to `wss://api.deepgram.com/v1/listen` with configuration parameters
+3. Audio samples streamed in real-time via `deepgram_send_audio()` command (i16 buffer chunks)
+4. Deepgram emits "deepgram-transcript" events to frontend with interim and final results
+5. Connection closed via `deepgram_disconnect()` command or automatically on errors
+6. Uses tokio-tungstenite for WebSocket management with separate send/receive tasks
+
+**Key Features**:
+
+- Real-time transcription (vs. Whisper's batch processing)
+- Supports interim results for immediate feedback
+- Automatic reconnection handling
+- Buffer management for audio chunks
+- Language and model configuration
+- Error handling via "deepgram-error" events
+
+#### Auto-Update System
+
+Located in `updater.rs`:
+
+**Update Flow**:
+
+1. **Availability Check**: `is_updater_available()` returns false in dev mode or when running as portable (not installed)
+2. **Update Check**: `check_for_updates()` queries GitHub Releases for `latest.json`
+3. **Download**: `download_and_install_update()` downloads signed installer with progress events
+4. **Verification**: Signature verified against public key in `tauri.conf.json`
+5. **Installation**: On success, app restarts automatically with new version
+
+**Frontend Integration**:
+
+- `UpdaterContext` checks for updates 10 seconds after startup (if enabled in settings)
+- `UpdaterTab` component in settings dialog for manual checks
+- Header notification button when update available
+- Download progress bar during update
+- Settings toggle for automatic update checking
+
+**Security**:
+
+- All updates cryptographically signed with private key (stored in GitHub Secrets)
+- Public key embedded in `tauri.conf.json` for verification
+- HTTPS-only downloads from GitHub Releases
+- Signature mismatch blocks installation
+
+**Release Workflow** (`.github/workflows/release.yml`):
+
+- Triggered on version tag push (`v*`) or ci-test branches
+- Builds three installer types: NSIS (recommended), MSI, portable
+- Signs installers with `TAURI_SIGNING_PRIVATE_KEY` secret
+- Generates SHA256 checksums
+- Creates `latest.json` manifest for updater
+- Generates `releases.json` for website/docs
+- Auto-detects prereleases (tags with -test/-beta/-alpha/-rc or ci-test branches)
+
 #### Logging System
 
 Located in `logging.rs`:
@@ -177,18 +260,21 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - `TranscriptionList`: List of past transcriptions with delete/copy actions
 - `TranscriptionDetails`: Detail view sidebar with audio playback
 - `MiniWindow`: Standalone mini visualizer with 16 animated bars and recording timer
-- `SettingsDialog`: Multi-tab configuration (API keys, hotkeys, audio devices, general settings)
+- `SettingsDialog`: Multi-tab configuration (API keys, hotkeys, audio devices, general settings, updates)
+- `UpdaterTab`: Update checker and installer UI in settings dialog
+- `DashboardHeader`: Header with update notification button
 - `LogsTab`: Real-time Rust log viewer in settings dialog
 
 **State Management**:
 
-- React Context for settings (`SettingsContext`) and shared state
+- React Context for settings (`SettingsContext`), updater (`UpdaterContext`), and shared state
 - Custom hooks for data persistence and logic:
   - `useSettings`: Settings CRUD via Tauri Store plugin
   - `useTranscriptionHistory`: Transcription history persistence in IndexedDB
   - `useAudioDevices`: Audio device list loading
   - `useSoundEffects`: Start/stop/success sound effects
   - `useAppLogs`: Subscribe to Rust tracing logs
+  - `useUpdater`: Auto-update checking, download, and installation with progress tracking
 
 **Tauri Integration**:
 
@@ -236,6 +322,12 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - UI text is primarily in French (menu items, error messages, etc.)
 - Autostart feature uses `tauri-plugin-autostart` with `--minimized` flag support
 - Settings and transcription history are persisted separately (Store plugin for settings, IndexedDB for transcriptions)
+- **Update Signing Keys**:
+  - Private key (`src-tauri/private.key`) is gitignored and stored in GitHub Secrets as `TAURI_SIGNING_PRIVATE_KEY`
+  - Public key (`src-tauri/private.key.pub`) is committed and embedded in `tauri.conf.json`
+  - NEVER regenerate keys or modify public key in `tauri.conf.json` unless creating a new signing identity
+  - See [docs/UPDATER_SETUP.md](docs/UPDATER_SETUP.md) for complete setup guide
+- Auto-updater is disabled in development mode and for portable installations (not in Program Files or AppData)
 
 ## Commit and Push
 
