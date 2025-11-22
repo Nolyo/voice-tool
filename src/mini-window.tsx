@@ -10,6 +10,8 @@ interface TranscriptionEvent {
   speech_final?: boolean;
 }
 
+type WindowStatus = "idle" | "recording" | "processing" | "success" | "error";
+
 function MiniWindow() {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
@@ -18,6 +20,9 @@ function MiniWindow() {
   const [interimText, setInterimText] = useState("");
   const [finalText, setFinalText] = useState("");
   const [currentUtterance, setCurrentUtterance] = useState("");
+  const [status, setStatus] = useState<WindowStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
   const barModifiers = useMemo(
     () => Array.from({ length: 16 }, () => 0.7 + Math.random() * 0.3),
     []
@@ -85,6 +90,9 @@ function MiniWindow() {
     let unlistenDeepgramDisconnectedFn: (() => void) | null = null;
     let unlistenTranscriptionInterimFn: (() => void) | null = null;
     let unlistenTranscriptionFinalFn: (() => void) | null = null;
+    let unlistenTranscriptionStartFn: (() => void) | null = null;
+    let unlistenTranscriptionSuccessFn: (() => void) | null = null;
+    let unlistenTranscriptionErrorFn: (() => void) | null = null;
 
     // Setup listeners asynchronously
     const setupListeners = async () => {
@@ -97,10 +105,71 @@ function MiniWindow() {
         // Listen to recording state changes
         unlistenRecordingFn = await listen<boolean>(
           "recording-state",
-          (event) => {
-            setIsRecording(event.payload);
+          async (event) => {
+            const recording = event.payload;
+            setIsRecording(recording);
+            if (recording) {
+              setStatus("recording");
+              setErrorMessage("");
+              setFinalText("");
+              setInterimText("");
+              setCurrentUtterance("");
+              // Reset extended mode unless deepgram is active (handled separately)
+              if (!isExtended) {
+                // Keep compact for now
+              }
+            } else {
+              // If we were recording and stopped, we might be waiting for transcription
+              // But if we are in Deepgram mode, it handles its own events.
+              // If we are in Whisper mode, we wait for "transcription-start"
+            }
           }
         );
+
+        // Listen for Whisper transcription events
+        unlistenTranscriptionStartFn = await listen("transcription-start", async () => {
+          setStatus("processing");
+          setIsExtended(true);
+          try {
+            await invoke("set_mini_window_mode", { mode: "extended" });
+          } catch (e) {
+            console.error("Failed to set mini window to extended mode:", e);
+          }
+        });
+
+        unlistenTranscriptionSuccessFn = await listen<{ text: string }>("transcription-success", async (event) => {
+          setStatus("success");
+          setFinalText(event.payload.text);
+
+          // Hide window after delay
+          setTimeout(async () => {
+            setStatus("idle");
+            setIsExtended(false);
+            try {
+              await invoke("set_mini_window_mode", { mode: "compact" });
+              await invoke("close_mini_window");
+            } catch (e) {
+              console.error("Failed to hide mini window:", e);
+            }
+          }, 2000);
+        });
+
+        unlistenTranscriptionErrorFn = await listen<{ error: string }>("transcription-error", async (event) => {
+          setStatus("error");
+          setErrorMessage(event.payload.error);
+
+          // Hide window after delay
+          setTimeout(async () => {
+            setStatus("idle");
+            setIsExtended(false);
+            try {
+              await invoke("set_mini_window_mode", { mode: "compact" });
+              await invoke("close_mini_window");
+            } catch (e) {
+              console.error("Failed to hide mini window:", e);
+            }
+          }, 4000);
+        });
 
         // Listen to Deepgram connection events
         unlistenDeepgramConnectedFn = await listen(
@@ -177,6 +246,9 @@ function MiniWindow() {
       if (unlistenDeepgramDisconnectedFn) unlistenDeepgramDisconnectedFn();
       if (unlistenTranscriptionInterimFn) unlistenTranscriptionInterimFn();
       if (unlistenTranscriptionFinalFn) unlistenTranscriptionFinalFn();
+      if (unlistenTranscriptionStartFn) unlistenTranscriptionStartFn();
+      if (unlistenTranscriptionSuccessFn) unlistenTranscriptionSuccessFn();
+      if (unlistenTranscriptionErrorFn) unlistenTranscriptionErrorFn();
     };
   }, []);
 
@@ -228,9 +300,8 @@ function MiniWindow() {
         {/* Audio visualizer section (always visible) */}
         <div className="flex items-center gap-4">
           <span
-            className={`h-2.5 w-2.5 rounded-full ${
-              isRecording ? "bg-red-400 animate-pulse" : "bg-slate-500/70"
-            } flex-shrink-0`}
+            className={`h-2.5 w-2.5 rounded-full ${isRecording ? "bg-red-400 animate-pulse" : "bg-slate-500/70"
+              } flex-shrink-0`}
           />
           <div className="flex h-7 flex-1 items-end gap-[3px] px-2">{bars}</div>
           {isRecording && (
@@ -248,25 +319,47 @@ function MiniWindow() {
         {/* Transcription section (only in extended mode) */}
         {isExtended && (
           <div className="mt-2 w-full overflow-y-auto px-3 py-2" style={{ maxHeight: "100px" }}>
-            {/* Interim text (partial, gray, italic) */}
-            {interimText && (
-              <p className="text-xs text-gray-400 italic mb-1">
-                {interimText}
-              </p>
+
+            {/* Processing State */}
+            {status === "processing" && (
+              <div className="flex items-center justify-center gap-2 py-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent"></div>
+                <p className="text-xs text-slate-300">Envoi de l'audio...</p>
+              </div>
             )}
 
-            {/* Final text (confirmed) */}
-            {displayText && (
-              <p className="text-sm text-white leading-relaxed">
-                {displayText}
-              </p>
+            {/* Error State */}
+            {status === "error" && (
+              <div className="py-1">
+                <p className="text-xs text-red-400 font-medium mb-1">Erreur</p>
+                <p className="text-xs text-slate-300 leading-tight">{errorMessage}</p>
+              </div>
             )}
 
-            {/* Placeholder when no text */}
-            {!interimText && !displayText && (
-              <p className="text-xs text-gray-500 italic text-center">
-                En attente...
-              </p>
+            {/* Success/Normal State */}
+            {(status === "success" || status === "idle" || status === "recording") && (
+              <>
+                {/* Interim text (partial, gray, italic) */}
+                {interimText && (
+                  <p className="text-xs text-gray-400 italic mb-1">
+                    {interimText}
+                  </p>
+                )}
+
+                {/* Final text (confirmed) */}
+                {displayText && (
+                  <p className="text-sm text-white leading-relaxed">
+                    {displayText}
+                  </p>
+                )}
+
+                {/* Placeholder when no text */}
+                {!interimText && !displayText && (
+                  <p className="text-xs text-gray-500 italic text-center">
+                    En attente...
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}

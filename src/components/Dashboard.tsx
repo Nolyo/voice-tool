@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 import { DashboardHeader } from "./dashboard-header";
 import { RecordingCard } from "./recording-card";
@@ -170,6 +170,7 @@ export default function Dashboard() {
 
       setIsTranscribing(true);
       try {
+        await emit("transcription-start");
         const result = await invoke<TranscriptionInvokeResult>(
           "transcribe_audio",
           {
@@ -195,10 +196,13 @@ export default function Dashboard() {
           apiCost,
         );
 
+        await emit("transcription-success", { text: result.text });
+
         // Log separator to mark end of transcription process
         await invoke("log_separator");
       } catch (error) {
         console.error("Transcription error:", error);
+        await emit("transcription-error", { error: String(error) });
         alert(`Erreur de transcription: ${error}`);
         // Log separator even on error
         await invoke("log_separator");

@@ -142,7 +142,12 @@ fn set_mini_window_mode(app_handle: AppHandle, mode: String) -> Result<(), Strin
         let (width, height) = match mode.as_str() {
             "compact" => (233, 42),
             "extended" => (233, 150),
-            _ => return Err(format!("Invalid mode: {}. Use 'compact' or 'extended'", mode)),
+            _ => {
+                return Err(format!(
+                    "Invalid mode: {}. Use 'compact' or 'extended'",
+                    mode
+                ));
+            }
         };
 
         mini_window
@@ -157,6 +162,12 @@ fn set_mini_window_mode(app_handle: AppHandle, mode: String) -> Result<(), Strin
     } else {
         Err("Mini window not found".to_string())
     }
+}
+
+/// Explicitly close/hide the mini window from frontend
+#[tauri::command]
+fn close_mini_window(app_handle: AppHandle) {
+    hide_mini_window(&app_handle);
 }
 
 /// Log a separator line to mark the end of a transcription process
@@ -569,7 +580,7 @@ fn apply_hotkeys<R: Runtime>(
                     if let Some(recording) = stop_recording_shortcut(app) {
                         emit_audio_samples(app, recording);
                     }
-                    hide_mini_window(app);
+                    // hide_mini_window(app); // Keep window open for visual feedback
                 } else {
                     show_mini_window(app);
                     if !start_recording_shortcut(app) {
@@ -603,7 +614,7 @@ fn apply_hotkeys<R: Runtime>(
                     if let Some(recording) = stop_recording_shortcut(app) {
                         emit_audio_samples(app, recording);
                     }
-                    hide_mini_window(app);
+                    // hide_mini_window(app); // Keep window open for visual feedback
                 }
             };
 
@@ -888,6 +899,7 @@ pub fn run() {
             is_recording,
             exit_app,
             set_mini_window_mode,
+            close_mini_window,
             log_separator,
             is_autostart_enabled,
             set_autostart,
