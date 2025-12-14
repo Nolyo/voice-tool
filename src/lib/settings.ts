@@ -38,6 +38,9 @@ export interface AppSettings {
     record_modes: ("toggle" | "ptt")[];
     ptt_hotkey: string;
     record_mode: "toggle" | "ptt";
+
+    // Mini Window
+    show_transcription_in_mini_window: boolean;
   };
 }
 
@@ -81,6 +84,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     record_modes: ["toggle", "ptt"],
     ptt_hotkey: "Ctrl+F12",
     record_mode: "toggle",
+
+    // Mini Window
+    show_transcription_in_mini_window: true,
   },
 };
 

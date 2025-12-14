@@ -394,9 +394,8 @@ export function SettingTabs() {
                 className="h-7 px-2.5 -mr-2 hover:bg-primary/10"
               >
                 <RefreshCw
-                  className={`w-3.5 h-3.5 ${
-                    devicesLoading ? "animate-spin" : ""
-                  }`}
+                  className={`w-3.5 h-3.5 ${devicesLoading ? "animate-spin" : ""
+                    }`}
                 />
               </Button>
             </div>
@@ -416,8 +415,8 @@ export function SettingTabs() {
                     devicesLoading
                       ? "Chargement..."
                       : devicesError
-                      ? "Erreur de chargement"
-                      : "Sélectionner un microphone"
+                        ? "Erreur de chargement"
+                        : "Sélectionner un microphone"
                   }
                 />
               </SelectTrigger>
@@ -711,6 +710,39 @@ export function SettingTabs() {
             <p className="text-xs text-muted-foreground">
               Nombre de fichiers audio à conserver localement
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Mini Window Card */}
+      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
+        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
+              <span className="text-lg font-bold text-primary">⬚</span>
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Mini fenêtre
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Visualiseur d'enregistrement flottant
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5">
+          <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+            <p className="text-sm text-foreground mb-2 font-medium">
+              La mini fenêtre affiche :
+            </p>
+            <ul className="text-xs text-muted-foreground space-y-1">
+              <li>• <span className="text-red-400">●</span> Enregistrement en cours</li>
+              <li>• <span className="animate-spin inline-block">↻</span> Envoi de l'audio...</li>
+              <li>• <span className="text-green-400">✓</span> Transcription réussie</li>
+              <li>• <span className="text-red-400">✗</span> Erreur (avec message détaillé)</li>
+            </ul>
           </div>
         </div>
       </div>

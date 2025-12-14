@@ -167,7 +167,16 @@ fn set_mini_window_mode(app_handle: AppHandle, mode: String) -> Result<(), Strin
 /// Explicitly close/hide the mini window from frontend
 #[tauri::command]
 fn close_mini_window(app_handle: AppHandle) {
+    // First reset to compact mode for clean state on next show
+    if let Some(mini_window) = app_handle.get_webview_window("mini") {
+        let _ = mini_window.set_size(Size::Physical(PhysicalSize {
+            width: 233,
+            height: 42,
+        }));
+    }
+    // Then hide the window
     hide_mini_window(&app_handle);
+    tracing::debug!("Mini window closed and reset to compact mode");
 }
 
 /// Log a separator line to mark the end of a transcription process
