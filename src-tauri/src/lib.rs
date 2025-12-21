@@ -3,6 +3,7 @@ mod deepgram_streaming;
 mod deepgram_types;
 mod logging;
 mod transcription;
+mod transcription_local;
 mod updater;
 
 use audio::{AudioDeviceInfo, AudioRecorder, RecordingResult};
@@ -704,30 +705,64 @@ fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Store<R>>) -> 
     config
 }
 #[tauri::command]
+async fn download_local_model(app_handle: AppHandle, model: String) -> Result<String, String> {
+    transcription_local::download_model(app_handle, model)
+        .await
+        .map(|path| path.to_string_lossy().to_string())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn check_local_model_exists(model: String) -> bool {
+    transcription_local::check_model_exists(&model)
+}
+
+#[tauri::command]
+fn delete_local_model(model: String) -> Result<(), String> {
+    transcription_local::delete_model(&model).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn transcribe_audio(
+    app_handle: AppHandle,
     audio_samples: Vec<i16>,
     sample_rate: u32,
     api_key: String,
     language: String,
     keep_last: usize,
+    provider: Option<String>,
+    local_model_size: Option<String>,
 ) -> Result<TranscriptionResponse, String> {
     tracing::info!(
-        "transcribe_audio called with {} samples at {} Hz",
+        "transcribe_audio called with {} samples at {} Hz (Provider: {:?})",
         audio_samples.len(),
-        sample_rate
+        sample_rate,
+        provider
     );
 
     // Save audio to WAV file
     let wav_path = save_audio_to_wav(&audio_samples, sample_rate)
         .map_err(|e| format!("Failed to save audio: {}", e))?;
 
-    // Transcribe using OpenAI Whisper
-    let transcription = transcribe_with_openai(&wav_path, &api_key, &language)
-        .await
-        .map_err(|e| {
-            tracing::error!("Transcription failed: {}", e);
-            format!("Transcription failed: {}", e)
-        })?;
+    let transcription_result = if provider.as_deref() == Some("Local") {
+        let model = local_model_size.unwrap_or_else(|| "base".to_string());
+        transcription_local::transcribe_local(&app_handle, &wav_path, &model, &language)
+            .await
+            .map_err(|e| {
+                tracing::error!("Local transcription failed: {}", e);
+                format!("Local transcription failed: {}", e)
+            })
+    } else {
+        // Default to OpenAI
+        transcribe_with_openai(&wav_path, &api_key, &language)
+            .await
+            .map_err(|e| {
+                tracing::error!("Transcription failed: {}", e);
+                format!("Transcription failed: {}", e)
+            })
+    };
+
+    let transcription = transcription_result?;
 
     // Clean up old recordings
     let _ = cleanup_old_recordings(keep_last);
@@ -889,6 +924,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -922,7 +958,11 @@ pub fn run() {
             send_audio_to_deepgram,
             updater::check_for_updates,
             updater::download_and_install_update,
-            updater::is_updater_available
+            updater::download_and_install_update,
+            updater::is_updater_available,
+            download_local_model,
+            check_local_model_exists,
+            delete_local_model
         ])
         .setup(move |app| {
             // Enable logging to frontend

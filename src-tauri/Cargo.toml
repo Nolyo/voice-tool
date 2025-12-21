@@ -48,7 +48,13 @@ tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 hound = "3.5"
 
 # HTTP client for API calls
-reqwest = { version = "0.12", features = ["multipart", "json"] }
+reqwest = { version = "0.12", features = ["multipart", "json", "stream"] }
+
+# Local Transcription
+# whisper-rs removed due to build environment issues on target machine
+# Switching to Sidecar pattern (executing pre-compiled binary)
+tauri-plugin-shell = "2"
+tauri-plugin-fs = "2"
 
 # Keyboard simulation
 enigo = "0.2"
@@ -60,3 +66,4 @@ chrono = "0.4"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 parking_lot = "0.12"
+num_cpus = "1.17.0"

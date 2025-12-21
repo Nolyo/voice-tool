@@ -1,8 +1,11 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Mic, Settings, Minus, Plus, Keyboard, RefreshCw } from "lucide-react";
+import { Mic, Settings, Minus, Plus, Keyboard, RefreshCw, Download, Check, Loader2, Trash2 } from "lucide-react";
 import { Label } from "./ui/label";
+import { Progress } from "./ui/progress";
+import { toast } from "sonner";
+import { listen } from "@tauri-apps/api/event";
 import { Checkbox } from "./ui/checkbox";
 import {
   Select,
@@ -222,6 +225,78 @@ export function SettingTabs() {
   const [isUpdatingAutostart, setIsUpdatingAutostart] = useState(false);
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
 
+  // Local Model state
+  const [isDownloadingModel, setIsDownloadingModel] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [isModelDownloaded, setIsModelDownloaded] = useState(false);
+  const [isCheckingModel, setIsCheckingModel] = useState(false);
+
+  // Check if model exists
+  const checkModelStatus = useCallback(async () => {
+    if (settings.transcription_provider !== "Local") return;
+
+    setIsCheckingModel(true);
+    try {
+      const exists = await invoke<boolean>("check_local_model_exists", {
+        model: settings.local_model_size || "base"
+      });
+      setIsModelDownloaded(exists);
+    } catch (e) {
+      console.error("Failed to check model status:", e);
+    } finally {
+      setIsCheckingModel(false);
+    }
+  }, [settings.transcription_provider, settings.local_model_size]);
+
+  useEffect(() => {
+    checkModelStatus();
+  }, [checkModelStatus]);
+
+  // Listen for download progress
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    const setupListener = async () => {
+      const u = await listen<number>("model-download-progress", (event) => {
+        setDownloadProgress(event.payload);
+      });
+      unlisten = u;
+    };
+
+    setupListener();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  const handleDownloadModel = async () => {
+    setIsDownloadingModel(true);
+    setDownloadProgress(0);
+    try {
+      await invoke("download_local_model", { model: settings.local_model_size });
+      toast.success(`Modèle ${settings.local_model_size} téléchargé avec succès !`);
+      setIsModelDownloaded(true);
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast.error(`Erreur lors du téléchargement : ${error}`);
+    } finally {
+      setIsDownloadingModel(false);
+      setDownloadProgress(0);
+    }
+  };
+
+  const handleDeleteModel = async () => {
+    try {
+      await invoke("delete_local_model", { model: settings.local_model_size });
+      toast.success(`Modèle ${settings.local_model_size} supprimé`);
+      setIsModelDownloaded(false);
+    } catch (error) {
+      console.error("Delete failed:", error);
+      toast.error(`Erreur lors de la suppression : ${error}`);
+    }
+  };
+
   // Load autostart state from registry on mount
   useEffect(() => {
     const loadAutostartState = async () => {
@@ -328,9 +403,86 @@ export function SettingTabs() {
                   <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
                   {/* <SelectItem value="Google">Google Speech-to-Text</SelectItem> */}
                   <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
+                  <SelectItem value="Local">Local (Offline)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {settings.transcription_provider === "Local" && (
+              <div className="space-y-4 col-span-2 p-4 rounded-lg bg-muted/30 border border-border/50 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2">
+                  <Download className="w-4 h-4 text-primary" />
+                  <h4 className="font-medium text-sm">Modèle Local (Whisper.cpp)</h4>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2.5">
+                    <Label htmlFor="model-size" className="text-sm font-medium text-foreground">
+                      Taille du modèle
+                    </Label>
+                    <Select
+                      value={settings.local_model_size}
+                      onValueChange={(value) => updateSetting("local_model_size", value as "tiny" | "base" | "small")}
+                      disabled={isDownloadingModel}
+                    >
+                      <SelectTrigger id="model-size" className="h-10 bg-background/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tiny">Tiny (39 MB) - Très Rapide</SelectItem>
+                        <SelectItem value="base">Base (74 MB) - Recommandé</SelectItem>
+                        <SelectItem value="small">Small (244 MB) - Précis</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      "Base" est recommandé pour les configurations plus anciennes.
+                    </p>
+                  </div>
+
+                  <div className="flex items-end gap-2">
+                    {isModelDownloaded ? (
+                      <>
+                        <Button variant="outline" className="flex-1 text-green-500 border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:text-green-600" disabled>
+                          <Check className="w-4 h-4 mr-2" />
+                          Modèle installé
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={handleDeleteModel}
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
+                          title="Supprimer le modèle"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        onClick={handleDownloadModel}
+                        disabled={isDownloadingModel || isCheckingModel}
+                        className="w-full"
+                      >
+                        {isDownloadingModel ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Téléchargement... {Math.round(downloadProgress)}%
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4 mr-2" />
+                            Télécharger le modèle
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {isDownloadingModel && (
+                  <Progress value={downloadProgress} className="h-2" />
+                )}
+              </div>
+            )}
 
             <div className="space-y-2.5">
               <Label

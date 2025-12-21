@@ -12,7 +12,9 @@ export interface AppSettings {
     silence_threshold: number;
 
     // Transcription
-    transcription_provider: "OpenAI" | "Deepgram" | "Google";
+    // Transcription
+    transcription_provider: "OpenAI" | "Deepgram" | "Google" | "Local";
+    local_model_size: "tiny" | "base" | "small";
     language: string;
     smart_formatting: boolean;
 
@@ -59,6 +61,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Transcription
     transcription_provider: "OpenAI",
+    local_model_size: "base", // Recommended for old hardware
     language: "fr-FR",
     smart_formatting: true,
 

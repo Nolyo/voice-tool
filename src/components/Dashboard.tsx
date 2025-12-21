@@ -179,6 +179,8 @@ export default function Dashboard() {
             apiKey: settings.openai_api_key,
             language: settings.language,
             keepLast: settings.recordings_keep_last,
+            provider: settings.transcription_provider,
+            localModelSize: settings.local_model_size,
           },
         );
 
