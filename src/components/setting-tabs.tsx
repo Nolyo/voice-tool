@@ -89,6 +89,7 @@ type HotkeyInputProps = {
   value: string;
   defaultValue: string;
   description?: string;
+  allowEscape?: boolean;
   onChange: (shortcut: string) => Promise<void>;
 };
 
@@ -98,6 +99,7 @@ function HotkeyInput({
   value,
   defaultValue,
   description,
+  allowEscape = false,
   onChange,
 }: HotkeyInputProps) {
   const [isListening, setIsListening] = useState(false);
@@ -113,7 +115,7 @@ function HotkeyInput({
       event.preventDefault();
       event.stopPropagation();
 
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !allowEscape) {
         setIsListening(false);
         setError(null);
         return;
@@ -185,7 +187,9 @@ function HotkeyInput({
           className="flex-1 justify-start font-mono min-w-0"
         >
           {isListening
-            ? "Appuyez sur une combinaison... (Échap pour annuler)"
+            ? allowEscape
+              ? "Appuyez sur une touche..."
+              : "Appuyez sur une combinaison... (Échap pour annuler)"
             : formatShortcutDisplay(value)}
         </Button>
         <Button
@@ -205,7 +209,9 @@ function HotkeyInput({
         <p className="text-xs text-destructive">{error}</p>
       ) : isListening ? (
         <p className="text-xs text-muted-foreground">
-          Appuyez sur la combinaison souhaitée, ou Échap pour annuler.
+          {allowEscape
+            ? "Appuyez sur la touche souhaitée."
+            : "Appuyez sur la combinaison souhaitée, ou Échap pour annuler."}
         </p>
       ) : description ? (
         <p className="text-xs text-muted-foreground">{description}</p>
@@ -312,7 +318,7 @@ export function SettingTabs() {
 
   const handleHotkeyChange = useCallback(
     async (
-      key: "record_hotkey" | "ptt_hotkey" | "open_window_hotkey",
+      key: "record_hotkey" | "ptt_hotkey" | "open_window_hotkey" | "cancel_hotkey",
       shortcut: string
     ) => {
       const normalized = shortcut
@@ -341,6 +347,8 @@ export function SettingTabs() {
           key === "open_window_hotkey"
             ? normalized
             : settings.open_window_hotkey,
+        cancelHotkey:
+          key === "cancel_hotkey" ? normalized : settings.cancel_hotkey,
       });
 
       await updateSetting(key, normalized);
@@ -955,6 +963,18 @@ export function SettingTabs() {
             description="Ouvre et met au premier plan la fenêtre principale"
             onChange={(shortcut) =>
               handleHotkeyChange("open_window_hotkey", shortcut)
+            }
+          />
+
+          <HotkeyInput
+            id="shortcut-cancel"
+            label="Annuler l'enregistrement"
+            value={settings.cancel_hotkey}
+            defaultValue={DEFAULT_SETTINGS.settings.cancel_hotkey}
+            description="Arrête et jette l'audio sans lancer la transcription"
+            allowEscape={true}
+            onChange={(shortcut) =>
+              handleHotkeyChange("cancel_hotkey", shortcut)
             }
           />
 

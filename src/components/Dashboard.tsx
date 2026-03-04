@@ -291,6 +291,16 @@ export default function Dashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    const unlisten = listen("recording-cancelled", () => {
+      toast.info("Enregistrement annulé");
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
   // Listen for shortcut-triggered recording events to manage Deepgram
   useEffect(() => {
     let unlistenRecordingState: UnlistenFn | null = null;

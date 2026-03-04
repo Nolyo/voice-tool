@@ -37,6 +37,7 @@ export interface AppSettings {
     // Shortcuts & Recording Modes
     record_hotkey: string;
     open_window_hotkey: string;
+    cancel_hotkey: string;
     record_modes: ("toggle" | "ptt")[];
     ptt_hotkey: string;
     record_mode: "toggle" | "ptt";
@@ -84,6 +85,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     // Shortcuts & Recording Modes
     record_hotkey: "Ctrl+F11",
     open_window_hotkey: "Ctrl+Alt+O",
+    cancel_hotkey: "Escape",
     record_modes: ["toggle", "ptt"],
     ptt_hotkey: "Ctrl+F12",
     record_mode: "toggle",

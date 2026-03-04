@@ -33,6 +33,7 @@ struct HotkeyConfig {
     record: Option<String>,
     ptt: Option<String>,
     open_window: Option<String>,
+    cancel: Option<String>,
 }
 
 /// Holds a cached whisper context + state so state buffers are allocated once
@@ -248,6 +249,7 @@ fn update_hotkeys(
     record_hotkey: Option<String>,
     ptt_hotkey: Option<String>,
     open_window_hotkey: Option<String>,
+    cancel_hotkey: Option<String>,
 ) -> Result<(), String> {
     let current = state
         .inner()
@@ -265,6 +267,9 @@ fn update_hotkeys(
     }
     if let Some(value) = open_window_hotkey {
         next.open_window = normalize_hotkey_value(Some(value));
+    }
+    if let Some(value) = cancel_hotkey {
+        next.cancel = normalize_hotkey_value(Some(value));
     }
 
     if let Err(err) = apply_hotkeys(&app_handle, &next) {
@@ -529,6 +534,24 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<Reco
     }
 }
 
+fn cancel_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) {
+    let state: State<AppState> = app_handle.state();
+    let silence_threshold = 0.005;
+
+    if let Ok(mut recorder) = state.inner().audio_recorder.lock() {
+        if !recorder.is_recording() {
+            return;
+        }
+        // Stop recording but discard the audio — no transcription
+        let _ = recorder.stop_recording(silence_threshold);
+    }
+
+    let _ = app_handle.emit("recording-state", false);
+    let _ = app_handle.emit("recording-cancelled", ());
+    hide_mini_window(app_handle);
+    tracing::info!("Recording cancelled by user (no transcription)");
+}
+
 fn emit_audio_samples<R: Runtime>(app_handle: &AppHandle<R>, recording: RecordingResult) {
     let _ = app_handle.emit(
         "audio-captured",
@@ -552,6 +575,12 @@ fn hotkeys_conflict(config: &HotkeyConfig) -> Option<String> {
     }
     if equals(&config.record, &config.open_window) || equals(&config.ptt, &config.open_window) {
         return Some("Le raccourci d'ouverture de fenêtre doit être distinct des raccourcis d'enregistrement.".into());
+    }
+    if equals(&config.cancel, &config.record)
+        || equals(&config.cancel, &config.ptt)
+        || equals(&config.cancel, &config.open_window)
+    {
+        return Some("Le raccourci d'annulation doit être distinct des autres raccourcis.".into());
     }
 
     None
@@ -591,6 +620,12 @@ fn apply_hotkeys<R: Runtime>(
 
     let open_hotkey = config
         .open_window
+        .as_ref()
+        .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
+        .transpose()?;
+
+    let cancel_hotkey = config
+        .cancel
         .as_ref()
         .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
         .transpose()?;
@@ -670,6 +705,23 @@ fn apply_hotkeys<R: Runtime>(
             })?;
     }
 
+    if let Some((cancel_label, cancel_shortcut)) = cancel_hotkey {
+        let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
+            if event.state == ShortcutState::Pressed && is_recorder_active(app) {
+                cancel_recording_shortcut(app);
+            }
+        };
+
+        manager
+            .on_shortcut(cancel_shortcut.clone(), handler)
+            .map_err(|e| {
+                format!(
+                    "Impossible d'enregistrer le raccourci \"{}\": {}",
+                    cancel_label, e
+                )
+            })?;
+    }
+
     Ok(())
 }
 
@@ -701,6 +753,12 @@ fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Store<R>>) -> 
             {
                 config.open_window = normalize_hotkey_value(Some(value.to_string()));
             }
+            if let Some(value) = settings_obj
+                .get("cancel_hotkey")
+                .and_then(Value::as_str)
+            {
+                config.cancel = normalize_hotkey_value(Some(value.to_string()));
+            }
         }
     }
 
@@ -712,6 +770,9 @@ fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Store<R>>) -> 
     }
     if config.open_window.is_none() {
         config.open_window = Some("Ctrl+Alt+O".into());
+    }
+    if config.cancel.is_none() {
+        config.cancel = Some("Escape".into());
     }
 
     config
