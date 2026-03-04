@@ -121,4 +121,25 @@ Dans ces cas, la mini window restait en état "idle" sans jamais se fermer.
 - Le seuil est probablement trop strict
 
 
-Ajouter option video/audio transcription ?
+## 🚀 Nouvelles Idées / Backlog
+
+### 6. Transcription de fichiers audio/vidéo
+**Idée:** Permettre d'importer et de transcrire des fichiers audio ou vidéo existants.
+**Actions:**
+- Ajouter une interface pour l'import de fichiers.
+- Gérer l'extraction et l'envoi de l'audio au moteur de transcription.
+
+### 7. Annulation de l'enregistrement via Échap
+**Idée:** Offrir un moyen rapide d'annuler une prise ratée.
+**Actions:**
+- Écouter la touche `Échap` pendant un enregistrement.
+- Annuler l'enregistrement en cours sans lancer le processus de transcription.
+
+### 8. Amélioration de l'Onboarding et Mode Local
+**Idée:** Simplifier le premier lancement et guider l'utilisateur.
+**Actions:**
+- Définir le mode de transcription "Local" comme l'option par défaut.
+- Au démarrage, vérifier si un service de transcription est utilisable (modèle local prêt ou clé API renseignée).
+- Si rien n'est configuré, alerter l'utilisateur et l'inviter à configurer l'application via les paramètres.
+
+// a reecrire par LLM
