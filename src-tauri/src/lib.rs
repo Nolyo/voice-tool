@@ -88,8 +88,8 @@ fn stop_recording(
 ) -> Result<RecordingResult, String> {
     tracing::info!("Stopping audio recording");
 
-    // Use provided threshold or default to 0.01 (typical silence level)
-    let threshold = silence_threshold.unwrap_or(0.01);
+    // Use provided threshold or default to 0.005 (0.5% - typical silence level)
+    let threshold = silence_threshold.unwrap_or(0.005);
 
     let mut recorder = state.inner().audio_recorder.lock().unwrap();
     let result = recorder.stop_recording(threshold).map_err(|e| {
@@ -491,7 +491,7 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<Reco
     let state: State<AppState> = app_handle.state();
 
     // Default silence threshold (will be configurable via settings later)
-    let silence_threshold = 0.01;
+    let silence_threshold = 0.005;
 
     let result = if let Ok(mut recorder) = state.inner().audio_recorder.lock() {
         if !recorder.is_recording() {

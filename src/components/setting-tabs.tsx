@@ -607,8 +607,8 @@ export function SettingTabs() {
             <input
               id="silence-threshold"
               type="range"
-              min="0"
-              max="0.1"
+              min="0.001"
+              max="0.05"
               step="0.001"
               value={settings.silence_threshold}
               onChange={(e) =>

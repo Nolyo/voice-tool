@@ -234,7 +234,7 @@ export default function Dashboard() {
           sampleRate: number;
           avgRms: number;
           isSilent: boolean;
-        }>("audio-captured", (event) => {
+        }>("audio-captured", async (event) => {
           console.log(
             "Audio captured from keyboard shortcut",
             `(RMS: ${event.payload.avgRms.toFixed(4)}, silent: ${event.payload.isSilent})`,
@@ -246,6 +246,10 @@ export default function Dashboard() {
             toast.info("Aucun son détecté dans l'enregistrement", {
               description:
                 "Le niveau sonore est trop faible pour être transcrit",
+            });
+            // Emit error event to close mini window properly
+            await emit("transcription-error", {
+              error: "Son trop faible",
             });
             return;
           }
@@ -388,6 +392,10 @@ export default function Dashboard() {
           toast.info("Aucun son détecté dans l'enregistrement", {
             description: "Le niveau sonore est trop faible pour être transcrit",
           });
+          // Emit error event to close mini window properly
+          await emit("transcription-error", {
+            error: "Son trop faible",
+          });
           return;
         }
 
@@ -412,6 +420,10 @@ export default function Dashboard() {
       console.error("Recording error:", error);
       alert(`Erreur d'enregistrement: ${error}`);
       setIsRecording(false);
+      // Emit error event to close mini window properly
+      await emit("transcription-error", {
+        error: String(error),
+      });
     }
   };
 

@@ -266,7 +266,7 @@ function MiniWindow() {
   // since we only show status messages, not transcription text
 
   return (
-    <div className="dark flex min-h-screen w-full items-center justify-center bg-transparent">
+    <div className="dark flex h-full w-full items-center justify-center bg-transparent overflow-hidden">
       <div className="mini-shell flex w-full max-w-[240px] flex-col gap-0">
         {/* Audio visualizer section (only visible when recording or idle) */}
         {(status === "idle" || status === "recording") && (
@@ -291,11 +291,11 @@ function MiniWindow() {
 
         {/* Status section (show when processing, success, or error) */}
         {(status === "processing" || status === "success" || status === "error") && (
-          <div className="w-full px-3 py-2">
+          <div className="w-full">
 
             {/* Processing State */}
             {status === "processing" && (
-              <div className="flex items-center justify-center gap-2 py-2">
+              <div className="flex items-center justify-center gap-2">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent"></div>
                 <p className="text-xs text-slate-300">Envoi de l'audio...</p>
               </div>
@@ -303,15 +303,15 @@ function MiniWindow() {
 
             {/* Error State */}
             {status === "error" && (
-              <div className="py-1">
-                <p className="text-xs text-red-400 font-medium mb-1">Erreur</p>
-                <p className="text-xs text-slate-300 leading-tight">{errorMessage}</p>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-red-400 text-lg">✕</span>
+                <p className="text-xs text-red-400 font-medium">{errorMessage}</p>
               </div>
             )}
 
             {/* Success State */}
             {status === "success" && (
-              <div className="flex items-center justify-center gap-2 py-2">
+              <div className="flex items-center justify-center gap-2">
                 <span className="text-green-400 text-lg">✓</span>
                 <p className="text-xs text-green-400 font-medium">Transcription réussie</p>
               </div>
