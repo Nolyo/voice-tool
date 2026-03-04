@@ -430,7 +430,7 @@ export function SettingTabs() {
                     </Label>
                     <Select
                       value={settings.local_model_size}
-                      onValueChange={(value) => updateSetting("local_model_size", value as "tiny" | "base" | "small")}
+                      onValueChange={(value) => updateSetting("local_model_size", value as "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo")}
                       disabled={isDownloadingModel}
                     >
                       <SelectTrigger id="model-size" className="h-10 bg-background/50">
@@ -440,6 +440,11 @@ export function SettingTabs() {
                         <SelectItem value="tiny">Tiny (39 MB) - Très Rapide</SelectItem>
                         <SelectItem value="base">Base (74 MB) - Recommandé</SelectItem>
                         <SelectItem value="small">Small (244 MB) - Précis</SelectItem>
+                        <SelectItem value="medium">Medium (1.5 GB) - Très Précis</SelectItem>
+                        <SelectItem value="large-v1">Large v1 (2.9 GB) - Excellent</SelectItem>
+                        <SelectItem value="large-v2">Large v2 (2.9 GB) - Excellent</SelectItem>
+                        <SelectItem value="large-v3">Large v3 (2.9 GB) - Meilleur</SelectItem>
+                        <SelectItem value="large-v3-turbo">Large v3 Turbo (1.6 GB) - Meilleur + Rapide ⭐</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">

@@ -143,3 +143,9 @@ Dans ces cas, la mini window restait en état "idle" sans jamais se fermer.
 - Si rien n'est configuré, alerter l'utilisateur et l'inviter à configurer l'application via les paramètres.
 
 // a reecrire par LLM
+
+Extension rust analyse rale: 
+rust-analyzer failed to load workspace: Failed to read Cargo metadata from Cargo.toml file c:\Users\nolyo\www\voice-tool\src-tauri\Cargo.toml, Some(Version { major: 1, minor: 93, patch: 1 }): Failed to run `"cargo" "metadata" "--format-version" "1" "--manifest-path" "c:\\Users\\nolyo\\www\\voice-tool\\src-tauri\\Cargo.toml" "--filter-platform" "x86_64-pc-windows-msvc"`: failed to interpret `cargo metadata`'s json: unknown variant `2024`, expected one of `2015`, `2018`, `2021` at line 1 column 537299: unknown variant `2024`, expected one of `2015`, `2018`, `2021` at line 1 column 537299
+
+mode de traduction/reecriture
+CI/CD

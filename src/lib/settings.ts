@@ -14,7 +14,7 @@ export interface AppSettings {
     // Transcription
     // Transcription
     transcription_provider: "OpenAI" | "Deepgram" | "Google" | "Local";
-    local_model_size: "tiny" | "base" | "small";
+    local_model_size: "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo";
     language: string;
     smart_formatting: boolean;
 
