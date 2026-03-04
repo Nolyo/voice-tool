@@ -4,9 +4,11 @@ use reqwest::Client;
 use std::cmp::min;
 use std::fs::{self, File};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_shell::ShellExt;
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
+
+use crate::AppState;
 
 /// Get the models directory, creating it if it doesn't exist
 pub fn get_models_dir() -> Result<PathBuf> {
@@ -61,7 +63,6 @@ pub async fn download_model<R: tauri::Runtime>(
     let model_filename = get_model_filename(&model_type);
     let target_path = get_model_path(&model_type)?;
 
-    // Check if duplicate download
     if target_path.exists() {
         return Ok(target_path);
     }
@@ -95,10 +96,7 @@ pub async fn download_model<R: tauri::Runtime>(
         let new = min(downloaded + (chunk.len() as u64), total_size);
         downloaded = new;
 
-        // Calculate percentage
         let percentage = (downloaded as f64 / total_size as f64) * 100.0;
-
-        // Emit progress
         let _ = app_handle.emit("model-download-progress", percentage);
     }
 
@@ -108,7 +106,8 @@ pub async fn download_model<R: tauri::Runtime>(
 
 pub async fn transcribe_local<R: tauri::Runtime>(
     app: &AppHandle<R>,
-    wav_path: &Path,
+    audio_samples: &[i16],
+    sample_rate: u32,
     model_type: &str,
     language: &str,
 ) -> Result<String> {
@@ -121,76 +120,107 @@ pub async fn transcribe_local<R: tauri::Runtime>(
         ));
     }
 
-    tracing::info!("Starting sidecar transcription...");
-    tracing::info!("WAV: {:?}", wav_path);
-    tracing::info!("Model: {:?}", model_path);
+    let state = app.state::<AppState>();
+    let mut cache = state.whisper.cache.lock().await;
 
-    // Call the sidecar "whisper-cli"
-    // Arguments for whisper.cpp main example (which we renamed to whisper-cli):
-    // -m model_path -f wav_path -otxt (output text to stdout/file) or just capture stdout
-    // Standard basic usage: main -m model.bin -f file.wav -nt (no timestamp)
+    // --- 1. Load or reuse context + state ---
+    if cache.context.is_none() || cache.loaded_model != model_type {
+        tracing::info!("Loading whisper model: {}", model_type);
 
-    let model_path_str = model_path.to_string_lossy();
-    let wav_path_str = wav_path.to_string_lossy();
+        // Drop state before context (order matters for safety)
+        cache.state = None;
+        cache.context = None;
 
-    // Extract ISO-639-1 language code (first 2 chars only)
-    // Converts "fr-fr" -> "fr", "en-US" -> "en", etc.
+        let path_str = model_path.to_string_lossy().to_string();
+        let ctx = WhisperContext::new_with_params(&path_str, WhisperContextParameters::default())
+            .map_err(|e| anyhow!("Failed to load whisper model: {:?}", e))?;
+
+        let whisper_state = ctx
+            .create_state()
+            .map_err(|e| anyhow!("Failed to create whisper state: {:?}", e))?;
+
+        cache.context = Some(ctx);
+        cache.state = Some(whisper_state);
+        cache.loaded_model = model_type.to_string();
+
+        tracing::info!("Whisper model loaded and state cached");
+    } else {
+        tracing::info!("Reusing cached whisper context + state");
+    }
+
+    // --- 2. Convert i16 → f32 ---
+    let audio_f32: Vec<f32> = audio_samples.iter().map(|&s| s as f32 / 32768.0).collect();
+
+    // --- 3. Resample to 16 kHz if needed ---
+    let audio_16k = if sample_rate != 16000 {
+        tracing::info!("Resampling audio from {} Hz to 16000 Hz", sample_rate);
+        resample_to_16k(&audio_f32, sample_rate)?
+    } else {
+        audio_f32
+    };
+
+    // --- 4. Run inference ---
+    let whisper_state = cache.state.as_mut().unwrap();
+
+    let n_threads = num_cpus::get_physical() as i32;
+    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+
     let lang_code = if language.len() >= 2 {
         &language[..2]
     } else {
         language
     };
+    params.set_language(Some(lang_code));
+    params.set_n_threads(n_threads);
+    params.set_print_realtime(false);
+    params.set_print_progress(false);
+    params.set_print_timestamps(false);
 
-    // Get the sidecar path to determine its directory
-    let sidecar_path = app
-        .path()
-        .resolve("binaries", tauri::path::BaseDirectory::Resource)?;
+    tracing::info!("Running whisper inference with {} threads", n_threads);
 
-    tracing::info!("Sidecar working directory: {:?}", sidecar_path);
+    whisper_state
+        .full(params, &audio_16k)
+        .map_err(|e| anyhow!("Whisper inference failed: {:?}", e))?;
 
-    let output = app
-        .shell()
-        .sidecar("whisper-cli")?
-        .current_dir(&sidecar_path) // Force working directory to binaries folder
-        .args([
-            "-m",
-            &model_path_str,
-            "-f",
-            &wav_path_str,
-            "--no-timestamps", // -nt
-            "--language",
-            lang_code,
-            "-np", // no-prints: only output transcription text
-        ])
-        .output()
-        .await?;
+    let n = whisper_state
+        .full_n_segments()
+        .map_err(|e| anyhow!("Failed to get segment count: {:?}", e))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-
-        tracing::error!("Sidecar failed with exit code: {:?}", output.status.code());
-        tracing::error!("stderr: {}", stderr);
-        tracing::error!("stdout: {}", stdout);
-
-        let error_msg = if stderr.is_empty() && stdout.is_empty() {
-            format!(
-                "Le sidecar whisper-cli a planté (code: {:?}). Vérifiez que les DLLs sont présentes.",
-                output.status.code()
-            )
-        } else {
-            format!("Whisper-cli error: {}{}", stderr, stdout)
-        };
-
-        return Err(anyhow!("{}", error_msg));
+    let mut text = String::new();
+    for i in 0..n {
+        let segment = whisper_state
+            .full_get_segment_text(i)
+            .map_err(|e| anyhow!("Failed to get segment {}: {:?}", i, e))?;
+        text.push_str(segment.trim());
+        text.push(' ');
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    let trimmed = stdout.trim().to_string();
+    let result = text.trim().to_string();
+    tracing::info!("Local transcription completed: {} characters", result.len());
+    Ok(result)
+}
 
-    tracing::info!("Sidecar output captured ({} chars)", trimmed.len());
-    tracing::info!("Sidecar stderr: {}", stderr);
+fn resample_to_16k(audio: &[f32], from_rate: u32) -> Result<Vec<f32>> {
+    use rubato::{
+        Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+    };
 
-    Ok(trimmed)
+    let params = SincInterpolationParameters {
+        sinc_len: 256,
+        f_cutoff: 0.95,
+        interpolation: SincInterpolationType::Linear,
+        oversampling_factor: 256,
+        window: WindowFunction::BlackmanHarris2,
+    };
+
+    let ratio = 16000.0 / from_rate as f64;
+    let mut resampler = SincFixedIn::<f32>::new(ratio, 2.0, params, audio.len(), 1)
+        .map_err(|e| anyhow!("Failed to create resampler: {:?}", e))?;
+
+    let waves_in = vec![audio.to_vec()];
+    let waves_out = resampler
+        .process(&waves_in, None)
+        .map_err(|e| anyhow!("Resampling failed: {:?}", e))?;
+
+    Ok(waves_out.into_iter().next().unwrap_or_default())
 }

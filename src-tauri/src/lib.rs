@@ -35,11 +35,23 @@ struct HotkeyConfig {
     open_window: Option<String>,
 }
 
+/// Holds a cached whisper context + state so state buffers are allocated once
+pub struct WhisperCache {
+    pub context: Option<whisper_rs::WhisperContext>,
+    pub state: Option<whisper_rs::WhisperState>,
+    pub loaded_model: String,
+}
+
+pub struct WhisperState {
+    pub cache: Arc<TokioMutex<WhisperCache>>,
+}
+
 /// Application state that holds the audio recorder, Deepgram streamer, and active hotkeys
 pub struct AppState {
     audio_recorder: Mutex<AudioRecorder>,
     deepgram_streamer: Arc<TokioMutex<DeepgramStreamer>>,
     hotkeys: Mutex<HotkeyConfig>,
+    pub whisper: WhisperState,
 }
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -746,7 +758,7 @@ async fn transcribe_audio(
 
     let transcription_result = if provider.as_deref() == Some("Local") {
         let model = local_model_size.unwrap_or_else(|| "base".to_string());
-        transcription_local::transcribe_local(&app_handle, &wav_path, &model, &language)
+        transcription_local::transcribe_local(&app_handle, &audio_samples, sample_rate, &model, &language)
             .await
             .map_err(|e| {
                 tracing::error!("Local transcription failed: {}", e);
@@ -924,7 +936,6 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -935,6 +946,13 @@ pub fn run() {
             audio_recorder: Mutex::new(AudioRecorder::new()),
             deepgram_streamer: Arc::new(TokioMutex::new(DeepgramStreamer::new())),
             hotkeys: Mutex::new(HotkeyConfig::default()),
+            whisper: WhisperState {
+                cache: Arc::new(TokioMutex::new(WhisperCache {
+                    context: None,
+                    state: None,
+                    loaded_model: String::new(),
+                })),
+            },
         })
         .invoke_handler(tauri::generate_handler![
             greet,

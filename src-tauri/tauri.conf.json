@@ -34,12 +34,6 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": true,
-    "externalBin": [
-      "binaries/whisper-cli"
-    ],
-    "resources": [
-      "binaries/*.dll"
-    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

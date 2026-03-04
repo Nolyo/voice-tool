@@ -50,10 +50,9 @@ hound = "3.5"
 # HTTP client for API calls
 reqwest = { version = "0.12", features = ["multipart", "json", "stream"] }
 
-# Local Transcription
-# whisper-rs removed due to build environment issues on target machine
-# Switching to Sidecar pattern (executing pre-compiled binary)
-tauri-plugin-shell = "2"
+# Local Transcription (native whisper-rs with model caching)
+whisper-rs = { version = "0.14", features = ["cuda"] }
+rubato = "0.15"
 tauri-plugin-fs = "2"
 
 # Keyboard simulation

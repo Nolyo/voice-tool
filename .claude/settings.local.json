@@ -18,7 +18,10 @@
       "Bash(dir:*)",
       "Bash(ldd:*)",
       "Bash(where:*)",
-      "Bash(./whisper-cli-x86_64-pc-windows-msvc.exe:*)"
+      "Bash(./whisper-cli-x86_64-pc-windows-msvc.exe:*)",
+      "Bash(winget install:*)",
+      "Bash(LIBCLANG_PATH=\"C:/Program Files/LLVM/bin\" cargo check:*)",
+      "Bash(export:*)"
     ],
     "deny": [
       "Bash(pnpm tauri dev:*)"

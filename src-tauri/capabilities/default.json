@@ -18,8 +18,7 @@
     "clipboard-manager:allow-write-text",
     "autostart:allow-enable",
     "autostart:allow-disable",
-    "autostart:allow-is-enabled",
-    "shell:allow-execute"
+    "autostart:allow-is-enabled"
   ],
   "platforms": [
     "windows",
