@@ -5,7 +5,7 @@ use std::cmp::min;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_shell::ShellExt;
 
 /// Get the models directory, creating it if it doesn't exist
@@ -110,12 +110,15 @@ pub async fn transcribe_local<R: tauri::Runtime>(
     app: &AppHandle<R>,
     wav_path: &Path,
     model_type: &str,
-    _language: &str,
+    language: &str,
 ) -> Result<String> {
     let model_path = get_model_path(model_type)?;
 
     if !model_path.exists() {
-        return Err(anyhow!("Model file not found: {:?}", model_path));
+        return Err(anyhow!(
+            "Modèle '{}' non téléchargé. Veuillez le télécharger depuis les paramètres (onglet API).",
+            model_type
+        ));
     }
 
     tracing::info!("Starting sidecar transcription...");
@@ -130,9 +133,25 @@ pub async fn transcribe_local<R: tauri::Runtime>(
     let model_path_str = model_path.to_string_lossy();
     let wav_path_str = wav_path.to_string_lossy();
 
+    // Extract ISO-639-1 language code (first 2 chars only)
+    // Converts "fr-fr" -> "fr", "en-US" -> "en", etc.
+    let lang_code = if language.len() >= 2 {
+        &language[..2]
+    } else {
+        language
+    };
+
+    // Get the sidecar path to determine its directory
+    let sidecar_path = app
+        .path()
+        .resolve("binaries", tauri::path::BaseDirectory::Resource)?;
+
+    tracing::info!("Sidecar working directory: {:?}", sidecar_path);
+
     let output = app
         .shell()
         .sidecar("whisper-cli")?
+        .current_dir(&sidecar_path) // Force working directory to binaries folder
         .args([
             "-m",
             &model_path_str,
@@ -140,21 +159,38 @@ pub async fn transcribe_local<R: tauri::Runtime>(
             &wav_path_str,
             "--no-timestamps", // -nt
             "--language",
-            "auto", // or pass lang
+            lang_code,
+            "-np", // no-prints: only output transcription text
         ])
         .output()
         .await?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        tracing::error!("Sidecar failed: {}", stderr);
-        return Err(anyhow!("Sidecar execution failed: {}", stderr));
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        tracing::error!("Sidecar failed with exit code: {:?}", output.status.code());
+        tracing::error!("stderr: {}", stderr);
+        tracing::error!("stdout: {}", stdout);
+
+        let error_msg = if stderr.is_empty() && stdout.is_empty() {
+            format!(
+                "Le sidecar whisper-cli a planté (code: {:?}). Vérifiez que les DLLs sont présentes.",
+                output.status.code()
+            )
+        } else {
+            format!("Whisper-cli error: {}{}", stderr, stdout)
+        };
+
+        return Err(anyhow!("{}", error_msg));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
     let trimmed = stdout.trim().to_string();
 
     tracing::info!("Sidecar output captured ({} chars)", trimmed.len());
+    tracing::info!("Sidecar stderr: {}", stderr);
 
     Ok(trimmed)
 }

@@ -15,7 +15,10 @@
       "WebFetch(domain:developers.deepgram.com)",
       "WebSearch",
       "Bash(pnpm tauri signer:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(ldd:*)",
+      "Bash(where:*)",
+      "Bash(./whisper-cli-x86_64-pc-windows-msvc.exe:*)"
     ],
     "deny": [
       "Bash(pnpm tauri dev:*)"

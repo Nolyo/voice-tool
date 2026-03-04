@@ -119,3 +119,6 @@ Dans ces cas, la mini window restait en état "idle" sans jamais se fermer.
 - RMS mesuré: 0.0095
 - Différence: 0.0005 (5% sous le seuil)
 - Le seuil est probablement trop strict
+
+
+Ajouter option video/audio transcription ?
