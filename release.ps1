@@ -94,6 +94,9 @@ $privateKeyContent = Get-Content $privateKey -Raw
 $env:TAURI_SIGNING_PRIVATE_KEY = $privateKeyContent.Trim()
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
 
+Write-Ok "Cleaning old bundle artifacts to avoid stale files"
+Get-ChildItem "src-tauri\target\release\bundle" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+
 pnpm tauri build
 if ($LASTEXITCODE -ne 0) { Write-Fail "Build failed (exit code $LASTEXITCODE)" }
 
@@ -113,16 +116,16 @@ $portableSrc = Join-Path $releaseDir "voice-tool.exe"
 if (-not (Test-Path $portableSrc)) { Write-Fail "Portable EXE not found: $portableSrc" }
 Write-Ok "Portable   : $portableSrc"
 
-$nsisExeSrc = Resolve-Glob "$bundleDir\nsis\voice-tool_*_x64-setup.exe"
-if (-not $nsisExeSrc) { Write-Fail "NSIS setup EXE not found in $bundleDir\nsis\" }
+$nsisExeSrc = Resolve-Glob "$bundleDir\nsis\voice-tool_${VERSION}_x64-setup.exe"
+if (-not $nsisExeSrc) { Write-Fail "NSIS setup EXE not found for version $VERSION in $bundleDir\nsis\" }
 Write-Ok "NSIS EXE   : $($nsisExeSrc.FullName)"
 
 $nsisSigPath = "$($nsisExeSrc.FullName).sig"
 if (-not (Test-Path $nsisSigPath)) { Write-Fail "NSIS updater SIG not found: $nsisSigPath" }
 Write-Ok "NSIS SIG   : $nsisSigPath"
 
-$msiSrc = Resolve-Glob "$bundleDir\msi\voice-tool_*_x64_*.msi"
-if (-not $msiSrc) { Write-Fail "MSI not found in $bundleDir\msi\" }
+$msiSrc = Resolve-Glob "$bundleDir\msi\voice-tool_${VERSION}_x64_*.msi"
+if (-not $msiSrc) { Write-Fail "MSI not found for version $VERSION in $bundleDir\msi\" }
 Write-Ok "MSI        : $($msiSrc.FullName)"
 
 # --- Step 6: Stage artifacts ---
@@ -164,7 +167,8 @@ $latestJson = [ordered]@{
 }
 
 $latestJsonPath = "$stagingDir\latest.json"
-$latestJson | ConvertTo-Json -Depth 5 | Set-Content $latestJsonPath -Encoding UTF8
+$jsonContent = $latestJson | ConvertTo-Json -Depth 5
+[System.IO.File]::WriteAllText($latestJsonPath, $jsonContent, [System.Text.UTF8Encoding]::new($false))
 Write-Ok "latest.json -> $latestJsonPath"
 Write-Ok "Download URL: $downloadUrl"
 
