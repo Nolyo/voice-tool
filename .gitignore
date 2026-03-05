@@ -25,3 +25,6 @@ dist-ssr
 
 # Tauri signing keys (keep private key secret!)
 src-tauri/private.key
+
+# Local release artifacts (built by release.ps1)
+artifacts/
