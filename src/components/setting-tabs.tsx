@@ -67,15 +67,6 @@ function buildShortcutFromEvent(event: KeyboardEvent): string | null {
   return parts.join("+");
 }
 
-function formatShortcutDisplay(value?: string) {
-  if (!value) return "Aucun";
-  return value
-    .split("+")
-    .map((token) => token.trim())
-    .filter(Boolean)
-    .join(" + ");
-}
-
 // ─── Section card ────────────────────────────────────────────────────────────
 
 interface SectionCardProps {
@@ -213,13 +204,12 @@ function HotkeyInput({
           {label}
         </p>
         <p
-          className={`text-xs mt-1 leading-snug transition-colors ${
-            error
-              ? "text-destructive"
-              : isListening
-                ? "text-primary"
-                : "text-muted-foreground"
-          }`}
+          className={`text-xs mt-1 leading-snug transition-colors ${error
+            ? "text-destructive"
+            : isListening
+              ? "text-primary"
+              : "text-muted-foreground"
+            }`}
         >
           {error
             ? error
@@ -243,11 +233,10 @@ function HotkeyInput({
           }}
           disabled={isSaving}
           title="Cliquer pour modifier"
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-all min-w-[88px] justify-center ${
-            isListening
-              ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20 cursor-default"
-              : "border-border/70 bg-muted/40 hover:border-primary/40 hover:bg-muted/70 cursor-pointer"
-          }`}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-all min-w-[88px] justify-center ${isListening
+            ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20 cursor-default"
+            : "border-border/70 bg-muted/40 hover:border-primary/40 hover:bg-muted/70 cursor-pointer"
+            }`}
         >
           {isSaving ? (
             <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
@@ -529,14 +518,14 @@ export function SettingTabs() {
                       updateSetting(
                         "local_model_size",
                         value as
-                          | "tiny"
-                          | "base"
-                          | "small"
-                          | "medium"
-                          | "large-v1"
-                          | "large-v2"
-                          | "large-v3"
-                          | "large-v3-turbo"
+                        | "tiny"
+                        | "base"
+                        | "small"
+                        | "medium"
+                        | "large-v1"
+                        | "large-v2"
+                        | "large-v3"
+                        | "large-v3-turbo"
                       )
                     }
                     disabled={isDownloadingModel}

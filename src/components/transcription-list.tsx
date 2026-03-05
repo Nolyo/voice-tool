@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Search, Copy, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,11 +127,10 @@ export function TranscriptionList({
                 <button
                   key={transcription.id}
                   onClick={() => onSelectTranscription(transcription)}
-                  className={`w-full text-left p-4 rounded-lg border transition-all hover:border-primary/50 hover:bg-accent/5 ${
-                    selectedId === transcription.id
+                  className={`w-full text-left p-4 rounded-lg border transition-all hover:border-primary/50 hover:bg-accent/5 ${selectedId === transcription.id
                       ? "border-primary bg-accent/10"
                       : "border-border"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
