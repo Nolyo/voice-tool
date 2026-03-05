@@ -3,6 +3,8 @@
 
 ## 🚀 Nouvelles Idées / Backlog
 
+rename du nom qui apparait dans windows voice-tool a garder ? 
+
 ### 6. Transcription de fichiers audio/vidéo
 **Idée:** Permettre d'importer et de transcrire des fichiers audio ou vidéo existants.
 **Actions:**

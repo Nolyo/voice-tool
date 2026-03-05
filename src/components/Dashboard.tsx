@@ -186,10 +186,10 @@ export default function Dashboard() {
 
         console.log("Transcription:", result.text);
 
-        // Calculate API cost (Whisper API: $0.006 per minute)
+        // Calculate API cost (Whisper API: $0.006 per minute, free for local)
         const durationSeconds = audioData.length / sampleRate;
         const durationMinutes = durationSeconds / 60;
-        const apiCost = durationMinutes * 0.006;
+        const apiCost = settings.transcription_provider === "Local" ? 0 : durationMinutes * 0.006;
 
         await handleTranscriptionFinal(
           result.text,
@@ -438,7 +438,7 @@ export default function Dashboard() {
   };
 
   const handleUpdateClick = () => {
-    setActiveTab("mises-a-jour");
+    setActiveTab("parametres");
   };
 
   return (

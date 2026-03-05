@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Store } from '@tauri-apps/plugin-store';
+import { invoke } from '@tauri-apps/api/core';
 
 export interface Transcription {
   id: string;
@@ -90,6 +91,14 @@ export function useTranscriptionHistory() {
   };
 
   const clearHistory = async () => {
+    const audioPaths = transcriptions
+      .map(t => t.audioPath)
+      .filter((p): p is string => !!p);
+
+    if (audioPaths.length > 0) {
+      await invoke("delete_recording_files", { paths: audioPaths });
+    }
+
     setTranscriptions([]);
     await saveHistory([]);
   };

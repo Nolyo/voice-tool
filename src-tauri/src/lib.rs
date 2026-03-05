@@ -968,6 +968,16 @@ fn paste_text_to_active_window(_text: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn delete_recording_files(paths: Vec<String>) -> Result<(), String> {
+    for path in paths {
+        if !path.is_empty() {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+    Ok(())
+}
+
 /// Create the mini visualizer window at startup (hidden by default)
 fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     use tauri::WebviewUrl;
@@ -1041,7 +1051,8 @@ pub fn run() {
             updater::is_updater_available,
             download_local_model,
             check_local_model_exists,
-            delete_local_model
+            delete_local_model,
+            delete_recording_files
         ])
         .setup(move |app| {
             // Enable logging to frontend

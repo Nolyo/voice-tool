@@ -140,9 +140,9 @@ export function TranscriptionDetails({
           </div>
           {transcription.apiCost !== undefined && (
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Coût de l'API</p>
+              <p className="text-xs text-muted-foreground mb-1">Coût</p>
               <p className="text-sm font-mono text-foreground">
-                ${transcription.apiCost.toFixed(4)} USD
+                {transcription.apiCost === 0 ? "Gratuit" : `$${transcription.apiCost.toFixed(4)} USD`}
               </p>
             </div>
           )}

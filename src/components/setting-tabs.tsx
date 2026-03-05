@@ -12,6 +12,8 @@ import {
   Check,
   Loader2,
   Trash2,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { Label } from "./ui/label";
 import { Progress } from "./ui/progress";
@@ -30,6 +32,7 @@ import { Input } from "./ui/input";
 import { useSettings } from "@/hooks/useSettings";
 import { useAudioDevices } from "@/hooks/useAudioDevices";
 import { ApiConfigDialog } from "./api-config-dialog";
+import { UpdaterTab } from "./updater-tab";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -80,13 +83,14 @@ interface SectionCardProps {
   title: string;
   subtitle: string;
   children: ReactNode;
+  iconBg?: string;
 }
 
-function SectionCard({ icon, title, subtitle, children }: SectionCardProps) {
+function SectionCard({ icon, title, subtitle, children, iconBg = "bg-primary/10" }: SectionCardProps) {
   return (
-    <div className="space-y-2.5">
-      <div className="flex items-center gap-2.5 px-0.5">
-        <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 px-0.5">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
           {icon}
         </div>
         <div>
@@ -105,6 +109,16 @@ function SectionCard({ icon, title, subtitle, children }: SectionCardProps) {
 
 function Divider() {
   return <div className="h-px bg-border" />;
+}
+
+// ─── Key badge ────────────────────────────────────────────────────────────────
+
+function KeyBadge({ token }: { token: string }) {
+  return (
+    <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-mono font-semibold bg-background border border-border rounded-md leading-none shadow-[0_2px_0_0_hsl(var(--border))]">
+      {token}
+    </span>
+  );
 }
 
 // ─── Hotkey input ─────────────────────────────────────────────────────────────
@@ -185,54 +199,88 @@ function HotkeyInput({
     }
   }, [defaultValue, onChange, value]);
 
+  const tokens = value
+    ? value.split("+").map((t) => t.trim()).filter(Boolean)
+    : [];
+  const isDefault =
+    !defaultValue || value.toLowerCase() === defaultValue.toLowerCase();
+
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-sm text-foreground">
-        {label}
-      </Label>
-      <div className="flex items-center gap-2">
-        <Button
+    <div className="flex items-center justify-between gap-4 py-3">
+      {/* Label + status line */}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-foreground leading-none">
+          {label}
+        </p>
+        <p
+          className={`text-xs mt-1 leading-snug transition-colors ${
+            error
+              ? "text-destructive"
+              : isListening
+                ? "text-primary"
+                : "text-muted-foreground"
+          }`}
+        >
+          {error
+            ? error
+            : isListening
+              ? allowEscape
+                ? "Appuyez sur une touche (Échap pour effacer)…"
+                : "Appuyez sur la combinaison… (Échap pour annuler)"
+              : description}
+        </p>
+      </div>
+
+      {/* Key display + reset */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button
           type="button"
           id={id}
-          variant={isListening ? "default" : "outline"}
           onClick={() => {
             if (isSaving) return;
             setError(null);
             setIsListening((prev) => !prev);
           }}
           disabled={isSaving}
-          className="flex-1 justify-start font-mono min-w-0"
+          title="Cliquer pour modifier"
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-all min-w-[88px] justify-center ${
+            isListening
+              ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20 cursor-default"
+              : "border-border/70 bg-muted/40 hover:border-primary/40 hover:bg-muted/70 cursor-pointer"
+          }`}
         >
-          {isListening
-            ? allowEscape
-              ? "Appuyez sur une touche..."
-              : "Appuyez sur une combinaison... (Échap pour annuler)"
-            : formatShortcutDisplay(value)}
-        </Button>
-        <Button
+          {isSaving ? (
+            <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+          ) : isListening ? (
+            <span className="text-[11px] text-primary font-medium animate-pulse whitespace-nowrap">
+              Appuyez…
+            </span>
+          ) : tokens.length > 0 ? (
+            tokens.map((token, i) => (
+              <span key={i} className="flex items-center gap-1">
+                {i > 0 && (
+                  <span className="text-muted-foreground/50 text-[10px] font-bold leading-none">
+                    +
+                  </span>
+                )}
+                <KeyBadge token={token} />
+              </span>
+            ))
+          ) : (
+            <span className="text-xs text-muted-foreground italic">—</span>
+          )}
+        </button>
+
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
           onClick={handleReset}
-          disabled={
-            isSaving || value.toLowerCase() === defaultValue.toLowerCase()
-          }
-          className="shrink-0"
+          disabled={isSaving || isDefault}
+          title="Remettre par défaut"
+          className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
         >
-          Réinitialiser
-        </Button>
+          <RotateCcw className="w-3 h-3" />
+        </button>
       </div>
-      {error ? (
-        <p className="text-xs text-destructive">{error}</p>
-      ) : isListening ? (
-        <p className="text-xs text-muted-foreground">
-          {allowEscape
-            ? "Appuyez sur la touche souhaitée."
-            : "Appuyez sur la combinaison souhaitée, ou Échap pour annuler."}
-        </p>
-      ) : description ? (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      ) : null}
     </div>
   );
 }
@@ -379,62 +427,101 @@ export function SettingTabs() {
   }
 
   return (
-    <div className="space-y-5 pb-6">
+    <div className="space-y-8 pb-6">
       {/* ── Transcription ── */}
       <SectionCard
-        icon={<Settings className="w-3.5 h-3.5 text-primary" />}
+        icon={<Settings className="w-3.5 h-3.5 text-violet-500" />}
+        iconBg="bg-violet-500/10"
         title="Transcription"
         subtitle="Service de reconnaissance vocale"
       >
         <div className="space-y-4">
-          {/* Provider */}
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="service-provider"
-              className="text-sm font-medium text-foreground"
-            >
-              Fournisseur
-            </Label>
-            <Select
-              value={settings.transcription_provider}
-              onValueChange={(value) =>
-                updateSetting(
-                  "transcription_provider",
-                  value as "OpenAI" | "Deepgram" | "Google"
-                )
-              }
-            >
-              <SelectTrigger
-                id="service-provider"
-                className="h-9 bg-background/50 w-48"
+          {/* Provider + Language on the same row */}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="service-provider"
+                className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
-                <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
-                <SelectItem value="Local">Local (Offline)</SelectItem>
-              </SelectContent>
-            </Select>
+                Fournisseur
+              </Label>
+              <Select
+                value={settings.transcription_provider}
+                onValueChange={(value) =>
+                  updateSetting(
+                    "transcription_provider",
+                    value as "OpenAI" | "Deepgram" | "Google"
+                  )
+                }
+              >
+                <SelectTrigger
+                  id="service-provider"
+                  className="h-9 bg-background/50 w-48"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
+                  <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
+                  <SelectItem value="Local">Local (Offline)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="language"
+                className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+              >
+                Langue
+              </Label>
+              <Select
+                value={settings.language}
+                onValueChange={(value) => updateSetting("language", value)}
+              >
+                <SelectTrigger
+                  id="language"
+                  className="h-9 bg-background/50 w-36"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fr-FR">Français</SelectItem>
+                  <SelectItem value="en-US">English</SelectItem>
+                  <SelectItem value="es-ES">Español</SelectItem>
+                  <SelectItem value="de-DE">Deutsch</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
+          {/* Warning for paid providers */}
+          {(settings.transcription_provider === "OpenAI" || settings.transcription_provider === "Deepgram") && (
+            <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-sm text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>Ce service est payant à l'usage. Utilisez le mode <strong>Local (Offline)</strong> pour une transcription gratuite et privée.</span>
+            </div>
+          )}
+
+          {/* API config for paid providers */}
+          {settings.transcription_provider !== "Local" && (
+            <>
+              <Divider />
+              <ApiConfigDialog />
+            </>
+          )}
 
           {/* Local model section */}
           {settings.transcription_provider === "Local" && (
             <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/60 animate-in fade-in slide-in-from-top-1">
-              <div className="flex items-center gap-2">
-                <Download className="w-3.5 h-3.5 text-primary" />
-                <h4 className="font-medium text-sm">
-                  Modèle Local (Whisper.cpp)
-                </h4>
-              </div>
-
+              {/* Model size + action button on same row */}
               <div className="flex items-end gap-3">
                 <div className="space-y-1.5 flex-1 min-w-0">
                   <Label
                     htmlFor="model-size"
-                    className="text-xs font-medium text-foreground"
+                    className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
                   >
-                    Taille du modèle
+                    Modèle Whisper
                   </Label>
                   <Select
                     value={settings.local_model_size}
@@ -468,10 +555,6 @@ export function SettingTabs() {
                       <SelectItem value="large-v3-turbo">Large v3 Turbo (1.6 GB) – Meilleur + Rapide ⭐</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    "Base" est recommandé pour les configurations plus
-                    anciennes.
-                  </p>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -484,7 +567,7 @@ export function SettingTabs() {
                         disabled
                       >
                         <Check className="w-3.5 h-3.5" />
-                        Modèle installé
+                        Installé
                       </Button>
                       <Button
                         variant="outline"
@@ -523,43 +606,13 @@ export function SettingTabs() {
               )}
             </div>
           )}
-
-          {/* Language */}
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="language"
-              className="text-sm font-medium text-foreground"
-            >
-              Langue
-            </Label>
-            <Select
-              value={settings.language}
-              onValueChange={(value) => updateSetting("language", value)}
-            >
-              <SelectTrigger
-                id="language"
-                className="h-9 bg-background/50 w-36"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fr-FR">Français</SelectItem>
-                <SelectItem value="en-US">English</SelectItem>
-                <SelectItem value="es-ES">Español</SelectItem>
-                <SelectItem value="de-DE">Deutsch</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Divider />
-
-          <ApiConfigDialog />
         </div>
       </SectionCard>
 
       {/* ── Audio ── */}
       <SectionCard
-        icon={<Mic className="w-3.5 h-3.5 text-primary" />}
+        icon={<Mic className="w-3.5 h-3.5 text-blue-500" />}
+        iconBg="bg-blue-500/10"
         title="Audio"
         subtitle="Configuration de l'enregistrement et des sons"
       >
@@ -718,8 +771,9 @@ export function SettingTabs() {
       {/* ── Texte ── */}
       <SectionCard
         icon={
-          <span className="text-xs font-bold text-primary leading-none">T</span>
+          <span className="text-xs font-bold text-emerald-500 leading-none">T</span>
         }
+        iconBg="bg-emerald-500/10"
         title="Texte"
         subtitle="Formatage et insertion automatique"
       >
@@ -772,7 +826,8 @@ export function SettingTabs() {
 
       {/* ── Système ── */}
       <SectionCard
-        icon={<Settings className="w-3.5 h-3.5 text-primary" />}
+        icon={<Settings className="w-3.5 h-3.5 text-orange-500" />}
+        iconBg="bg-orange-500/10"
         title="Système"
         subtitle="Démarrage et gestion des fichiers"
       >
@@ -893,45 +948,20 @@ export function SettingTabs() {
         </div>
       </SectionCard>
 
-      {/* ── Mini fenêtre ── */}
-      <SectionCard
-        icon={
-          <span className="text-xs font-bold text-primary leading-none">⬚</span>
-        }
-        title="Mini fenêtre"
-        subtitle="Visualiseur d'enregistrement flottant"
-      >
-        <ul className="text-xs text-muted-foreground space-y-1.5">
-          <li className="flex items-center gap-2">
-            <span className="text-red-400">●</span> Enregistrement en cours
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="animate-spin inline-block">↻</span> Envoi de
-            l'audio...
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="text-green-400">✓</span> Transcription réussie
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="text-red-400">✗</span> Erreur (avec message
-            détaillé)
-          </li>
-        </ul>
-      </SectionCard>
-
       {/* ── Raccourcis clavier ── */}
       <SectionCard
-        icon={<Keyboard className="w-3.5 h-3.5 text-primary" />}
+        icon={<Keyboard className="w-3.5 h-3.5 text-rose-500" />}
+        iconBg="bg-rose-500/10"
         title="Raccourcis clavier"
-        subtitle="Contrôle global de l'enregistrement"
+        subtitle="Cliquez sur un raccourci pour le modifier"
       >
-        <div className="space-y-5">
+        <div className="divide-y divide-border/50">
           <HotkeyInput
             id="shortcut-record"
             label="Toggle enregistrement"
             value={settings.record_hotkey}
             defaultValue={DEFAULT_SETTINGS.settings.record_hotkey}
-            description="Démarrer et arrêter l'enregistrement avec le même raccourci"
+            description="Démarrer et arrêter l'enregistrement"
             onChange={(shortcut) =>
               handleHotkeyChange("record_hotkey", shortcut)
             }
@@ -941,7 +971,7 @@ export function SettingTabs() {
             label="Push-to-talk"
             value={settings.ptt_hotkey}
             defaultValue={DEFAULT_SETTINGS.settings.ptt_hotkey}
-            description="Enregistrer tant que le raccourci est maintenu"
+            description="Maintenir pour enregistrer, relâcher pour transcrire"
             onChange={(shortcut) =>
               handleHotkeyChange("ptt_hotkey", shortcut)
             }
@@ -961,25 +991,23 @@ export function SettingTabs() {
             label="Annuler l'enregistrement"
             value={settings.cancel_hotkey}
             defaultValue={DEFAULT_SETTINGS.settings.cancel_hotkey}
-            description="Arrête et jette l'audio sans lancer la transcription"
+            description="Stoppe l'enregistrement sans transcrire"
             allowEscape={true}
             onChange={(shortcut) =>
               handleHotkeyChange("cancel_hotkey", shortcut)
             }
           />
-
-          <div className="p-3 rounded-lg bg-muted/30 border border-border/60">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              <span className="font-medium text-foreground">
-                Modificateurs :
-              </span>{" "}
-              Ctrl, Alt, Shift, Cmd (Mac)
-              {"  ·  "}
-              <span className="font-medium text-foreground">Exemples :</span>{" "}
-              Ctrl+Shift+R, F1–F12, Ctrl+Space
-            </p>
-          </div>
         </div>
+      </SectionCard>
+
+      {/* ── Mises à jour ── */}
+      <SectionCard
+        icon={<RefreshCw className="w-3.5 h-3.5 text-sky-500" />}
+        iconBg="bg-sky-500/10"
+        title="Mises à jour"
+        subtitle="Vérification et installation des nouvelles versions"
+      >
+        <UpdaterTab />
       </SectionCard>
 
       {/* Exit */}
