@@ -1,7 +1,18 @@
-﻿"use client";
+"use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Mic, Settings, Minus, Plus, Keyboard, RefreshCw, Download, Check, Loader2, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  Mic,
+  Settings,
+  Minus,
+  Plus,
+  Keyboard,
+  RefreshCw,
+  Download,
+  Check,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import { Label } from "./ui/label";
 import { Progress } from "./ui/progress";
 import { toast } from "sonner";
@@ -32,56 +43,71 @@ function normalizeKey(key: string): string | null {
   if (!key || key === "Unidentified" || key.toLowerCase() === "dead") {
     return null;
   }
-
-  if (key === " ") {
-    return "Space";
-  }
-
-  if (key.length === 1) {
-    return key.toUpperCase();
-  }
-
+  if (key === " ") return "Space";
+  if (key.length === 1) return key.toUpperCase();
   return key;
 }
 
 function buildShortcutFromEvent(event: KeyboardEvent): string | null {
-  if (MODIFIER_KEYS.has(event.key)) {
-    return null;
-  }
+  if (MODIFIER_KEYS.has(event.key)) return null;
 
   const parts: string[] = [];
-  if (event.ctrlKey) {
-    parts.push("Ctrl");
-  }
-  if (event.altKey) {
-    parts.push("Alt");
-  }
-  if (event.shiftKey) {
-    parts.push("Shift");
-  }
-  if (event.metaKey) {
-    parts.push(isMacPlatform() ? "Cmd" : "Super");
-  }
+  if (event.ctrlKey) parts.push("Ctrl");
+  if (event.altKey) parts.push("Alt");
+  if (event.shiftKey) parts.push("Shift");
+  if (event.metaKey) parts.push(isMacPlatform() ? "Cmd" : "Super");
 
   const key = normalizeKey(event.key);
-  if (!key) {
-    return null;
-  }
+  if (!key) return null;
 
   parts.push(key);
   return parts.join("+");
 }
 
 function formatShortcutDisplay(value?: string) {
-  if (!value) {
-    return "Aucun";
-  }
+  if (!value) return "Aucun";
   return value
     .split("+")
     .map((token) => token.trim())
     .filter(Boolean)
     .join(" + ");
 }
+
+// ─── Section card ────────────────────────────────────────────────────────────
+
+interface SectionCardProps {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+}
+
+function SectionCard({ icon, title, subtitle, children }: SectionCardProps) {
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2.5 px-0.5">
+        <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+          {icon}
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-foreground leading-tight">
+            {title}
+          </h3>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+      <div className="rounded-xl border border-border bg-card p-5">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Divider() {
+  return <div className="h-px bg-border" />;
+}
+
+// ─── Hotkey input ─────────────────────────────────────────────────────────────
 
 type HotkeyInputProps = {
   id: string;
@@ -107,9 +133,7 @@ function HotkeyInput({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isListening) {
-      return;
-    }
+    if (!isListening) return;
 
     const handler = async (event: KeyboardEvent) => {
       event.preventDefault();
@@ -122,9 +146,7 @@ function HotkeyInput({
       }
 
       const shortcut = buildShortcutFromEvent(event);
-      if (!shortcut) {
-        return;
-      }
+      if (!shortcut) return;
 
       if (value && value.toLowerCase() === shortcut.toLowerCase()) {
         setIsListening(false);
@@ -137,8 +159,7 @@ function HotkeyInput({
         await onChange(shortcut);
         setError(null);
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        setError(message);
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
         setIsSaving(false);
         setIsListening(false);
@@ -146,22 +167,18 @@ function HotkeyInput({
     };
 
     window.addEventListener("keydown", handler, true);
-    return () => {
-      window.removeEventListener("keydown", handler, true);
-    };
-  }, [isListening, onChange, value]);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [isListening, onChange, value, allowEscape]);
 
   const handleReset = useCallback(async () => {
-    if (!defaultValue || value.toLowerCase() === defaultValue.toLowerCase()) {
+    if (!defaultValue || value.toLowerCase() === defaultValue.toLowerCase())
       return;
-    }
     setIsSaving(true);
     try {
       await onChange(defaultValue);
       setError(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsSaving(false);
       setIsListening(false);
@@ -169,7 +186,7 @@ function HotkeyInput({
   }, [defaultValue, onChange, value]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <Label htmlFor={id} className="text-sm text-foreground">
         {label}
       </Label>
@@ -200,7 +217,7 @@ function HotkeyInput({
           disabled={
             isSaving || value.toLowerCase() === defaultValue.toLowerCase()
           }
-          className="flex-shrink-0"
+          className="shrink-0"
         >
           Réinitialiser
         </Button>
@@ -220,6 +237,8 @@ function HotkeyInput({
   );
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function SettingTabs() {
   const { settings, isLoaded, updateSetting } = useSettings();
   const {
@@ -237,14 +256,12 @@ export function SettingTabs() {
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
   const [isCheckingModel, setIsCheckingModel] = useState(false);
 
-  // Check if model exists
   const checkModelStatus = useCallback(async () => {
     if (settings.transcription_provider !== "Local") return;
-
     setIsCheckingModel(true);
     try {
       const exists = await invoke<boolean>("check_local_model_exists", {
-        model: settings.local_model_size || "base"
+        model: settings.local_model_size || "base",
       });
       setIsModelDownloaded(exists);
     } catch (e) {
@@ -258,19 +275,15 @@ export function SettingTabs() {
     checkModelStatus();
   }, [checkModelStatus]);
 
-  // Listen for download progress
   useEffect(() => {
     let unlisten: (() => void) | undefined;
-
     const setupListener = async () => {
       const u = await listen<number>("model-download-progress", (event) => {
         setDownloadProgress(event.payload);
       });
       unlisten = u;
     };
-
     setupListener();
-
     return () => {
       if (unlisten) unlisten();
     };
@@ -280,8 +293,12 @@ export function SettingTabs() {
     setIsDownloadingModel(true);
     setDownloadProgress(0);
     try {
-      await invoke("download_local_model", { model: settings.local_model_size });
-      toast.success(`Modèle ${settings.local_model_size} téléchargé avec succès !`);
+      await invoke("download_local_model", {
+        model: settings.local_model_size,
+      });
+      toast.success(
+        `Modèle ${settings.local_model_size} téléchargé avec succès !`
+      );
       setIsModelDownloaded(true);
     } catch (error) {
       console.error("Download failed:", error);
@@ -303,7 +320,6 @@ export function SettingTabs() {
     }
   };
 
-  // Load autostart state from registry on mount
   useEffect(() => {
     const loadAutostartState = async () => {
       try {
@@ -318,7 +334,11 @@ export function SettingTabs() {
 
   const handleHotkeyChange = useCallback(
     async (
-      key: "record_hotkey" | "ptt_hotkey" | "open_window_hotkey" | "cancel_hotkey",
+      key:
+        | "record_hotkey"
+        | "ptt_hotkey"
+        | "open_window_hotkey"
+        | "cancel_hotkey",
       shortcut: string
     ) => {
       const normalized = shortcut
@@ -327,17 +347,11 @@ export function SettingTabs() {
         .filter(Boolean)
         .join("+");
 
-      if (!normalized) {
-        throw new Error("Le raccourci ne peut pas être vide.");
-      }
+      if (!normalized) throw new Error("Le raccourci ne peut pas être vide.");
 
       const currentValue = settings[key];
-      if (
-        currentValue &&
-        currentValue.toLowerCase() === normalized.toLowerCase()
-      ) {
+      if (currentValue && currentValue.toLowerCase() === normalized.toLowerCase())
         return;
-      }
 
       await invoke("update_hotkeys", {
         recordHotkey:
@@ -363,187 +377,195 @@ export function SettingTabs() {
       </div>
     );
   }
+
   return (
-    <div className="space-y-4 pb-6">
-      {/* Transcription Service Card */}
-      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
-        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
-              <Settings className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-foreground">
-                Transcription
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Service de reconnaissance vocale
-              </p>
-            </div>
+    <div className="space-y-5 pb-6">
+      {/* ── Transcription ── */}
+      <SectionCard
+        icon={<Settings className="w-3.5 h-3.5 text-primary" />}
+        title="Transcription"
+        subtitle="Service de reconnaissance vocale"
+      >
+        <div className="space-y-4">
+          {/* Provider */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="service-provider"
+              className="text-sm font-medium text-foreground"
+            >
+              Fournisseur
+            </Label>
+            <Select
+              value={settings.transcription_provider}
+              onValueChange={(value) =>
+                updateSetting(
+                  "transcription_provider",
+                  value as "OpenAI" | "Deepgram" | "Google"
+                )
+              }
+            >
+              <SelectTrigger
+                id="service-provider"
+                className="h-9 bg-background/50 w-48"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
+                <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
+                <SelectItem value="Local">Local (Offline)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </div>
 
-        <div className="p-5 space-y-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2.5">
-              <Label
-                htmlFor="service-provider"
-                className="text-sm font-medium text-foreground"
-              >
-                Fournisseur
-              </Label>
-              <Select
-                value={settings.transcription_provider}
-                onValueChange={(value) =>
-                  updateSetting(
-                    "transcription_provider",
-                    value as "OpenAI" | "Deepgram" | "Google"
-                  )
-                }
-              >
-                <SelectTrigger
-                  id="service-provider"
-                  className="h-10 bg-background/50"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
-                  {/* <SelectItem value="Google">Google Speech-to-Text</SelectItem> */}
-                  <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
-                  <SelectItem value="Local">Local (Offline)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {settings.transcription_provider === "Local" && (
-              <div className="space-y-4 col-span-2 p-4 rounded-lg bg-muted/30 border border-border/50 animate-in fade-in slide-in-from-top-2">
-                <div className="flex items-center gap-2">
-                  <Download className="w-4 h-4 text-primary" />
-                  <h4 className="font-medium text-sm">Modèle Local (Whisper.cpp)</h4>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2.5">
-                    <Label htmlFor="model-size" className="text-sm font-medium text-foreground">
-                      Taille du modèle
-                    </Label>
-                    <Select
-                      value={settings.local_model_size}
-                      onValueChange={(value) => updateSetting("local_model_size", value as "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo")}
-                      disabled={isDownloadingModel}
-                    >
-                      <SelectTrigger id="model-size" className="h-10 bg-background/50">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="tiny">Tiny (39 MB) - Très Rapide</SelectItem>
-                        <SelectItem value="base">Base (74 MB) - Recommandé</SelectItem>
-                        <SelectItem value="small">Small (244 MB) - Précis</SelectItem>
-                        <SelectItem value="medium">Medium (1.5 GB) - Très Précis</SelectItem>
-                        <SelectItem value="large-v1">Large v1 (2.9 GB) - Excellent</SelectItem>
-                        <SelectItem value="large-v2">Large v2 (2.9 GB) - Excellent</SelectItem>
-                        <SelectItem value="large-v3">Large v3 (2.9 GB) - Meilleur</SelectItem>
-                        <SelectItem value="large-v3-turbo">Large v3 Turbo (1.6 GB) - Meilleur + Rapide ⭐</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      "Base" est recommandé pour les configurations plus anciennes.
-                    </p>
-                  </div>
-
-                  <div className="flex items-end gap-2">
-                    {isModelDownloaded ? (
-                      <>
-                        <Button variant="outline" className="flex-1 text-green-500 border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:text-green-600" disabled>
-                          <Check className="w-4 h-4 mr-2" />
-                          Modèle installé
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={handleDeleteModel}
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
-                          title="Supprimer le modèle"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        onClick={handleDownloadModel}
-                        disabled={isDownloadingModel || isCheckingModel}
-                        className="w-full"
-                      >
-                        {isDownloadingModel ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Téléchargement... {Math.round(downloadProgress)}%
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-4 h-4 mr-2" />
-                            Télécharger le modèle
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {isDownloadingModel && (
-                  <Progress value={downloadProgress} className="h-2" />
-                )}
+          {/* Local model section */}
+          {settings.transcription_provider === "Local" && (
+            <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/60 animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center gap-2">
+                <Download className="w-3.5 h-3.5 text-primary" />
+                <h4 className="font-medium text-sm">
+                  Modèle Local (Whisper.cpp)
+                </h4>
               </div>
-            )}
 
-            <div className="space-y-2.5">
-              <Label
-                htmlFor="language"
-                className="text-sm font-medium text-foreground"
-              >
-                Langue
-              </Label>
-              <Select
-                value={settings.language}
-                onValueChange={(value) => updateSetting("language", value)}
-              >
-                <SelectTrigger id="language" className="h-10 bg-background/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fr-FR">Français</SelectItem>
-                  <SelectItem value="en-US">English</SelectItem>
-                  <SelectItem value="es-ES">Español</SelectItem>
-                  <SelectItem value="de-DE">Deutsch</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-end gap-3">
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <Label
+                    htmlFor="model-size"
+                    className="text-xs font-medium text-foreground"
+                  >
+                    Taille du modèle
+                  </Label>
+                  <Select
+                    value={settings.local_model_size}
+                    onValueChange={(value) =>
+                      updateSetting(
+                        "local_model_size",
+                        value as
+                          | "tiny"
+                          | "base"
+                          | "small"
+                          | "medium"
+                          | "large-v1"
+                          | "large-v2"
+                          | "large-v3"
+                          | "large-v3-turbo"
+                      )
+                    }
+                    disabled={isDownloadingModel}
+                  >
+                    <SelectTrigger id="model-size" className="h-9 bg-background/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tiny">Tiny (39 MB) – Très Rapide</SelectItem>
+                      <SelectItem value="base">Base (74 MB) – Recommandé</SelectItem>
+                      <SelectItem value="small">Small (244 MB) – Précis</SelectItem>
+                      <SelectItem value="medium">Medium (1.5 GB) – Très Précis</SelectItem>
+                      <SelectItem value="large-v1">Large v1 (2.9 GB) – Excellent</SelectItem>
+                      <SelectItem value="large-v2">Large v2 (2.9 GB) – Excellent</SelectItem>
+                      <SelectItem value="large-v3">Large v3 (2.9 GB) – Meilleur</SelectItem>
+                      <SelectItem value="large-v3-turbo">Large v3 Turbo (1.6 GB) – Meilleur + Rapide ⭐</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    "Base" est recommandé pour les configurations plus
+                    anciennes.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {isModelDownloaded ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-green-500 border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:text-green-600"
+                        disabled
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Modèle installé
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleDeleteModel}
+                        className="h-9 w-9 text-destructive hover:bg-destructive/10 border-destructive/20"
+                        title="Supprimer le modèle"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      onClick={handleDownloadModel}
+                      disabled={isDownloadingModel || isCheckingModel}
+                      size="sm"
+                    >
+                      {isDownloadingModel ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          {Math.round(downloadProgress)}%
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-3.5 h-3.5" />
+                          Télécharger
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {isDownloadingModel && (
+                <Progress value={downloadProgress} className="h-1.5" />
+              )}
             </div>
+          )}
+
+          {/* Language */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="language"
+              className="text-sm font-medium text-foreground"
+            >
+              Langue
+            </Label>
+            <Select
+              value={settings.language}
+              onValueChange={(value) => updateSetting("language", value)}
+            >
+              <SelectTrigger
+                id="language"
+                className="h-9 bg-background/50 w-36"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fr-FR">Français</SelectItem>
+                <SelectItem value="en-US">English</SelectItem>
+                <SelectItem value="es-ES">Español</SelectItem>
+                <SelectItem value="de-DE">Deutsch</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          <Divider />
 
           <ApiConfigDialog />
         </div>
-      </div>
+      </SectionCard>
 
-      {/* Audio Card */}
-      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
-        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
-              <Mic className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-foreground">Audio</h3>
-              <p className="text-xs text-muted-foreground">
-                Configuration de l'enregistrement et des sons
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 space-y-5">
-          {/* Microphone Selection */}
-          <div className="space-y-2.5">
+      {/* ── Audio ── */}
+      <SectionCard
+        icon={<Mic className="w-3.5 h-3.5 text-primary" />}
+        title="Audio"
+        subtitle="Configuration de l'enregistrement et des sons"
+      >
+        <div className="space-y-5">
+          {/* Microphone */}
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label
                 htmlFor="microphone"
@@ -556,11 +578,10 @@ export function SettingTabs() {
                 size="sm"
                 onClick={refresh}
                 disabled={devicesLoading}
-                className="h-7 px-2.5 -mr-2 hover:bg-primary/10"
+                className="h-7 px-2 -mr-1"
               >
                 <RefreshCw
-                  className={`w-3.5 h-3.5 ${devicesLoading ? "animate-spin" : ""
-                    }`}
+                  className={`w-3.5 h-3.5 ${devicesLoading ? "animate-spin" : ""}`}
                 />
               </Button>
             </div>
@@ -574,7 +595,7 @@ export function SettingTabs() {
               }
               disabled={devicesLoading || !!devicesError}
             >
-              <SelectTrigger id="microphone" className="h-10 bg-background/50">
+              <SelectTrigger id="microphone" className="h-9 bg-background/50">
                 <SelectValue
                   placeholder={
                     devicesLoading
@@ -592,7 +613,8 @@ export function SettingTabs() {
                     key={device.index}
                     value={device.index.toString()}
                   >
-                    {device.name} {device.is_default ? "(par défaut)" : ""}
+                    {device.name}{" "}
+                    {device.is_default ? "(par défaut)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -604,8 +626,8 @@ export function SettingTabs() {
             )}
           </div>
 
-          {/* Silence Threshold */}
-          <div className="space-y-2.5 p-4 rounded-lg bg-muted/30 border border-border/50">
+          {/* Silence threshold */}
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label
                 htmlFor="silence-threshold"
@@ -625,20 +647,25 @@ export function SettingTabs() {
               step="0.001"
               value={settings.silence_threshold}
               onChange={(e) =>
-                updateSetting("silence_threshold", parseFloat(e.target.value))
+                updateSetting(
+                  "silence_threshold",
+                  parseFloat(e.target.value)
+                )
               }
-              className="w-full h-2.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-primary/20 [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110"
+              className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
             />
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Les enregistrements en dessous de ce seuil seront considérés comme
-              silence
+            <p className="text-xs text-muted-foreground">
+              Les enregistrements en dessous de ce seuil seront considérés
+              comme silence
             </p>
           </div>
 
-          {/* Audio Options */}
-          <div className="space-y-3 pt-1">
+          <Divider />
+
+          {/* Audio options */}
+          <div className="space-y-1">
             <div
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+              className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
               onClick={() =>
                 updateSetting("enable_sounds", !settings.enable_sounds)
               }
@@ -659,7 +686,7 @@ export function SettingTabs() {
             </div>
 
             <div
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+              className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
               onClick={() =>
                 updateSetting(
                   "enable_history_audio_preview",
@@ -686,27 +713,19 @@ export function SettingTabs() {
             </div>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
-      {/* Text Settings Card */}
-      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
-        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
-              <span className="text-lg font-bold text-primary">T</span>
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-foreground">Texte</h3>
-              <p className="text-xs text-muted-foreground">
-                Formatage et insertion automatique
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 space-y-3">
+      {/* ── Texte ── */}
+      <SectionCard
+        icon={
+          <span className="text-xs font-bold text-primary leading-none">T</span>
+        }
+        title="Texte"
+        subtitle="Formatage et insertion automatique"
+      >
+        <div className="space-y-1">
           <div
-            className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+            className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
             onClick={() =>
               updateSetting("paste_at_cursor", !settings.paste_at_cursor)
             }
@@ -728,7 +747,7 @@ export function SettingTabs() {
           </div>
 
           <div
-            className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+            className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
             onClick={() =>
               updateSetting("smart_formatting", !settings.smart_formatting)
             }
@@ -749,29 +768,18 @@ export function SettingTabs() {
             </Label>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
-      {/* System Card */}
-      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
-        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
-              <Settings className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-foreground">
-                Système
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Démarrage et gestion des fichiers
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 space-y-5">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
+      {/* ── Système ── */}
+      <SectionCard
+        icon={<Settings className="w-3.5 h-3.5 text-primary" />}
+        title="Système"
+        subtitle="Démarrage et gestion des fichiers"
+      >
+        <div className="space-y-5">
+          {/* Autostart */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors">
               <Checkbox
                 id="auto-start"
                 checked={autoStartEnabled}
@@ -799,7 +807,7 @@ export function SettingTabs() {
               >
                 Démarrer avec Windows
                 {isUpdatingAutostart && (
-                  <span className="text-muted-foreground ml-1">
+                  <span className="text-muted-foreground ml-1 text-xs">
                     (mise à jour...)
                   </span>
                 )}
@@ -807,12 +815,15 @@ export function SettingTabs() {
             </div>
 
             {autoStartEnabled && (
-              <div className="flex items-center gap-3 p-3 pl-12 rounded-lg hover:bg-muted/30 transition-colors">
+              <div className="flex items-center gap-3 p-2.5 pl-10 rounded-lg hover:bg-muted/30 transition-colors">
                 <Checkbox
                   id="start-minimized"
                   checked={settings.start_minimized_on_boot}
                   onCheckedChange={(checked) =>
-                    updateSetting("start_minimized_on_boot", checked as boolean)
+                    updateSetting(
+                      "start_minimized_on_boot",
+                      checked as boolean
+                    )
                   }
                 />
                 <Label
@@ -825,14 +836,17 @@ export function SettingTabs() {
             )}
           </div>
 
-          <div className="p-4 rounded-lg bg-muted/30 border border-border/50 space-y-2.5">
+          <Divider />
+
+          {/* Keep recordings */}
+          <div className="space-y-1.5">
             <Label
               htmlFor="keep-recordings"
               className="text-sm font-medium text-foreground"
             >
               Enregistrements conservés (WAV)
             </Label>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
@@ -842,9 +856,9 @@ export function SettingTabs() {
                     Math.max(0, settings.recordings_keep_last - 1)
                   )
                 }
-                className="h-10 w-10 shrink-0"
+                className="h-9 w-9 shrink-0"
               >
-                <Minus className="w-4 h-4" />
+                <Minus className="w-3.5 h-3.5" />
               </Button>
               <Input
                 id="keep-recordings"
@@ -856,7 +870,7 @@ export function SettingTabs() {
                     Number.parseInt(e.target.value) || 0
                   )
                 }
-                className="h-10 text-center font-mono text-base bg-background/50"
+                className="h-9 text-center font-mono bg-background/50 w-20"
               />
               <Button
                 variant="outline"
@@ -867,9 +881,9 @@ export function SettingTabs() {
                     settings.recordings_keep_last + 1
                   )
                 }
-                className="h-10 w-10 shrink-0"
+                className="h-9 w-9 shrink-0"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -877,69 +891,41 @@ export function SettingTabs() {
             </p>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
-      {/* Mini Window Card */}
-      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
-        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
-              <span className="text-lg font-bold text-primary">⬚</span>
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-foreground">
-                Mini fenêtre
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Visualiseur d'enregistrement flottant
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* ── Mini fenêtre ── */}
+      <SectionCard
+        icon={
+          <span className="text-xs font-bold text-primary leading-none">⬚</span>
+        }
+        title="Mini fenêtre"
+        subtitle="Visualiseur d'enregistrement flottant"
+      >
+        <ul className="text-xs text-muted-foreground space-y-1.5">
+          <li className="flex items-center gap-2">
+            <span className="text-red-400">●</span> Enregistrement en cours
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="animate-spin inline-block">↻</span> Envoi de
+            l'audio...
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="text-green-400">✓</span> Transcription réussie
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="text-red-400">✗</span> Erreur (avec message
+            détaillé)
+          </li>
+        </ul>
+      </SectionCard>
 
-        <div className="p-5">
-          <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-            <p className="text-sm text-foreground mb-2 font-medium">
-              La mini fenêtre affiche :
-            </p>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• <span className="text-red-400">●</span> Enregistrement en cours</li>
-              <li>• <span className="animate-spin inline-block">↻</span> Envoi de l'audio...</li>
-              <li>• <span className="text-green-400">✓</span> Transcription réussie</li>
-              <li>• <span className="text-red-400">✗</span> Erreur (avec message détaillé)</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Keyboard Shortcuts Card */}
-      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:border-border hover:shadow-lg hover:shadow-primary/5">
-        <div className="px-5 py-4 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
-              <Keyboard className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-foreground">
-                Raccourcis clavier
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Contrôle global de l'enregistrement
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 space-y-5">
-          {/* <div className="p-3.5 rounded-lg bg-primary/5 border border-primary/10">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              <span className="font-semibold text-foreground">
-                Deux modes disponibles :
-              </span>{" "}
-              Toggle (appui simple) et Push-to-talk (maintenir)
-            </p>
-          </div> */}
-
+      {/* ── Raccourcis clavier ── */}
+      <SectionCard
+        icon={<Keyboard className="w-3.5 h-3.5 text-primary" />}
+        title="Raccourcis clavier"
+        subtitle="Contrôle global de l'enregistrement"
+      >
+        <div className="space-y-5">
           <HotkeyInput
             id="shortcut-record"
             label="Toggle enregistrement"
@@ -950,16 +936,16 @@ export function SettingTabs() {
               handleHotkeyChange("record_hotkey", shortcut)
             }
           />
-
           <HotkeyInput
             id="shortcut-push"
             label="Push-to-talk"
             value={settings.ptt_hotkey}
             defaultValue={DEFAULT_SETTINGS.settings.ptt_hotkey}
             description="Enregistrer tant que le raccourci est maintenu"
-            onChange={(shortcut) => handleHotkeyChange("ptt_hotkey", shortcut)}
+            onChange={(shortcut) =>
+              handleHotkeyChange("ptt_hotkey", shortcut)
+            }
           />
-
           <HotkeyInput
             id="shortcut-window"
             label="Afficher la fenêtre"
@@ -970,7 +956,6 @@ export function SettingTabs() {
               handleHotkeyChange("open_window_hotkey", shortcut)
             }
           />
-
           <HotkeyInput
             id="shortcut-cancel"
             label="Annuler l'enregistrement"
@@ -983,35 +968,31 @@ export function SettingTabs() {
             }
           />
 
-          <div className="p-3.5 rounded-lg bg-muted/30 border border-border/50">
+          <div className="p-3 rounded-lg bg-muted/30 border border-border/60">
             <p className="text-xs text-muted-foreground leading-relaxed">
               <span className="font-medium text-foreground">
-                Modificateurs disponibles :
+                Modificateurs :
               </span>{" "}
               Ctrl, Alt, Shift, Cmd (Mac)
-              <br />
-              <span className="font-medium text-foreground">
-                Exemples :
-              </span>{" "}
-              Ctrl+Shift+R, F1-F12, Ctrl+Space
+              {"  ·  "}
+              <span className="font-medium text-foreground">Exemples :</span>{" "}
+              Ctrl+Shift+R, F1–F12, Ctrl+Space
             </p>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
-      {/* Exit Button */}
-      <div className="pt-2">
-        <Button
-          variant="destructive"
-          className="w-full h-11 font-medium shadow-lg shadow-destructive/20 hover:shadow-xl hover:shadow-destructive/30 transition-all"
-          onClick={async () => {
-            const { invoke } = await import("@tauri-apps/api/core");
-            await invoke("exit_app");
-          }}
-        >
-          Fermer complètement l'application
-        </Button>
-      </div>
+      {/* Exit */}
+      <Button
+        variant="destructive"
+        className="w-full h-10 font-medium"
+        onClick={async () => {
+          const { invoke } = await import("@tauri-apps/api/core");
+          await invoke("exit_app");
+        }}
+      >
+        Fermer complètement l'application
+      </Button>
     </div>
   );
 }
