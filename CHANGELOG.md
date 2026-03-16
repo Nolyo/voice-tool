@@ -7,6 +7,12 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 - ***
 
+## [2.5.4] - 2026-03-17
+
+### Added
+
+- Ajout du mode local, transcription via Whisper local gratuit et sans limite
+
 ## [2.3.1] - 2025-11-22
 
 ### Fixed
