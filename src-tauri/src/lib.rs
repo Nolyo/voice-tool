@@ -89,6 +89,10 @@ fn start_recording(
     // Emit recording state change
     let _ = app_handle.emit("recording-state", true);
 
+    if result.is_ok() {
+        register_cancel_shortcut(&app_handle);
+    }
+
     result
 }
 
@@ -130,6 +134,7 @@ fn stop_recording(
 
     // Emit recording state change
     let _ = app_handle.emit("recording-state", false);
+    unregister_cancel_shortcut(&app_handle);
 
     result
 }
@@ -490,6 +495,7 @@ fn start_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
                 let _ = app_handle.emit("recording-state", true);
                 // Emit event for frontend to start Deepgram if needed
                 let _ = app_handle.emit("shortcut-recording-started", true);
+                register_cancel_shortcut(app_handle);
                 true
             }
             Err(err) => {
@@ -523,6 +529,7 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<Reco
     let _ = app_handle.emit("recording-state", false);
     // Emit event for frontend to stop Deepgram if needed
     let _ = app_handle.emit("shortcut-recording-stopped", true);
+    unregister_cancel_shortcut(app_handle);
 
     match result {
         Some(Ok(recording)) => Some(recording),
@@ -548,8 +555,86 @@ fn cancel_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) {
 
     let _ = app_handle.emit("recording-state", false);
     let _ = app_handle.emit("recording-cancelled", ());
+    unregister_cancel_shortcut(app_handle);
     hide_mini_window(app_handle);
     tracing::info!("Recording cancelled by user (no transcription)");
+}
+
+/// Register the cancel shortcut dynamically.
+/// Spawns on a separate thread to avoid deadlock when called from within
+/// a shortcut handler (the plugin holds its shortcuts mutex during dispatch).
+fn register_cancel_shortcut<R: Runtime>(app_handle: &AppHandle<R>) {
+    let handle = app_handle.clone();
+    std::thread::spawn(move || {
+        let state: State<AppState> = handle.state();
+        let cancel_str = {
+            let guard = state.inner().hotkeys.lock().unwrap();
+            guard.cancel.clone()
+        };
+
+        let Some(cancel_str) = cancel_str else {
+            return;
+        };
+
+        let shortcut = match parse_hotkey_str(&cancel_str) {
+            Ok(s) => s,
+            Err(err) => {
+                tracing::warn!("Failed to parse cancel shortcut: {}", err);
+                return;
+            }
+        };
+
+        let manager = handle.global_shortcut();
+
+        if manager.is_registered(shortcut.clone()) {
+            return;
+        }
+
+        let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
+            if event.state == ShortcutState::Pressed && is_recorder_active(app) {
+                cancel_recording_shortcut(app);
+            }
+        };
+
+        if let Err(err) = manager.on_shortcut(shortcut, handler) {
+            tracing::warn!("Failed to register cancel shortcut: {}", err);
+        }
+    });
+}
+
+/// Unregister the cancel shortcut dynamically.
+/// Spawns on a separate thread to avoid deadlock (same reason as register).
+fn unregister_cancel_shortcut<R: Runtime>(app_handle: &AppHandle<R>) {
+    let handle = app_handle.clone();
+    std::thread::spawn(move || {
+        let state: State<AppState> = handle.state();
+        let cancel_str = {
+            let guard = state.inner().hotkeys.lock().unwrap();
+            guard.cancel.clone()
+        };
+
+        let Some(cancel_str) = cancel_str else {
+            return;
+        };
+
+        let shortcut = match parse_hotkey_str(&cancel_str) {
+            Ok(s) => s,
+            Err(err) => {
+                tracing::warn!("Failed to parse cancel shortcut for unregister: {}", err);
+                return;
+            }
+        };
+
+        let manager = handle.global_shortcut();
+
+        if !manager.is_registered(shortcut.clone()) {
+            return;
+        }
+
+        if let Err(err) = manager.unregister(shortcut) {
+            tracing::warn!("Failed to unregister cancel shortcut: {}", err);
+        }
+    });
 }
 
 fn emit_audio_samples<R: Runtime>(app_handle: &AppHandle<R>, recording: RecordingResult) {
@@ -620,12 +705,6 @@ fn apply_hotkeys<R: Runtime>(
 
     let open_hotkey = config
         .open_window
-        .as_ref()
-        .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
-        .transpose()?;
-
-    let cancel_hotkey = config
-        .cancel
         .as_ref()
         .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
         .transpose()?;
@@ -701,23 +780,6 @@ fn apply_hotkeys<R: Runtime>(
                 format!(
                     "Impossible d'enregistrer le raccourci \"{}\": {}",
                     open_label, e
-                )
-            })?;
-    }
-
-    if let Some((cancel_label, cancel_shortcut)) = cancel_hotkey {
-        let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
-            if event.state == ShortcutState::Pressed && is_recorder_active(app) {
-                cancel_recording_shortcut(app);
-            }
-        };
-
-        manager
-            .on_shortcut(cancel_shortcut.clone(), handler)
-            .map_err(|e| {
-                format!(
-                    "Impossible d'enregistrer le raccourci \"{}\": {}",
-                    cancel_label, e
                 )
             })?;
     }
