@@ -132,6 +132,29 @@
   }
 }
 
+/* ── Custom scrollbar ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 15%);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(1 0 0 / 28%);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 body.mini-window-body {
   background: transparent !important;
   color: #f9fafb;

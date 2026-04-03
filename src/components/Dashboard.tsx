@@ -16,7 +16,9 @@ import {
   type Transcription,
 } from "@/hooks/useTranscriptionHistory";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useNotes, type Note } from "@/hooks/useNotes";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
+import { NotesEditor } from "./notes-editor";
 
 type TranscriptionInvokeResult = {
   text: string;
@@ -50,6 +52,10 @@ export default function Dashboard() {
     deleteTranscription,
     clearHistory,
   } = useTranscriptionHistory();
+  const { notes, addNote, updateNote, deleteNote, reloadNotes } = useNotes();
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const previousRecordingRef = useRef(isRecording);
 
   // Keep deepgram ref updated
@@ -447,6 +453,37 @@ export default function Dashboard() {
     }
   };
 
+  const handleCreateNote = async () => {
+    const note = await addNote();
+    setOpenNoteIds((prev) => [...prev, note.id]);
+    setActiveNoteId(note.id);
+    setEditorOpen(true);
+  };
+
+  const handleOpenNote = (note: Note) => {
+    if (!openNoteIds.includes(note.id)) {
+      setOpenNoteIds((prev) => [...prev, note.id]);
+    }
+    setActiveNoteId(note.id);
+    setEditorOpen(true);
+  };
+
+  const handleCloseNoteTab = (id: string) => {
+    const newIds = openNoteIds.filter((nid) => nid !== id);
+    setOpenNoteIds(newIds);
+    if (activeNoteId === id) {
+      setActiveNoteId(newIds.length > 0 ? newIds[newIds.length - 1] : null);
+    }
+    if (newIds.length === 0) {
+      setEditorOpen(false);
+    }
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    handleCloseNoteTab(id);
+    await deleteNote(id);
+  };
+
   const handleUpdateClick = () => {
     setActiveTab("parametres");
   };
@@ -488,9 +525,27 @@ export default function Dashboard() {
             onClearAll={handleClearAll}
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            notes={notes}
+            onCreateNote={handleCreateNote}
+            onOpenNote={handleOpenNote}
+            onDeleteNote={handleDeleteNote}
+            onReloadNotes={reloadNotes}
           />
         </div>
       </div>
+
+      {editorOpen && (
+        <NotesEditor
+          openNotes={notes.filter((n) => openNoteIds.includes(n.id))}
+          activeNoteId={activeNoteId}
+          onActivateNote={setActiveNoteId}
+          onCloseNote={handleCloseNoteTab}
+          onUpdateNote={updateNote}
+          onCreateNote={handleCreateNote}
+          onCopyContent={handleCopy}
+          onClose={() => setEditorOpen(false)}
+        />
+      )}
     </div>
   );
 }

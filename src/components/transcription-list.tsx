@@ -9,7 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { SettingTabs } from "./setting-tabs";
 import { LogsTab } from "./logs-tab";
+import { NotesTab } from "./notes-tab";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
+import { type Note } from "@/hooks/useNotes";
 import { useAppLogs } from "@/hooks/useAppLogs";
 
 interface TranscriptionListProps {
@@ -21,6 +23,11 @@ interface TranscriptionListProps {
   onClearAll?: () => void;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
+  notes: Note[];
+  onCreateNote: () => void;
+  onOpenNote: (note: Note) => void;
+  onDeleteNote: (id: string) => void;
+  onReloadNotes: () => void;
 }
 
 export function TranscriptionList({
@@ -32,6 +39,11 @@ export function TranscriptionList({
   onClearAll,
   activeTab = "historique",
   onTabChange,
+  notes,
+  onCreateNote,
+  onOpenNote,
+  onDeleteNote,
+  onReloadNotes,
 }: TranscriptionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { logs, clearLogs } = useAppLogs();
@@ -53,12 +65,18 @@ export function TranscriptionList({
   return (
     <Card className="p-6" ref={tabsRef}>
       <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger
             value="historique"
             className="cursor-pointer dark:hover:bg-neutral-900"
           >
             Historique
+          </TabsTrigger>
+          <TabsTrigger
+            value="notes"
+            className="cursor-pointer dark:hover:bg-neutral-900"
+          >
+            Notes
           </TabsTrigger>
           <TabsTrigger
             value="parametres"
@@ -189,6 +207,17 @@ export function TranscriptionList({
               </span>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="notes" className="space-y-4">
+          <NotesTab
+            notes={notes}
+            onCreateNote={onCreateNote}
+            onOpenNote={onOpenNote}
+            onDeleteNote={onDeleteNote}
+            onCopyContent={onCopy}
+            onReload={onReloadNotes}
+          />
         </TabsContent>
 
         <TabsContent value="parametres" className="space-y-6">
