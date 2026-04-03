@@ -7,7 +7,15 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 - ***
 
-## [Unreleased] - 2.6.1
+## [2.7.0] - 2026-04-03
+
+### Added
+
+- Fonctionnalité de notes : éditeur de notes intégré avec onglet dédié dans le tableau de bord
+- Option pour masquer le panneau d'enregistrement dans les paramètres
+- Navigation dans les paramètres améliorée avec une barre latérale et des sections organisées
+
+## [2.6.1] - 2026-04-03
 
 ### Added
 
