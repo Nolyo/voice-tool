@@ -498,22 +498,25 @@ export default function Dashboard() {
       <div className="container mx-auto px-6 py-8">
         <div className="space-y-6">
           {/* First row: Recording and Details side by side */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RecordingCard
-              isRecording={isRecording}
-              isTranscribing={isTranscribing}
-              onToggleRecording={handleToggleRecording}
-            />
-            <TranscriptionDetails
-              transcription={selectedTranscription}
-              onCopy={handleCopy}
-            />
-          </div>
+          {!settings.hide_recording_panel && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <RecordingCard
+                isRecording={isRecording}
+                isTranscribing={isTranscribing}
+                onToggleRecording={handleToggleRecording}
+              />
+              <TranscriptionDetails
+                transcription={selectedTranscription}
+                onCopy={handleCopy}
+              />
+            </div>
+          )}
 
           {/* Live transcription (Deepgram streaming) - shown only when provider is Deepgram */}
-          {settings.transcription_provider === "Deepgram" && (
-            <TranscriptionLive />
-          )}
+          {!settings.hide_recording_panel &&
+            settings.transcription_provider === "Deepgram" && (
+              <TranscriptionLive />
+            )}
 
           {/* Second row: Transcription list full width */}
           <TranscriptionList

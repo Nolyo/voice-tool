@@ -1145,6 +1145,30 @@ export function SettingTabs() {
 
           <Divider />
 
+          {/* Hide recording panel */}
+          <div
+            className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+            onClick={() =>
+              updateSetting("hide_recording_panel", !settings.hide_recording_panel)
+            }
+          >
+            <Checkbox
+              id="hide-recording-panel"
+              checked={settings.hide_recording_panel}
+              onCheckedChange={(checked) =>
+                updateSetting("hide_recording_panel", checked as boolean)
+              }
+            />
+            <Label
+              htmlFor="hide-recording-panel"
+              className="text-sm text-foreground cursor-pointer flex-1"
+            >
+              Masquer le panneau d'enregistrement
+            </Label>
+          </div>
+
+          <Divider />
+
           {/* Keep recordings */}
           <div className="space-y-1.5">
             <Label
