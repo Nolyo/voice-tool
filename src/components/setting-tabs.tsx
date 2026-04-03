@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
   Mic,
   Settings,
@@ -72,6 +72,7 @@ function buildShortcutFromEvent(event: KeyboardEvent): string | null {
 // ─── Section card ────────────────────────────────────────────────────────────
 
 interface SectionCardProps {
+  id?: string;
   icon: ReactNode;
   title: string;
   subtitle: string;
@@ -79,9 +80,9 @@ interface SectionCardProps {
   iconBg?: string;
 }
 
-function SectionCard({ icon, title, subtitle, children, iconBg = "bg-primary/10" }: SectionCardProps) {
+function SectionCard({ id, icon, title, subtitle, children, iconBg = "bg-primary/10" }: SectionCardProps) {
   return (
-    <div className="space-y-3">
+    <div id={id} className="space-y-3 scroll-mt-4">
       <div className="flex items-center gap-3 px-0.5">
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
           {icon}
@@ -97,6 +98,107 @@ function SectionCard({ icon, title, subtitle, children, iconBg = "bg-primary/10"
         {children}
       </div>
     </div>
+  );
+}
+
+// ─── Settings nav ─────────────────────────────────────────────────────────────
+
+interface NavItem {
+  id: string;
+  icon: ReactNode;
+  iconBg: string;
+  title: string;
+  subtitle: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  {
+    id: "section-transcription",
+    icon: <Settings className="w-3.5 h-3.5 text-violet-500" />,
+    iconBg: "bg-violet-500/10",
+    title: "Transcription",
+    subtitle: "Reconnaissance vocale",
+  },
+  {
+    id: "section-audio",
+    icon: <Mic className="w-3.5 h-3.5 text-blue-500" />,
+    iconBg: "bg-blue-500/10",
+    title: "Audio",
+    subtitle: "Enregistrement et sons",
+  },
+  {
+    id: "section-texte",
+    icon: <span className="text-xs font-bold text-emerald-500 leading-none">T</span>,
+    iconBg: "bg-emerald-500/10",
+    title: "Texte",
+    subtitle: "Formatage et insertion",
+  },
+  {
+    id: "section-vocabulaire",
+    icon: <BookOpen className="w-3.5 h-3.5 text-cyan-500" />,
+    iconBg: "bg-cyan-500/10",
+    title: "Vocabulaire",
+    subtitle: "Snippets et mots",
+  },
+  {
+    id: "section-systeme",
+    icon: <Settings className="w-3.5 h-3.5 text-orange-500" />,
+    iconBg: "bg-orange-500/10",
+    title: "Système",
+    subtitle: "Démarrage et fichiers",
+  },
+  {
+    id: "section-raccourcis",
+    icon: <Keyboard className="w-3.5 h-3.5 text-rose-500" />,
+    iconBg: "bg-rose-500/10",
+    title: "Raccourcis",
+    subtitle: "Touches de commande",
+  },
+  {
+    id: "section-mises-a-jour",
+    icon: <RefreshCw className="w-3.5 h-3.5 text-sky-500" />,
+    iconBg: "bg-sky-500/10",
+    title: "Mises à jour",
+    subtitle: "Nouvelles versions",
+  },
+];
+
+function SettingsNav({ activeId, scrollContainer }: { activeId: string; scrollContainer: RefObject<HTMLDivElement | null> }) {
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id);
+    if (!el || !scrollContainer.current) return;
+    const container = scrollContainer.current;
+    const offset = el.offsetTop - container.offsetTop - 16;
+    container.scrollTo({ top: offset, behavior: "smooth" });
+  };
+
+  return (
+    <nav className="w-48 shrink-0 sticky top-0 self-start space-y-0.5 pt-0.5">
+      {NAV_ITEMS.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => scrollTo(item.id)}
+          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all ${
+            activeId === item.id
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          }`}
+        >
+          <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${item.iconBg}`}>
+            {item.icon}
+          </div>
+          <div className="min-w-0">
+            <p className={`text-xs font-semibold leading-none truncate ${activeId === item.id ? "text-foreground" : ""}`}>
+              {item.title}
+            </p>
+            <p className="text-[10px] text-muted-foreground leading-tight mt-0.5 truncate">
+              {item.subtitle}
+            </p>
+          </div>
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -409,6 +511,31 @@ export function SettingTabs() {
     [settings, updateSetting]
   );
 
+  const [activeSection, setActiveSection] = useState("section-transcription");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const containerTop = container.getBoundingClientRect().top;
+      let current = NAV_ITEMS[0].id;
+      for (const item of NAV_ITEMS) {
+        const el = document.getElementById(item.id);
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.top - containerTop <= 32) {
+          current = item.id;
+        }
+      }
+      setActiveSection(current);
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -418,9 +545,14 @@ export function SettingTabs() {
   }
 
   return (
-    <div className="space-y-8 pb-6">
+    <div className="flex gap-5">
+      <SettingsNav activeId={activeSection} scrollContainer={scrollRef} />
+
+      <div ref={scrollRef} className="flex-1 min-w-0 space-y-8 pb-6 overflow-y-auto max-h-[calc(100vh-160px)] pr-1">
+
       {/* ── Transcription ── */}
       <SectionCard
+        id="section-transcription"
         icon={<Settings className="w-3.5 h-3.5 text-violet-500" />}
         iconBg="bg-violet-500/10"
         title="Transcription"
@@ -602,6 +734,7 @@ export function SettingTabs() {
 
       {/* ── Audio ── */}
       <SectionCard
+        id="section-audio"
         icon={<Mic className="w-3.5 h-3.5 text-blue-500" />}
         iconBg="bg-blue-500/10"
         title="Audio"
@@ -761,6 +894,7 @@ export function SettingTabs() {
 
       {/* ── Texte ── */}
       <SectionCard
+        id="section-texte"
         icon={
           <span className="text-xs font-bold text-emerald-500 leading-none">T</span>
         }
@@ -817,6 +951,7 @@ export function SettingTabs() {
 
       {/* ── Vocabulaire ── */}
       <SectionCard
+        id="section-vocabulaire"
         icon={<BookOpen className="w-3.5 h-3.5 text-cyan-500" />}
         iconBg="bg-cyan-500/10"
         title="Vocabulaire"
@@ -942,6 +1077,7 @@ export function SettingTabs() {
 
       {/* ── Système ── */}
       <SectionCard
+        id="section-systeme"
         icon={<Settings className="w-3.5 h-3.5 text-orange-500" />}
         iconBg="bg-orange-500/10"
         title="Système"
@@ -1066,6 +1202,7 @@ export function SettingTabs() {
 
       {/* ── Raccourcis clavier ── */}
       <SectionCard
+        id="section-raccourcis"
         icon={<Keyboard className="w-3.5 h-3.5 text-rose-500" />}
         iconBg="bg-rose-500/10"
         title="Raccourcis clavier"
@@ -1118,6 +1255,7 @@ export function SettingTabs() {
 
       {/* ── Mises à jour ── */}
       <SectionCard
+        id="section-mises-a-jour"
         icon={<RefreshCw className="w-3.5 h-3.5 text-sky-500" />}
         iconBg="bg-sky-500/10"
         title="Mises à jour"
@@ -1137,6 +1275,8 @@ export function SettingTabs() {
       >
         Fermer complètement l'application
       </Button>
+
+      </div>
     </div>
   );
 }
