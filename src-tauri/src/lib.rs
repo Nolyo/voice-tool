@@ -465,12 +465,43 @@ fn position_mini_window<R: Runtime>(app_handle: &AppHandle<R>, window: &WebviewW
 fn show_mini_window<R: Runtime>(app_handle: &AppHandle<R>) {
     if let Some(mini_window) = app_handle.get_webview_window("mini") {
         position_mini_window(app_handle, &mini_window);
+
+        // Use ShowWindow with SW_SHOWNOACTIVATE to avoid stealing focus
+        // from the main window or external apps
+        #[cfg(windows)]
+        {
+            if let Ok(hwnd) = mini_window.hwnd() {
+                const SW_SHOWNOACTIVATE: i32 = 4;
+                unsafe {
+                    windows_sys::Win32::UI::WindowsAndMessaging::ShowWindow(
+                        hwnd.0,
+                        SW_SHOWNOACTIVATE,
+                    );
+                }
+                return;
+            }
+        }
+
+        // Fallback for non-Windows
         let _ = mini_window.show();
     }
 }
 
 fn hide_mini_window<R: Runtime>(app_handle: &AppHandle<R>) {
     if let Some(mini_window) = app_handle.get_webview_window("mini") {
+        #[cfg(windows)]
+        {
+            if let Ok(hwnd) = mini_window.hwnd() {
+                const SW_HIDE: i32 = 0;
+                unsafe {
+                    windows_sys::Win32::UI::WindowsAndMessaging::ShowWindow(
+                        hwnd.0,
+                        SW_HIDE,
+                    );
+                }
+                return;
+            }
+        }
         let _ = mini_window.hide();
     }
 }
@@ -1070,6 +1101,7 @@ fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::
         .always_on_top(true)
         .transparent(true)
         .visible(false) // Hidden by default!
+        .focusable(false) // Never steal focus from main window or other apps
         .build()?;
 
     position_mini_window(app, &mini);

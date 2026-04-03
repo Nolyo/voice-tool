@@ -61,6 +61,10 @@ urlencoding = "2"
 # Keyboard simulation
 enigo = "0.2"
 
+# Windows-specific APIs (show window without activation)
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_UI_WindowsAndMessaging"] }
+
 # Date/time for timestamps
 chrono = "0.4"
 
