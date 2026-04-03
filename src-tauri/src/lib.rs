@@ -27,6 +27,7 @@ use tokio::sync::Mutex as TokioMutex;
 use transcription::{
     cleanup_old_recordings, get_recordings_dir, save_audio_to_wav, transcribe_with_openai,
 };
+use whisper_rs::{WhisperContext, WhisperContextParameters};
 
 #[derive(Clone, Default)]
 struct HotkeyConfig {
@@ -1199,6 +1200,75 @@ pub fn run() {
                     eprintln!("[hotkeys] Initial registration failed: {}", err);
                 }
             }
+
+            // Preload Whisper model in background if Local provider is configured
+            let preload_handle = app.handle().clone();
+            let preload_store = window_store.clone();
+            tauri::async_runtime::spawn(async move {
+                let provider = preload_store
+                    .get("settings")
+                    .and_then(|root| root.get("settings").cloned())
+                    .and_then(|s| {
+                        s.get("transcription_provider")
+                            .and_then(|v| v.as_str().map(String::from))
+                    });
+
+                let model_size = preload_store
+                    .get("settings")
+                    .and_then(|root| root.get("settings").cloned())
+                    .and_then(|s| {
+                        s.get("local_model_size")
+                            .and_then(|v| v.as_str().map(String::from))
+                    })
+                    .unwrap_or_else(|| "base".to_string());
+
+                if provider.as_deref() != Some("Local") {
+                    tracing::info!("Skipping whisper preload (provider is not Local)");
+                    return;
+                }
+
+                if !transcription_local::check_model_exists(&model_size) {
+                    tracing::info!(
+                        "Skipping whisper preload (model '{}' not downloaded)",
+                        model_size
+                    );
+                    return;
+                }
+
+                tracing::info!("Preloading whisper model: {}", model_size);
+
+                let state = preload_handle.state::<AppState>();
+                let mut cache = state.whisper.cache.lock().await;
+
+                if let Ok(model_path) = transcription_local::get_model_path(&model_size) {
+                    let path_str = model_path.to_string_lossy().to_string();
+                    match WhisperContext::new_with_params(
+                        &path_str,
+                        WhisperContextParameters::default(),
+                    ) {
+                        Ok(ctx) => match ctx.create_state() {
+                            Ok(whisper_state) => {
+                                cache.context = Some(ctx);
+                                cache.state = Some(whisper_state);
+                                cache.loaded_model = model_size.clone();
+                                tracing::info!(
+                                    "Whisper model '{}' preloaded successfully",
+                                    model_size
+                                );
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    "Failed to create whisper state during preload: {:?}",
+                                    e
+                                );
+                            }
+                        },
+                        Err(e) => {
+                            tracing::warn!("Failed to preload whisper model: {:?}", e);
+                        }
+                    }
+                }
+            });
 
             // Setup audio-chunk listener to send directly to Deepgram
             let app_handle_audio = app.handle().clone();
