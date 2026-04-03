@@ -1,4 +1,5 @@
 mod audio;
+mod chat;
 mod deepgram_streaming;
 mod deepgram_types;
 mod logging;
@@ -859,6 +860,17 @@ fn delete_local_model(model: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn ai_process_text(
+    api_key: String,
+    system_prompt: String,
+    user_text: String,
+) -> Result<String, String> {
+    chat::chat_completion(&api_key, &system_prompt, &user_text)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn transcribe_audio(
     app_handle: AppHandle,
     audio_samples: Vec<i16>,
@@ -1119,7 +1131,8 @@ pub fn run() {
             download_local_model,
             check_local_model_exists,
             delete_local_model,
-            delete_recording_files
+            delete_recording_files,
+            ai_process_text
         ])
         .setup(move |app| {
             // Enable logging to frontend

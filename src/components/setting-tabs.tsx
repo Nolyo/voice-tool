@@ -116,8 +116,8 @@ const NAV_ITEMS: NavItem[] = [
     id: "section-transcription",
     icon: <Settings className="w-3.5 h-3.5 text-violet-500" />,
     iconBg: "bg-violet-500/10",
-    title: "Transcription",
-    subtitle: "Reconnaissance vocale",
+    title: "IA",
+    subtitle: "Transcription & notes intelligentes",
   },
   {
     id: "section-audio",
@@ -555,8 +555,8 @@ export function SettingTabs() {
         id="section-transcription"
         icon={<Settings className="w-3.5 h-3.5 text-violet-500" />}
         iconBg="bg-violet-500/10"
-        title="Transcription"
-        subtitle="Service de reconnaissance vocale"
+        title="IA"
+        subtitle="Transcription & notes intelligentes"
       >
         <div className="space-y-4">
           {/* Provider + Language on the same row */}
@@ -626,15 +626,7 @@ export function SettingTabs() {
             </div>
           )}
 
-          {/* API config for paid providers */}
-          {settings.transcription_provider !== "Local" && (
-            <>
-              <Divider />
-              <ApiConfigDialog />
-            </>
-          )}
-
-          {/* Local model section */}
+          {/* Local model section – right after provider when local */}
           {settings.transcription_provider === "Local" && (
             <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/60 animate-in fade-in slide-in-from-top-1">
               {/* Model size + action button on same row */}
@@ -729,6 +721,16 @@ export function SettingTabs() {
               )}
             </div>
           )}
+
+          {/* API keys – always visible */}
+          <Divider />
+          <div className="space-y-2">
+            <ApiConfigDialog />
+            <p className="text-xs text-muted-foreground">
+              Utilisé par la transcription en ligne et l'assistant IA dans les notes.
+              Non requis si vous utilisez uniquement la transcription locale.
+            </p>
+          </div>
         </div>
       </SectionCard>
 

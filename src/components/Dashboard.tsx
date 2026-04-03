@@ -547,6 +547,7 @@ export default function Dashboard() {
           onCreateNote={handleCreateNote}
           onCopyContent={handleCopy}
           onClose={() => setEditorOpen(false)}
+          apiKey={settings.openai_api_key}
         />
       )}
     </div>
