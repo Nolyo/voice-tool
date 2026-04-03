@@ -7,6 +7,20 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 - ***
 
+## [Unreleased] - 2.6.1
+
+### Added
+
+- Préchargement du modèle Whisper en arrière-plan pour le fournisseur de transcription local (démarrage plus rapide)
+- Enregistrement et désenregistrement dynamique du raccourci d'annulation
+
+## [2.6.0] - 2026-04-03
+
+### Added
+
+- Gestion du vocabulaire : support des snippets et d'un dictionnaire personnalisé
+- Mode local : transcription via Whisper local, gratuit et sans limite
+
 ## [2.5.4] - 2026-03-17
 
 ### Added
@@ -145,5 +159,11 @@ Ajoutez une entrée **à chaque modification significative** sous la section `[U
 
 ## Liens des versions
 
-[Unreleased]: https://github.com/Nolyo/voice-tool/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/Nolyo/voice-tool/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/Nolyo/voice-tool/compare/v2.5.4...v2.6.0
+[2.5.4]: https://github.com/Nolyo/voice-tool/compare/v2.5.3...v2.5.4
+[2.5.3]: https://github.com/Nolyo/voice-tool/compare/v2.5.2...v2.5.3
+[2.5.2]: https://github.com/Nolyo/voice-tool/compare/v2.5.1...v2.5.2
+[2.5.1]: https://github.com/Nolyo/voice-tool/compare/v2.5.0...v2.5.1
+[2.5.0]: https://github.com/Nolyo/voice-tool/compare/v2.0.0...v2.5.0
 [2.0.0]: https://github.com/Nolyo/voice-tool/releases/tag/v2.0.0
