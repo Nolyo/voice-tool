@@ -2,6 +2,17 @@
 
 Application desktop de **dictée vocale** propulsée par l'IA. Parlez dans votre micro, et la transcription est automatiquement collée dans la fenêtre active.
 
+## 📋 Sommaire
+
+- [Fonctionnalités](#-fonctionnalités)
+- [Stack technique](#️-stack-technique)
+- [Prérequis](#-prérequis)
+- [Démarrage rapide](#-démarrage-rapide)
+- [Commandes utiles](#-commandes-utiles)
+- [Transcription locale avec Whisper.cpp](#-transcription-locale-avec-whispercpp-optionnel)
+- [Créer une nouvelle release](#-créer-une-nouvelle-release)
+- [Notes importantes](#️-notes-importantes)
+
 ## ✨ Fonctionnalités
 
 - 🎤 Enregistrement audio via micro système
@@ -130,15 +141,54 @@ Les modèles sont téléchargés automatiquement depuis Hugging Face lors de la 
 | medium | ~1.5 Go | ~5 Go       |
 | large  | ~3 Go   | ~10 Go      |
 
-## 🚢 Release
+## 🚢 Créer une nouvelle release
 
-```powershell
-# Créer une release (déclenche la CI/CD)
-git tag v2.x.x
-git push origin v2.x.x
+### Étape 1 — Bumper la version
+
+Lancer le script de bump depuis la racine du projet (nécessite Git Bash ou WSL) :
+
+```bash
+.github/scripts/bump-version.sh 2.x.x
 ```
 
-Un tag `v*` déclenche le workflow GitHub Actions qui build les installateurs (NSIS, MSI, portable), les signe, et publie sur GitHub Releases avec le fichier `latest.json` pour l'auto-updater.
+Ce script met à jour la version dans `package.json`, `src-tauri/Cargo.toml` et `src-tauri/tauri.conf.json`.
+
+### Étape 2 — Régénérer le Cargo.lock
+
+Après le bump de version, régénérer le `Cargo.lock` avec un build complet :
+
+```powershell
+pnpm tauri build
+```
+
+> Ce build peut prendre plusieurs minutes. Il garantit que le `Cargo.lock` est à jour avant le commit.
+
+### Étape 3 — Commit et push
+
+```powershell
+git add -A
+git commit -m "chore: bump version to 2.x.x"
+git push
+```
+
+### Étape 4 — Build signé local (et release GitHub)
+
+Lancer le script de release qui build avec signature, génère les artefacts et publie la release sur GitHub :
+
+```powershell
+.\release.ps1
+```
+
+Ce script :
+1. Lit la version depuis `tauri.conf.json`
+2. Charge la clé privée (`src-tauri/private.key`)
+3. Build les installateurs signés (NSIS, MSI, portable)
+4. Crée le tag Git `vX.Y.Z` et le pousse
+5. Publie la release sur GitHub avec les artefacts et le `latest.json` pour l'auto-updater
+
+> **Prérequis** : La clé privée doit être présente dans `src-tauri/private.key` et `gh` (GitHub CLI) doit être authentifié.
+
+> Pour un build signé local **sans** publier de release, utiliser `build-signed.ps1` à la place.
 
 ## ⚠️ Notes importantes
 
