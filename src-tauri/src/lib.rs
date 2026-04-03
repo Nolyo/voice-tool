@@ -805,6 +805,7 @@ async fn transcribe_audio(
     keep_last: usize,
     provider: Option<String>,
     local_model_size: Option<String>,
+    dictionary: Option<String>,
 ) -> Result<TranscriptionResponse, String> {
     tracing::info!(
         "transcribe_audio called with {} samples at {} Hz (Provider: {:?})",
@@ -817,9 +818,11 @@ async fn transcribe_audio(
     let wav_path = save_audio_to_wav(&audio_samples, sample_rate)
         .map_err(|e| format!("Failed to save audio: {}", e))?;
 
+    let dict = dictionary.as_deref().unwrap_or("");
+
     let transcription_result = if provider.as_deref() == Some("Local") {
         let model = local_model_size.unwrap_or_else(|| "base".to_string());
-        transcription_local::transcribe_local(&app_handle, &audio_samples, sample_rate, &model, &language)
+        transcription_local::transcribe_local(&app_handle, &audio_samples, sample_rate, &model, &language, dict)
             .await
             .map_err(|e| {
                 tracing::error!("Local transcription failed: {}", e);
@@ -827,7 +830,7 @@ async fn transcribe_audio(
             })
     } else {
         // Default to OpenAI
-        transcribe_with_openai(&wav_path, &api_key, &language)
+        transcribe_with_openai(&wav_path, &api_key, &language, dict)
             .await
             .map_err(|e| {
                 tracing::error!("Transcription failed: {}", e);
@@ -858,6 +861,7 @@ async fn start_deepgram_streaming(
     app_handle: AppHandle,
     api_key: String,
     language: String,
+    keywords: Option<Vec<String>>,
 ) -> Result<(), String> {
     tracing::info!("Starting Deepgram streaming transcription");
 
@@ -871,7 +875,7 @@ async fn start_deepgram_streaming(
 
     let mut streamer = state.deepgram_streamer.lock().await;
     streamer
-        .connect(api_key, language, sample_rate, app_handle)
+        .connect(api_key, language, sample_rate, app_handle, keywords.unwrap_or_default())
         .await
         .map_err(|e| {
             tracing::error!("Failed to connect to Deepgram: {}", e);

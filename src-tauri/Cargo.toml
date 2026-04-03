@@ -55,6 +55,9 @@ whisper-rs = { version = "0.14", features = ["cuda"] }
 rubato = "0.15"
 tauri-plugin-fs = "2"
 
+# URL encoding for Deepgram keywords
+urlencoding = "2"
+
 # Keyboard simulation
 enigo = "0.2"
 

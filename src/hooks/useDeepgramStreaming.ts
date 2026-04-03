@@ -241,6 +241,7 @@ export function useDeepgramStreaming() {
       await invoke("start_deepgram_streaming", {
         apiKey: settings.deepgram_api_key,
         language: languageCode,
+        keywords: settings.dictionary ?? [],
       });
 
       console.log("Deepgram streaming started");
@@ -250,7 +251,7 @@ export function useDeepgramStreaming() {
       console.error(errorMsg);
       throw e;
     }
-  }, [settings.deepgram_api_key, settings.language]);
+  }, [settings.deepgram_api_key, settings.language, settings.dictionary]);
 
   const stopStreaming = useCallback(async () => {
     let transcript = "";

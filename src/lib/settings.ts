@@ -44,6 +44,10 @@ export interface AppSettings {
 
     // Mini Window
     show_transcription_in_mini_window: boolean;
+
+    // Vocabulary
+    snippets: Array<{ trigger: string; replacement: string }>;
+    dictionary: string[];
   };
 }
 
@@ -92,6 +96,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Mini Window
     show_transcription_in_mini_window: true,
+
+    // Vocabulary
+    snippets: [],
+    dictionary: [],
   },
 };
 

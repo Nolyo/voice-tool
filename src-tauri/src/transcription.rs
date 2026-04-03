@@ -202,6 +202,7 @@ pub async fn transcribe_with_openai(
     wav_path: &Path,
     api_key: &str,
     language: &str,
+    dictionary: &str,
 ) -> Result<String> {
     if api_key.is_empty() {
         return Err(anyhow!("OpenAI API key not configured"));
@@ -229,11 +230,15 @@ pub async fn transcribe_with_openai(
         .file_name("audio.wav")
         .mime_str("audio/wav")?;
 
-    let form = multipart::Form::new()
+    let mut form = multipart::Form::new()
         .part("file", file_part)
         .text("model", "whisper-1")
         .text("language", lang_code.to_string())
         .text("response_format", "json");
+
+    if !dictionary.is_empty() {
+        form = form.text("prompt", dictionary.to_string());
+    }
 
     tracing::info!("Sending request to OpenAI Whisper API...");
     // Send request to OpenAI with timeout

@@ -110,6 +110,7 @@ pub async fn transcribe_local<R: tauri::Runtime>(
     sample_rate: u32,
     model_type: &str,
     language: &str,
+    dictionary: &str,
 ) -> Result<String> {
     let model_path = get_model_path(model_type)?;
 
@@ -175,6 +176,9 @@ pub async fn transcribe_local<R: tauri::Runtime>(
     params.set_print_realtime(false);
     params.set_print_progress(false);
     params.set_print_timestamps(false);
+    if !dictionary.is_empty() {
+        params.set_initial_prompt(dictionary);
+    }
 
     tracing::info!("Running whisper inference with {} threads", n_threads);
 

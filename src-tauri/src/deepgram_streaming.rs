@@ -42,6 +42,7 @@ impl DeepgramStreamer {
         language: String,
         sample_rate: u32,
         app_handle: AppHandle<R>,
+        keywords: Vec<String>,
     ) -> Result<()> {
         // Stop any existing connection
         self.disconnect().await;
@@ -53,10 +54,13 @@ impl DeepgramStreamer {
         );
 
         // Build WebSocket URL
-        let url = format!(
+        let mut url = format!(
             "wss://api.deepgram.com/v1/listen?language={}&punctuate=true&interim_results=true&encoding=linear16&sample_rate={}&channels=1",
             language, sample_rate
         );
+        for keyword in &keywords {
+            url.push_str(&format!("&keywords={}", urlencoding::encode(keyword)));
+        }
 
         // Create WebSocket request with Authorization header
         let mut request = url.into_client_request()?;

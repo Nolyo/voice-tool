@@ -86,8 +86,17 @@ export default function Dashboard() {
         return null;
       }
 
+      // Snippet replacement: exact full-match, case-insensitive
+      let finalText = trimmed;
+      const snippetMatch = settings.snippets?.find(
+        (s) => s.trigger.trim().toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (snippetMatch) {
+        finalText = snippetMatch.replacement;
+      }
+
       const newEntry = await addTranscription(
-        trimmed,
+        finalText,
         provider,
         audioPath,
         apiCost,
@@ -99,13 +108,13 @@ export default function Dashboard() {
         const { writeText } = await import(
           "@tauri-apps/plugin-clipboard-manager"
         );
-        await writeText(trimmed);
-        await invoke("paste_text_to_active_window", { text: trimmed });
+        await writeText(finalText);
+        await invoke("paste_text_to_active_window", { text: finalText });
       }
 
       return newEntry;
     },
-    [addTranscription, playSuccess, settings.paste_at_cursor],
+    [addTranscription, playSuccess, settings.paste_at_cursor, settings.snippets],
   );
 
   const handleTranscriptionFinalRef = useRef(handleTranscriptionFinal);
@@ -181,6 +190,7 @@ export default function Dashboard() {
             keepLast: settings.recordings_keep_last,
             provider: settings.transcription_provider,
             localModelSize: settings.local_model_size,
+            dictionary: (settings.dictionary ?? []).join(", "),
           },
         );
 
