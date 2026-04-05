@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::UpdaterExt;
+use time::format_description::well_known::Rfc3339;
 
 /// Information about an available update
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,8 +91,8 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
         Some(update) => {
             tracing::info!("Update available: {}", update.version);
 
-            // Convert date to String if present
-            let date_str = update.date.map(|d| d.to_string());
+            // Convert date to RFC 3339 string (ISO 8601) so JS Date can parse it
+            let date_str = update.date.and_then(|d| d.format(&Rfc3339).ok());
 
             Ok(UpdateInfo {
                 version: update.version.clone(),
