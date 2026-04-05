@@ -2,41 +2,74 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/voice-tool",
-  "generated_at": "2026-04-05T11:55:42.097Z",
+  "generated_at": "2026-04-05T13:32:36.266Z",
   "latest": {
-    "version": "2.7.2",
-    "tag": "v2.7.2",
-    "published_at": "2026-04-05T11:55:33Z",
-    "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.7.2",
-    "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.2/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.2-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.2-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.2-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+    "version": "2.7.3",
+    "tag": "v2.7.3",
+    "published_at": "2026-04-05T13:32:27Z",
+    "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.7.3",
+    "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.3/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.3-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.3-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.3-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
     "windows": {
       "portable": {
-        "filename": "voice-tool-v2.7.2-portable.exe",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-portable.exe",
-        "size_bytes": 91112448,
-        "size_human": "86.9 MB",
-        "sha256": "77f80ed3ab84b431d7c8b90b47c03a8dfd2c8366ae5412a412f23d603367b998",
+        "filename": "voice-tool-v2.7.3-portable.exe",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-portable.exe",
+        "size_bytes": 91333120,
+        "size_human": "87.1 MB",
+        "sha256": null,
         "download_count": 0
       },
       "nsis_installer": {
-        "filename": "voice-tool-v2.7.2-setup.exe",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-setup.exe",
-        "size_bytes": 15737664,
+        "filename": "voice-tool-v2.7.3-setup.exe",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-setup.exe",
+        "size_bytes": 15754488,
         "size_human": "15 MB",
-        "sha256": "458d60a14631a2fe63c2ed8df1f6e9f86c443890356cc8a0ff766460383e8669",
+        "sha256": null,
         "download_count": 0
       },
       "msi_installer": {
-        "filename": "voice-tool-v2.7.2-setup.msi",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-setup.msi",
-        "size_bytes": 28131328,
-        "size_human": "26.8 MB",
-        "sha256": "6ff186737000d8180992b16c2aad4a0f49795d8c7d97d2054737ab0a99d9417f",
+        "filename": "voice-tool-v2.7.3-setup.msi",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-setup.msi",
+        "size_bytes": 28188672,
+        "size_human": "26.9 MB",
+        "sha256": null,
         "download_count": 0
       }
     }
   },
   "releases": [
+    {
+      "version": "2.7.3",
+      "tag": "v2.7.3",
+      "published_at": "2026-04-05T13:32:27Z",
+      "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.7.3",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.3/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.3-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.3-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.3-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "windows": {
+        "portable": {
+          "filename": "voice-tool-v2.7.3-portable.exe",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-portable.exe",
+          "size_bytes": 91333120,
+          "size_human": "87.1 MB",
+          "sha256": null,
+          "download_count": 0
+        },
+        "nsis_installer": {
+          "filename": "voice-tool-v2.7.3-setup.exe",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-setup.exe",
+          "size_bytes": 15754488,
+          "size_human": "15 MB",
+          "sha256": null,
+          "download_count": 0
+        },
+        "msi_installer": {
+          "filename": "voice-tool-v2.7.3-setup.msi",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-setup.msi",
+          "size_bytes": 28188672,
+          "size_human": "26.9 MB",
+          "sha256": null,
+          "download_count": 0
+        }
+      }
+    },
     {
       "version": "2.7.2",
       "tag": "v2.7.2",
@@ -50,7 +83,7 @@
           "size_bytes": 91112448,
           "size_human": "86.9 MB",
           "sha256": "77f80ed3ab84b431d7c8b90b47c03a8dfd2c8366ae5412a412f23d603367b998",
-          "download_count": 0
+          "download_count": 1
         },
         "nsis_installer": {
           "filename": "voice-tool-v2.7.2-setup.exe",
@@ -58,7 +91,7 @@
           "size_bytes": 15737664,
           "size_human": "15 MB",
           "sha256": "458d60a14631a2fe63c2ed8df1f6e9f86c443890356cc8a0ff766460383e8669",
-          "download_count": 0
+          "download_count": 2
         },
         "msi_installer": {
           "filename": "voice-tool-v2.7.2-setup.msi",
@@ -66,7 +99,7 @@
           "size_bytes": 28131328,
           "size_human": "26.8 MB",
           "sha256": "6ff186737000d8180992b16c2aad4a0f49795d8c7d97d2054737ab0a99d9417f",
-          "download_count": 0
+          "download_count": 1
         }
       }
     },
