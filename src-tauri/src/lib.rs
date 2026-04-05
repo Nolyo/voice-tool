@@ -200,6 +200,29 @@ fn close_mini_window(app_handle: AppHandle) {
     tracing::debug!("Mini window closed and reset to compact mode");
 }
 
+/// Open the app data directory in the system file explorer
+#[tauri::command]
+fn open_app_data_dir(app_handle: AppHandle) -> Result<(), String> {
+    let app_data = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(app_data)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        opener::open(app_data).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
 /// Log a separator line to mark the end of a transcription process
 #[tauri::command]
 fn log_separator() {
@@ -1115,6 +1138,12 @@ pub fn run() {
     let log_layer = logging::init_logging();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -1146,6 +1175,7 @@ pub fn run() {
             set_mini_window_mode,
             close_mini_window,
             log_separator,
+            open_app_data_dir,
             is_autostart_enabled,
             set_autostart,
             update_hotkeys,

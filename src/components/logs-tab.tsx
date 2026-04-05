@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Trash2 } from "lucide-react";
+import { FolderOpen, Trash2 } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import type { AppLog } from "@/hooks/useAppLogs";
 
@@ -66,21 +67,31 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
           {logs.length} log{logs.length !== 1 ? "s" : ""}
           {logs.length >= 500 && " (limite atteinte)"}
         </div>
-        {logs.length > 0 && (
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              if (confirm(`Supprimer tous les ${logs.length} logs ?`)) {
-                onClearLogs();
-              }
-            }}
-            className="dark:hover:border-red-800 dark:hover:bg-red-500"
+            onClick={() => invoke("open_app_data_dir")}
           >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Tout effacer
+            <FolderOpen className="w-4 h-4 mr-2" />
+            Ouvrir le dossier
           </Button>
-        )}
+          {logs.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (confirm(`Supprimer tous les ${logs.length} logs ?`)) {
+                  onClearLogs();
+                }
+              }}
+              className="dark:hover:border-red-800 dark:hover:bg-red-500"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Tout effacer
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Logs display */}
