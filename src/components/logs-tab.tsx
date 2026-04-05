@@ -100,7 +100,7 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
           <div className="py-12 text-center text-muted-foreground">
             <p>Aucun log pour le moment</p>
             <p className="text-xs mt-2">
-              Les logs du backend Rust apparaîtront ici automatiquement
+              Les logs du backend apparaîtront ici automatiquement
             </p>
           </div>
         ) : (
