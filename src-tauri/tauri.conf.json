@@ -23,7 +23,7 @@
       "csp": null,
       "assetProtocol": {
         "scope": [
-          "$APP/*",
+          "$APP/**",
           "$RESOURCE/*",
           "$APPDATA/com.nolyo.voice-tool/recordings/*"
         ]

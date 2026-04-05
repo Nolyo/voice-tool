@@ -1,104 +1,77 @@
-import { useState, useEffect } from 'react';
-import { Store } from '@tauri-apps/plugin-store';
+import { useState, useEffect, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 
-export interface Note {
+export interface NoteMeta {
   id: string;
   title: string;
-  content: string;
   createdAt: string;
   updatedAt: string;
 }
 
-const NOTES_KEY = 'notes';
+export interface NoteData {
+  meta: NoteMeta;
+  content: string;
+}
 
 export function deriveTitle(content: string): string {
-  const firstLine = content.split('\n').find(line => line.trim().length > 0);
+  // Extract text from HTML by stripping tags
+  const text = content.replace(/<[^>]*>/g, '\n').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+  const firstLine = text.split('\n').find(line => line.trim().length > 0);
   if (!firstLine) return 'Note sans titre';
   const trimmed = firstLine.trim();
   return trimmed.length > 50 ? trimmed.slice(0, 50) + '...' : trimmed;
 }
 
 export function useNotes() {
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [notes, setNotes] = useState<NoteMeta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadNotes();
-  }, []);
-
-  const loadNotes = async () => {
+  const loadNotes = useCallback(async () => {
     try {
-      const store = await Store.load('settings.json');
-      const stored = await store.get<Note[]>(NOTES_KEY);
-
-      if (stored && Array.isArray(stored)) {
-        const sorted = stored.sort((a, b) => {
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        });
-        setNotes(sorted);
-      }
+      setIsLoading(true);
+      const result = await invoke<NoteMeta[]>('list_notes');
+      setNotes(result);
     } catch (error) {
       console.error('Failed to load notes:', error);
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadNotes();
+  }, [loadNotes]);
+
+  const createNote = async (): Promise<NoteMeta> => {
+    const meta = await invoke<NoteMeta>('create_note');
+    setNotes(prev => [meta, ...prev]);
+    return meta;
   };
 
-  const saveNotes = async (newNotes: Note[]) => {
-    try {
-      const store = await Store.load('settings.json');
-      await store.set(NOTES_KEY, newNotes);
-      await store.save();
-    } catch (error) {
-      console.error('Failed to save notes:', error);
-    }
+  const readNote = async (id: string): Promise<NoteData> => {
+    return invoke<NoteData>('read_note', { id });
   };
 
-  const addNote = async () => {
-    const now = new Date().toISOString();
-    const newNote: Note = {
-      id: crypto.randomUUID(),
-      title: 'Note sans titre',
-      content: '',
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const newNotes = [newNote, ...notes];
-    setNotes(newNotes);
-    await saveNotes(newNotes);
-
-    return newNote;
-  };
-
-  const updateNote = async (id: string, updates: Partial<Note>) => {
-    const newNotes = notes.map(n =>
-      n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
-    );
-    setNotes(newNotes);
-    await saveNotes(newNotes);
+  const updateNote = async (id: string, content: string, title: string) => {
+    const updated = await invoke<NoteMeta>('update_note', { id, content, title });
+    setNotes(prev => prev.map(n => n.id === id ? updated : n));
   };
 
   const deleteNote = async (id: string) => {
-    const newNotes = notes.filter(n => n.id !== id);
-    setNotes(newNotes);
-    await saveNotes(newNotes);
+    await invoke('delete_note', { id });
+    setNotes(prev => prev.filter(n => n.id !== id));
   };
 
-  const searchNotes = (query: string): Note[] => {
-    if (!query.trim()) return notes;
-
-    const lowerQuery = query.toLowerCase();
-    return notes.filter(n =>
-      n.title.toLowerCase().includes(lowerQuery) ||
-      n.content.toLowerCase().includes(lowerQuery)
-    );
+  const searchNotes = async (query: string): Promise<NoteMeta[]> => {
+    return invoke<NoteMeta[]>('search_notes', { query });
   };
 
   return {
     notes,
     isLoading,
-    addNote,
+    loadNotes,
+    createNote,
+    readNote,
     updateNote,
     deleteNote,
     searchNotes,

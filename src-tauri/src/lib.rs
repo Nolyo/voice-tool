@@ -3,6 +3,7 @@ mod chat;
 mod deepgram_streaming;
 mod deepgram_types;
 mod logging;
+mod notes;
 mod transcription;
 mod transcription_local;
 mod updater;
@@ -1194,11 +1195,28 @@ pub fn run() {
             check_local_model_exists,
             delete_local_model,
             delete_recording_files,
-            ai_process_text
+            ai_process_text,
+            notes::list_notes,
+            notes::read_note,
+            notes::create_note,
+            notes::update_note,
+            notes::delete_note,
+            notes::search_notes
         ])
         .setup(move |app| {
             // Enable logging to frontend
             log_layer.set_app_handle(app.handle().clone());
+
+            // Migrate notes from settings.json to file-based storage
+            match notes::migrate_notes_from_store(app.handle()) {
+                Ok(count) if count > 0 => {
+                    tracing::info!("Notes migration completed: {} notes migrated", count);
+                }
+                Err(e) => {
+                    tracing::warn!("Notes migration failed: {}", e);
+                }
+                _ => {}
+            }
 
             // Create mini window at startup
             create_mini_window(&app.handle())?;

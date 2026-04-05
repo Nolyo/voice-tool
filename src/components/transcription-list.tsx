@@ -11,7 +11,7 @@ import { SettingTabs } from "./setting-tabs";
 import { LogsTab } from "./logs-tab";
 import { NotesTab } from "./notes-tab";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
-import { type Note } from "@/hooks/useNotes";
+import { type NoteMeta } from "@/hooks/useNotes";
 import { useAppLogs } from "@/hooks/useAppLogs";
 
 interface TranscriptionListProps {
@@ -23,11 +23,12 @@ interface TranscriptionListProps {
   onClearAll?: () => void;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
-  notes: Note[];
+  notes: NoteMeta[];
   onCreateNote: () => void;
-  onOpenNote: (note: Note) => void;
+  onOpenNote: (note: NoteMeta) => void;
   onDeleteNote: (id: string) => void;
   onReloadNotes: () => void;
+  searchNotes: (query: string) => Promise<NoteMeta[]>;
 }
 
 export function TranscriptionList({
@@ -44,6 +45,7 @@ export function TranscriptionList({
   onOpenNote,
   onDeleteNote,
   onReloadNotes,
+  searchNotes,
 }: TranscriptionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { logs, clearLogs } = useAppLogs();
@@ -215,8 +217,8 @@ export function TranscriptionList({
             onCreateNote={onCreateNote}
             onOpenNote={onOpenNote}
             onDeleteNote={onDeleteNote}
-            onCopyContent={onCopy}
             onReload={onReloadNotes}
+            searchNotes={searchNotes}
           />
         </TabsContent>
 

@@ -5833,6 +5833,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "urlencoding",
+ "uuid",
  "whisper-rs",
  "windows-sys 0.59.0",
 ]

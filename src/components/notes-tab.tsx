@@ -1,16 +1,16 @@
-import { useState, useMemo } from "react";
-import { Search, Plus, Copy, Trash2, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Search, Plus, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type Note } from "@/hooks/useNotes";
+import { type NoteMeta } from "@/hooks/useNotes";
 
 interface NotesTabProps {
-  notes: Note[];
+  notes: NoteMeta[];
   onCreateNote: () => void;
-  onOpenNote: (note: Note) => void;
+  onOpenNote: (note: NoteMeta) => void;
   onDeleteNote: (id: string) => void;
-  onCopyContent: (text: string) => void;
   onReload: () => void;
+  searchNotes: (query: string) => Promise<NoteMeta[]>;
 }
 
 export function NotesTab({
@@ -18,21 +18,41 @@ export function NotesTab({
   onCreateNote,
   onOpenNote,
   onDeleteNote,
-  onCopyContent,
   onReload,
+  searchNotes,
 }: NotesTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<NoteMeta[] | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const filteredNotes = useMemo(() => {
-    if (!searchQuery.trim()) return notes;
+  const handleSearch = useCallback(
+    (query: string) => {
+      setSearchQuery(query);
+      clearTimeout(debounceRef.current);
 
-    const lowerQuery = searchQuery.toLowerCase();
-    return notes.filter(
-      (n) =>
-        n.title.toLowerCase().includes(lowerQuery) ||
-        n.content.toLowerCase().includes(lowerQuery)
-    );
-  }, [notes, searchQuery]);
+      if (!query.trim()) {
+        setSearchResults(null);
+        return;
+      }
+
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const results = await searchNotes(query);
+          setSearchResults(results);
+        } catch (err) {
+          console.error("Search failed:", err);
+          setSearchResults(null);
+        }
+      }, 300);
+    },
+    [searchNotes],
+  );
+
+  useEffect(() => {
+    return () => clearTimeout(debounceRef.current);
+  }, []);
+
+  const displayedNotes = searchResults ?? notes;
 
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
@@ -61,7 +81,7 @@ export function NotesTab({
             placeholder="Rechercher dans les notes..."
             value={searchQuery}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setSearchQuery(e.target.value)
+              handleSearch(e.target.value)
             }
             className="pl-10 sm:max-w-none"
           />
@@ -87,7 +107,7 @@ export function NotesTab({
 
       {/* Notes List */}
       <div className="space-y-2">
-        {filteredNotes.length === 0 ? (
+        {displayedNotes.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">
             <p>
               {searchQuery
@@ -99,7 +119,7 @@ export function NotesTab({
             </p>
           </div>
         ) : (
-          filteredNotes.map((note) => (
+          displayedNotes.map((note) => (
             <button
               key={note.id}
               onClick={() => onOpenNote(note)}
@@ -110,27 +130,11 @@ export function NotesTab({
                   <p className="font-medium text-foreground line-clamp-1 mb-1">
                     {note.title}
                   </p>
-                  {note.content && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                      {note.content}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {formatDate(note.updatedAt)} à {formatTime(note.updatedAt)}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button
-                    className="dark:hover:text-blue-800"
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      onCopyContent(note.content);
-                    }}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
                   <Button
                     className="dark:hover:text-red-800"
                     variant="ghost"

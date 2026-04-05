@@ -1,20 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Plus, Copy, Maximize2, Minimize2, Check } from "lucide-react";
+import { X, Plus, Copy, Maximize2, Minimize2, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { type Note, deriveTitle } from "@/hooks/useNotes";
+import { type NoteMeta, type NoteData, deriveTitle } from "@/hooks/useNotes";
 import { useAiProcess } from "@/hooks/useAiProcess";
 import { AiActionMenu } from "@/components/ai-action-menu";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
+import Placeholder from "@tiptap/extension-placeholder";
 
 interface NotesEditorProps {
-  openNotes: Note[];
+  openNotes: NoteMeta[];
   activeNoteId: string | null;
   onActivateNote: (id: string) => void;
   onCloseNote: (id: string) => void;
-  onUpdateNote: (id: string, updates: Partial<Note>) => void;
+  onUpdateNote: (id: string, content: string, title: string) => void;
   onCreateNote: () => void;
   onCopyContent: (text: string) => void;
   onClose: () => void;
   apiKey: string;
+  readNote: (id: string) => Promise<NoteData>;
 }
 
 const DEFAULT_WIDTH = 500;
@@ -30,6 +35,7 @@ export function NotesEditor({
   onCopyContent,
   onClose,
   apiKey,
+  readNote,
 }: NotesEditorProps) {
   const [position, setPosition] = useState(() => ({
     x: Math.max(0, (window.innerWidth - DEFAULT_WIDTH) / 2),
@@ -41,47 +47,118 @@ export function NotesEditor({
     position: { x: number; y: number };
     size: { width: number; height: number };
   } | null>(null);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
 
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [localContent, setLocalContent] = useState<string>("");
   const activeNoteIdRef = useRef(activeNoteId);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const selectionRef = useRef<{ start: number; end: number; hasSelection: boolean }>({
-    start: 0,
-    end: 0,
-    hasSelection: false,
-  });
+  const loadedNoteIdRef = useRef<string | null>(null);
 
   const { state: aiState, result: aiResult, error: aiError, processText, accept, dismiss } = useAiProcess();
   const [aiOriginalText, setAiOriginalText] = useState("");
 
-  const activeNote = openNotes.find((n) => n.id === activeNoteId);
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Image.configure({
+        inline: true,
+        allowBase64: true,
+      }),
+      Placeholder.configure({
+        placeholder: "Commencez à écrire...",
+      }),
+    ],
+    editorProps: {
+      attributes: {
+        class: "prose prose-sm dark:prose-invert max-w-none w-full h-full p-4 focus:outline-none text-foreground text-sm leading-relaxed",
+      },
+      handlePaste: (_view, event) => {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
 
-  // Sync local content when active note changes
-  useEffect(() => {
-    if (activeNote) {
-      setLocalContent(activeNote.content);
-    }
-    activeNoteIdRef.current = activeNoteId;
-  }, [activeNoteId, activeNote]);
+        for (const item of items) {
+          if (item.type.startsWith("image/")) {
+            event.preventDefault();
+            const file = item.getAsFile();
+            if (file) handleImageFile(file);
+            return true;
+          }
+        }
+        return false;
+      },
+      handleDrop: (_view, event) => {
+        const files = event.dataTransfer?.files;
+        if (!files || files.length === 0) return false;
 
-  const handleContentChange = useCallback(
-    (newContent: string) => {
-      setLocalContent(newContent);
-
+        for (const file of files) {
+          if (file.type.startsWith("image/")) {
+            event.preventDefault();
+            handleImageFile(file);
+            return true;
+          }
+        }
+        return false;
+      },
+    },
+    onUpdate: ({ editor }) => {
       clearTimeout(saveTimerRef.current);
       const noteId = activeNoteIdRef.current;
       saveTimerRef.current = setTimeout(() => {
         if (noteId) {
-          const title = deriveTitle(newContent);
-          onUpdateNote(noteId, { content: newContent, title });
+          const html = editor.getHTML();
+          const title = deriveTitle(html);
+          onUpdateNote(noteId, html, title);
         }
       }, 500);
     },
-    [onUpdateNote],
-  );
+  });
+
+  const handleImageFile = useCallback((file: File) => {
+    if (!editor) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUri = reader.result;
+      if (typeof dataUri === "string") {
+        editor.chain().focus().setImage({ src: dataUri }).run();
+      }
+    };
+    reader.onerror = () => {
+      console.error("Failed to read image file");
+    };
+    reader.readAsDataURL(file);
+  }, [editor]);
+
+  // Load content when active note changes
+  useEffect(() => {
+    activeNoteIdRef.current = activeNoteId;
+
+    if (!activeNoteId || !editor) return;
+
+    // Don't reload if already loaded
+    if (loadedNoteIdRef.current === activeNoteId) return;
+
+    setIsLoadingContent(true);
+    readNote(activeNoteId)
+      .then((data) => {
+        editor.commands.setContent(data.content);
+        loadedNoteIdRef.current = activeNoteId;
+      })
+      .catch((err) => {
+        console.error("Failed to load note:", err);
+        editor.commands.setContent("");
+      })
+      .finally(() => setIsLoadingContent(false));
+  }, [activeNoteId, editor, readNote]);
+
+  // Reset loaded note when tab is closed
+  useEffect(() => {
+    const openIds = new Set(openNotes.map(n => n.id));
+    if (loadedNoteIdRef.current && !openIds.has(loadedNoteIdRef.current)) {
+      loadedNoteIdRef.current = null;
+    }
+  }, [openNotes]);
 
   // Flush pending save on unmount
   useEffect(() => {
@@ -164,37 +241,31 @@ export function NotesEditor({
     }
   };
 
-  const captureSelection = () => {
-    const ta = textareaRef.current;
-    if (ta && ta.selectionStart !== ta.selectionEnd) {
-      selectionRef.current = {
-        start: ta.selectionStart,
-        end: ta.selectionEnd,
-        hasSelection: true,
-      };
-    } else {
-      selectionRef.current = { start: 0, end: 0, hasSelection: false };
-    }
-  };
-
   const handleAiAction = (systemPrompt: string) => {
-    captureSelection();
-    const { hasSelection, start, end } = selectionRef.current;
-    const text = hasSelection ? localContent.slice(start, end) : localContent;
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    const hasSelection = from !== to;
+    const text = hasSelection
+      ? editor.state.doc.textBetween(from, to)
+      : editor.getText();
     setAiOriginalText(text);
     processText(text, systemPrompt, apiKey);
   };
 
   const handleAccept = () => {
+    if (!editor) return;
     const text = accept();
-    const { hasSelection, start, end } = selectionRef.current;
+    const { from, to } = editor.state.selection;
+    const hasSelection = from !== to;
     if (hasSelection) {
-      const newContent = localContent.slice(0, start) + text + localContent.slice(end);
-      handleContentChange(newContent);
+      editor.chain().focus().deleteSelection().insertContent(text).run();
     } else {
-      handleContentChange(text);
+      editor.commands.setContent(`<p>${text}</p>`);
     }
   };
+
+  const activeNote = openNotes.find((n) => n.id === activeNoteId);
+  const editorText = editor?.getText() ?? "";
 
   const style: React.CSSProperties = {
     position: "fixed",
@@ -216,7 +287,7 @@ export function NotesEditor({
         onMouseDown={handleDragStart}
         onDoubleClick={toggleMaximize}
       >
-        {/* Close + Duplicate */}
+        {/* Close */}
         <Button
           variant="ghost"
           size="sm"
@@ -242,8 +313,8 @@ export function NotesEditor({
               }}
             >
               <span className="truncate">
-                {note.id === activeNoteId && localContent
-                  ? deriveTitle(localContent)
+                {note.id === activeNoteId && editorText
+                  ? deriveTitle(editor?.getHTML() ?? "")
                   : note.title}
               </span>
               <button
@@ -338,16 +409,17 @@ export function NotesEditor({
             </div>
           </div>
         ) : (
-          <div className="flex-1 relative">
-            <textarea
-              ref={textareaRef}
-              className="w-full h-full p-4 bg-transparent text-foreground text-sm leading-relaxed resize-none focus:outline-none placeholder:text-muted-foreground"
-              placeholder="Commencez à écrire..."
-              value={localContent}
-              onChange={(e) => handleContentChange(e.target.value)}
-              readOnly={aiState === "loading"}
-              style={aiState === "loading" ? { opacity: 0.5 } : undefined}
-            />
+          <div className="flex-1 relative overflow-auto">
+            {isLoadingContent ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <EditorContent
+                editor={editor}
+                className="h-full [&_.tiptap]:h-full [&_.tiptap]:overflow-auto [&_.tiptap_img]:max-w-full [&_.tiptap_img]:h-auto [&_.tiptap_img]:rounded-md [&_.tiptap_img]:my-2"
+              />
+            )}
             {aiState === "loading" && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-sm text-muted-foreground bg-card/80 px-3 py-1.5 rounded-md">
@@ -384,13 +456,28 @@ export function NotesEditor({
               <AiActionMenu
                 onAction={handleAiAction}
                 isLoading={aiState === "loading"}
-                disabled={!localContent.trim()}
+                disabled={!editorText.trim()}
               />
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs gap-1 text-foreground"
-                onClick={() => onCopyContent(localContent)}
+                onClick={async () => {
+                  if (!editor) return;
+                  try {
+                    const html = editor.getHTML();
+                    const blob = new Blob([html], { type: "text/html" });
+                    const textBlob = new Blob([editorText], { type: "text/plain" });
+                    await navigator.clipboard.write([
+                      new ClipboardItem({
+                        "text/html": blob,
+                        "text/plain": textBlob,
+                      }),
+                    ]);
+                  } catch {
+                    onCopyContent(editorText);
+                  }
+                }}
               >
                 <Copy className="w-3.5 h-3.5" />
                 Copier

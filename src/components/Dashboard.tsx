@@ -16,7 +16,7 @@ import {
   type Transcription,
 } from "@/hooks/useTranscriptionHistory";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
-import { useNotes, type Note } from "@/hooks/useNotes";
+import { useNotes, type NoteMeta } from "@/hooks/useNotes";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { NotesEditor } from "./notes-editor";
 
@@ -52,7 +52,7 @@ export default function Dashboard() {
     deleteTranscription,
     clearHistory,
   } = useTranscriptionHistory();
-  const { notes, addNote, updateNote, deleteNote, reloadNotes } = useNotes();
+  const { notes, createNote, readNote, updateNote, deleteNote, searchNotes, reloadNotes } = useNotes();
   const [editorOpen, setEditorOpen] = useState(false);
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -454,13 +454,13 @@ export default function Dashboard() {
   };
 
   const handleCreateNote = async () => {
-    const note = await addNote();
+    const note = await createNote();
     setOpenNoteIds((prev) => [...prev, note.id]);
     setActiveNoteId(note.id);
     setEditorOpen(true);
   };
 
-  const handleOpenNote = (note: Note) => {
+  const handleOpenNote = (note: NoteMeta) => {
     if (!openNoteIds.includes(note.id)) {
       setOpenNoteIds((prev) => [...prev, note.id]);
     }
@@ -533,6 +533,7 @@ export default function Dashboard() {
             onOpenNote={handleOpenNote}
             onDeleteNote={handleDeleteNote}
             onReloadNotes={reloadNotes}
+            searchNotes={searchNotes}
           />
         </div>
       </div>
@@ -548,6 +549,7 @@ export default function Dashboard() {
           onCopyContent={handleCopy}
           onClose={() => setEditorOpen(false)}
           apiKey={settings.openai_api_key}
+          readNote={readNote}
         />
       )}
     </div>
