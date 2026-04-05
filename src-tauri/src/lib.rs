@@ -6,6 +6,7 @@ mod logging;
 mod notes;
 mod transcription;
 mod transcription_local;
+mod transcriptions;
 mod updater;
 
 use audio::{AudioDeviceInfo, AudioRecorder, RecordingResult};
@@ -1202,11 +1203,21 @@ pub fn run() {
             notes::update_note,
             notes::delete_note,
             notes::search_notes,
-            notes::toggle_note_favorite
+            notes::toggle_note_favorite,
+            transcriptions::list_transcriptions,
+            transcriptions::save_transcription,
+            transcriptions::delete_transcription,
+            transcriptions::clear_transcriptions,
+            transcriptions::update_transcription
         ])
         .setup(move |app| {
             // Enable logging to frontend
             log_layer.set_app_handle(app.handle().clone());
+
+            // Clean up legacy transcription_history from settings.json
+            if let Err(e) = transcriptions::cleanup_legacy_transcriptions(app.handle()) {
+                tracing::warn!("Failed to cleanup legacy transcriptions: {}", e);
+            }
 
             // Migrate notes from settings.json to file-based storage
             match notes::migrate_notes_from_store(app.handle()) {

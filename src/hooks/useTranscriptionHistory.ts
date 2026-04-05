@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Store } from '@tauri-apps/plugin-store';
 import { invoke } from '@tauri-apps/api/core';
 
 export interface Transcription {
@@ -11,34 +10,18 @@ export interface Transcription {
   duration?: number;
   isStreaming?: boolean;
   audioPath?: string;
-  apiCost?: number; // Cost in USD
+  apiCost?: number;
 }
-
-const HISTORY_KEY = 'transcription_history';
 
 export function useTranscriptionHistory() {
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load history from Tauri Store on mount
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
   const loadHistory = async () => {
     try {
-      const store = await Store.load('settings.json');
-      const history = await store.get<Transcription[]>(HISTORY_KEY);
-
-      if (history && Array.isArray(history)) {
-        // Sort by date/time descending (most recent first)
-        const sorted = history.sort((a, b) => {
-          const dateTimeA = new Date(`${a.date} ${a.time}`).getTime();
-          const dateTimeB = new Date(`${b.date} ${b.time}`).getTime();
-          return dateTimeB - dateTimeA;
-        });
-        setTranscriptions(sorted);
-      }
+      setIsLoading(true);
+      const result = await invoke<Transcription[]>('list_transcriptions');
+      setTranscriptions(result);
     } catch (error) {
       console.error('Failed to load transcription history:', error);
     } finally {
@@ -46,30 +29,24 @@ export function useTranscriptionHistory() {
     }
   };
 
-  const saveHistory = async (newHistory: Transcription[]) => {
-    try {
-      const store = await Store.load('settings.json');
-      await store.set(HISTORY_KEY, newHistory);
-      await store.save();
-    } catch (error) {
-      console.error('Failed to save transcription history:', error);
-    }
-  };
+  useEffect(() => {
+    loadHistory();
+  }, []);
 
   const addTranscription = async (
     text: string,
     provider: 'whisper' | 'deepgram' = 'whisper',
     audioPath?: string,
     apiCost?: number
-  ) => {
+  ): Promise<Transcription> => {
     const now = new Date();
     const newTranscription: Transcription = {
       id: crypto.randomUUID(),
-      date: now.toISOString().split('T')[0], // YYYY-MM-DD
+      date: now.toISOString().split('T')[0],
       time: now.toLocaleTimeString('fr-FR', {
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit'
+        second: '2-digit',
       }),
       text,
       provider,
@@ -77,43 +54,32 @@ export function useTranscriptionHistory() {
       apiCost,
     };
 
-    const newHistory = [newTranscription, ...transcriptions];
-    setTranscriptions(newHistory);
-    await saveHistory(newHistory);
+    await invoke('save_transcription', { transcription: newTranscription });
+    setTranscriptions(prev => [newTranscription, ...prev]);
 
     return newTranscription;
   };
 
   const deleteTranscription = async (id: string) => {
-    const newHistory = transcriptions.filter(t => t.id !== id);
-    setTranscriptions(newHistory);
-    await saveHistory(newHistory);
+    await invoke('delete_transcription', { id });
+    setTranscriptions(prev => prev.filter(t => t.id !== id));
   };
 
   const clearHistory = async () => {
-    const audioPaths = transcriptions
-      .map(t => t.audioPath)
-      .filter((p): p is string => !!p);
-
-    if (audioPaths.length > 0) {
-      await invoke("delete_recording_files", { paths: audioPaths });
-    }
-
+    await invoke('clear_transcriptions');
     setTranscriptions([]);
-    await saveHistory([]);
   };
 
   const updateTranscription = async (id: string, updates: Partial<Transcription>) => {
-    const newHistory = transcriptions.map(t =>
-      t.id === id ? { ...t, ...updates } : t
-    );
-    setTranscriptions(newHistory);
-    await saveHistory(newHistory);
+    const existing = transcriptions.find(t => t.id === id);
+    if (!existing) return;
+    const updated = { ...existing, ...updates };
+    await invoke('update_transcription', { transcription: updated });
+    setTranscriptions(prev => prev.map(t => t.id === id ? updated : t));
   };
 
   const searchTranscriptions = (query: string): Transcription[] => {
     if (!query.trim()) return transcriptions;
-
     const lowerQuery = query.toLowerCase();
     return transcriptions.filter(t =>
       t.text.toLowerCase().includes(lowerQuery) ||
