@@ -2,41 +2,74 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/voice-tool",
-  "generated_at": "2026-04-03T17:44:36.281Z",
+  "generated_at": "2026-04-05T11:55:42.097Z",
   "latest": {
-    "version": "2.7.1",
-    "tag": "v2.7.1",
-    "published_at": "2026-04-03T17:44:28Z",
-    "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.7.1",
-    "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.1-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.1-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.1-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+    "version": "2.7.2",
+    "tag": "v2.7.2",
+    "published_at": "2026-04-05T11:55:33Z",
+    "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.7.2",
+    "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.2/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.2-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.2-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.2-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
     "windows": {
       "portable": {
-        "filename": "voice-tool-v2.7.1-portable.exe",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.1/voice-tool-v2.7.1-portable.exe",
-        "size_bytes": 90772992,
-        "size_human": "86.6 MB",
-        "sha256": "74fe2773c49631bf771c0410d727991b63e7eb39bed81c0d7706b2c1568538b6",
+        "filename": "voice-tool-v2.7.2-portable.exe",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-portable.exe",
+        "size_bytes": 91112448,
+        "size_human": "86.9 MB",
+        "sha256": "77f80ed3ab84b431d7c8b90b47c03a8dfd2c8366ae5412a412f23d603367b998",
         "download_count": 0
       },
       "nsis_installer": {
-        "filename": "voice-tool-v2.7.1-setup.exe",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.1/voice-tool-v2.7.1-setup.exe",
-        "size_bytes": 15566594,
-        "size_human": "14.8 MB",
-        "sha256": "fb311544ad54a19b8f506e658421f76e89904f52077f2e7c42058867133630e4",
+        "filename": "voice-tool-v2.7.2-setup.exe",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-setup.exe",
+        "size_bytes": 15737664,
+        "size_human": "15 MB",
+        "sha256": "458d60a14631a2fe63c2ed8df1f6e9f86c443890356cc8a0ff766460383e8669",
         "download_count": 0
       },
       "msi_installer": {
-        "filename": "voice-tool-v2.7.1-setup.msi",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.1/voice-tool-v2.7.1-setup.msi",
-        "size_bytes": 27951104,
-        "size_human": "26.7 MB",
-        "sha256": "7c0c042ece358b48c8370bd79ae238ce69d7d147a31b10f31c6e07197c671192",
+        "filename": "voice-tool-v2.7.2-setup.msi",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-setup.msi",
+        "size_bytes": 28131328,
+        "size_human": "26.8 MB",
+        "sha256": "6ff186737000d8180992b16c2aad4a0f49795d8c7d97d2054737ab0a99d9417f",
         "download_count": 0
       }
     }
   },
   "releases": [
+    {
+      "version": "2.7.2",
+      "tag": "v2.7.2",
+      "published_at": "2026-04-05T11:55:33Z",
+      "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.7.2",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.2/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.2-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.2-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.2-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "windows": {
+        "portable": {
+          "filename": "voice-tool-v2.7.2-portable.exe",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-portable.exe",
+          "size_bytes": 91112448,
+          "size_human": "86.9 MB",
+          "sha256": "77f80ed3ab84b431d7c8b90b47c03a8dfd2c8366ae5412a412f23d603367b998",
+          "download_count": 0
+        },
+        "nsis_installer": {
+          "filename": "voice-tool-v2.7.2-setup.exe",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-setup.exe",
+          "size_bytes": 15737664,
+          "size_human": "15 MB",
+          "sha256": "458d60a14631a2fe63c2ed8df1f6e9f86c443890356cc8a0ff766460383e8669",
+          "download_count": 0
+        },
+        "msi_installer": {
+          "filename": "voice-tool-v2.7.2-setup.msi",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-setup.msi",
+          "size_bytes": 28131328,
+          "size_human": "26.8 MB",
+          "sha256": "6ff186737000d8180992b16c2aad4a0f49795d8c7d97d2054737ab0a99d9417f",
+          "download_count": 0
+        }
+      }
+    },
     {
       "version": "2.7.1",
       "tag": "v2.7.1",
@@ -58,7 +91,7 @@
           "size_bytes": 15566594,
           "size_human": "14.8 MB",
           "sha256": "fb311544ad54a19b8f506e658421f76e89904f52077f2e7c42058867133630e4",
-          "download_count": 0
+          "download_count": 1
         },
         "msi_installer": {
           "filename": "voice-tool-v2.7.1-setup.msi",
