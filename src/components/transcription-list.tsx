@@ -27,6 +27,7 @@ interface TranscriptionListProps {
   onCreateNote: () => void;
   onOpenNote: (note: NoteMeta) => void;
   onDeleteNote: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
   onReloadNotes: () => void;
   searchNotes: (query: string) => Promise<NoteMeta[]>;
 }
@@ -44,6 +45,7 @@ export function TranscriptionList({
   onCreateNote,
   onOpenNote,
   onDeleteNote,
+  onToggleFavorite,
   onReloadNotes,
   searchNotes,
 }: TranscriptionListProps) {
@@ -217,6 +219,7 @@ export function TranscriptionList({
             onCreateNote={onCreateNote}
             onOpenNote={onOpenNote}
             onDeleteNote={onDeleteNote}
+            onToggleFavorite={onToggleFavorite}
             onReload={onReloadNotes}
             searchNotes={searchNotes}
           />

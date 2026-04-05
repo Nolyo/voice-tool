@@ -6,6 +6,7 @@ export interface NoteMeta {
   title: string;
   createdAt: string;
   updatedAt: string;
+  favorite: boolean;
 }
 
 export interface NoteData {
@@ -66,6 +67,11 @@ export function useNotes() {
     return invoke<NoteMeta[]>('search_notes', { query });
   };
 
+  const toggleFavorite = async (id: string): Promise<void> => {
+    const updated = await invoke<NoteMeta>('toggle_note_favorite', { id });
+    setNotes(prev => prev.map(n => n.id === id ? updated : n));
+  };
+
   return {
     notes,
     isLoading,
@@ -75,6 +81,7 @@ export function useNotes() {
     updateNote,
     deleteNote,
     searchNotes,
+    toggleFavorite,
     reloadNotes: loadNotes,
   };
 }

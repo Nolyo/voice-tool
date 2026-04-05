@@ -12,6 +12,8 @@ pub struct NoteMeta {
     pub title: String,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(default)]
+    pub favorite: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,6 +143,7 @@ pub fn migrate_notes_from_store(app_handle: &AppHandle) -> Result<u32> {
             title: note.title.clone(),
             created_at: note.created_at.clone(),
             updated_at: note.updated_at.clone(),
+            favorite: false,
         };
         let meta_json = serde_json::to_string_pretty(&meta)?;
         fs::write(note_dir.join("note.json"), meta_json)?;
@@ -219,6 +222,7 @@ pub async fn create_note(app_handle: AppHandle) -> Result<NoteMeta, String> {
         title: "Note sans titre".to_string(),
         created_at: now.clone(),
         updated_at: now,
+        favorite: false,
     };
 
     let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
@@ -266,6 +270,24 @@ pub async fn delete_note(app_handle: AppHandle, id: String) -> Result<(), String
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn toggle_note_favorite(app_handle: AppHandle, id: String) -> Result<NoteMeta, String> {
+    let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
+    let note_dir = notes_dir.join(&id);
+
+    if !note_dir.exists() {
+        return Err(format!("Note not found: {}", id));
+    }
+
+    let mut meta = read_note_meta(&note_dir).map_err(|e| e.to_string())?;
+    meta.favorite = !meta.favorite;
+
+    let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
+    fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;
+
+    Ok(meta)
 }
 
 #[tauri::command]

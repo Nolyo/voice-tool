@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Plus, Trash2, RefreshCw } from "lucide-react";
+import { Search, Plus, Trash2, RefreshCw, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type NoteMeta } from "@/hooks/useNotes";
@@ -9,6 +9,7 @@ interface NotesTabProps {
   onCreateNote: () => void;
   onOpenNote: (note: NoteMeta) => void;
   onDeleteNote: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
   onReload: () => void;
   searchNotes: (query: string) => Promise<NoteMeta[]>;
 }
@@ -18,11 +19,13 @@ export function NotesTab({
   onCreateNote,
   onOpenNote,
   onDeleteNote,
+  onToggleFavorite,
   onReload,
   searchNotes,
 }: NotesTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NoteMeta[] | null>(null);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleSearch = useCallback(
@@ -52,7 +55,8 @@ export function NotesTab({
     return () => clearTimeout(debounceRef.current);
   }, []);
 
-  const displayedNotes = searchResults ?? notes;
+  const baseNotes = searchResults ?? notes;
+  const displayedNotes = showFavoritesOnly ? baseNotes.filter(n => n.favorite) : baseNotes;
 
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
@@ -75,16 +79,27 @@ export function NotesTab({
     <div className="space-y-4">
       {/* Search + Actions */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <div className="relative w-full sm:flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher dans les notes..."
-            value={searchQuery}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              handleSearch(e.target.value)
-            }
-            className="pl-10 sm:max-w-none"
-          />
+        <div className="relative w-full sm:flex-1 flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher dans les notes..."
+              value={searchQuery}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                handleSearch(e.target.value)
+              }
+              className="pl-10 sm:max-w-none"
+            />
+          </div>
+          <Button
+            variant={showFavoritesOnly ? "default" : "outline"}
+            size="sm"
+            className="shrink-0 px-3"
+            onClick={() => setShowFavoritesOnly(v => !v)}
+            title="Afficher les favoris uniquement"
+          >
+            <Star className={`w-4 h-4 ${showFavoritesOnly ? "fill-current" : ""}`} />
+          </Button>
         </div>
         <div className="flex gap-2 sm:flex-none">
           <Button
@@ -110,13 +125,17 @@ export function NotesTab({
         {displayedNotes.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">
             <p>
-              {searchQuery
+              {showFavoritesOnly
+                ? "Aucun favori pour le moment"
+                : searchQuery
                 ? "Aucune note trouvée"
                 : "Aucune note pour le moment"}
             </p>
-            <p className="text-sm mt-2">
-              Cliquez sur "Nouvelle note" pour commencer
-            </p>
+            {!showFavoritesOnly && !searchQuery && (
+              <p className="text-sm mt-2">
+                Cliquez sur "Nouvelle note" pour commencer
+              </p>
+            )}
           </div>
         ) : (
           displayedNotes.map((note) => (
@@ -135,6 +154,17 @@ export function NotesTab({
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={note.favorite ? "text-yellow-400 hover:text-yellow-500" : "text-muted-foreground/40 hover:text-yellow-400"}
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      onToggleFavorite(note.id);
+                    }}
+                  >
+                    <Star className={`w-4 h-4 ${note.favorite ? "fill-current" : ""}`} />
+                  </Button>
                   <Button
                     className="dark:hover:text-red-800"
                     variant="ghost"

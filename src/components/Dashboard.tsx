@@ -52,7 +52,7 @@ export default function Dashboard() {
     deleteTranscription,
     clearHistory,
   } = useTranscriptionHistory();
-  const { notes, createNote, readNote, updateNote, deleteNote, searchNotes, reloadNotes } = useNotes();
+  const { notes, createNote, readNote, updateNote, deleteNote, searchNotes, toggleFavorite, reloadNotes } = useNotes();
   const [editorOpen, setEditorOpen] = useState(false);
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -532,6 +532,7 @@ export default function Dashboard() {
             onCreateNote={handleCreateNote}
             onOpenNote={handleOpenNote}
             onDeleteNote={handleDeleteNote}
+            onToggleFavorite={toggleFavorite}
             onReloadNotes={reloadNotes}
             searchNotes={searchNotes}
           />

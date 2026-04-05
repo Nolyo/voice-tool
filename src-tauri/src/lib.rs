@@ -1201,7 +1201,8 @@ pub fn run() {
             notes::create_note,
             notes::update_note,
             notes::delete_note,
-            notes::search_notes
+            notes::search_notes,
+            notes::toggle_note_favorite
         ])
         .setup(move |app| {
             // Enable logging to frontend

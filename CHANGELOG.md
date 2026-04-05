@@ -3,19 +3,19 @@
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
 
-## [2.7.3] - 2026-04-xx
+## [2.7.3] - 2026-04-05
 
 ### Fixed
 
 - Correction d'un bug invalid date lors de la mise à jour
-- Ajout d'un bouton de redimmensionnement de la note en demi écran
-
-## [2.7.2] - 2026-04-05
 
 ### Added
-
+- Ajout d'un bouton de redimmensionnement de la note en demi écran
+- Ajout d'un système de favoris pour les notes
 - Les notes peuvent maintenant contenir des images (copier-coller)
 - Le logiciel ne s'ouvre plus en plusieurs instance si déjà en cours d'exécution
+
+
 
 ## [2.7.0] - 2026-04-03
 
@@ -178,7 +178,6 @@ Ajoutez une entrée **à chaque modification significative** sous la section `[U
 ## Liens des versions
 
 [2.7.3]: https://github.com/Nolyo/voice-tool/compare/v2.7.2...HEAD
-[2.7.2]: https://github.com/Nolyo/voice-tool/compare/v2.6.0...v2.7.2
 [2.7.0]: https://github.com/Nolyo/voice-tool/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/Nolyo/voice-tool/compare/v2.5.4...v2.6.0
 [2.5.4]: https://github.com/Nolyo/voice-tool/compare/v2.5.3...v2.5.4
