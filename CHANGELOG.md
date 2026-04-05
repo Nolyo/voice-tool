@@ -2,10 +2,7 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
-Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
-et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
-- ***
 ## [2.7.3] - 2026-04-xx
 
 ### Fixed
@@ -179,7 +176,9 @@ Ajoutez une entrée **à chaque modification significative** sous la section `[U
 
 ## Liens des versions
 
-[Unreleased]: https://github.com/Nolyo/voice-tool/compare/v2.6.0...HEAD
+[2.7.3]: https://github.com/Nolyo/voice-tool/compare/v2.7.2...HEAD
+[2.7.2]: https://github.com/Nolyo/voice-tool/compare/v2.6.0...v2.7.2
+[2.7.0]: https://github.com/Nolyo/voice-tool/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/Nolyo/voice-tool/compare/v2.5.4...v2.6.0
 [2.5.4]: https://github.com/Nolyo/voice-tool/compare/v2.5.3...v2.5.4
 [2.5.3]: https://github.com/Nolyo/voice-tool/compare/v2.5.2...v2.5.3
