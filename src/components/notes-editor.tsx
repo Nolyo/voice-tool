@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Plus, Copy, Maximize2, Minimize2, Check, Loader2 } from "lucide-react";
+import { X, Plus, Copy, Maximize2, Minimize2, Columns2, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type NoteMeta, type NoteData, deriveTitle } from "@/hooks/useNotes";
 import { useAiProcess } from "@/hooks/useAiProcess";
@@ -43,6 +43,7 @@ export function NotesEditor({
   }));
   const [size, setSize] = useState({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT });
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isHalfScreen, setIsHalfScreen] = useState(false);
   const [preMaxState, setPreMaxState] = useState<{
     position: { x: number; y: number };
     size: { width: number; height: number };
@@ -206,7 +207,7 @@ export function NotesEditor({
   }, []);
 
   const handleDragStart = (e: React.MouseEvent) => {
-    if (isMaximized) return;
+    if (isMaximized || isHalfScreen) return;
     dragRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -216,7 +217,7 @@ export function NotesEditor({
   };
 
   const handleResizeStart = (e: React.MouseEvent) => {
-    if (isMaximized) return;
+    if (isMaximized || isHalfScreen) return;
     e.stopPropagation();
     resizeRef.current = {
       startX: e.clientX,
@@ -233,11 +234,34 @@ export function NotesEditor({
         setSize(preMaxState.size);
       }
       setIsMaximized(false);
+      setIsHalfScreen(false);
     } else {
       setPreMaxState({ position, size });
       setPosition({ x: 0, y: 0 });
       setSize({ width: window.innerWidth, height: window.innerHeight });
       setIsMaximized(true);
+      setIsHalfScreen(false);
+    }
+  };
+
+  const toggleHalfScreen = () => {
+    if (isHalfScreen) {
+      if (preMaxState) {
+        setPosition(preMaxState.position);
+        setSize(preMaxState.size);
+      }
+      setIsHalfScreen(false);
+    } else {
+      setPreMaxState({ position, size });
+      const halfW = Math.round(window.innerWidth / 2);
+      const halfH = Math.round(window.innerHeight * 0.75);
+      setSize({ width: halfW, height: halfH });
+      setPosition({
+        x: Math.round((window.innerWidth - halfW) / 2),
+        y: Math.round((window.innerHeight - halfH) / 2),
+      });
+      setIsHalfScreen(true);
+      setIsMaximized(false);
     }
   };
 
@@ -339,6 +363,18 @@ export function NotesEditor({
             <Plus className="w-3.5 h-3.5" />
           </Button>
         </div>
+
+        {/* Half screen */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`h-6 w-6 p-0 shrink-0 ${isHalfScreen ? "text-primary" : "text-foreground"}`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={toggleHalfScreen}
+          title="Demi-écran"
+        >
+          <Columns2 className="w-3.5 h-3.5" />
+        </Button>
 
         {/* Maximize */}
         <Button
@@ -487,7 +523,7 @@ export function NotesEditor({
         </div>
 
         {/* Resize handle */}
-        {!isMaximized && (
+        {!isMaximized && !isHalfScreen && (
           <div
             className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize"
             onMouseDown={handleResizeStart}

@@ -8,6 +8,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 ### Fixed
 
 - Correction d'un bug invalid date lors de la mise à jour
+- Ajout d'un bouton de redimmensionnement de la note en demi écran
 
 ## [2.7.2] - 2026-04-05
 
