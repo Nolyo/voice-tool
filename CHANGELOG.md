@@ -1,7 +1,7 @@
-# Changelog
+## [2.7.4] - 2026-04-09
 
-Toutes les modifications notables de ce projet seront documentées dans ce fichier.
-
+### Changed
+- Improved app settings storage by moving logs to a dedicated file system, keeping your configuration cleaner and the app running more efficiently
 
 ## [2.7.3] - 2026-04-05
 
