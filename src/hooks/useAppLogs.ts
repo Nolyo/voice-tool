@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { Store } from "@tauri-apps/plugin-store";
+import { invoke } from "@tauri-apps/api/core";
 
 export interface AppLog {
   id: string;
@@ -9,40 +9,23 @@ export interface AppLog {
   message: string;
 }
 
-const LOGS_KEY = "app_logs";
-const MAX_LOGS = 100;
-
 export function useAppLogs() {
   const [logs, setLogs] = useState<AppLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load logs from store on mount
   useEffect(() => {
     loadLogs();
   }, []);
 
   const loadLogs = async () => {
     try {
-      const store = await Store.load("settings.json");
-      const storedLogs = await store.get<AppLog[]>(LOGS_KEY);
-
-      if (storedLogs && Array.isArray(storedLogs)) {
-        setLogs(storedLogs);
-      }
+      setIsLoading(true);
+      const result = await invoke<AppLog[]>("list_logs");
+      setLogs(result);
     } catch (error) {
       console.error("Failed to load app logs:", error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const saveLogs = async (newLogs: AppLog[]) => {
-    try {
-      const store = await Store.load("settings.json");
-      await store.set(LOGS_KEY, newLogs);
-      await store.save();
-    } catch (error) {
-      console.error("Failed to save app logs:", error);
     }
   };
 
@@ -65,14 +48,11 @@ export function useAppLogs() {
             message: event.payload.message,
           };
 
-          setLogs((prevLogs) => {
-            // Add new log and keep only the last MAX_LOGS entries
-            const updatedLogs = [newLog, ...prevLogs].slice(0, MAX_LOGS);
+          setLogs((prevLogs) => [newLog, ...prevLogs]);
 
-            // Save to store (async, don't block UI)
-            saveLogs(updatedLogs);
-
-            return updatedLogs;
+          // Fire-and-forget save to backend
+          invoke("save_log", { log: newLog }).catch((error) => {
+            console.error("Failed to save log:", error);
           });
         });
 
@@ -98,8 +78,8 @@ export function useAppLogs() {
   }, []);
 
   const clearLogs = async () => {
+    await invoke("clear_logs");
     setLogs([]);
-    await saveLogs([]);
   };
 
   return {

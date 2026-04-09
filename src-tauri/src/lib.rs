@@ -3,6 +3,7 @@ mod chat;
 mod deepgram_streaming;
 mod deepgram_types;
 mod logging;
+mod logs;
 mod notes;
 mod transcription;
 mod transcription_local;
@@ -1208,7 +1209,10 @@ pub fn run() {
             transcriptions::save_transcription,
             transcriptions::delete_transcription,
             transcriptions::clear_transcriptions,
-            transcriptions::update_transcription
+            transcriptions::update_transcription,
+            logs::list_logs,
+            logs::save_log,
+            logs::clear_logs
         ])
         .setup(move |app| {
             // Enable logging to frontend
@@ -1217,6 +1221,11 @@ pub fn run() {
             // Clean up legacy transcription_history from settings.json
             if let Err(e) = transcriptions::cleanup_legacy_transcriptions(app.handle()) {
                 tracing::warn!("Failed to cleanup legacy transcriptions: {}", e);
+            }
+
+            // Clean up legacy app_logs from settings.json
+            if let Err(e) = logs::cleanup_legacy_logs(app.handle()) {
+                tracing::warn!("Failed to cleanup legacy logs: {}", e);
             }
 
             // Migrate notes from settings.json to file-based storage
