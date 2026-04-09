@@ -110,17 +110,21 @@ export default function Dashboard() {
       setSelectedTranscription(newEntry);
       playSuccess();
 
-      if (settings.paste_at_cursor) {
+      // Text insertion based on mode
+      if (settings.insertion_mode === "cursor") {
+        await invoke("type_text_at_cursor", { text: finalText });
+      } else if (settings.insertion_mode === "clipboard") {
         const { writeText } = await import(
           "@tauri-apps/plugin-clipboard-manager"
         );
         await writeText(finalText);
         await invoke("paste_text_to_active_window", { text: finalText });
       }
+      // "none" mode: no insertion, text only in history
 
       return newEntry;
     },
-    [addTranscription, playSuccess, settings.paste_at_cursor, settings.snippets],
+    [addTranscription, playSuccess, settings.insertion_mode, settings.snippets],
   );
 
   const handleTranscriptionFinalRef = useRef(handleTranscriptionFinal);
