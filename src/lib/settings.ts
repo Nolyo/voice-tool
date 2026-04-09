@@ -24,7 +24,7 @@ export interface AppSettings {
     google_api_key: string;
 
     // Text
-    paste_at_cursor: boolean;
+    insertion_mode: "cursor" | "clipboard" | "none";
 
     // System
     recordings_keep_last: number;
@@ -79,7 +79,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     google_api_key: "",
 
     // Text
-    paste_at_cursor: true,
+    insertion_mode: "cursor",
 
     // System
     recordings_keep_last: 25,
