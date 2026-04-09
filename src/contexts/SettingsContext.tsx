@@ -45,7 +45,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           const merged = mergeSettings(savedSettings);
 
           // Migrate old paste_at_cursor boolean to new insertion_mode enum
-          const raw = savedSettings as Record<string, unknown>;
+          const raw = savedSettings as unknown as Record<string, unknown>;
           const rawSettings = (raw.settings ?? {}) as Record<string, unknown>;
           if ("paste_at_cursor" in rawSettings && !("insertion_mode" in rawSettings)) {
             merged.settings.insertion_mode = rawSettings.paste_at_cursor ? "cursor" : "none";
