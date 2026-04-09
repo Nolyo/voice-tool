@@ -10,6 +10,7 @@ const MAX_LOGS: usize = 500;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppLog {
+    pub id: String,
     pub timestamp: String,
     pub level: String,
     pub message: String,
