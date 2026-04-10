@@ -88,7 +88,9 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
             .build()
             .map_err(|e| format!("Failed to load settings: {}", e))?;
 
-        store.get("update_channel")
+        store.get("settings")
+            .and_then(|v| v.get("settings").cloned())
+            .and_then(|v| v.get("update_channel").cloned())
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .unwrap_or_else(|| "stable".to_string())
     };
@@ -157,7 +159,9 @@ pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
             .build()
             .map_err(|e| format!("Failed to load settings: {}", e))?;
 
-        store.get("update_channel")
+        store.get("settings")
+            .and_then(|v| v.get("settings").cloned())
+            .and_then(|v| v.get("update_channel").cloned())
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .unwrap_or_else(|| "stable".to_string())
     };

@@ -1174,7 +1174,9 @@ fn get_update_channel(app: AppHandle) -> Result<String, String> {
         .build()
         .map_err(|e| format!("Failed to load settings: {}", e))?;
 
-    let channel = store.get("update_channel")
+    let channel = store.get("settings")
+        .and_then(|v| v.get("settings").cloned())
+        .and_then(|v| v.get("update_channel").cloned())
         .and_then(|v| v.as_str().map(|s| s.to_string()))
         .unwrap_or_else(|| "stable".to_string());
 
@@ -1195,7 +1197,14 @@ fn set_update_channel(app: AppHandle, channel: String) -> Result<(), String> {
         .build()
         .map_err(|e| format!("Failed to load settings: {}", e))?;
 
-    store.set("update_channel", serde_json::json!(channel));
+    let mut data = store.get("settings").unwrap_or_else(|| json!({}));
+    if let Some(root) = data.as_object_mut() {
+        let settings_value = root.entry("settings").or_insert_with(|| json!({}));
+        if let Some(settings_obj) = settings_value.as_object_mut() {
+            settings_obj.insert("update_channel".into(), json!(channel));
+        }
+    }
+    store.set("settings", data);
     store.save()
         .map_err(|e| format!("Failed to save settings: {}", e))?;
 

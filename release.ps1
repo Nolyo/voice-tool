@@ -288,15 +288,17 @@ if ($Prerelease) {
 
     if ($stableRelease) {
         $latestStableTag = $stableRelease.tagName
+        Write-Ok "Target stable release: $latestStableTag"
+        Write-Ok "Uploading: $latestBetaJsonPath"
         gh release upload $latestStableTag $latestBetaJsonPath --clobber
         if ($LASTEXITCODE -ne 0) {
-            Write-Warn "Could not update latest-beta.json on $latestStableTag -- beta channel users won't see this update yet"
+            Write-Fail "Could not update latest-beta.json on $latestStableTag. Run manually: gh release upload $latestStableTag $latestBetaJsonPath --clobber"
         } else {
             Write-Ok "latest-beta.json pushed to stable release $latestStableTag"
             Write-Ok "Beta channel users will now be offered $TAG"
         }
     } else {
-        Write-Warn "No stable release found -- skip uploading to stable. Beta channel users won't see this update until a stable release is published."
+        Write-Fail "No stable release found on GitHub. Create a stable release first, then run: gh release upload <tag> $latestBetaJsonPath --clobber"
     }
 }
 
