@@ -104,8 +104,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     show_transcription_in_mini_window: true,
 
     // Vocabulary
-    snippets: [],
-    dictionary: [],
+    snippets: [{ trigger: "@@email", replacement: "exemple@email.com" }],
+    dictionary: ["Ollama"],
   },
 };
 
