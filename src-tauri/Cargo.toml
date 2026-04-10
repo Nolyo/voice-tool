@@ -73,6 +73,9 @@ time = { version = "0.3", features = ["formatting"] }
 # UUID generation for note IDs
 uuid = { version = "1", features = ["v4"] }
 
+# URL parsing for update channels
+url = "2"
+
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

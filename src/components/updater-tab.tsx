@@ -7,6 +7,13 @@ import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { useSettings } from "@/hooks/useSettings";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 function Divider() {
   return <div className="h-px bg-border" />;
@@ -246,6 +253,38 @@ export function UpdaterTab() {
               La vérification s'effectue 10 secondes après le lancement
             </span>
           </Label>
+        </div>
+
+        <Divider />
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="update-channel"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+          >
+            Canal de mise à jour
+          </Label>
+          <Select
+            value={settings.update_channel ?? "stable"}
+            onValueChange={(value) =>
+              updateSetting("update_channel", value as "stable" | "beta")
+            }
+          >
+            <SelectTrigger
+              id="update-channel"
+              className="h-9 bg-background/50 w-48"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="stable">Stable (Production)</SelectItem>
+              <SelectItem value="beta">Beta (Accès anticipé)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Le canal stable reçoit les versions testées. Le canal beta donne accès
+            aux nouvelles fonctionnalités plus tôt.
+          </p>
         </div>
 
         <Divider />

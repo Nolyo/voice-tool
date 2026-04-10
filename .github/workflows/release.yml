@@ -1,33 +1,48 @@
-name: Release (local builds)
-# Builds are done locally via release.ps1
-# This workflow can manually regenerate docs/releases.json if needed.
+name: Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  update-releases-json:
-    name: Regenerate releases.json
+  generate-update-manifests:
+    name: Generate Update Manifests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
       - name: Install dependencies
         working-directory: .github/scripts
         run: npm install
-      - name: Generate releases.json
+
+      - name: Generate update manifests
         working-directory: .github/scripts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node generate-releases-json.js
-      - name: Commit and push
+
+      - name: Upload manifests to release (on tag push)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            .github/scripts/latest.json
+            .github/scripts/latest-beta.json
+          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit docs/releases.json (on manual trigger)
+        if: github.event_name == 'workflow_dispatch'
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"

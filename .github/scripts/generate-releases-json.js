@@ -134,7 +134,7 @@ async function parseReleaseAssets(release) {
 }
 
 /**
- * Fetch all public releases
+ * Fetch all public releases (including prereleases, excluding drafts)
  */
 async function fetchAllReleases() {
   console.log(`Fetching releases from ${OWNER}/${REPO}...`);
@@ -151,22 +151,22 @@ async function fetchAllReleases() {
       page: page,
     });
 
-    // Filter only public releases (non-draft, non-prerelease)
-    const publicReleases = data.filter((r) => !r.draft && !r.prerelease);
+    // Filter only non-draft releases (include prereleases for beta channel)
+    const publicReleases = data.filter((r) => !r.draft);
     releases.push(...publicReleases);
 
     hasMore = data.length === 100;
     page++;
   }
 
-  console.log(`Found ${releases.length} public releases`);
+  console.log(`Found ${releases.length} public releases (including prereleases)`);
   return releases;
 }
 
 /**
- * Build final JSON object
+ * Build final JSON object from releases
  */
-async function buildReleasesJson(releases) {
+async function buildReleasesJson(releases, channel = "stable") {
   const releasesData = [];
 
   for (const release of releases) {
@@ -199,12 +199,29 @@ async function buildReleasesJson(releases) {
     schema_version: SCHEMA_VERSION,
     app_name: "Voice Tool",
     repository: `${OWNER}/${REPO}`,
+    channel: channel,
     generated_at: new Date().toISOString(),
     latest: releasesData.length > 0 ? releasesData[0] : null,
     releases: releasesData,
   };
 
   return json;
+}
+
+/**
+ * Build stable releases JSON (excludes prereleases)
+ */
+async function buildStableReleasesJson(releases) {
+  const stableReleases = releases.filter((r) => !r.draft && !r.prerelease);
+  return buildReleasesJson(stableReleases, "stable");
+}
+
+/**
+ * Build beta releases JSON (includes prereleases)
+ */
+async function buildBetaReleasesJson(releases) {
+  const allReleases = releases.filter((r) => !r.draft); // Include prereleases
+  return buildReleasesJson(allReleases, "beta");
 }
 
 /**
@@ -218,52 +235,63 @@ async function main() {
     }
 
     console.log("=".repeat(60));
-    console.log("Generate releases.json");
+    console.log("Generate update manifests (stable + beta)");
     console.log("=".repeat(60));
 
     // Fetch all releases
     const releases = await fetchAllReleases();
 
     if (releases.length === 0) {
-      console.warn(
-        "Warning: No public releases found. Creating empty structure.",
-      );
+      console.warn("Warning: No public releases found.");
     }
 
-    // Build JSON
-    const json = await buildReleasesJson(releases);
+    // Generate stable manifest
+    const stableJson = await buildStableReleasesJson(releases);
+    const stableOutputPath = join(__dirname, "latest.json");
+    writeFileSync(stableOutputPath, JSON.stringify(stableJson, null, 2), "utf-8");
+    console.log(`✓ Generated latest.json (stable channel)`);
+    console.log(`  Path: ${stableOutputPath}`);
+    console.log(`  Releases: ${stableJson.releases.length}`);
+    console.log(`  Latest stable: ${stableJson.latest?.version || "N/A"}`);
 
-    // Write file
-    const jsonContent = JSON.stringify(json, null, 2);
-    writeFileSync(OUTPUT_FILE, jsonContent, "utf-8");
+    // Generate beta manifest
+    const betaJson = await buildBetaReleasesJson(releases);
+    const betaOutputPath = join(__dirname, "latest-beta.json");
+    writeFileSync(betaOutputPath, JSON.stringify(betaJson, null, 2), "utf-8");
+    console.log(`✓ Generated latest-beta.json (beta channel)`);
+    console.log(`  Path: ${betaOutputPath}`);
+    console.log(`  Releases: ${betaJson.releases.length}`);
+    console.log(`  Latest beta: ${betaJson.latest?.version || "N/A"}`);
 
-    console.log("=".repeat(60));
-    console.log(`✓ releases.json generated successfully!`);
-    console.log(`  Path: ${OUTPUT_FILE}`);
-    console.log(`  Releases: ${json.releases.length}`);
-    console.log(`  Latest: ${json.latest?.version || "N/A"}`);
     console.log("=".repeat(60));
 
     // Display summary
-    if (json.latest) {
-      console.log("\nLatest release summary:");
-      console.log(`  Version: ${json.latest.version}`);
+    if (stableJson.latest) {
+      console.log("\nLatest stable release:");
+      console.log(`  Version: ${stableJson.latest.version}`);
       console.log(
-        `  Published: ${new Date(json.latest.published_at).toLocaleDateString("en-US")}`,
+        `  Published: ${new Date(stableJson.latest.published_at).toLocaleDateString("en-US")}`,
       );
-
-      if (json.latest.windows?.portable) {
-        console.log(`  Portable: ${json.latest.windows.portable.size_human}`);
-      }
-      if (json.latest.windows?.nsis_installer) {
-        console.log(`  NSIS: ${json.latest.windows.nsis_installer.size_human}`);
-      }
-      if (json.latest.windows?.msi_installer) {
-        console.log(`  MSI: ${json.latest.windows.msi_installer.size_human}`);
-      }
     }
+
+    if (betaJson.latest) {
+      console.log("\nLatest beta release:");
+      console.log(`  Version: ${betaJson.latest.version}`);
+      console.log(
+        `  Published: ${new Date(betaJson.latest.published_at).toLocaleDateString("en-US")}`,
+      );
+    }
+
+    // Also update the legacy docs/releases.json for backward compatibility
+    if (releases.length > 0) {
+      const legacyJson = await buildStableReleasesJson(releases);
+      delete legacyJson.channel; // Remove channel field for backward compatibility
+      writeFileSync(OUTPUT_FILE, JSON.stringify(legacyJson, null, 2), "utf-8");
+      console.log(`\n✓ Updated legacy docs/releases.json for backward compatibility`);
+    }
+
   } catch (error) {
-    console.error("Error generating releases.json:", error);
+    console.error("Error generating manifests:", error);
     process.exit(1);
   }
 }

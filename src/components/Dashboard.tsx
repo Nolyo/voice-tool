@@ -19,6 +19,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useNotes, type NoteMeta } from "@/hooks/useNotes";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { NotesEditor } from "./notes-editor";
+import { UpdateModal } from "./update-modal";
 
 type TranscriptionInvokeResult = {
   text: string;
@@ -39,7 +40,7 @@ export default function Dashboard() {
     useState<Transcription | null>(null);
   const [activeTab, setActiveTab] = useState<string>("historique");
   const { settings } = useSettings();
-  const { updateAvailable } = useUpdaterContext();
+  const { updateAvailable, showUpdateModal, setShowUpdateModal } = useUpdaterContext();
   const { playStart, playStop, playSuccess } = useSoundEffects(
     settings.enable_sounds,
   );
@@ -489,6 +490,10 @@ export default function Dashboard() {
   };
 
   const handleUpdateClick = () => {
+    setShowUpdateModal(true);
+  };
+
+  const handleViewUpdateDetails = () => {
     setActiveTab("parametres");
   };
 
@@ -557,6 +562,12 @@ export default function Dashboard() {
           readNote={readNote}
         />
       )}
+
+      <UpdateModal
+        open={showUpdateModal}
+        onOpenChange={setShowUpdateModal}
+        onViewDetails={handleViewUpdateDetails}
+      />
     </div>
   );
 }

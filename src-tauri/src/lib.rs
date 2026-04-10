@@ -1165,6 +1165,44 @@ fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
+/// Get the current update channel setting (stable/beta)
+#[tauri::command]
+fn get_update_channel(app: AppHandle) -> Result<String, String> {
+    use tauri_plugin_store::StoreBuilder;
+
+    let store = StoreBuilder::new(&app, "settings.json")
+        .build()
+        .map_err(|e| format!("Failed to load settings: {}", e))?;
+
+    let channel = store.get("update_channel")
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "stable".to_string());
+
+    Ok(channel)
+}
+
+/// Set the update channel preference (stable/beta)
+#[tauri::command]
+fn set_update_channel(app: AppHandle, channel: String) -> Result<(), String> {
+    use tauri_plugin_store::StoreBuilder;
+
+    // Validate channel value
+    if channel != "stable" && channel != "beta" {
+        return Err(format!("Invalid channel: '{}'. Must be 'stable' or 'beta'", channel));
+    }
+
+    let store = StoreBuilder::new(&app, "settings.json")
+        .build()
+        .map_err(|e| format!("Failed to load settings: {}", e))?;
+
+    store.set("update_channel", serde_json::json!(channel));
+    store.save()
+        .map_err(|e| format!("Failed to save settings: {}", e))?;
+
+    tracing::info!("Update channel set to: {}", channel);
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize logging system
@@ -1224,6 +1262,8 @@ pub fn run() {
             updater::download_and_install_update,
             updater::download_and_install_update,
             updater::is_updater_available,
+            get_update_channel,
+            set_update_channel,
             download_local_model,
             check_local_model_exists,
             delete_local_model,
