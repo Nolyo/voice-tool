@@ -74,6 +74,23 @@ export function NotesEditor({
       attributes: {
         class: "prose prose-sm dark:prose-invert max-w-none w-full h-full p-4 focus:outline-none text-foreground text-sm leading-relaxed",
       },
+      handleDOMEvents: {
+        click: (_view, event) => {
+          const target = event.target as HTMLElement;
+          const link = target.closest("a");
+          if (!link) return false;
+
+          event.preventDefault();
+
+          if (event.ctrlKey || event.metaKey) {
+            const href = link.getAttribute("href");
+            if (href) {
+              import("@tauri-apps/plugin-opener").then(({ openUrl }) => openUrl(href));
+            }
+          }
+          return true;
+        },
+      },
       handlePaste: (_view, event) => {
         const items = event.clipboardData?.items;
         if (!items) return false;
@@ -453,7 +470,7 @@ export function NotesEditor({
             ) : (
               <EditorContent
                 editor={editor}
-                className="h-full [&_.tiptap]:h-full [&_.tiptap]:overflow-auto [&_.tiptap_img]:max-w-full [&_.tiptap_img]:h-auto [&_.tiptap_img]:rounded-md [&_.tiptap_img]:my-2"
+                className="h-full [&_.tiptap]:h-full [&_.tiptap]:overflow-auto [&_.tiptap_img]:max-w-full [&_.tiptap_img]:h-auto [&_.tiptap_img]:rounded-md [&_.tiptap_img]:my-2 [&_.tiptap_a]:cursor-text"
               />
             )}
             {aiState === "loading" && (
