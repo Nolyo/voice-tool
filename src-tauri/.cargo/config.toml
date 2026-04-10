@@ -1,0 +1,7 @@
+# Redirect build artifacts to a shorter path to avoid Windows 260-char path limit.
+# This is necessary because whisper-rs-sys (CMake/MSBuild) creates deeply nested
+# build paths that exceed the limit when the project is in a deep directory.
+# The main repo at C:\Users\nolyo\www\voice-tool\ is fine, but worktrees and
+# other deep locations need this workaround.
+[build]
+target-dir = "C:/tmp/vt-build"
