@@ -21,6 +21,8 @@ interface UpdaterContextType {
   error: string | null;
   updaterAvailable: boolean | null;
   checkUpdaterAvailability: () => Promise<boolean>;
+  showUpdateModal: boolean;
+  setShowUpdateModal: (show: boolean) => void;
 }
 
 const UpdaterContext = createContext<UpdaterContextType | undefined>(undefined);
@@ -29,6 +31,7 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
   const updater = useUpdater();
   const { settings, isLoaded } = useSettings();
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const hasCheckedOnStartup = useRef(false);
   const updaterRef = useRef(updater);
 
@@ -105,6 +108,8 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
         error: updater.error,
         updaterAvailable: updater.updaterAvailable,
         checkUpdaterAvailability: updater.checkUpdaterAvailability,
+        showUpdateModal,
+        setShowUpdateModal,
       }}
     >
       {children}

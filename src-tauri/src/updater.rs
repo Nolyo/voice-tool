@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::UpdaterExt;
 use time::format_description::well_known::Rfc3339;
+use url::Url;
 
 /// Information about an available update
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,9 +81,39 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
         });
     }
 
-    let update = app
-        .updater()
-        .map_err(|e| format!("Failed to get updater: {}", e))?
+    // Read update channel from settings
+    use tauri_plugin_store::StoreBuilder;
+    let channel = {
+        let store = StoreBuilder::new(&app, "settings.json")
+            .build()
+            .map_err(|e| format!("Failed to load settings: {}", e))?;
+
+        store.get("update_channel")
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_else(|| "stable".to_string())
+    };
+
+    // Construct endpoint URL based on channel
+    let endpoint_url = match channel.as_str() {
+        "beta" => "https://github.com/Nolyo/voice-tool/releases/latest/download/latest-beta.json",
+        _ => "https://github.com/Nolyo/voice-tool/releases/latest/download/latest.json", // Default to stable
+    };
+
+    tracing::info!("Checking for updates on channel '{}' from: {}", channel, endpoint_url);
+
+    // Parse URL
+    let url = Url::parse(endpoint_url)
+        .map_err(|e| format!("Failed to parse endpoint URL: {}", e))?;
+
+    // Use updater_builder to set dynamic endpoint
+    let updater = app
+        .updater_builder()
+        .endpoints(vec![url])
+        .map_err(|e| format!("Failed to set endpoints: {}", e))?
+        .build()
+        .map_err(|e| format!("Failed to build updater: {}", e))?;
+
+    let update = updater
         .check()
         .await
         .map_err(|e| format!("Failed to check for updates: {}", e))?;
@@ -119,9 +150,39 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
 pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
     tracing::info!("Starting update download...");
 
-    let update = app
-        .updater()
-        .map_err(|e| format!("Failed to get updater: {}", e))?
+    // Read update channel from settings
+    use tauri_plugin_store::StoreBuilder;
+    let channel = {
+        let store = StoreBuilder::new(&app, "settings.json")
+            .build()
+            .map_err(|e| format!("Failed to load settings: {}", e))?;
+
+        store.get("update_channel")
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_else(|| "stable".to_string())
+    };
+
+    // Construct endpoint URL based on channel
+    let endpoint_url = match channel.as_str() {
+        "beta" => "https://github.com/Nolyo/voice-tool/releases/latest/download/latest-beta.json",
+        _ => "https://github.com/Nolyo/voice-tool/releases/latest/download/latest.json",
+    };
+
+    tracing::info!("Downloading update from channel '{}': {}", channel, endpoint_url);
+
+    // Parse URL
+    let url = Url::parse(endpoint_url)
+        .map_err(|e| format!("Failed to parse endpoint URL: {}", e))?;
+
+    // Use updater_builder to set dynamic endpoint
+    let updater = app
+        .updater_builder()
+        .endpoints(vec![url])
+        .map_err(|e| format!("Failed to set endpoints: {}", e))?
+        .build()
+        .map_err(|e| format!("Failed to build updater: {}", e))?;
+
+    let update = updater
         .check()
         .await
         .map_err(|e| format!("Failed to check for updates: {}", e))?;

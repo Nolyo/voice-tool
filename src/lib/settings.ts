@@ -32,6 +32,7 @@ export interface AppSettings {
     main_window_geometry: string;
     history_cards_render_limit: number;
     auto_check_updates: boolean;
+    update_channel: "stable" | "beta";
 
     // Shortcuts & Recording Modes
     record_hotkey: string;
@@ -87,6 +88,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     main_window_geometry: "800x600+0+0",
     history_cards_render_limit: 50,
     auto_check_updates: true,
+    update_channel: "stable",
 
     // Shortcuts & Recording Modes
     record_hotkey: "Ctrl+F11",
