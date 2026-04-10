@@ -1104,6 +1104,36 @@ fn paste_text_to_active_window(_text: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Type text directly at the cursor position using keyboard simulation
+/// Unlike paste_text_to_active_window, this does NOT touch the clipboard
+#[tauri::command]
+fn type_text_at_cursor(text: String) -> Result<(), String> {
+    use enigo::{Enigo, Keyboard, Settings};
+    use std::thread;
+    use std::time::Duration;
+
+    tracing::info!(
+        "Typing transcription directly at cursor position ({} chars)",
+        text.len()
+    );
+
+    // Small delay to ensure target window has focus
+    thread::sleep(Duration::from_millis(50));
+
+    let mut enigo = Enigo::new(&Settings::default()).map_err(|e| {
+        tracing::error!("Failed to initialize keyboard simulation: {}", e);
+        format!("Failed to initialize keyboard: {}", e)
+    })?;
+
+    enigo.text(&text).map_err(|e| {
+        tracing::error!("Failed to type text: {}", e);
+        format!("Failed to type text: {}", e)
+    })?;
+
+    tracing::info!("Text typed successfully at cursor position");
+    Ok(())
+}
+
 #[tauri::command]
 async fn delete_recording_files(paths: Vec<String>) -> Result<(), String> {
     for path in paths {
@@ -1185,6 +1215,7 @@ pub fn run() {
             transcribe_audio,
             load_recording,
             paste_text_to_active_window,
+            type_text_at_cursor,
             start_deepgram_streaming,
             stop_deepgram_streaming,
             is_deepgram_connected,

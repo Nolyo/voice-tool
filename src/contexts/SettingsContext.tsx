@@ -42,7 +42,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         const savedSettings = await storeInstance.get<AppSettings>("settings");
 
         if (savedSettings) {
-          setSettings(mergeSettings(savedSettings));
+          const merged = mergeSettings(savedSettings);
+
+          // Migrate old paste_at_cursor boolean to new insertion_mode enum
+          const raw = savedSettings as unknown as Record<string, unknown>;
+          const rawSettings = (raw.settings ?? {}) as Record<string, unknown>;
+          if ("paste_at_cursor" in rawSettings && !("insertion_mode" in rawSettings)) {
+            merged.settings.insertion_mode = rawSettings.paste_at_cursor ? "cursor" : "none";
+            delete (merged.settings as Record<string, unknown>).paste_at_cursor;
+            // Persist migrated settings back to store
+            await storeInstance.set("settings", merged);
+            await storeInstance.save();
+          }
+
+          setSettings(merged);
         } else {
           // First time: save default settings
           await storeInstance.set("settings", DEFAULT_SETTINGS);

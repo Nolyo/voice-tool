@@ -22,6 +22,7 @@ import { Progress } from "./ui/progress";
 import { toast } from "sonner";
 import { listen } from "@tauri-apps/api/event";
 import { Checkbox } from "./ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -904,27 +905,63 @@ export function SettingTabs() {
         title="Texte"
         subtitle="Formatage et insertion automatique"
       >
-        <div className="space-y-1">
-          <div
-            className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-            onClick={() =>
-              updateSetting("paste_at_cursor", !settings.paste_at_cursor)
-            }
-          >
-            <Checkbox
-              id="auto-insert"
-              checked={settings.paste_at_cursor}
-              onCheckedChange={(checked) =>
-                updateSetting("paste_at_cursor", checked as boolean)
-              }
-              className="mt-0.5"
-            />
-            <Label
-              htmlFor="auto-insert"
-              className="text-sm text-foreground cursor-pointer leading-relaxed flex-1"
-            >
-              Insertion automatique au curseur après transcription
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Mode d'insertion
             </Label>
+            <RadioGroup
+              value={settings.insertion_mode}
+              onValueChange={(value) =>
+                updateSetting("insertion_mode", value as "cursor" | "clipboard" | "none")
+              }
+              className="gap-0"
+            >
+              <label
+                htmlFor="mode-cursor"
+                className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+              >
+                <RadioGroupItem value="cursor" id="mode-cursor" className="mt-0.5" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-foreground leading-relaxed">
+                    Saisie directe au curseur
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Le texte est tapé directement, sans utiliser le presse-papiers
+                  </p>
+                </div>
+              </label>
+
+              <label
+                htmlFor="mode-clipboard"
+                className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+              >
+                <RadioGroupItem value="clipboard" id="mode-clipboard" className="mt-0.5" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-foreground leading-relaxed">
+                    Copier-coller
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Le texte est copié dans le presse-papiers puis collé (Ctrl+V)
+                  </p>
+                </div>
+              </label>
+
+              <label
+                htmlFor="mode-none"
+                className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+              >
+                <RadioGroupItem value="none" id="mode-none" className="mt-0.5" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-foreground leading-relaxed">
+                    Aucune insertion
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Le texte est uniquement ajouté à l'historique
+                  </p>
+                </div>
+              </label>
+            </RadioGroup>
           </div>
 
           <div
