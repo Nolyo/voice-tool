@@ -2,10 +2,11 @@
 # Automatic version bump script for Voice Tool
 #
 # Usage:
-#   ./bump-version.sh <new_version>
+#   ./bump-version.sh [-beta] <new_version>
 #
-# Example:
-#   ./bump-version.sh 2.1.0
+# Examples:
+#   ./bump-version.sh 2.1.0          # Stable release
+#   ./bump-version.sh -beta 2.1.0-beta.1  # Beta release
 #
 # This script updates the version in:
 #   - package.json
@@ -38,22 +39,42 @@ print_warning() {
     echo -e "${YELLOW}⚠${NC} $1"
 }
 
+# Parse flags
+BETA_FLAG=""
+if [[ "$1" == "-beta" ]]; then
+    BETA_FLAG="-beta"
+    shift
+fi
+
 # Check arguments
 if [ $# -eq 0 ]; then
-    print_error "Usage: $0 <new_version>"
+    print_error "Usage: $0 [-beta] <new_version>"
     echo ""
-    echo "Example:"
-    echo "  $0 2.1.0"
+    echo "Examples:"
+    echo "  $0 2.1.0               # Stable release"
+    echo "  $0 -beta 2.1.0-beta.1  # Beta release"
     exit 1
 fi
 
 NEW_VERSION=$1
 
-# Validate version format (semver: X.Y.Z)
-if ! [[ $NEW_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    print_error "Invalid version format: $NEW_VERSION"
-    echo "Format must be: X.Y.Z (e.g., 2.1.0)"
-    exit 1
+# Validate version format
+if [[ $BETA_FLAG == "-beta" ]]; then
+    # Beta version format: X.Y.Z-beta.N
+    if ! [[ $NEW_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]; then
+        print_error "Invalid beta version format: $NEW_VERSION"
+        echo "Format must be: X.Y.Z-beta.N (e.g., 2.1.0-beta.1)"
+        exit 1
+    fi
+    print_info "Creating beta release: v$NEW_VERSION"
+else
+    # Stable version format: X.Y.Z
+    if ! [[ $NEW_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        print_error "Invalid stable version format: $NEW_VERSION"
+        echo "Format must be: X.Y.Z (e.g., 2.1.0)"
+        exit 1
+    fi
+    print_info "Creating stable release: v$NEW_VERSION"
 fi
 
 # Get current version from package.json
