@@ -155,13 +155,7 @@ Ce script met à jour la version dans `package.json`, `src-tauri/Cargo.toml` et 
 
 ### Étape 2 — Régénérer le Cargo.lock
 
-Après le bump de version, régénérer le `Cargo.lock` avec un build complet :
-
-```powershell
-pnpm tauri build
-```
-
-> Ce build peut prendre plusieurs minutes. Il garantit que le `Cargo.lock` est à jour avant le commit.
+Cette étape n'est plus nécessaire, le Cargo.Lock est généré dans le bump-version.sh
 
 ### Étape 3 — Commit et push
 
@@ -189,6 +183,17 @@ Ce script :
 > **Prérequis** : La clé privée doit être présente dans `src-tauri/private.key` et `gh` (GitHub CLI) doit être authentifié.
 
 > Pour un build signé local **sans** publier de release, utiliser `build-signed.ps1` à la place.
+
+## Créer une beta release
+
+```powershell
+.github\scripts\bump-version.sh -beta 2.1.0-beta.1
+
+git add -A ; git commit -m "chore: bump version to 2.8.0-beta.1"
+git push
+
+.\release.ps1 -Prerelease
+```
 
 ## ⚠️ Notes importantes
 

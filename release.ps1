@@ -97,7 +97,13 @@ $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
 Write-Ok "Cleaning old bundle artifacts to avoid stale files"
 Get-ChildItem "src-tauri\target\release\bundle" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
 
-pnpm tauri build
+# MSI does not support non-numeric pre-release identifiers (e.g. 'beta'), skip it for prereleases
+if ($Prerelease) {
+    Write-Warn "Prerelease build: skipping MSI (MSI requires numeric-only pre-release identifiers)"
+    pnpm tauri build --bundles nsis
+} else {
+    pnpm tauri build
+}
 if ($LASTEXITCODE -ne 0) { Write-Fail "Build failed (exit code $LASTEXITCODE)" }
 
 Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY -ErrorAction SilentlyContinue
@@ -124,9 +130,14 @@ $nsisSigPath = "$($nsisExeSrc.FullName).sig"
 if (-not (Test-Path $nsisSigPath)) { Write-Fail "NSIS updater SIG not found: $nsisSigPath" }
 Write-Ok "NSIS SIG   : $nsisSigPath"
 
-$msiSrc = Resolve-Glob "$bundleDir\msi\Voice Tool_${VERSION}_x64_*.msi"
-if (-not $msiSrc) { Write-Fail "MSI not found for version $VERSION in $bundleDir\msi\" }
-Write-Ok "MSI        : $($msiSrc.FullName)"
+if (-not $Prerelease) {
+    $msiSrc = Resolve-Glob "$bundleDir\msi\Voice Tool_${VERSION}_x64_*.msi"
+    if (-not $msiSrc) { Write-Fail "MSI not found for version $VERSION in $bundleDir\msi\" }
+    Write-Ok "MSI        : $($msiSrc.FullName)"
+} else {
+    $msiSrc = $null
+    Write-Ok "MSI        : skipped (prerelease)"
+}
 
 # --- Step 6: Stage artifacts ---
 
@@ -137,11 +148,11 @@ New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
 
 $portableDest = "$stagingDir\voice-tool-$TAG-portable.exe"
 $nsisExeDest  = "$stagingDir\voice-tool-$TAG-setup.exe"
-$msiDest      = "$stagingDir\voice-tool-$TAG-setup.msi"
+$msiDest      = if ($msiSrc) { "$stagingDir\voice-tool-$TAG-setup.msi" } else { $null }
 
 Copy-Item $portableSrc          $portableDest
 Copy-Item $nsisExeSrc.FullName  $nsisExeDest
-Copy-Item $msiSrc.FullName      $msiDest
+if ($msiSrc) { Copy-Item $msiSrc.FullName $msiDest }
 
 Write-Ok "Staged $((Get-ChildItem $stagingDir).Count) files"
 
@@ -182,7 +193,8 @@ Write-Step "Generating SHA256 checksums"
 $checksumPath = "$stagingDir\checksums-$TAG.txt"
 Remove-Item $checksumPath -ErrorAction SilentlyContinue
 
-foreach ($file in @($portableDest, $nsisExeDest, $msiDest)) {
+$filesToChecksum = @($portableDest, $nsisExeDest) + @(if ($msiDest) { $msiDest } else { @() })
+foreach ($file in $filesToChecksum) {
     $hash = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
     $name = Split-Path $file -Leaf
     Add-Content $checksumPath "$hash *$name"
@@ -214,14 +226,14 @@ Write-Ok "Tag $TAG pushed"
 
 Write-Step "Creating GitHub Release $TAG"
 
+$msiLine = if ($msiDest) { "`n- **voice-tool-$TAG-setup.msi** : MSI installer (Windows Installer)" } else { "" }
 $releaseNotes = @"
 See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/$TAG/CHANGELOG.md) for details.
 
 ## Downloads
 
 - **voice-tool-$TAG-portable.exe** : Portable version (no installation required)
-- **voice-tool-$TAG-setup.exe** : NSIS installer (recommended)
-- **voice-tool-$TAG-setup.msi** : MSI installer (Windows Installer)
+- **voice-tool-$TAG-setup.exe** : NSIS installer (recommended)$msiLine
 
 Verify file integrity using the provided SHA256 checksums.
 
@@ -239,12 +251,10 @@ $ghArgs = @(
     "--title", "Voice Tool $TAG",
     "--notes", $releaseNotes,
     $portableDest,
-    $nsisExeDest,
-    $msiDest,
-    $latestJsonPath,
-    $latestBetaJsonPath,
-    $checksumPath
+    $nsisExeDest
 )
+if ($msiDest) { $ghArgs += $msiDest }
+$ghArgs += @($latestJsonPath, $latestBetaJsonPath, $checksumPath)
 
 if ($Prerelease) { $ghArgs += "--prerelease" }
 
