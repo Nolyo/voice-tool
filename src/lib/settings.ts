@@ -12,7 +12,6 @@ export interface AppSettings {
     silence_threshold: number;
 
     // Transcription
-    // Transcription
     transcription_provider: "OpenAI" | "Deepgram" | "Google" | "Local";
     local_model_size: "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo";
     language: string;
@@ -104,7 +103,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
     show_transcription_in_mini_window: true,
 
     // Vocabulary
-    snippets: [{ trigger: "@@email", replacement: "exemple@email.com" }],
+    snippets: [{ 
+      trigger: "mon adresse mail", 
+      replacement: "exemple@email.com" 
+    }, { 
+      trigger: "lien Github", 
+      replacement: "https://github.com/exemple" 
+    }],
     dictionary: ["Ollama"],
   },
 };
