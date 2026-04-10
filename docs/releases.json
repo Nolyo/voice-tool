@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/voice-tool",
-  "generated_at": "2026-04-05T13:32:36.266Z",
+  "generated_at": "2026-04-10T17:58:23.412Z",
   "latest": {
     "version": "2.7.3",
     "tag": "v2.7.3",
@@ -15,24 +15,24 @@
         "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-portable.exe",
         "size_bytes": 91333120,
         "size_human": "87.1 MB",
-        "sha256": null,
-        "download_count": 0
+        "sha256": "38fda74868bf9757a74500d907119c6a0c67cf79bfc9e6d606dc2f4729b4c534",
+        "download_count": 1
       },
       "nsis_installer": {
         "filename": "voice-tool-v2.7.3-setup.exe",
         "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-setup.exe",
         "size_bytes": 15754488,
         "size_human": "15 MB",
-        "sha256": null,
-        "download_count": 0
+        "sha256": "79ffc0f27dae0c2ed7ba144b6c97cefcb61045952897362a29b23107715f37e3",
+        "download_count": 3
       },
       "msi_installer": {
         "filename": "voice-tool-v2.7.3-setup.msi",
         "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-setup.msi",
         "size_bytes": 28188672,
         "size_human": "26.9 MB",
-        "sha256": null,
-        "download_count": 0
+        "sha256": "11fbddc49739f648b0eab4ddb7f6f3ace305de0c3c7616a4effe53440c79d807",
+        "download_count": 1
       }
     }
   },
@@ -49,24 +49,24 @@
           "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-portable.exe",
           "size_bytes": 91333120,
           "size_human": "87.1 MB",
-          "sha256": null,
-          "download_count": 0
+          "sha256": "38fda74868bf9757a74500d907119c6a0c67cf79bfc9e6d606dc2f4729b4c534",
+          "download_count": 1
         },
         "nsis_installer": {
           "filename": "voice-tool-v2.7.3-setup.exe",
           "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-setup.exe",
           "size_bytes": 15754488,
           "size_human": "15 MB",
-          "sha256": null,
-          "download_count": 0
+          "sha256": "79ffc0f27dae0c2ed7ba144b6c97cefcb61045952897362a29b23107715f37e3",
+          "download_count": 3
         },
         "msi_installer": {
           "filename": "voice-tool-v2.7.3-setup.msi",
           "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-setup.msi",
           "size_bytes": 28188672,
           "size_human": "26.9 MB",
-          "sha256": null,
-          "download_count": 0
+          "sha256": "11fbddc49739f648b0eab4ddb7f6f3ace305de0c3c7616a4effe53440c79d807",
+          "download_count": 1
         }
       }
     },
@@ -215,7 +215,7 @@
           "size_bytes": 90712576,
           "size_human": "86.5 MB",
           "sha256": "4948f1fb440243fa0096971d4221790b5cd864ea4bd2bacbc6deaac53dd5688a",
-          "download_count": 1
+          "download_count": 2
         },
         "nsis_installer": {
           "filename": "voice-tool-v2.6.0-setup.exe",
@@ -223,7 +223,7 @@
           "size_bytes": 15555808,
           "size_human": "14.8 MB",
           "sha256": "b35524328758dce5941ef1df637a82fdf04c01f0e80c1d8f46dd5ca52acb8f97",
-          "download_count": 2
+          "download_count": 3
         },
         "msi_installer": {
           "filename": "voice-tool-v2.6.0-setup.msi",
@@ -496,7 +496,7 @@
           "size_bytes": 4493214,
           "size_human": "4.3 MB",
           "sha256": "bd7c3b722fc3535c1f41df4225a609b11093cfdcacad80717fdaa3b01acca8c6",
-          "download_count": 2
+          "download_count": 3
         }
       }
     },
