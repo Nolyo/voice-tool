@@ -281,10 +281,15 @@ Write-Ok "GitHub Release created: https://github.com/Nolyo/voice-tool/releases/t
 if ($Prerelease) {
     Write-Step "Updating latest-beta.json on latest stable release"
 
-    $stableRelease = gh release list --json tagName --limit 100 `
-        | ConvertFrom-Json `
-        | Where-Object { $_.tagName -notmatch 'beta|alpha|rc|test' } `
-        | Select-Object -First 1
+    $releases = gh release list --json tagName --limit 100 | ConvertFrom-Json
+    $latestStableTag = $null
+    foreach ($r in $releases) {
+        if ($r.tagName -notmatch 'beta|alpha|rc|test') {
+            $latestStableTag = $r.tagName
+            break
+        }
+    }
+    $stableRelease = if ($latestStableTag) { @{ tagName = $latestStableTag } } else { $null }
 
     if ($stableRelease) {
         $latestStableTag = $stableRelease.tagName
