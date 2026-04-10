@@ -235,7 +235,7 @@ async function main() {
     }
 
     console.log("=".repeat(60));
-    console.log("Generate update manifests (stable + beta)");
+    console.log("Generate docs/releases.json (catalog for website)");
     console.log("=".repeat(60));
 
     // Fetch all releases
@@ -245,53 +245,25 @@ async function main() {
       console.warn("Warning: No public releases found.");
     }
 
-    // Generate stable manifest
-    const stableJson = await buildStableReleasesJson(releases);
-    const stableOutputPath = join(__dirname, "latest.json");
-    writeFileSync(stableOutputPath, JSON.stringify(stableJson, null, 2), "utf-8");
-    console.log(`✓ Generated latest.json (stable channel)`);
-    console.log(`  Path: ${stableOutputPath}`);
-    console.log(`  Releases: ${stableJson.releases.length}`);
-    console.log(`  Latest stable: ${stableJson.latest?.version || "N/A"}`);
+    // Update docs/releases.json (catalog format — used by website/docs only)
+    // NOTE: Tauri-format update manifests (latest.json / latest-beta.json) are
+    // generated and uploaded exclusively by release.ps1 at build time, because
+    // they embed the installer signature which is only available then.
+    const catalogJson = await buildStableReleasesJson(releases);
+    delete catalogJson.channel; // keep legacy format
+    writeFileSync(OUTPUT_FILE, JSON.stringify(catalogJson, null, 2), "utf-8");
 
-    // Generate beta manifest
-    const betaJson = await buildBetaReleasesJson(releases);
-    const betaOutputPath = join(__dirname, "latest-beta.json");
-    writeFileSync(betaOutputPath, JSON.stringify(betaJson, null, 2), "utf-8");
-    console.log(`✓ Generated latest-beta.json (beta channel)`);
-    console.log(`  Path: ${betaOutputPath}`);
-    console.log(`  Releases: ${betaJson.releases.length}`);
-    console.log(`  Latest beta: ${betaJson.latest?.version || "N/A"}`);
+    const latest = catalogJson.latest;
+    console.log(`✓ Updated docs/releases.json`);
+    console.log(`  Stable releases: ${catalogJson.releases.length}`);
+    console.log(`  Latest stable  : ${latest?.version || "N/A"}`);
 
-    console.log("=".repeat(60));
-
-    // Display summary
-    if (stableJson.latest) {
-      console.log("\nLatest stable release:");
-      console.log(`  Version: ${stableJson.latest.version}`);
-      console.log(
-        `  Published: ${new Date(stableJson.latest.published_at).toLocaleDateString("en-US")}`,
-      );
-    }
-
-    if (betaJson.latest) {
-      console.log("\nLatest beta release:");
-      console.log(`  Version: ${betaJson.latest.version}`);
-      console.log(
-        `  Published: ${new Date(betaJson.latest.published_at).toLocaleDateString("en-US")}`,
-      );
-    }
-
-    // Also update the legacy docs/releases.json for backward compatibility
-    if (releases.length > 0) {
-      const legacyJson = await buildStableReleasesJson(releases);
-      delete legacyJson.channel; // Remove channel field for backward compatibility
-      writeFileSync(OUTPUT_FILE, JSON.stringify(legacyJson, null, 2), "utf-8");
-      console.log(`\n✓ Updated legacy docs/releases.json for backward compatibility`);
+    if (latest) {
+      console.log(`  Published      : ${new Date(latest.published_at).toLocaleDateString("en-US")}`);
     }
 
   } catch (error) {
-    console.error("Error generating manifests:", error);
+    console.error("Error generating releases.json:", error);
     process.exit(1);
   }
 }

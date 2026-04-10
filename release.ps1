@@ -145,9 +145,9 @@ Copy-Item $msiSrc.FullName      $msiDest
 
 Write-Ok "Staged $((Get-ChildItem $stagingDir).Count) files"
 
-# --- Step 7: Build latest.json ---
+# --- Step 7: Build latest.json and latest-beta.json ---
 
-Write-Step "Building latest.json"
+Write-Step "Building latest.json and latest-beta.json"
 
 $signature   = Get-Content $nsisSigPath -Raw
 $nsisExeName = "voice-tool-$TAG-setup.exe"
@@ -166,10 +166,13 @@ $latestJson = [ordered]@{
     }
 }
 
-$latestJsonPath = "$stagingDir\latest.json"
+$latestJsonPath     = "$stagingDir\latest.json"
+$latestBetaJsonPath = "$stagingDir\latest-beta.json"
 $jsonContent = $latestJson | ConvertTo-Json -Depth 5
-[System.IO.File]::WriteAllText($latestJsonPath, $jsonContent, [System.Text.UTF8Encoding]::new($false))
-Write-Ok "latest.json -> $latestJsonPath"
+[System.IO.File]::WriteAllText($latestJsonPath,     $jsonContent, [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($latestBetaJsonPath, $jsonContent, [System.Text.UTF8Encoding]::new($false))
+Write-Ok "latest.json      -> $latestJsonPath"
+Write-Ok "latest-beta.json -> $latestBetaJsonPath"
 Write-Ok "Download URL: $downloadUrl"
 
 # --- Step 8: SHA256 checksums ---
@@ -239,6 +242,7 @@ $ghArgs = @(
     $nsisExeDest,
     $msiDest,
     $latestJsonPath,
+    $latestBetaJsonPath,
     $checksumPath
 )
 
@@ -248,6 +252,33 @@ gh @ghArgs
 if ($LASTEXITCODE -ne 0) { Write-Fail "gh release create failed" }
 
 Write-Ok "GitHub Release created: https://github.com/Nolyo/voice-tool/releases/tag/$TAG"
+
+# --- Step 10b: For prereleases, also push latest-beta.json to the latest stable release ---
+# The beta updater URL resolves to 'releases/latest/download/latest-beta.json'.
+# GitHub's 'latest' always points at the most recent non-prerelease, so the file
+# must live there to be discoverable by users on the beta channel.
+
+if ($Prerelease) {
+    Write-Step "Updating latest-beta.json on latest stable release"
+
+    $stableRelease = gh release list --json tagName,isPrerelease --limit 100 `
+        | ConvertFrom-Json `
+        | Where-Object { -not $_.isPrerelease } `
+        | Select-Object -First 1
+
+    if ($stableRelease) {
+        $latestStableTag = $stableRelease.tagName
+        gh release upload $latestStableTag $latestBetaJsonPath --clobber
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "Could not update latest-beta.json on $latestStableTag -- beta channel users won't see this update yet"
+        } else {
+            Write-Ok "latest-beta.json pushed to stable release $latestStableTag"
+            Write-Ok "Beta channel users will now be offered $TAG"
+        }
+    } else {
+        Write-Warn "No stable release found -- skip uploading to stable. Beta channel users won't see this update until a stable release is published."
+    }
+}
 
 # --- Step 11: Regenerate releases.json ---
 

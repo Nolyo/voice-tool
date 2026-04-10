@@ -30,22 +30,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node generate-releases-json.js
 
-      - name: Upload manifests to release (on tag push)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            .github/scripts/latest.json
-            .github/scripts/latest-beta.json
-          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') || contains(github.ref, 'rc') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Commit docs/releases.json (on manual trigger)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Commit docs/releases.json
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git add docs/releases.json
-          git diff --staged --quiet || git commit -m "chore: update releases.json (manual trigger)"
+          git diff --staged --quiet || git commit -m "chore: update releases.json for ${{ github.ref_name }}"
           git push origin main
