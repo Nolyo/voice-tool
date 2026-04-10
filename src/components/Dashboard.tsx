@@ -4,11 +4,25 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
 import { toast } from "sonner";
+import {
+  History,
+  NotebookPen,
+  Settings2,
+  ScrollText,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Mic,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { DashboardHeader } from "./dashboard-header";
 import { RecordingCard } from "./recording-card";
 import { TranscriptionList } from "./transcription-list";
 import { TranscriptionDetails } from "./transcription-details";
 import { TranscriptionLive } from "./transcription-live";
+import { SettingTabs } from "./setting-tabs";
+import { LogsTab } from "./logs-tab";
+import { NotesTab } from "./notes-tab";
 import { useSettings } from "@/hooks/useSettings";
 import { useDeepgramStreaming } from "@/hooks/useDeepgramStreaming";
 import {
@@ -17,9 +31,17 @@ import {
 } from "@/hooks/useTranscriptionHistory";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useNotes, type NoteMeta } from "@/hooks/useNotes";
+import { useAppLogs } from "@/hooks/useAppLogs";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { NotesEditor } from "./notes-editor";
 import { UpdateModal } from "./update-modal";
+
+const NAV_ITEMS = [
+  { id: "historique", label: "Historique", icon: History },
+  { id: "notes", label: "Notes", icon: NotebookPen },
+  { id: "parametres", label: "Paramètres", icon: Settings2 },
+  { id: "logs", label: "Logs", icon: ScrollText },
+] as const;
 
 type TranscriptionInvokeResult = {
   text: string;
@@ -39,8 +61,10 @@ export default function Dashboard() {
   const [selectedTranscription, setSelectedTranscription] =
     useState<Transcription | null>(null);
   const [activeTab, setActiveTab] = useState<string>("historique");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { settings } = useSettings();
-  const { updateAvailable, showUpdateModal, setShowUpdateModal } = useUpdaterContext();
+  const { updateAvailable, showUpdateModal, setShowUpdateModal } =
+    useUpdaterContext();
   const { playStart, playStop, playSuccess } = useSoundEffects(
     settings.enable_sounds,
   );
@@ -53,13 +77,22 @@ export default function Dashboard() {
     deleteTranscription,
     clearHistory,
   } = useTranscriptionHistory();
-  const { notes, createNote, readNote, updateNote, deleteNote, searchNotes, toggleFavorite, reloadNotes } = useNotes();
+  const {
+    notes,
+    createNote,
+    readNote,
+    updateNote,
+    deleteNote,
+    searchNotes,
+    toggleFavorite,
+    reloadNotes,
+  } = useNotes();
+  const { logs, clearLogs } = useAppLogs();
   const [editorOpen, setEditorOpen] = useState(false);
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const previousRecordingRef = useRef(isRecording);
 
-  // Keep deepgram ref updated
   useEffect(() => {
     deepgramRef.current = deepgram;
   }, [deepgram]);
@@ -69,7 +102,6 @@ export default function Dashboard() {
   };
 
   const handleDelete = async (id: string) => {
-    // If deleting the selected transcription, deselect it
     if (selectedTranscription?.id === id) {
       setSelectedTranscription(null);
     }
@@ -93,7 +125,6 @@ export default function Dashboard() {
         return null;
       }
 
-      // Snippet replacement: exact full-match, case-insensitive
       let finalText = trimmed;
       const snippetMatch = settings.snippets?.find(
         (s) => s.trigger.trim().toLowerCase() === trimmed.toLowerCase(),
@@ -111,7 +142,6 @@ export default function Dashboard() {
       setSelectedTranscription(newEntry);
       playSuccess();
 
-      // Text insertion based on mode
       if (settings.insertion_mode === "cursor") {
         await invoke("type_text_at_cursor", { text: finalText });
       } else if (settings.insertion_mode === "clipboard") {
@@ -121,7 +151,6 @@ export default function Dashboard() {
         await writeText(finalText);
         await invoke("paste_text_to_active_window", { text: finalText });
       }
-      // "none" mode: no insertion, text only in history
 
       return newEntry;
     },
@@ -138,7 +167,6 @@ export default function Dashboard() {
     if (settings.transcription_provider !== "Deepgram") {
       return;
     }
-
     if (!completedTranscript) {
       return;
     }
@@ -177,10 +205,8 @@ export default function Dashboard() {
     settings.transcription_provider,
   ]);
 
-  // Function to transcribe audio (used by both button and keyboard shortcuts)
   const transcribeAudio = useCallback(
     async (audioData: number[], sampleRate: number) => {
-      // Skip if using Deepgram streaming - transcription already done in real-time
       if (settings.transcription_provider === "Deepgram") {
         console.log(
           "Skipping post-transcription (Deepgram streaming already handled it)",
@@ -207,10 +233,12 @@ export default function Dashboard() {
 
         console.log("Transcription:", result.text);
 
-        // Calculate API cost (Whisper API: $0.006 per minute, free for local)
         const durationSeconds = audioData.length / sampleRate;
         const durationMinutes = durationSeconds / 60;
-        const apiCost = settings.transcription_provider === "Local" ? 0 : durationMinutes * 0.006;
+        const apiCost =
+          settings.transcription_provider === "Local"
+            ? 0
+            : durationMinutes * 0.006;
 
         await handleTranscriptionFinal(
           result.text,
@@ -220,14 +248,11 @@ export default function Dashboard() {
         );
 
         await emit("transcription-success", { text: result.text });
-
-        // Log separator to mark end of transcription process
         await invoke("log_separator");
       } catch (error) {
         console.error("Transcription error:", error);
         await emit("transcription-error", { error: String(error) });
         alert(`Erreur de transcription: ${error}`);
-        // Log separator even on error
         await invoke("log_separator");
       } finally {
         setIsTranscribing(false);
@@ -236,14 +261,12 @@ export default function Dashboard() {
     [settings, handleTranscriptionFinal],
   );
 
-  // Keep latest transcription callback without re-subscribing window listeners
   const transcribeAudioRef = useRef(transcribeAudio);
 
   useEffect(() => {
     transcribeAudioRef.current = transcribeAudio;
   }, [transcribeAudio]);
 
-  // Listen for audio captured from keyboard shortcuts
   useEffect(() => {
     let unlisten: UnlistenFn | null = null;
     let disposed = false;
@@ -261,17 +284,13 @@ export default function Dashboard() {
             `(RMS: ${event.payload.avgRms.toFixed(4)}, silent: ${event.payload.isSilent})`,
           );
 
-          // Check if recording is silent
           if (event.payload.isSilent) {
             console.log("Enregistrement vide détecté, transcription annulée");
             toast.info("Aucun son détecté dans l'enregistrement", {
               description:
                 "Le niveau sonore est trop faible pour être transcrit",
             });
-            // Emit error event to close mini window properly
-            await emit("transcription-error", {
-              error: "Son trop faible",
-            });
+            await emit("transcription-error", { error: "Son trop faible" });
             return;
           }
 
@@ -306,7 +325,6 @@ export default function Dashboard() {
     const unlisten = listen<boolean>("recording-state", (event) => {
       setIsRecording(event.payload);
     });
-
     return () => {
       unlisten.then((fn) => fn());
     };
@@ -316,28 +334,21 @@ export default function Dashboard() {
     const unlisten = listen("recording-cancelled", () => {
       toast.info("Enregistrement annulé");
     });
-
     return () => {
       unlisten.then((fn) => fn());
     };
   }, []);
 
-  // Listen for shortcut-triggered recording events to manage Deepgram
   useEffect(() => {
     let unlistenRecordingState: UnlistenFn | null = null;
     let previousState = false;
 
     const setupListeners = async () => {
-      // Listen to recording-state changes (emitted by both UI button and shortcuts)
       unlistenRecordingState = await listen<boolean>(
         "recording-state",
         async (event) => {
           const isRecording = event.payload;
-
-          // Only trigger on state change
-          if (isRecording === previousState) {
-            return;
-          }
+          if (isRecording === previousState) return;
           previousState = isRecording;
 
           if (settings.transcription_provider === "Deepgram") {
@@ -360,7 +371,7 @@ export default function Dashboard() {
     return () => {
       if (unlistenRecordingState) unlistenRecordingState();
     };
-  }, [settings.transcription_provider]); // Removed 'deepgram' to prevent re-subscribing
+  }, [settings.transcription_provider]);
 
   useEffect(() => {
     const previous = previousRecordingRef.current;
@@ -399,7 +410,6 @@ export default function Dashboard() {
   const handleToggleRecording = async () => {
     try {
       if (isRecording) {
-        // Stop recording with silence detection
         const result = await invoke<RecordingResult>("stop_recording", {
           silenceThreshold: settings.silence_threshold,
         });
@@ -414,23 +424,15 @@ export default function Dashboard() {
         );
         setIsRecording(false);
 
-        // Deepgram will be stopped by the "recording-state" event listener
-        // No need to stop it manually here
-
-        // Check if recording is silent
         if (result.is_silent) {
           console.log("Enregistrement vide détecté, transcription annulée");
           toast.info("Aucun son détecté dans l'enregistrement", {
             description: "Le niveau sonore est trop faible pour être transcrit",
           });
-          // Emit error event to close mini window properly
-          await emit("transcription-error", {
-            error: "Son trop faible",
-          });
+          await emit("transcription-error", { error: "Son trop faible" });
           return;
         }
 
-        // Transcribe audio (only if not using Deepgram streaming)
         if (
           result.audio_data.length > 0 &&
           settings.transcription_provider !== "Deepgram"
@@ -438,23 +440,16 @@ export default function Dashboard() {
           await transcribeAudio(result.audio_data, result.sample_rate);
         }
       } else {
-        // Start recording with selected device from settings
         await invoke("start_recording", {
           deviceIndex: settings.input_device_index,
         });
         setIsRecording(true);
-
-        // Deepgram will be started by the "recording-state" event listener
-        // No need to start it manually here
       }
     } catch (error) {
       console.error("Recording error:", error);
       alert(`Erreur d'enregistrement: ${error}`);
       setIsRecording(false);
-      // Emit error event to close mini window properly
-      await emit("transcription-error", {
-        error: String(error),
-      });
+      await emit("transcription-error", { error: String(error) });
     }
   };
 
@@ -498,54 +493,144 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardHeader
-        updateAvailable={updateAvailable}
-        onUpdateClick={handleUpdateClick}
-      />
-
-      <div className="container mx-auto px-6 py-8">
-        <div className="space-y-6">
-          {/* First row: Recording and Details side by side */}
-          {!settings.hide_recording_panel && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <RecordingCard
-                isRecording={isRecording}
-                isTranscribing={isTranscribing}
-                onToggleRecording={handleToggleRecording}
-              />
-              <TranscriptionDetails
-                transcription={selectedTranscription}
-                onCopy={handleCopy}
-              />
-            </div>
+    <div className="h-screen flex overflow-hidden bg-background">
+      {/* Global sidebar */}
+      <aside
+        className={`flex flex-col border-r border-border shrink-0 transition-all duration-200 ${
+          sidebarCollapsed ? "w-[52px]" : "w-[180px]"
+        }`}
+      >
+        {/* Logo */}
+        <div
+          className={`flex items-center border-b border-border h-[61px] px-3 ${
+            sidebarCollapsed ? "justify-center" : "gap-2"
+          }`}
+        >
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 shrink-0">
+            <Mic className="w-4 h-4 text-primary" />
+          </div>
+          {!sidebarCollapsed && (
+            <span className="font-semibold text-sm truncate">Voice Tool</span>
           )}
+        </div>
 
-          {/* Live transcription (Deepgram streaming) - shown only when provider is Deepgram */}
-          {!settings.hide_recording_panel &&
-            settings.transcription_provider === "Deepgram" && (
-              <TranscriptionLive />
+        {/* Nav items */}
+        <nav className="flex flex-col gap-1 p-2 flex-1">
+          {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              title={sidebarCollapsed ? label : undefined}
+              className={`flex items-center gap-3 rounded-md transition-colors cursor-pointer ${
+                sidebarCollapsed ? "justify-center p-2" : "px-3 py-2"
+              } ${
+                activeTab === id
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {!sidebarCollapsed && (
+                <span className="text-sm font-medium truncate">{label}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Toggle button at bottom */}
+        <div
+          className={`p-2 border-t border-border ${
+            sidebarCollapsed ? "flex justify-center" : "flex justify-end"
+          }`}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            title={
+              sidebarCollapsed ? "Déplier le menu" : "Replier le menu"
+            }
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+      </aside>
+
+      {/* Main area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <DashboardHeader
+          updateAvailable={updateAvailable}
+          onUpdateClick={handleUpdateClick}
+        />
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="container mx-auto px-6 py-8">
+            {/* Historique */}
+            {activeTab === "historique" && (
+              <div className="space-y-6">
+                {!settings.hide_recording_panel && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <RecordingCard
+                      isRecording={isRecording}
+                      isTranscribing={isTranscribing}
+                      onToggleRecording={handleToggleRecording}
+                    />
+                    <TranscriptionDetails
+                      transcription={selectedTranscription}
+                      onCopy={handleCopy}
+                    />
+                  </div>
+                )}
+                {!settings.hide_recording_panel &&
+                  settings.transcription_provider === "Deepgram" && (
+                    <TranscriptionLive />
+                  )}
+                <TranscriptionList
+                  transcriptions={transcriptions}
+                  selectedId={selectedTranscription?.id}
+                  onSelectTranscription={setSelectedTranscription}
+                  onCopy={handleCopy}
+                  onDelete={handleDelete}
+                  onClearAll={handleClearAll}
+                />
+              </div>
             )}
 
-          {/* Second row: Transcription list full width */}
-          <TranscriptionList
-            transcriptions={transcriptions}
-            selectedId={selectedTranscription?.id}
-            onSelectTranscription={setSelectedTranscription}
-            onCopy={handleCopy}
-            onDelete={handleDelete}
-            onClearAll={handleClearAll}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            notes={notes}
-            onCreateNote={handleCreateNote}
-            onOpenNote={handleOpenNote}
-            onDeleteNote={handleDeleteNote}
-            onToggleFavorite={toggleFavorite}
-            onReloadNotes={reloadNotes}
-            searchNotes={searchNotes}
-          />
-        </div>
+            {/* Notes */}
+            {activeTab === "notes" && (
+              <Card className="p-6">
+                <NotesTab
+                  notes={notes}
+                  onCreateNote={handleCreateNote}
+                  onOpenNote={handleOpenNote}
+                  onDeleteNote={handleDeleteNote}
+                  onToggleFavorite={toggleFavorite}
+                  onReload={reloadNotes}
+                  searchNotes={searchNotes}
+                />
+              </Card>
+            )}
+
+            {/* Paramètres */}
+            {activeTab === "parametres" && (
+              <Card className="p-6">
+                <SettingTabs />
+              </Card>
+            )}
+
+            {/* Logs */}
+            {activeTab === "logs" && (
+              <Card className="p-6">
+                <LogsTab logs={logs} onClearLogs={clearLogs} />
+              </Card>
+            )}
+          </div>
+        </main>
       </div>
 
       {editorOpen && (

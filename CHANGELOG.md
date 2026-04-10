@@ -1,3 +1,16 @@
+## [2.8.0] - 2026-04-11
+
+### ✨ Added
+- Release channel selection in settings - choose between Stable (default) for reliable updates or Beta for early access to new features
+- Direct cursor insertion mode for transcribed text - text now types directly without disrupting your clipboard
+
+### 🔧 Changed
+- Link behavior in notes editor - links now require Ctrl+Click (Cmd+Click on Mac) to open, making it easier to select and copy link text
+- Global navigation moved to a collapsible sidebar (History, Notes, Settings, Logs) replacing the top tab bar, giving each view more vertical space
+
+### 🐛 Fixed
+- Installation error on Windows machines without NVIDIA CUDA runtime - voice-tool.exe now installs successfully on all Windows systems
+
 ## [2.7.4] - 2026-04-09
 
 ### Changed
