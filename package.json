@@ -1,7 +1,7 @@
 {
   "name": "voice-tool",
   "private": true,
-  "version": "2.7.5-beta.1",
+  "version": "2.7.5-beta.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
