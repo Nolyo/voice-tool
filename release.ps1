@@ -115,8 +115,18 @@ Write-Ok "Build succeeded"
 
 Write-Step "Locating build artifacts"
 
+# Resolve Cargo target directory: check .cargo/config.toml overrides first
+$cargoConfig = "src-tauri\.cargo\config.toml"
 $releaseDir = "src-tauri\target\release"
-$bundleDir  = "$releaseDir\bundle"
+if (Test-Path $cargoConfig) {
+    $targetDirLine = Get-Content $cargoConfig | Where-Object { $_ -match '\btarget-dir\s*=' }
+    if ($targetDirLine) {
+        $targetDirValue = ($targetDirLine -replace '.*=\s*"?([^"]+)"?.*', '$1').Trim().Trim('"')
+        $releaseDir = Join-Path $targetDirValue "release"
+        Write-Ok "target-dir (from .cargo/config.toml): $targetDirValue"
+    }
+}
+$bundleDir = "$releaseDir\bundle"
 
 $portableSrc = Join-Path $releaseDir "voice-tool.exe"
 if (-not (Test-Path $portableSrc)) { Write-Fail "Portable EXE not found: $portableSrc" }
