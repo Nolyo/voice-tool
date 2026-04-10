@@ -74,20 +74,22 @@ export function NotesEditor({
       attributes: {
         class: "prose prose-sm dark:prose-invert max-w-none w-full h-full p-4 focus:outline-none text-foreground text-sm leading-relaxed",
       },
-      handleClick: (_view, _pos, event) => {
-        const target = event.target as HTMLElement;
-        const link = target.closest("a");
-        if (!link) return false;
+      handleDOMEvents: {
+        click: (_view, event) => {
+          const target = event.target as HTMLElement;
+          const link = target.closest("a");
+          if (!link) return false;
 
-        event.preventDefault();
+          event.preventDefault();
 
-        if (event.ctrlKey || event.metaKey) {
-          const href = link.getAttribute("href");
-          if (href) {
-            import("@tauri-apps/plugin-opener").then(({ openUrl }) => openUrl(href));
+          if (event.ctrlKey || event.metaKey) {
+            const href = link.getAttribute("href");
+            if (href) {
+              import("@tauri-apps/plugin-opener").then(({ openUrl }) => openUrl(href));
+            }
           }
-        }
-        return true;
+          return true;
+        },
       },
       handlePaste: (_view, event) => {
         const items = event.clipboardData?.items;
