@@ -14,7 +14,7 @@ Refactoriser le frontend (React + TS) vers une architecture feature-based, avec 
 - [x] **Phase 2** — Split `notes-editor.tsx` (910 → 10 fichiers, max 218 lignes, orchestrateur 218 lignes)
 - [x] **Phase 3** — Split `Dashboard.tsx` (584 → 199 lignes) + `src/lib/types.ts` populé
 - [x] **Phase 4** — Réorganisation feature folders (10 fichiers déplacés, 6 imports corrigés)
-- [ ] **Phase 5** — Mini-window state machine + cleanup final
+- [x] **Phase 5** — Mini-window state machine (295 → 169 lignes) + audit final OK (max 305 lignes)
 
 ## Structure cible
 
@@ -90,17 +90,12 @@ Source : `src/components/setting-tabs.tsx` (1370 lignes)
 
 L'ancien fichier `src/components/setting-tabs.tsx` sera **supprimé** et l'import dans `Dashboard.tsx` mis à jour vers `./settings/SettingTabs`.
 
-## Next session
+## Refactor terminé
 
-Prochaine phase : **Phase 5 — mini-window state machine + cleanup final**
+Toutes les 6 phases exécutées et commitées sur `refactor/frontend-architecture`. La branche est prête pour merge dans `main`.
 
-Point de départ :
-1. Lire `docs/REFACTOR_FRONTEND_PROGRESS.md` + dernier commit sur la branche
-2. Lire `src/mini-window.tsx` (~295 lignes)
-3. Extraire `src/hooks/useMiniWindowState.ts` ← les 6 listeners Tauri + state machine (idle/recording/processing/success/error)
-4. Réduire `src/mini-window.tsx` à ~150 lignes (UI pure)
-5. Passe finale : vérifier qu'il ne reste plus de fichiers > 300 lignes (hors shadcn `ui/`)
-6. Build + commit
+**Avant** : 3 monolithes (1370 + 910 + 584 = 2864 lignes, 43% du code dans 3 fichiers)
+**Après** : 42 fichiers, max 305 lignes, architecture feature-based avec hooks isolés
 
 ### Phase 1 — Résultats
 
@@ -113,6 +108,20 @@ Fichiers créés (1505 lignes au total répartis sur 16 fichiers) :
 - `src/hooks/` — useModelDownload (90), useAutostart (38), useHotkeyConfig (55)
 
 Le seul import externe mis à jour : `src/components/Dashboard.tsx` ligne 22.
+
+### Phase 5 — Résultats
+
+`mini-window.tsx` : **295 → 169 lignes** (UI pure).
+
+Fichier créé :
+- `src/hooks/useMiniWindowState.ts` — 171 lignes (state machine + 6 Tauri event listeners + recording timer + translate mode toggle)
+
+**Audit final** — plus gros fichiers hors `ui/` :
+- `useRecordingWorkflow.ts` : 305 (mono-responsabilité, acceptable)
+- `UpdaterTab.tsx` : 305 (composant UI dense mais isolé)
+- Tous les autres : ≤ 240 lignes
+
+Total codebase frontend : **6712 lignes** sur 42 fichiers (hors shadcn). Le plus gros fichier est 305 lignes vs 1370 avant refactor.
 
 ### Phase 4 — Résultats
 
