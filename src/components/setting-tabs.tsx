@@ -574,7 +574,7 @@ export function SettingTabs() {
                 onValueChange={(value) =>
                   updateSetting(
                     "transcription_provider",
-                    value as "OpenAI" | "Deepgram" | "Google"
+                    value as "OpenAI" | "Google"
                   )
                 }
               >
@@ -585,7 +585,6 @@ export function SettingTabs() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Deepgram">Deepgram (Streaming)</SelectItem>
                   <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
                   <SelectItem value="Local">Local (Offline)</SelectItem>
                 </SelectContent>
@@ -620,7 +619,7 @@ export function SettingTabs() {
           </div>
 
           {/* Warning for paid providers */}
-          {(settings.transcription_provider === "OpenAI" || settings.transcription_provider === "Deepgram") && (
+          {settings.transcription_provider === "OpenAI" && (
             <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-sm text-amber-600 dark:text-amber-400">
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>Ce service est payant à l'usage. Utilisez le mode <strong>Local (Offline)</strong> pour une transcription gratuite et privée.</span>
@@ -745,11 +744,6 @@ export function SettingTabs() {
             {settings.translate_mode && (
               <div className="p-3 rounded-md bg-blue-500/5 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400">
                 🌐 Utilise OpenAI Whisper pour traduire vers l'anglais
-                {settings.transcription_provider === "Deepgram" && (
-                  <div className="mt-1 text-blue-600 dark:text-blue-400">
-                    (OpenAI Whisper sera utilisé — Deepgram ne supporte pas la traduction)
-                  </div>
-                )}
               </div>
             )}
           </div>

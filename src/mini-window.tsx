@@ -4,21 +4,12 @@ import { listen, emit } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
-interface TranscriptionEvent {
-  text: string;
-  confidence?: number;
-  speech_final?: boolean;
-}
-
 type WindowStatus = "idle" | "recording" | "processing" | "success" | "error";
 
 function MiniWindow() {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [, setInterimText] = useState("");  // Used by Deepgram but not displayed
-  const [, setFinalText] = useState("");  // Used by Deepgram but not displayed
-  const [, setCurrentUtterance] = useState("");  // Used by Deepgram but not displayed
   const [status, setStatus] = useState<WindowStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [translateMode, setTranslateMode] = useState(false);
@@ -96,10 +87,6 @@ function MiniWindow() {
   useEffect(() => {
     let unlistenAudioFn: (() => void) | null = null;
     let unlistenRecordingFn: (() => void) | null = null;
-    let unlistenDeepgramConnectedFn: (() => void) | null = null;
-    let unlistenDeepgramDisconnectedFn: (() => void) | null = null;
-    let unlistenTranscriptionInterimFn: (() => void) | null = null;
-    let unlistenTranscriptionFinalFn: (() => void) | null = null;
     let unlistenTranscriptionStartFn: (() => void) | null = null;
     let unlistenTranscriptionSuccessFn: (() => void) | null = null;
     let unlistenTranscriptionErrorFn: (() => void) | null = null;
@@ -140,9 +127,6 @@ function MiniWindow() {
             if (recording) {
               setStatus("recording");
               setErrorMessage("");
-              setFinalText("");
-              setInterimText("");
-              setCurrentUtterance("");
             } else {
               // Recording stopped - transition to processing status
             }
@@ -154,9 +138,8 @@ function MiniWindow() {
           setStatus("processing");
         });
 
-        unlistenTranscriptionSuccessFn = await listen<{ text: string }>("transcription-success", async (event) => {
+        unlistenTranscriptionSuccessFn = await listen<{ text: string }>("transcription-success", async () => {
           setStatus("success");
-          setFinalText(event.payload.text);
 
           // Hide window after a short delay to show success status
           setTimeout(async () => {
@@ -184,54 +167,6 @@ function MiniWindow() {
           }, 4000);
         });
 
-        // Listen to Deepgram connection events
-        unlistenDeepgramConnectedFn = await listen(
-          "deepgram-connected",
-          async () => {
-            setFinalText("");
-            setCurrentUtterance("");
-            setInterimText("");
-          }
-        );
-
-        unlistenDeepgramDisconnectedFn = await listen(
-          "deepgram-disconnected",
-          async () => {
-            // Deepgram disconnected - nothing special to do
-          }
-        );
-
-        // Listen to Deepgram transcription events
-        unlistenTranscriptionInterimFn = await listen<TranscriptionEvent>(
-          "transcription-interim",
-          (event) => {
-            setInterimText(event.payload.text);
-          }
-        );
-
-        unlistenTranscriptionFinalFn = await listen<TranscriptionEvent>(
-          "transcription-final",
-          (event) => {
-            const newText = event.payload.text;
-            const isSpeechFinal = event.payload.speech_final || false;
-
-            if (isSpeechFinal) {
-              // Add to final text
-              setFinalText((prev) => {
-                const trimmed = prev.trim();
-                return trimmed ? `${trimmed} ${newText}` : newText;
-              });
-              setCurrentUtterance("");
-            } else {
-              // Update current utterance
-              setCurrentUtterance(newText);
-            }
-
-            // Clear interim text
-            setInterimText("");
-          }
-        );
-
         // Notify backend we're ready
         await emit("mini-window-ready", {});
       } catch (e) {
@@ -244,10 +179,6 @@ function MiniWindow() {
     return () => {
       if (unlistenAudioFn) unlistenAudioFn();
       if (unlistenRecordingFn) unlistenRecordingFn();
-      if (unlistenDeepgramConnectedFn) unlistenDeepgramConnectedFn();
-      if (unlistenDeepgramDisconnectedFn) unlistenDeepgramDisconnectedFn();
-      if (unlistenTranscriptionInterimFn) unlistenTranscriptionInterimFn();
-      if (unlistenTranscriptionFinalFn) unlistenTranscriptionFinalFn();
       if (unlistenTranscriptionStartFn) unlistenTranscriptionStartFn();
       if (unlistenTranscriptionSuccessFn) unlistenTranscriptionSuccessFn();
       if (unlistenTranscriptionErrorFn) unlistenTranscriptionErrorFn();
@@ -290,9 +221,6 @@ function MiniWindow() {
       );
     });
   }, [audioLevel, barModifiers, isRecording]);
-
-  // Note: finalText and currentUtterance are tracked for Deepgram but not displayed
-  // since we only show status messages, not transcription text
 
   return (
     <div className="dark flex h-full w-full items-center justify-center bg-transparent overflow-hidden">

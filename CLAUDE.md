@@ -8,9 +8,9 @@ This is a Tauri-based desktop voice recording application with real-time audio v
 
 - Audio capture from system microphones using Rust (cpal library)
 - Real-time audio level visualization
-- Dual transcription providers:
+- Transcription providers:
   - OpenAI Whisper API (batch processing via WAV file upload)
-  - Deepgram Streaming API (real-time WebSocket streaming)
+  - Local `whisper-rs` (offline, native inference with model caching)
 - Configurable global keyboard shortcuts (toggle, push-to-talk, show window)
 - Multi-window architecture with a main dashboard and floating mini visualizer
 - System tray integration with hide-to-tray behavior
@@ -104,8 +104,7 @@ Located in `src-tauri/src/`:
 - **`lib.rs`**: Tauri setup, window management, global shortcuts, system tray, window state persistence, and all Tauri command handlers
 - **`audio.rs`**: Audio recording implementation using cpal with stream lifecycle management
 - **`transcription.rs`**: Audio file I/O (WAV), OpenAI Whisper API integration, recordings cleanup, and legacy directory migration
-- **`deepgram_streaming.rs`**: WebSocket-based real-time transcription using Deepgram API
-- **`deepgram_types.rs`**: Type definitions for Deepgram API requests and responses
+- **`transcription_local.rs`**: Local `whisper-rs` inference with model + state caching, model download from HuggingFace
 - **`updater.rs`**: Auto-update functionality with download progress tracking and signature verification
 - **`logging.rs`**: Custom tracing layer that emits structured logs to frontend via Tauri events
 
@@ -179,28 +178,6 @@ Located in `lib.rs:633-729` and `transcription.rs`:
 - If enabled, transcription copied to clipboard via `clipboard-manager` plugin
 - `paste_text_to_active_window()` simulates Ctrl+V using enigo library
 - 50ms delay between clipboard write and paste for reliability
-
-#### Deepgram Streaming Transcription
-
-Located in `deepgram_streaming.rs` and `deepgram_types.rs`:
-
-**Streaming Flow**:
-
-1. Frontend initiates WebSocket connection via `deepgram_connect()` command with API key, language, and sample rate
-2. WebSocket established to `wss://api.deepgram.com/v1/listen` with configuration parameters
-3. Audio samples streamed in real-time via `deepgram_send_audio()` command (i16 buffer chunks)
-4. Deepgram emits "deepgram-transcript" events to frontend with interim and final results
-5. Connection closed via `deepgram_disconnect()` command or automatically on errors
-6. Uses tokio-tungstenite for WebSocket management with separate send/receive tasks
-
-**Key Features**:
-
-- Real-time transcription (vs. Whisper's batch processing)
-- Supports interim results for immediate feedback
-- Automatic reconnection handling
-- Buffer management for audio chunks
-- Language and model configuration
-- Error handling via "deepgram-error" events
 
 #### Auto-Update System
 

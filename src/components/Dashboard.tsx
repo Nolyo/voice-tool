@@ -19,12 +19,10 @@ import { DashboardHeader } from "./dashboard-header";
 import { RecordingCard } from "./recording-card";
 import { TranscriptionList } from "./transcription-list";
 import { TranscriptionDetails } from "./transcription-details";
-import { TranscriptionLive } from "./transcription-live";
 import { SettingTabs } from "./setting-tabs";
 import { LogsTab } from "./logs-tab";
 import { NotesTab } from "./notes-tab";
 import { useSettings } from "@/hooks/useSettings";
-import { useDeepgramStreaming } from "@/hooks/useDeepgramStreaming";
 import {
   useTranscriptionHistory,
   type Transcription,
@@ -68,9 +66,6 @@ export default function Dashboard() {
   const { playStart, playStop, playSuccess } = useSoundEffects(
     settings.enable_sounds,
   );
-  const deepgram = useDeepgramStreaming();
-  const { completedTranscript, clearCompletedTranscript } = deepgram;
-  const deepgramRef = useRef(deepgram);
   const {
     transcriptions,
     addTranscription,
@@ -93,10 +88,6 @@ export default function Dashboard() {
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const previousRecordingRef = useRef(isRecording);
 
-  useEffect(() => {
-    deepgramRef.current = deepgram;
-  }, [deepgram]);
-
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
   };
@@ -116,7 +107,7 @@ export default function Dashboard() {
   const handleTranscriptionFinal = useCallback(
     async (
       text: string,
-      provider: "whisper" | "deepgram",
+      provider: "whisper",
       audioPath?: string,
       apiCost?: number,
     ) => {
@@ -163,57 +154,8 @@ export default function Dashboard() {
     handleTranscriptionFinalRef.current = handleTranscriptionFinal;
   }, [handleTranscriptionFinal]);
 
-  useEffect(() => {
-    if (settings.transcription_provider !== "Deepgram") {
-      return;
-    }
-    if (!completedTranscript) {
-      return;
-    }
-
-    const trimmed = completedTranscript.text.trim();
-    clearCompletedTranscript();
-
-    let isCancelled = false;
-
-    const processTranscript = async () => {
-      try {
-        if (trimmed) {
-          await handleTranscriptionFinalRef.current?.(trimmed, "deepgram");
-        }
-      } catch (error) {
-        console.error("Failed to finalize Deepgram transcription:", error);
-      } finally {
-        if (!isCancelled) {
-          try {
-            await invoke("log_separator");
-          } catch (logError) {
-            console.error("Failed to log separator:", logError);
-          }
-        }
-      }
-    };
-
-    processTranscript();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [
-    completedTranscript,
-    clearCompletedTranscript,
-    settings.transcription_provider,
-  ]);
-
   const transcribeAudio = useCallback(
     async (audioData: number[], sampleRate: number) => {
-      if (settings.transcription_provider === "Deepgram") {
-        console.log(
-          "Skipping post-transcription (Deepgram streaming already handled it)",
-        );
-        return;
-      }
-
       setIsTranscribing(true);
       try {
         await emit("transcription-start");
@@ -352,17 +294,6 @@ export default function Dashboard() {
           if (isRecording === previousState) return;
           previousState = isRecording;
 
-          if (settings.transcription_provider === "Deepgram") {
-            if (isRecording) {
-              try {
-                await deepgramRef.current.startStreaming();
-              } catch (error) {
-                console.error("Failed to start Deepgram:", error);
-              }
-            } else {
-              await deepgramRef.current.stopStreaming();
-            }
-          }
         },
       );
     };
@@ -434,10 +365,7 @@ export default function Dashboard() {
           return;
         }
 
-        if (
-          result.audio_data.length > 0 &&
-          settings.transcription_provider !== "Deepgram"
-        ) {
+        if (result.audio_data.length > 0) {
           await transcribeAudio(result.audio_data, result.sample_rate);
         }
       } else {
@@ -587,10 +515,6 @@ export default function Dashboard() {
                     />
                   </div>
                 )}
-                {!settings.hide_recording_panel &&
-                  settings.transcription_provider === "Deepgram" && (
-                    <TranscriptionLive />
-                  )}
                 <TranscriptionList
                   transcriptions={transcriptions}
                   selectedId={selectedTranscription?.id}
