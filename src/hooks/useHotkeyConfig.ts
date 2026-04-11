@@ -1,0 +1,55 @@
+import { useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { useSettings } from "@/hooks/useSettings";
+
+export type HotkeyKey =
+  | "record_hotkey"
+  | "ptt_hotkey"
+  | "open_window_hotkey"
+  | "cancel_hotkey";
+
+/**
+ * Persist a hotkey change: normalizes the shortcut, calls the Rust
+ * `update_hotkeys` command with the full set (so the backend re-registers
+ * global shortcuts atomically), then saves the updated key in settings.
+ */
+export function useHotkeyConfig() {
+  const { settings, updateSetting } = useSettings();
+
+  const handleHotkeyChange = useCallback(
+    async (key: HotkeyKey, shortcut: string) => {
+      const normalized = shortcut
+        .split("+")
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .join("+");
+
+      if (!normalized) throw new Error("Le raccourci ne peut pas être vide.");
+
+      const currentValue = settings[key];
+      if (
+        currentValue &&
+        currentValue.toLowerCase() === normalized.toLowerCase()
+      ) {
+        return;
+      }
+
+      await invoke("update_hotkeys", {
+        recordHotkey:
+          key === "record_hotkey" ? normalized : settings.record_hotkey,
+        pttHotkey: key === "ptt_hotkey" ? normalized : settings.ptt_hotkey,
+        openWindowHotkey:
+          key === "open_window_hotkey"
+            ? normalized
+            : settings.open_window_hotkey,
+        cancelHotkey:
+          key === "cancel_hotkey" ? normalized : settings.cancel_hotkey,
+      });
+
+      await updateSetting(key, normalized);
+    },
+    [settings, updateSetting],
+  );
+
+  return { handleHotkeyChange };
+}

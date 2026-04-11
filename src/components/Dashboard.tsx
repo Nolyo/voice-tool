@@ -19,7 +19,7 @@ import { DashboardHeader } from "./dashboard-header";
 import { RecordingCard } from "./recording-card";
 import { TranscriptionList } from "./transcription-list";
 import { TranscriptionDetails } from "./transcription-details";
-import { SettingTabs } from "./setting-tabs";
+import { SettingTabs } from "./settings/SettingTabs";
 import { LogsTab } from "./logs-tab";
 import { NotesTab } from "./notes-tab";
 import { useSettings } from "@/hooks/useSettings";
