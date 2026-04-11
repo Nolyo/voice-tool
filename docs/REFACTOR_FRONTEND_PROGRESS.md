@@ -12,7 +12,7 @@ Refactoriser le frontend (React + TS) vers une architecture feature-based, avec 
 - [x] **Phase 0** — Setup branche + fichier de suivi + `src/lib/types.ts`
 - [x] **Phase 1** — Split `setting-tabs.tsx` (1370 → 16 fichiers, max 240 lignes, orchestrateur 85 lignes)
 - [x] **Phase 2** — Split `notes-editor.tsx` (910 → 10 fichiers, max 218 lignes, orchestrateur 218 lignes)
-- [ ] **Phase 3** — Split `Dashboard.tsx` (584 → ~250 lignes) + types centralisés
+- [x] **Phase 3** — Split `Dashboard.tsx` (584 → 199 lignes) + `src/lib/types.ts` populé
 - [ ] **Phase 4** — Réorganisation feature folders (dashboard/, notes/, common/, logs/)
 - [ ] **Phase 5** — Mini-window state machine + cleanup final
 
@@ -43,6 +43,8 @@ src/
 - Tests UI : l'agent ne peut pas lancer `pnpm tauri dev` — demander à l'utilisateur de valider visuellement après chaque phase.
 - **Phase 1** : les sections consomment `useSettings()` directement ; pas besoin de props drilling depuis `SettingTabs`. Les hooks `useModelDownload`/`useAutostart`/`useHotkeyConfig` encapsulent les invocations Tauri et sont réutilisables hors settings si besoin.
 - **Phase 2** : `useNotesEditorInstance` utilise un `handleImageFileRef` (ref mutable) pour résoudre le temporal-dead-zone entre `editorProps.handlePaste/handleDrop` (closures) et `handleImageFile` qui dépend de l'instance `editor`. Plus idiomatique qu'un `let` réassigné. Le `NotesEditor.tsx` orchestrateur garde localement le `confirmDeleteOpen` state + la policy "ferme la note si vide" car c'est une logique cross-hook qui ne mérite pas son propre hook.
+- **Phase 3** : les trois hooks initialement prévus (`useRecordingState` + `useTranscriptionWorkflow` + `useNotesWorkflow`) ont été consolidés en deux : `useRecordingWorkflow` (état + listeners + transcribe + toggle, 305 lignes) et `useNotesWorkflow`. Raison : `handleToggleRecording` a besoin de `isRecording`, `setIsRecording`, `transcribeAudio` et `setIsTranscribing` — les séparer en deux hooks imposerait du prop drilling entre hooks pour zero gain. Le hook dépasse légèrement les 300 lignes mais reste mono-responsabilité (recording feature). `setSelectedTranscription` est injecté via callback `onTranscriptionAdded` pour garder l'état de sélection dans Dashboard.
+- **Phase 3** : `useSoundEffects` est appelé *dans* `useRecordingWorkflow` plutôt que passé en props — c'est une feature-interne pas un paramètre de l'API publique. Dashboard reste propre.
 
 ## Phase 1 — Détail d'extraction (ordre d'exécution)
 
@@ -90,23 +92,25 @@ L'ancien fichier `src/components/setting-tabs.tsx` sera **supprimé** et l'impor
 
 ## Next session
 
-Prochaine phase : **Phase 3 — Dashboard.tsx split + `src/lib/types.ts`**
+Prochaine phase : **Phase 4 — Réorganisation finale des dossiers feature**
 
 Point de départ :
 1. Lire `docs/REFACTOR_FRONTEND_PROGRESS.md` + dernier commit sur la branche
-2. Lire `src/components/Dashboard.tsx` complet (~584 lignes)
-3. Déplacer `TranscriptionInvokeResult`, `RecordingResult` et tout type partagé vers `src/lib/types.ts`
-4. Extraire les hooks :
-   - `useRecordingState.ts` — listeners `audio-captured`, `recording-state`, `transcription-cancel` + état `isRecording`/`isTranscribing`
-   - `useTranscriptionWorkflow.ts` — `handleTranscriptionFinal` + `transcribeAudio` + cascade formatting/auto-paste
-   - `useNotesWorkflow.ts` — gestion onglets notes + editor modal (openNoteIds, activeNoteId, editorOpen)
-5. Extraire les sous-composants :
-   - `src/components/dashboard/DashboardSidebar.tsx` ← lignes 427-491
-   - `src/components/dashboard/tabs/HistoriqueTab.tsx` ← recording card + transcription list + details
-6. Déplacer `src/components/dashboard-header.tsx` → `src/components/common/DashboardHeader.tsx`
-7. Réduire `Dashboard.tsx` à ~250 lignes (layout + routing tabs)
+2. Déplacer les composants partagés vers `src/components/common/` :
+   - `recording-card.tsx` → `common/RecordingCard.tsx`
+   - `audio-visualizer.tsx` → `common/AudioVisualizer.tsx`
+   - `api-config-dialog.tsx` → `common/ApiConfigDialog.tsx`
+   - `update-modal.tsx` → `common/UpdateModal.tsx`
+3. Déplacer les composants dashboard :
+   - `transcription-list.tsx` → `dashboard/transcription/TranscriptionList.tsx`
+   - `transcription-details.tsx` → `dashboard/transcription/TranscriptionDetails.tsx`
+4. Déplacer `updater-tab.tsx` → `settings/UpdaterTab.tsx`
+5. Déplacer `logs-tab.tsx` → `logs/LogsTab.tsx`
+6. Déplacer `notes-tab.tsx` → `notes/NotesTab.tsx` et `ai-action-menu.tsx` → `notes/AiActionMenu.tsx`
+7. Mettre à jour tous les imports (chercher `./recording-card`, `./transcription-list`, etc.)
+8. Build + commit
 
-Cible : `Dashboard.tsx` 584 → ~250 lignes, aucun nouveau fichier > 250 lignes.
+Risques : beaucoup de fichiers à renommer, probablement 15-20 imports à fixer. Faire par groupes (common/, dashboard/, etc.) pour rester incremental et permettre des builds intermédiaires.
 
 ### Phase 1 — Résultats
 
@@ -119,6 +123,21 @@ Fichiers créés (1505 lignes au total répartis sur 16 fichiers) :
 - `src/hooks/` — useModelDownload (90), useAutostart (38), useHotkeyConfig (55)
 
 Le seul import externe mis à jour : `src/components/Dashboard.tsx` ligne 22.
+
+### Phase 3 — Résultats
+
+`Dashboard.tsx` : **584 → 199 lignes** (orchestrateur pur : layout + routing tabs + sélection transcription).
+
+Fichier déplacé : `src/components/dashboard-header.tsx` → `src/components/common/DashboardHeader.tsx` (46 lignes, inchangé).
+
+Fichiers créés (814 lignes au total répartis sur 6 fichiers + Dashboard) :
+- `src/lib/types.ts` — 21 lignes (`TranscriptionInvokeResult`, `RecordingResult`)
+- `src/hooks/useRecordingWorkflow.ts` — 305 lignes (isRecording/isTranscribing + listeners audio-captured/recording-state/recording-cancelled + sons + transcribeAudio + handleToggleRecording)
+- `src/hooks/useNotesWorkflow.ts` — 83 lignes (onglets notes + editorOpen + activeNoteId + create/open/close/delete handlers)
+- `src/components/dashboard/DashboardSidebar.tsx` — 99 lignes (exporte `DASHBOARD_NAV_ITEMS` et `DashboardTabId`)
+- `src/components/dashboard/tabs/HistoriqueTab.tsx` — 61 lignes (recording card + details + list)
+
+Aucun import externe cassé — Dashboard était le seul consommateur de `dashboard-header.tsx`.
 
 ### Phase 2 — Résultats
 
