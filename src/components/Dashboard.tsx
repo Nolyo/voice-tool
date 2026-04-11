@@ -31,7 +31,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useNotes, type NoteMeta } from "@/hooks/useNotes";
 import { useAppLogs } from "@/hooks/useAppLogs";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
-import { NotesEditor } from "./notes-editor";
+import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./update-modal";
 
 const NAV_ITEMS = [

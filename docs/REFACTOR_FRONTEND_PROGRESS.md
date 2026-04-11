@@ -11,7 +11,7 @@ Refactoriser le frontend (React + TS) vers une architecture feature-based, avec 
 
 - [x] **Phase 0** — Setup branche + fichier de suivi + `src/lib/types.ts`
 - [x] **Phase 1** — Split `setting-tabs.tsx` (1370 → 16 fichiers, max 240 lignes, orchestrateur 85 lignes)
-- [ ] **Phase 2** — Split `notes-editor.tsx` (910 → ~250 lignes)
+- [x] **Phase 2** — Split `notes-editor.tsx` (910 → 10 fichiers, max 218 lignes, orchestrateur 218 lignes)
 - [ ] **Phase 3** — Split `Dashboard.tsx` (584 → ~250 lignes) + types centralisés
 - [ ] **Phase 4** — Réorganisation feature folders (dashboard/, notes/, common/, logs/)
 - [ ] **Phase 5** — Mini-window state machine + cleanup final
@@ -42,6 +42,7 @@ src/
 - Chaque phase = 1 commit. Le build (`pnpm build`) doit passer avant commit.
 - Tests UI : l'agent ne peut pas lancer `pnpm tauri dev` — demander à l'utilisateur de valider visuellement après chaque phase.
 - **Phase 1** : les sections consomment `useSettings()` directement ; pas besoin de props drilling depuis `SettingTabs`. Les hooks `useModelDownload`/`useAutostart`/`useHotkeyConfig` encapsulent les invocations Tauri et sont réutilisables hors settings si besoin.
+- **Phase 2** : `useNotesEditorInstance` utilise un `handleImageFileRef` (ref mutable) pour résoudre le temporal-dead-zone entre `editorProps.handlePaste/handleDrop` (closures) et `handleImageFile` qui dépend de l'instance `editor`. Plus idiomatique qu'un `let` réassigné. Le `NotesEditor.tsx` orchestrateur garde localement le `confirmDeleteOpen` state + la policy "ferme la note si vide" car c'est une logique cross-hook qui ne mérite pas son propre hook.
 
 ## Phase 1 — Détail d'extraction (ordre d'exécution)
 
@@ -89,17 +90,23 @@ L'ancien fichier `src/components/setting-tabs.tsx` sera **supprimé** et l'impor
 
 ## Next session
 
-Prochaine phase : **Phase 2 — notes-editor.tsx split**
+Prochaine phase : **Phase 3 — Dashboard.tsx split + `src/lib/types.ts`**
 
 Point de départ :
 1. Lire `docs/REFACTOR_FRONTEND_PROGRESS.md` + dernier commit sur la branche
-2. Lire `src/components/notes-editor.tsx` complet (910 lignes)
-3. Créer `src/hooks/useNotesWindow.ts` en premier (logique drag/resize/maximize/half-screen — lignes ~258-346 de l'ancien fichier ; à re-vérifier après d'éventuels changements)
-4. Puis `useNotesEditor.ts`, `useAiAssistant.ts`, `useLinkEditor.ts`
-5. Puis les composants `NotesEditorWindow/Tabs/Content/Footer` + `EditorBubbleMenu`
-6. Enfin nouveau `NotesEditor.tsx` orchestrateur
+2. Lire `src/components/Dashboard.tsx` complet (~584 lignes)
+3. Déplacer `TranscriptionInvokeResult`, `RecordingResult` et tout type partagé vers `src/lib/types.ts`
+4. Extraire les hooks :
+   - `useRecordingState.ts` — listeners `audio-captured`, `recording-state`, `transcription-cancel` + état `isRecording`/`isTranscribing`
+   - `useTranscriptionWorkflow.ts` — `handleTranscriptionFinal` + `transcribeAudio` + cascade formatting/auto-paste
+   - `useNotesWorkflow.ts` — gestion onglets notes + editor modal (openNoteIds, activeNoteId, editorOpen)
+5. Extraire les sous-composants :
+   - `src/components/dashboard/DashboardSidebar.tsx` ← lignes 427-491
+   - `src/components/dashboard/tabs/HistoriqueTab.tsx` ← recording card + transcription list + details
+6. Déplacer `src/components/dashboard-header.tsx` → `src/components/common/DashboardHeader.tsx`
+7. Réduire `Dashboard.tsx` à ~250 lignes (layout + routing tabs)
 
-Cible : `notes-editor.tsx` 910 → ~200 lignes, aucun nouveau fichier > 250 lignes.
+Cible : `Dashboard.tsx` 584 → ~250 lignes, aucun nouveau fichier > 250 lignes.
 
 ### Phase 1 — Résultats
 
@@ -112,3 +119,21 @@ Fichiers créés (1505 lignes au total répartis sur 16 fichiers) :
 - `src/hooks/` — useModelDownload (90), useAutostart (38), useHotkeyConfig (55)
 
 Le seul import externe mis à jour : `src/components/Dashboard.tsx` ligne 22.
+
+### Phase 2 — Résultats
+
+Fichier supprimé : `src/components/notes-editor.tsx` (910 lignes)
+
+Fichiers créés (1268 lignes au total répartis sur 10 fichiers) :
+- `src/components/notes/NotesEditor/NotesEditor.tsx` — 218 lignes (orchestrateur)
+- `src/components/notes/NotesEditor/NotesEditorTitleBar.tsx` — 126 lignes (close + tabs + maximize/half-screen)
+- `src/components/notes/NotesEditor/NotesEditorContent.tsx` — 71 lignes (dispatcher empty/preview/loading/editor)
+- `src/components/notes/NotesEditor/NotesEditorAiPreview.tsx` — 70 lignes (split view Original + Résultat)
+- `src/components/notes/NotesEditor/NotesEditorFooter.tsx` — 95 lignes (AI menu + copy + delete, owns `justCopied`)
+- `src/components/notes/NotesEditor/EditorBubbleMenu.tsx` — 198 lignes (formatting buttons + inline link editor)
+- `src/hooks/useNotesWindow.ts` — 170 lignes (drag/resize/maximize/half-screen)
+- `src/hooks/useNotesEditorInstance.ts` — 192 lignes (TipTap config + content loading + debounced save)
+- `src/hooks/useAiAssistant.ts` — 69 lignes (wraps `useAiProcess`, plugs editor read/write)
+- `src/hooks/useLinkEditor.ts` — 59 lignes (inline link state, auto-https normalization)
+
+Le seul import externe mis à jour : `src/components/Dashboard.tsx` ligne 34.
