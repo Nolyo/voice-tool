@@ -58,7 +58,7 @@
 
 ---
 
-## EPIC-02 — Refonte des Notes (Notion-like)
+## EPIC-02 — Refonte des Notes (Notion-like) ✅ (Terminé)
 
 **Objectif** : transformer l'éditeur de notes en un éditeur riche avec listes, sous-listes, hiérarchie.
 **Version cible** : 2.10.0

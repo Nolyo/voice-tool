@@ -1,5 +1,27 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Plus, Copy, Maximize2, Minimize2, Columns2, Check, Loader2, Trash2 } from "lucide-react";
+import {
+  X,
+  Plus,
+  Copy,
+  Maximize2,
+  Minimize2,
+  Columns2,
+  Check,
+  Loader2,
+  Trash2,
+  Bold as BoldIcon,
+  Italic as ItalicIcon,
+  Strikethrough,
+  Underline as UnderlineIcon,
+  Heading1,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  ListChecks,
+  Link2,
+  Link2Off,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,9 +36,12 @@ import { type NoteMeta, type NoteData, deriveTitle } from "@/hooks/useNotes";
 import { useAiProcess } from "@/hooks/useAiProcess";
 import { AiActionMenu } from "@/components/ai-action-menu";
 import { useEditor, EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
 
 interface NotesEditorProps {
   openNotes: NoteMeta[];
@@ -62,6 +87,8 @@ export function NotesEditor({
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [justCopied, setJustCopied] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [linkEditing, setLinkEditing] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
   const copyResetTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Clear the copy-feedback timer on unmount
@@ -82,13 +109,28 @@ export function NotesEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        // Link is bundled in StarterKit v3; keep openOnClick: false so our
+        // existing Ctrl+clic handler (see handleDOMEvents.click) remains the
+        // only place that opens links externally via Tauri plugin-opener.
+        link: {
+          openOnClick: false,
+          autolink: true,
+          HTMLAttributes: {
+            rel: "noopener noreferrer nofollow",
+          },
+        },
+      }),
       Image.configure({
         inline: true,
         allowBase64: true,
       }),
       Placeholder.configure({
         placeholder: "Commencez à écrire...",
+      }),
+      TaskList,
+      TaskItem.configure({
+        nested: true,
       }),
     ],
     editorProps: {
@@ -326,6 +368,40 @@ export function NotesEditor({
     }
   };
 
+  // Link editing — open an inline input inside the bubble menu.
+  // Pre-fills with the existing href if the cursor is inside a link.
+  const openLinkEditor = () => {
+    if (!editor) return;
+    const existing = editor.getAttributes("link").href as string | undefined;
+    setLinkUrl(existing ?? "");
+    setLinkEditing(true);
+  };
+
+  const closeLinkEditor = () => {
+    setLinkEditing(false);
+    setLinkUrl("");
+  };
+
+  const applyLink = () => {
+    if (!editor) return;
+    const raw = linkUrl.trim();
+    if (raw === "") {
+      // Empty URL means remove the link.
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    } else {
+      // Auto-prepend https:// if the user typed a bare domain.
+      const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+      editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+    }
+    closeLinkEditor();
+  };
+
+  const removeLink = () => {
+    if (!editor) return;
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    closeLinkEditor();
+  };
+
   const activeNote = openNotes.find((n) => n.id === activeNoteId);
   const editorText = editor?.getText() ?? "";
 
@@ -528,10 +604,182 @@ export function NotesEditor({
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <EditorContent
-                editor={editor}
-                className="h-full [&_.tiptap]:h-full [&_.tiptap]:overflow-auto [&_.tiptap_img]:max-w-full [&_.tiptap_img]:h-auto [&_.tiptap_img]:rounded-md [&_.tiptap_img]:my-2 [&_.tiptap_a]:cursor-text"
-              />
+              <>
+                {editor && (
+                  <BubbleMenu
+                    editor={editor}
+                    shouldShow={({ editor: ed, from, to }) => {
+                      // Keep visible while the inline link editor is open,
+                      // even if the selection is empty after a click-away.
+                      if (linkEditing) return true;
+                      if (!ed.isEditable) return false;
+                      return from !== to;
+                    }}
+                    options={{ placement: "top", offset: 8 }}
+                    className="flex items-center gap-0.5 bg-popover text-popover-foreground border rounded-md shadow-md p-1 z-[9999]"
+                  >
+                    {linkEditing ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={linkUrl}
+                          onChange={(e) => setLinkUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              applyLink();
+                            } else if (e.key === "Escape") {
+                              e.preventDefault();
+                              closeLinkEditor();
+                            }
+                          }}
+                          placeholder="https://..."
+                          className="h-7 w-48 px-2 text-xs bg-background border rounded focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={applyLink}
+                          title="Valider"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </Button>
+                        {editor.isActive("link") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                            onClick={removeLink}
+                            title="Retirer le lien"
+                          >
+                            <Link2Off className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={closeLinkEditor}
+                          title="Annuler"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("bold") ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={() => editor.chain().focus().toggleBold().run()}
+                          title="Gras (Ctrl+B)"
+                        >
+                          <BoldIcon className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("italic") ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={() => editor.chain().focus().toggleItalic().run()}
+                          title="Italique (Ctrl+I)"
+                        >
+                          <ItalicIcon className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("strike") ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={() => editor.chain().focus().toggleStrike().run()}
+                          title="Barré"
+                        >
+                          <Strikethrough className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("underline") ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={() => editor.chain().focus().toggleUnderline().run()}
+                          title="Souligné (Ctrl+U)"
+                        >
+                          <UnderlineIcon className="w-3.5 h-3.5" />
+                        </Button>
+                        <span className="w-px h-5 bg-border mx-0.5" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("heading", { level: 1 }) ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                          title="Titre 1"
+                        >
+                          <Heading1 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("heading", { level: 2 }) ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                          title="Titre 2"
+                        >
+                          <Heading2 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("heading", { level: 3 }) ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                          title="Titre 3"
+                        >
+                          <Heading3 className="w-3.5 h-3.5" />
+                        </Button>
+                        <span className="w-px h-5 bg-border mx-0.5" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("bulletList") ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={() => editor.chain().focus().toggleBulletList().run()}
+                          title="Liste à puces"
+                        >
+                          <List className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("orderedList") ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                          title="Liste numérotée"
+                        >
+                          <ListOrdered className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("taskList") ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={() => editor.chain().focus().toggleTaskList().run()}
+                          title="Liste à cocher"
+                        >
+                          <ListChecks className="w-3.5 h-3.5" />
+                        </Button>
+                        <span className="w-px h-5 bg-border mx-0.5" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 ${editor.isActive("link") ? "bg-accent text-accent-foreground" : ""}`}
+                          onClick={openLinkEditor}
+                          title={editor.isActive("link") ? "Modifier le lien" : "Ajouter un lien"}
+                        >
+                          <Link2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </>
+                    )}
+                  </BubbleMenu>
+                )}
+                <EditorContent
+                  editor={editor}
+                  className="h-full [&_.tiptap]:h-full [&_.tiptap]:overflow-auto [&_.tiptap_img]:max-w-full [&_.tiptap_img]:h-auto [&_.tiptap_img]:rounded-md [&_.tiptap_img]:my-2 [&_.tiptap_a]:cursor-text"
+                />
+              </>
             )}
             {aiState === "loading" && (
               <div className="absolute inset-0 flex items-center justify-center">
