@@ -79,6 +79,11 @@ export function SettingTabs() {
         >
           Fermer complètement l'application
         </Button>
+        <div className="my-20">
+          <p className="text-center text-sm text-muted-foreground">
+            © 2026 - Mises à jour automatiques via GitHub, Par <span className="line-through">Nolyo</span> <span className="text-xs">Claude</span>
+          </p>
+        </div>
       </div>
     </div>
   );
