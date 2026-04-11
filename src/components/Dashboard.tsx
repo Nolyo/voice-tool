@@ -639,6 +639,7 @@ export default function Dashboard() {
           activeNoteId={activeNoteId}
           onActivateNote={setActiveNoteId}
           onCloseNote={handleCloseNoteTab}
+          onDeleteNote={handleDeleteNote}
           onUpdateNote={updateNote}
           onCreateNote={handleCreateNote}
           onCopyContent={handleCopy}
