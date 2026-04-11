@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Plus, Copy, Maximize2, Minimize2, Columns2, Check, Loader2 } from "lucide-react";
+import { X, Plus, Copy, Maximize2, Minimize2, Columns2, Check, Loader2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { type NoteMeta, type NoteData, deriveTitle } from "@/hooks/useNotes";
 import { useAiProcess } from "@/hooks/useAiProcess";
 import { AiActionMenu } from "@/components/ai-action-menu";
@@ -14,6 +23,7 @@ interface NotesEditorProps {
   activeNoteId: string | null;
   onActivateNote: (id: string) => void;
   onCloseNote: (id: string) => void;
+  onDeleteNote: (id: string) => void;
   onUpdateNote: (id: string, content: string, title: string) => void;
   onCreateNote: () => void;
   onCopyContent: (text: string) => void;
@@ -30,6 +40,7 @@ export function NotesEditor({
   activeNoteId,
   onActivateNote,
   onCloseNote,
+  onDeleteNote,
   onUpdateNote,
   onCreateNote,
   onCopyContent,
@@ -49,6 +60,16 @@ export function NotesEditor({
     size: { width: number; height: number };
   } | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
+  const [justCopied, setJustCopied] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Clear the copy-feedback timer on unmount
+  useEffect(() => {
+    return () => {
+      clearTimeout(copyResetTimerRef.current);
+    };
+  }, []);
 
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
@@ -308,6 +329,45 @@ export function NotesEditor({
   const activeNote = openNotes.find((n) => n.id === activeNoteId);
   const editorText = editor?.getText() ?? "";
 
+  // True when the given id is the active note AND its editor content is empty.
+  // Inactive tabs are not inspected (we only cleanup on the active-tab path).
+  const isActiveNoteEmpty = (id: string): boolean => {
+    if (id !== activeNoteId) return false;
+    if (!editor) return false;
+    return editor.getText().trim() === "";
+  };
+
+  // Tab close: delete the note if it's the active empty one, otherwise just close.
+  const handleTabClose = (id: string) => {
+    if (isActiveNoteEmpty(id)) {
+      onDeleteNote(id);
+    } else {
+      onCloseNote(id);
+    }
+  };
+
+  // Modal close (header X): delete the active note if empty, then close.
+  const handleModalClose = () => {
+    if (activeNoteId && isActiveNoteEmpty(activeNoteId)) {
+      onDeleteNote(activeNoteId);
+    }
+    onClose();
+  };
+
+  const handleCopyFeedback = () => {
+    setJustCopied(true);
+    toast.success("Copié dans le presse-papiers");
+    clearTimeout(copyResetTimerRef.current);
+    copyResetTimerRef.current = setTimeout(() => setJustCopied(false), 1500);
+  };
+
+  const handleConfirmDelete = () => {
+    if (activeNoteId) {
+      onDeleteNote(activeNoteId);
+    }
+    setConfirmDeleteOpen(false);
+  };
+
   const style: React.CSSProperties = {
     position: "fixed",
     left: position.x,
@@ -333,7 +393,7 @@ export function NotesEditor({
           variant="ghost"
           size="sm"
           className="h-6 w-6 p-0 text-foreground hover:text-destructive"
-          onClick={onClose}
+          onClick={handleModalClose}
         >
           <X className="w-3.5 h-3.5" />
         </Button>
@@ -363,7 +423,7 @@ export function NotesEditor({
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onCloseNote(note.id);
+                  handleTabClose(note.id);
                 }}
               >
                 <X className="w-3 h-3" />
@@ -530,10 +590,24 @@ export function NotesEditor({
                   } catch {
                     onCopyContent(editorText);
                   }
+                  handleCopyFeedback();
                 }}
               >
-                <Copy className="w-3.5 h-3.5" />
-                Copier
+                {justCopied ? (
+                  <Check className="w-3.5 h-3.5 text-green-500" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                {justCopied ? "Copié" : "Copier"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setConfirmDeleteOpen(true)}
+                title="Supprimer la note"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
               </Button>
             </>
           )}
@@ -557,6 +631,32 @@ export function NotesEditor({
           </div>
         )}
       </div>
+
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent className="max-w-sm z-[10000]">
+          <DialogHeader>
+            <DialogTitle>Supprimer cette note ?</DialogTitle>
+            <DialogDescription>
+              Cette action est définitive. La note sera supprimée du disque.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmDeleteOpen(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
