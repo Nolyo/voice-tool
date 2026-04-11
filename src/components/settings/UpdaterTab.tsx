@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { Download, RefreshCw, Check, AlertCircle, Shield } from "lucide-react";
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { useSettings } from "@/hooks/useSettings";
-import { Label } from "./ui/label";
-import { Checkbox } from "./ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
+} from "@/components/ui/select";
 
 function Divider() {
   return <div className="h-px bg-border" />;

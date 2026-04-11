@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, ExternalLink } from "lucide-react";
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "./ui/dialog";
+} from "@/components/ui/dialog";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
 
 interface UpdateModalProps {

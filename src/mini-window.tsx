@@ -1,47 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import ReactDOM from "react-dom/client";
-import { listen, emit } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/core";
+import { useMiniWindowState } from "@/hooks/useMiniWindowState";
 import "./App.css";
 
-type WindowStatus = "idle" | "recording" | "processing" | "success" | "error";
-
 function MiniWindow() {
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [status, setStatus] = useState<WindowStatus>("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [translateMode, setTranslateMode] = useState(false);
-  // Note: showTranscription is no longer used - we always show status, never text
-
+  const {
+    audioLevel,
+    isRecording,
+    recordingTime,
+    status,
+    errorMessage,
+    translateMode,
+    handleToggleTranslateMode,
+  } = useMiniWindowState();
 
   const barModifiers = useMemo(
     () => Array.from({ length: 16 }, () => 0.7 + Math.random() * 0.3),
-    []
+    [],
   );
 
-  // Timer for recording duration
-  useEffect(() => {
-    let interval: number | null = null;
-
-    if (isRecording) {
-      setRecordingTime(0);
-      interval = window.setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
-      }, 1000);
-    } else {
-      setRecordingTime(0);
-    }
-
-    return () => {
-      if (interval !== null) {
-        clearInterval(interval);
-      }
-    };
-  }, [isRecording]);
-
-  // Format time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -50,14 +27,7 @@ function MiniWindow() {
       .padStart(2, "0")}`;
   };
 
-  const handleToggleTranslateMode = async () => {
-    try {
-      await invoke("set_translate_mode", { enabled: !translateMode });
-    } catch (e) {
-      console.error("Failed to toggle translate mode:", e);
-    }
-  };
-
+  // Transparent background for the frameless window
   useEffect(() => {
     const rootEl = document.documentElement;
     const bodyEl = document.body;
@@ -75,114 +45,11 @@ function MiniWindow() {
       } else {
         rootEl.style.removeProperty("background-color");
       }
-
       if (previousBodyBg) {
         bodyEl.style.backgroundColor = previousBodyBg;
       } else {
         bodyEl.style.removeProperty("background-color");
       }
-    };
-  }, []);
-
-  useEffect(() => {
-    let unlistenAudioFn: (() => void) | null = null;
-    let unlistenRecordingFn: (() => void) | null = null;
-    let unlistenTranscriptionStartFn: (() => void) | null = null;
-    let unlistenTranscriptionSuccessFn: (() => void) | null = null;
-    let unlistenTranscriptionErrorFn: (() => void) | null = null;
-    let unlistenTranslateModeChangedFn: (() => void) | null = null;
-
-    // Setup listeners asynchronously
-    const setupListeners = async () => {
-      try {
-        // Load translate mode from settings
-        const settingsJson = localStorage.getItem("settings");
-        if (settingsJson) {
-          try {
-            const settings = JSON.parse(settingsJson);
-            setTranslateMode(settings?.settings?.translate_mode ?? false);
-          } catch (e) {
-            console.log("Could not parse settings from localStorage");
-          }
-        }
-
-        // Listen to translate mode changes from main window
-        unlistenTranslateModeChangedFn = await listen<boolean>(
-          "translate-mode-changed",
-          (event) => {
-            setTranslateMode(event.payload);
-          }
-        );
-        // Listen to audio level events
-        unlistenAudioFn = await listen<number>("audio-level", (event) => {
-          setAudioLevel(event.payload);
-        });
-
-        // Listen to recording state changes
-        unlistenRecordingFn = await listen<boolean>(
-          "recording-state",
-          async (event) => {
-            const recording = event.payload;
-            setIsRecording(recording);
-            if (recording) {
-              setStatus("recording");
-              setErrorMessage("");
-            } else {
-              // Recording stopped - transition to processing status
-            }
-          }
-        );
-
-        // Listen for Whisper transcription events
-        unlistenTranscriptionStartFn = await listen("transcription-start", async () => {
-          setStatus("processing");
-        });
-
-        unlistenTranscriptionSuccessFn = await listen<{ text: string }>("transcription-success", async () => {
-          setStatus("success");
-
-          // Hide window after a short delay to show success status
-          setTimeout(async () => {
-            setStatus("idle");
-            try {
-              await invoke("close_mini_window");
-            } catch (e) {
-              console.error("Failed to hide mini window:", e);
-            }
-          }, 1500);
-        });
-
-        unlistenTranscriptionErrorFn = await listen<{ error: string }>("transcription-error", async (event) => {
-          setStatus("error");
-          setErrorMessage(event.payload.error);
-
-          // Hide window after delay
-          setTimeout(async () => {
-            setStatus("idle");
-            try {
-              await invoke("close_mini_window");
-            } catch (e) {
-              console.error("Failed to hide mini window:", e);
-            }
-          }, 4000);
-        });
-
-        // Notify backend we're ready
-        await emit("mini-window-ready", {});
-      } catch (e) {
-        console.error("Failed to setup listeners:", e);
-      }
-    };
-
-    setupListeners();
-
-    return () => {
-      if (unlistenAudioFn) unlistenAudioFn();
-      if (unlistenRecordingFn) unlistenRecordingFn();
-      if (unlistenTranscriptionStartFn) unlistenTranscriptionStartFn();
-      if (unlistenTranscriptionSuccessFn) unlistenTranscriptionSuccessFn();
-      if (unlistenTranscriptionErrorFn) unlistenTranscriptionErrorFn();
-      if (unlistenTranslateModeChangedFn) unlistenTranslateModeChangedFn();
     };
   }, []);
 
@@ -197,7 +64,7 @@ function MiniWindow() {
       const modifier = barModifiers[i];
       const easedLevel = Math.pow(
         Math.min(audioLevel * AMPLIFICATION, 1.0),
-        0.75
+        0.75,
       );
       const dynamicHeight =
         easedLevel * (MAX_HEIGHT - MIN_HEIGHT) * modifier + MIN_HEIGHT;
@@ -225,25 +92,28 @@ function MiniWindow() {
   return (
     <div className="dark flex h-full w-full items-center justify-center bg-transparent overflow-hidden">
       <div className="mini-shell flex w-full max-w-[240px] flex-col gap-0">
-        {/* Audio visualizer section (only visible when recording or idle) */}
+        {/* Audio visualizer (idle / recording) */}
         {(status === "idle" || status === "recording") && (
           <div className="flex items-center gap-2">
             <span
-              className={`h-2.5 w-2.5 rounded-full ${isRecording ? "bg-red-400 animate-pulse" : "bg-slate-500/70"
-                } flex-shrink-0`}
+              className={`h-2.5 w-2.5 rounded-full ${
+                isRecording
+                  ? "bg-red-400 animate-pulse"
+                  : "bg-slate-500/70"
+              } flex-shrink-0`}
             />
-            <div className="flex h-7 flex-1 items-end gap-[3px] px-2">{bars}</div>
-            {isRecording && (
+            <div className="flex h-7 flex-1 items-end gap-[3px] px-2">
+              {bars}
+            </div>
+            {isRecording ? (
               <span className="w-10 text-right text-sm font-mono text-slate-300 tabular-nums flex-shrink-0">
                 {formatTime(recordingTime)}
               </span>
-            )}
-            {!isRecording && (
+            ) : (
               <span className="w-10 text-right text-sm font-mono text-slate-500 italic flex-shrink-0">
                 00:00
               </span>
             )}
-            {/* Translate mode indicator button */}
             <button
               onClick={handleToggleTranslateMode}
               className={`px-2 py-1 text-xs font-medium rounded whitespace-nowrap flex-shrink-0 transition-colors ${
@@ -251,38 +121,42 @@ function MiniWindow() {
                   ? "bg-blue-500/30 text-blue-300 border border-blue-500/50 hover:bg-blue-500/40"
                   : "bg-slate-700/30 text-slate-400 border border-slate-600/30 hover:bg-slate-700/40"
               }`}
-              title={translateMode ? "Mode traduction activé (FR→EN)" : "Activer mode traduction"}
+              title={
+                translateMode
+                  ? "Mode traduction activé (FR→EN)"
+                  : "Activer mode traduction"
+              }
             >
               {translateMode ? "🌐 EN" : "—"}
             </button>
           </div>
         )}
 
-        {/* Status section (show when processing, success, or error) */}
-        {(status === "processing" || status === "success" || status === "error") && (
+        {/* Status section (processing / success / error) */}
+        {(status === "processing" ||
+          status === "success" ||
+          status === "error") && (
           <div className="w-full">
-
-            {/* Processing State */}
             {status === "processing" && (
               <div className="flex items-center justify-center gap-2">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent"></div>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
                 <p className="text-xs text-slate-300">Envoi de l'audio...</p>
               </div>
             )}
-
-            {/* Error State */}
             {status === "error" && (
               <div className="flex items-center justify-center gap-2">
                 <span className="text-red-400 text-lg">✕</span>
-                <p className="text-xs text-red-400 font-medium">{errorMessage}</p>
+                <p className="text-xs text-red-400 font-medium">
+                  {errorMessage}
+                </p>
               </div>
             )}
-
-            {/* Success State */}
             {status === "success" && (
               <div className="flex items-center justify-center gap-2">
                 <span className="text-green-400 text-lg">✓</span>
-                <p className="text-xs text-green-400 font-medium">Transcription réussie</p>
+                <p className="text-xs text-green-400 font-medium">
+                  Transcription réussie
+                </p>
               </div>
             )}
           </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Mic } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import { AudioVisualizer } from "./audio-visualizer"
+import { AudioVisualizer } from "./AudioVisualizer"
 
 interface RecordingCardProps {
   isRecording: boolean
