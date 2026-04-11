@@ -111,6 +111,7 @@ pub async fn transcribe_local<R: tauri::Runtime>(
     model_type: &str,
     language: &str,
     dictionary: &str,
+    translate: bool,
 ) -> Result<String> {
     let model_path = get_model_path(model_type)?;
 
@@ -176,6 +177,9 @@ pub async fn transcribe_local<R: tauri::Runtime>(
     params.set_print_realtime(false);
     params.set_print_progress(false);
     params.set_print_timestamps(false);
+    if translate {
+        params.set_translate(true);
+    }
     if !dictionary.is_empty() {
         params.set_initial_prompt(dictionary);
     }

@@ -723,6 +723,37 @@ export function SettingTabs() {
             </div>
           )}
 
+          {/* Translation mode section */}
+          <Divider />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium text-foreground">
+                  Mode Traduction
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Parler en français, écrire en anglais
+                </p>
+              </div>
+              <Checkbox
+                checked={settings.translate_mode ?? false}
+                onCheckedChange={(checked) =>
+                  updateSetting("translate_mode", checked === true)
+                }
+              />
+            </div>
+            {settings.translate_mode && (
+              <div className="p-3 rounded-md bg-blue-500/5 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400">
+                🌐 Utilise OpenAI Whisper pour traduire vers l'anglais
+                {settings.transcription_provider === "Deepgram" && (
+                  <div className="mt-1 text-blue-600 dark:text-blue-400">
+                    (OpenAI Whisper sera utilisé — Deepgram ne supporte pas la traduction)
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* API keys – always visible */}
           <Divider />
           <div className="space-y-2">

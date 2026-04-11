@@ -938,12 +938,15 @@ async fn transcribe_audio(
     provider: Option<String>,
     local_model_size: Option<String>,
     dictionary: Option<String>,
+    translate: Option<bool>,
 ) -> Result<TranscriptionResponse, String> {
+    let translate = translate.unwrap_or(false);
     tracing::info!(
-        "transcribe_audio called with {} samples at {} Hz (Provider: {:?})",
+        "transcribe_audio called with {} samples at {} Hz (Provider: {:?}, Translate: {})",
         audio_samples.len(),
         sample_rate,
-        provider
+        provider,
+        translate
     );
 
     // Save audio to WAV file
@@ -952,17 +955,25 @@ async fn transcribe_audio(
 
     let dict = dictionary.as_deref().unwrap_or("");
 
-    let transcription_result = if provider.as_deref() == Some("Local") {
+    // In translate mode with Deepgram, force OpenAI Whisper
+    let effective_provider = if translate && provider.as_deref() == Some("Deepgram") {
+        tracing::info!("Translate mode: forcing OpenAI Whisper (Deepgram does not support translation)");
+        None // Will default to OpenAI below
+    } else {
+        provider.as_ref().map(|s| s.as_str())
+    };
+
+    let transcription_result = if effective_provider.as_deref() == Some("Local") {
         let model = local_model_size.unwrap_or_else(|| "base".to_string());
-        transcription_local::transcribe_local(&app_handle, &audio_samples, sample_rate, &model, &language, dict)
+        transcription_local::transcribe_local(&app_handle, &audio_samples, sample_rate, &model, &language, dict, translate)
             .await
             .map_err(|e| {
                 tracing::error!("Local transcription failed: {}", e);
                 format!("Local transcription failed: {}", e)
             })
     } else {
-        // Default to OpenAI
-        transcribe_with_openai(&wav_path, &api_key, &language, dict)
+        // Default to OpenAI (including translate mode or Deepgram fallback)
+        transcribe_with_openai(&wav_path, &api_key, &language, dict, translate)
             .await
             .map_err(|e| {
                 tracing::error!("Transcription failed: {}", e);
@@ -1212,6 +1223,33 @@ fn set_update_channel(app: AppHandle, channel: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Set the translate mode preference and notify all windows
+#[tauri::command]
+fn set_translate_mode(app: AppHandle, enabled: bool) -> Result<(), String> {
+    use tauri_plugin_store::StoreBuilder;
+
+    let store = StoreBuilder::new(&app, "settings.json")
+        .build()
+        .map_err(|e| format!("Failed to load settings: {}", e))?;
+
+    let mut data = store.get("settings").unwrap_or_else(|| json!({}));
+    if let Some(root) = data.as_object_mut() {
+        let settings_value = root.entry("settings").or_insert_with(|| json!({}));
+        if let Some(settings_obj) = settings_value.as_object_mut() {
+            settings_obj.insert("translate_mode".into(), json!(enabled));
+        }
+    }
+    store.set("settings", data);
+    store.save()
+        .map_err(|e| format!("Failed to save settings: {}", e))?;
+
+    // Emit event to notify all windows
+    let _ = app.emit("translate-mode-changed", enabled);
+
+    tracing::info!("Translate mode set to: {}", enabled);
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize logging system
@@ -1273,6 +1311,7 @@ pub fn run() {
             updater::is_updater_available,
             get_update_channel,
             set_update_channel,
+            set_translate_mode,
             download_local_model,
             check_local_model_exists,
             delete_local_model,

@@ -228,6 +228,7 @@ export default function Dashboard() {
             provider: settings.transcription_provider,
             localModelSize: settings.local_model_size,
             dictionary: (settings.dictionary ?? []).join(", "),
+            translate: settings.translate_mode,
           },
         );
 

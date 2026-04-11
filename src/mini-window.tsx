@@ -21,6 +21,7 @@ function MiniWindow() {
   const [, setCurrentUtterance] = useState("");  // Used by Deepgram but not displayed
   const [status, setStatus] = useState<WindowStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [translateMode, setTranslateMode] = useState(false);
   // Note: showTranscription is no longer used - we always show status, never text
 
 
@@ -56,6 +57,14 @@ function MiniWindow() {
     return `${mins.toString().padStart(2, "0")}:${secs
       .toString()
       .padStart(2, "0")}`;
+  };
+
+  const handleToggleTranslateMode = async () => {
+    try {
+      await invoke("set_translate_mode", { enabled: !translateMode });
+    } catch (e) {
+      console.error("Failed to toggle translate mode:", e);
+    }
   };
 
   useEffect(() => {
@@ -94,10 +103,29 @@ function MiniWindow() {
     let unlistenTranscriptionStartFn: (() => void) | null = null;
     let unlistenTranscriptionSuccessFn: (() => void) | null = null;
     let unlistenTranscriptionErrorFn: (() => void) | null = null;
+    let unlistenTranslateModeChangedFn: (() => void) | null = null;
 
     // Setup listeners asynchronously
     const setupListeners = async () => {
       try {
+        // Load translate mode from settings
+        const settingsJson = localStorage.getItem("settings");
+        if (settingsJson) {
+          try {
+            const settings = JSON.parse(settingsJson);
+            setTranslateMode(settings?.settings?.translate_mode ?? false);
+          } catch (e) {
+            console.log("Could not parse settings from localStorage");
+          }
+        }
+
+        // Listen to translate mode changes from main window
+        unlistenTranslateModeChangedFn = await listen<boolean>(
+          "translate-mode-changed",
+          (event) => {
+            setTranslateMode(event.payload);
+          }
+        );
         // Listen to audio level events
         unlistenAudioFn = await listen<number>("audio-level", (event) => {
           setAudioLevel(event.payload);
@@ -223,6 +251,7 @@ function MiniWindow() {
       if (unlistenTranscriptionStartFn) unlistenTranscriptionStartFn();
       if (unlistenTranscriptionSuccessFn) unlistenTranscriptionSuccessFn();
       if (unlistenTranscriptionErrorFn) unlistenTranscriptionErrorFn();
+      if (unlistenTranslateModeChangedFn) unlistenTranslateModeChangedFn();
     };
   }, []);
 
@@ -270,22 +299,34 @@ function MiniWindow() {
       <div className="mini-shell flex w-full max-w-[240px] flex-col gap-0">
         {/* Audio visualizer section (only visible when recording or idle) */}
         {(status === "idle" || status === "recording") && (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <span
               className={`h-2.5 w-2.5 rounded-full ${isRecording ? "bg-red-400 animate-pulse" : "bg-slate-500/70"
                 } flex-shrink-0`}
             />
             <div className="flex h-7 flex-1 items-end gap-[3px] px-2">{bars}</div>
             {isRecording && (
-              <span className="w-12 text-right text-sm font-mono text-slate-300 tabular-nums flex-shrink-0">
+              <span className="w-10 text-right text-sm font-mono text-slate-300 tabular-nums flex-shrink-0">
                 {formatTime(recordingTime)}
               </span>
             )}
             {!isRecording && (
-              <span className="w-12 text-right text-sm font-mono text-slate-500 italic flex-shrink-0">
+              <span className="w-10 text-right text-sm font-mono text-slate-500 italic flex-shrink-0">
                 00:00
               </span>
             )}
+            {/* Translate mode indicator button */}
+            <button
+              onClick={handleToggleTranslateMode}
+              className={`px-2 py-1 text-xs font-medium rounded whitespace-nowrap flex-shrink-0 transition-colors ${
+                translateMode
+                  ? "bg-blue-500/30 text-blue-300 border border-blue-500/50 hover:bg-blue-500/40"
+                  : "bg-slate-700/30 text-slate-400 border border-slate-600/30 hover:bg-slate-700/40"
+              }`}
+              title={translateMode ? "Mode traduction activé (FR→EN)" : "Activer mode traduction"}
+            >
+              {translateMode ? "🌐 EN" : "—"}
+            </button>
           </div>
         )}
 
