@@ -155,6 +155,153 @@
   background: transparent;
 }
 
+/* ── Notes TipTap editor ──────────────────────────────────────────────────── */
+/*
+ * @tailwindcss/typography is not installed, so `.prose` is a noop.
+ * These rules style the rich-text editor content explicitly.
+ */
+.tiptap:focus {
+  outline: none;
+}
+
+.tiptap h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.tiptap h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.tiptap h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 0.5rem;
+  margin-bottom: 0.375rem;
+}
+
+.tiptap p {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.tiptap strong {
+  font-weight: 600;
+}
+
+.tiptap em {
+  font-style: italic;
+}
+
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.25rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.tiptap ul {
+  list-style: disc;
+}
+
+.tiptap ol {
+  list-style: decimal;
+}
+
+.tiptap li {
+  margin: 0.125rem 0;
+}
+
+.tiptap li > p {
+  margin: 0;
+}
+
+/* Task list — remove default marker, render checkbox inline */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+  user-select: none;
+}
+
+.tiptap ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+/* Links — visible, themed */
+.tiptap a {
+  color: oklch(0.6 0.2 240);
+  text-decoration: underline;
+  cursor: text;
+}
+
+.dark .tiptap a {
+  color: oklch(0.75 0.18 240);
+}
+
+/* Blockquote & code (supported by StarterKit, may appear via markdown shortcuts) */
+.tiptap blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.tiptap code {
+  background: var(--muted);
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.tiptap pre {
+  background: var(--muted);
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.tiptap pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* Placeholder (from @tiptap/extension-placeholder) */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  height: 0;
+}
+
 body.mini-window-body {
   background: transparent !important;
   color: #f9fafb;
