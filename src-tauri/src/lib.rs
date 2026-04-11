@@ -1,7 +1,5 @@
 mod audio;
 mod chat;
-mod deepgram_streaming;
-mod deepgram_types;
 mod logging;
 mod logs;
 mod notes;
@@ -11,7 +9,6 @@ mod transcriptions;
 mod updater;
 
 use audio::{AudioDeviceInfo, AudioRecorder, RecordingResult};
-use deepgram_streaming::DeepgramStreamer;
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::{
@@ -20,7 +17,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tauri::{
-    AppHandle, Emitter, Listener, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, Size,
+    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, Size,
     State, WebviewWindow, WindowEvent,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -52,10 +49,9 @@ pub struct WhisperState {
     pub cache: Arc<TokioMutex<WhisperCache>>,
 }
 
-/// Application state that holds the audio recorder, Deepgram streamer, and active hotkeys
+/// Application state that holds the audio recorder and active hotkeys
 pub struct AppState {
     audio_recorder: Mutex<AudioRecorder>,
-    deepgram_streamer: Arc<TokioMutex<DeepgramStreamer>>,
     hotkeys: Mutex<HotkeyConfig>,
     pub whisper: WhisperState,
 }
@@ -552,8 +548,6 @@ fn start_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
             Ok(_) => {
                 drop(recorder);
                 let _ = app_handle.emit("recording-state", true);
-                // Emit event for frontend to start Deepgram if needed
-                let _ = app_handle.emit("shortcut-recording-started", true);
                 register_cancel_shortcut(app_handle);
                 true
             }
@@ -586,8 +580,6 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<Reco
     };
 
     let _ = app_handle.emit("recording-state", false);
-    // Emit event for frontend to stop Deepgram if needed
-    let _ = app_handle.emit("shortcut-recording-stopped", true);
     unregister_cancel_shortcut(app_handle);
 
     match result {
@@ -938,12 +930,15 @@ async fn transcribe_audio(
     provider: Option<String>,
     local_model_size: Option<String>,
     dictionary: Option<String>,
+    translate: Option<bool>,
 ) -> Result<TranscriptionResponse, String> {
+    let translate = translate.unwrap_or(false);
     tracing::info!(
-        "transcribe_audio called with {} samples at {} Hz (Provider: {:?})",
+        "transcribe_audio called with {} samples at {} Hz (Provider: {:?}, Translate: {})",
         audio_samples.len(),
         sample_rate,
-        provider
+        provider,
+        translate
     );
 
     // Save audio to WAV file
@@ -952,9 +947,11 @@ async fn transcribe_audio(
 
     let dict = dictionary.as_deref().unwrap_or("");
 
-    let transcription_result = if provider.as_deref() == Some("Local") {
+    let effective_provider = provider.as_deref();
+
+    let transcription_result = if effective_provider == Some("Local") {
         let model = local_model_size.unwrap_or_else(|| "base".to_string());
-        transcription_local::transcribe_local(&app_handle, &audio_samples, sample_rate, &model, &language, dict)
+        transcription_local::transcribe_local(&app_handle, &audio_samples, sample_rate, &model, &language, dict, translate)
             .await
             .map_err(|e| {
                 tracing::error!("Local transcription failed: {}", e);
@@ -962,7 +959,7 @@ async fn transcribe_audio(
             })
     } else {
         // Default to OpenAI
-        transcribe_with_openai(&wav_path, &api_key, &language, dict)
+        transcribe_with_openai(&wav_path, &api_key, &language, dict, translate)
             .await
             .map_err(|e| {
                 tracing::error!("Transcription failed: {}", e);
@@ -984,66 +981,6 @@ async fn transcribe_audio(
         text: transcription,
         audio_path: wav_path.to_string_lossy().replace('\\', "/").to_string(),
     })
-}
-
-/// Start Deepgram streaming transcription
-#[tauri::command]
-async fn start_deepgram_streaming(
-    state: State<'_, AppState>,
-    app_handle: AppHandle,
-    api_key: String,
-    language: String,
-    keywords: Option<Vec<String>>,
-) -> Result<(), String> {
-    tracing::info!("Starting Deepgram streaming transcription");
-
-    // Get current sample rate from audio recorder
-    let sample_rate = {
-        let recorder = state.audio_recorder.lock().unwrap();
-        recorder.get_sample_rate()
-    };
-
-    tracing::info!("Using sample rate: {} Hz for Deepgram", sample_rate);
-
-    let mut streamer = state.deepgram_streamer.lock().await;
-    streamer
-        .connect(api_key, language, sample_rate, app_handle, keywords.unwrap_or_default())
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to connect to Deepgram: {}", e);
-            format!("Failed to connect to Deepgram: {}", e)
-        })
-}
-
-/// Stop Deepgram streaming transcription
-#[tauri::command]
-async fn stop_deepgram_streaming(state: State<'_, AppState>) -> Result<(), String> {
-    tracing::info!("Stopping Deepgram streaming transcription");
-
-    let mut streamer = state.deepgram_streamer.lock().await;
-    streamer.disconnect().await;
-
-    Ok(())
-}
-
-/// Check if Deepgram is currently connected
-#[tauri::command]
-async fn is_deepgram_connected(state: State<'_, AppState>) -> Result<bool, String> {
-    let streamer = state.deepgram_streamer.lock().await;
-    Ok(streamer.is_connected())
-}
-
-/// Send audio chunk to Deepgram for streaming transcription
-#[tauri::command]
-async fn send_audio_to_deepgram(
-    state: State<'_, AppState>,
-    audio_chunk: Vec<i16>,
-) -> Result<(), String> {
-    let streamer = state.deepgram_streamer.lock().await;
-    streamer
-        .send_audio(audio_chunk)
-        .await
-        .map_err(|e| format!("Failed to send audio to Deepgram: {}", e))
 }
 
 /// Load a recorded audio file and return its raw bytes for playback.
@@ -1212,6 +1149,33 @@ fn set_update_channel(app: AppHandle, channel: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Set the translate mode preference and notify all windows
+#[tauri::command]
+fn set_translate_mode(app: AppHandle, enabled: bool) -> Result<(), String> {
+    use tauri_plugin_store::StoreBuilder;
+
+    let store = StoreBuilder::new(&app, "settings.json")
+        .build()
+        .map_err(|e| format!("Failed to load settings: {}", e))?;
+
+    let mut data = store.get("settings").unwrap_or_else(|| json!({}));
+    if let Some(root) = data.as_object_mut() {
+        let settings_value = root.entry("settings").or_insert_with(|| json!({}));
+        if let Some(settings_obj) = settings_value.as_object_mut() {
+            settings_obj.insert("translate_mode".into(), json!(enabled));
+        }
+    }
+    store.set("settings", data);
+    store.save()
+        .map_err(|e| format!("Failed to save settings: {}", e))?;
+
+    // Emit event to notify all windows
+    let _ = app.emit("translate-mode-changed", enabled);
+
+    tracing::info!("Translate mode set to: {}", enabled);
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize logging system
@@ -1235,7 +1199,6 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
             audio_recorder: Mutex::new(AudioRecorder::new()),
-            deepgram_streamer: Arc::new(TokioMutex::new(DeepgramStreamer::new())),
             hotkeys: Mutex::new(HotkeyConfig::default()),
             whisper: WhisperState {
                 cache: Arc::new(TokioMutex::new(WhisperCache {
@@ -1263,16 +1226,12 @@ pub fn run() {
             load_recording,
             paste_text_to_active_window,
             type_text_at_cursor,
-            start_deepgram_streaming,
-            stop_deepgram_streaming,
-            is_deepgram_connected,
-            send_audio_to_deepgram,
             updater::check_for_updates,
-            updater::download_and_install_update,
             updater::download_and_install_update,
             updater::is_updater_available,
             get_update_channel,
             set_update_channel,
+            set_translate_mode,
             download_local_model,
             check_local_model_exists,
             delete_local_model,
@@ -1459,33 +1418,6 @@ pub fn run() {
                         },
                         Err(e) => {
                             tracing::warn!("Failed to preload whisper model: {:?}", e);
-                        }
-                    }
-                }
-            });
-
-            // Setup audio-chunk listener to send directly to Deepgram
-            let app_handle_audio = app.handle().clone();
-            let _unlisten = app.listen("audio-chunk", move |event| {
-                // Parse JSON payload
-                if let Ok(json_value) = serde_json::from_str::<Value>(event.payload()) {
-                    if let Some(payload) = json_value.as_array() {
-                        let chunk: Vec<i16> = payload
-                            .iter()
-                            .filter_map(|v| v.as_i64().map(|n| n as i16))
-                            .collect();
-
-                        if !chunk.is_empty() {
-                            let state = app_handle_audio.state::<AppState>();
-                            let streamer = Arc::clone(&state.deepgram_streamer);
-
-                            // Use tauri's async runtime to spawn the task
-                            tauri::async_runtime::spawn(async move {
-                                let streamer_guard = streamer.lock().await;
-                                if streamer_guard.is_connected() {
-                                    let _ = streamer_guard.send_audio(chunk).await;
-                                }
-                            });
                         }
                     }
                 }

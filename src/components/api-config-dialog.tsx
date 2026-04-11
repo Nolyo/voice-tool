@@ -18,7 +18,6 @@ export function ApiConfigDialog() {
   const [open, setOpen] = useState(false);
   const [apiKeys, setApiKeys] = useState({
     openai_api_key: settings.openai_api_key,
-    deepgram_api_key: settings.deepgram_api_key,
     google_api_key: settings.google_api_key,
   });
 
@@ -32,7 +31,6 @@ export function ApiConfigDialog() {
       // Reset to current settings when opening
       setApiKeys({
         openai_api_key: settings.openai_api_key,
-        deepgram_api_key: settings.deepgram_api_key,
         google_api_key: settings.google_api_key,
       });
     }
@@ -81,36 +79,6 @@ export function ApiConfigDialog() {
                 }}
               >
                 platform.openai.com
-              </button>
-            </p>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="deepgram" className="text-sm font-medium">
-              Deepgram API Key
-            </Label>
-            <Input
-              id="deepgram"
-              type="password"
-              placeholder="..."
-              value={apiKeys.deepgram_api_key}
-              onChange={(e) =>
-                setApiKeys({ ...apiKeys, deepgram_api_key: e.target.value })
-              }
-              className="font-mono text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              Obtenir une clé sur{" "}
-              <button
-                type="button"
-                className="text-blue-500 underline hover:text-blue-400 cursor-pointer inline"
-                onClick={async (e) => {
-                  e.preventDefault();
-                  const { openUrl } = await import("@tauri-apps/plugin-opener");
-                  await openUrl("https://console.deepgram.com/");
-                }}
-              >
-                console.deepgram.com
               </button>
             </p>
           </div>

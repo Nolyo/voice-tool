@@ -203,6 +203,7 @@ pub async fn transcribe_with_openai(
     api_key: &str,
     language: &str,
     dictionary: &str,
+    translate: bool,
 ) -> Result<String> {
     if api_key.is_empty() {
         return Err(anyhow!("OpenAI API key not configured"));
@@ -223,7 +224,8 @@ pub async fn transcribe_with_openai(
         language
     };
 
-    tracing::info!("Preparing transcription request (language: {})", lang_code);
+    let action = if translate { "translation" } else { "transcription" };
+    tracing::info!("Preparing {} request (language: {})", action, lang_code);
 
     // Create multipart form
     let file_part = multipart::Part::bytes(audio_bytes)
@@ -233,12 +235,22 @@ pub async fn transcribe_with_openai(
     let mut form = multipart::Form::new()
         .part("file", file_part)
         .text("model", "whisper-1")
-        .text("language", lang_code.to_string())
         .text("response_format", "json");
+
+    // Only add language parameter for transcription (not for translation)
+    if !translate {
+        form = form.text("language", lang_code.to_string());
+    }
 
     if !dictionary.is_empty() {
         form = form.text("prompt", dictionary.to_string());
     }
+
+    let endpoint = if translate {
+        "https://api.openai.com/v1/audio/translations"
+    } else {
+        "https://api.openai.com/v1/audio/transcriptions"
+    };
 
     tracing::info!("Sending request to OpenAI Whisper API...");
     // Send request to OpenAI with timeout
@@ -248,7 +260,7 @@ pub async fn transcribe_with_openai(
         .context("Failed to create HTTP client")?;
 
     let response = client
-        .post("https://api.openai.com/v1/audio/transcriptions")
+        .post(endpoint)
         .header("Authorization", format!("Bearer {}", api_key))
         .multipart(form)
         .send()

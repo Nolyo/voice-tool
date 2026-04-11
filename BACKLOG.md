@@ -12,74 +12,18 @@
 
 | Ordre suggéré | Épique | Version cible | Complexité | Bloquant pour |
 |---|---|---|---|---|
-| 1 | EPIC-01 — Polish UX des Notes | 2.9.x | Faible | — |
-| 2 | EPIC-06 — Automatisation des releases | n'importe quand | Moyenne | — |
-| 3 | EPIC-03 — Traduction (mode dictée) | 2.9.0 | Moyenne | — |
-| 4 | EPIC-02 — Refonte des Notes (Notion-like) | 2.10.0 | Élevée | — |
-| 5 | EPIC-04 — Traduction (mode écoute système) | 2.11.0 | Élevée | impacté par EPIC-05 |
-| 6 | EPIC-05 — Compatibilité Mac & Linux | à positionner | Élevée | — |
-| 7 | EPIC-07 — Audit de sécurité | avant 3.0.0 | Très élevée | **EPIC-08 (bloquant)** |
-| 8 | EPIC-08 — Comptes & service payant | 3.0.0 | Très élevée | — |
+| 1 | EPIC-06 — Automatisation des releases | 2.9 | Moyenne | — |
+| 2 | EPIC-03 — Traduction (mode dictée) | 2.9.0 | Moyenne | — |
+| 3 | EPIC-04 — Traduction (mode écoute système) | 2.11.0 | Élevée | impacté par EPIC-05 |
+| 4 | EPIC-05 — Compatibilité Mac & Linux | à positionner | Élevée | — |
+| 5 | EPIC-07 — Audit de sécurité | avant 3.0.0 | Très élevée | **EPIC-08 (bloquant)** |
+| 6 | EPIC-08 — Comptes & service payant | 3.0.0 | Très élevée | — |
 
 ### Règles d'enchaînement importantes
 
 1. **EPIC-03 et EPIC-04 ne doivent PAS être développés en parallèle** malgré le sujet commun. Flux audio, UX et complexité radicalement différents.
 2. **EPIC-07 est un prérequis dur de EPIC-08** — aucun lancement v3 sans remédiation des failles critiques.
 3. **EPIC-05 impacte EPIC-04** — si la capture loopback utilise des APIs Windows-only, prévoir une refonte pour Mac/Linux.
-4. **EPIC-01 avant EPIC-02** paraît contre-intuitif (pourquoi polir ce qu'on va refaire ?) mais EPIC-02 est loin dans la roadmap → les quick wins valent quand même le coup tout de suite.
-
----
-
-## EPIC-01 — Polish UX des Notes ✅ (Terminé)
-
-**Objectif** : corriger les frictions rapides sur le système de notes actuel, sans toucher à l'architecture.
-**Version cible** : 2.9.x (quick wins)
-**Complexité** : faible
-**Indépendant de** : EPIC-02 (ce sont des fixes sur l'existant, pas la refonte)
-
-### Stories
-
-- **NOTE-1 — Ne pas créer de note vide à la fermeture**
-  - Contexte : Ouvrir un nouvel onglet dans la modale puis le fermer aussitôt crée une note vide en liste.
-  - Deux options à trancher :
-    - A. Ne créer la note qu'après N caractères saisis
-    - B. Ne pas sauvegarder la note à la fermeture si le contenu est vide
-  - Recommandation PO : **option B**, plus simple et moins d'états transitoires.
-  - Critère d'acceptation : ouvrir onglet depuis la modale → fermer sans saisie → aucune note ajoutée à la liste.
-
-- **NOTE-2 — Suppression depuis la modale**
-  - Bouton "Supprimer" (icon poubelle rouge ?) dans la modale d'édition.
-  - Action : ferme l'onglet de la modale + retire la note de la liste (confirmation à définir).
-  - Critère d'acceptation : la note disparaît immédiatement de la liste en background.
-
-- **NOTE-3 — Feedback visuel sur "copier"**
-  - Ajouter un retour (toast, changement d'icône, animation) au clic sur le bouton copier d'une note.
-  - Critère d'acceptation : l'utilisateur sait sans ambiguïté que le contenu est dans le presse-papiers.
-
----
-
-## EPIC-02 — Refonte des Notes (Notion-like) ✅ (Terminé)
-
-**Objectif** : transformer l'éditeur de notes en un éditeur riche avec listes, sous-listes, hiérarchie.
-**Version cible** : 2.10.0
-**Complexité** : élevée
-
-### Décisions à prendre avant de coder
-
-- Choix du framework d'éditeur riche : TipTap / Lexical / BlockNote / ProseMirror direct ?
-- Format de persistance : JSON structuré vs Markdown ?
-- Stratégie de migration des notes existantes vers le nouveau format.
-- Périmètre fonctionnel v1 : listes à puces / sous-listes / titres / checkboxes / autres ?
-
-### Stories
-
-- **NOTE-R1** — Spike : choix de l'éditeur riche (POC sur 2 candidats, décision documentée)
-- **NOTE-R2** — Intégration de l'éditeur dans la modale existante
-- **NOTE-R3** — Persistance : définir et implémenter le format de stockage
-- **NOTE-R4** — Migration des notes existantes vers le nouveau format (avec fallback sûr)
-- **NOTE-R5** — Listes à puces et sous-listes
-- **NOTE-R6** — Titres et mise en forme basique (gras, italique, etc.)
-- **NOTE-R7** — Raccourcis clavier type Notion (`Tab` pour indenter, etc.)
 
 ---
 

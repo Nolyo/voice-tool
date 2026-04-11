@@ -12,14 +12,18 @@ export interface AppSettings {
     silence_threshold: number;
 
     // Transcription
-    transcription_provider: "OpenAI" | "Deepgram" | "Google" | "Local";
+    transcription_provider: "OpenAI" | "Google" | "Local";
     local_model_size: "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo";
     language: string;
     smart_formatting: boolean;
 
+    // Translation
+    translate_mode: boolean;
+    translate_source_lang: string;
+    translate_target_lang: string;
+
     // API Keys
     openai_api_key: string;
-    deepgram_api_key: string;
     google_api_key: string;
 
     // Text
@@ -73,9 +77,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
     language: "fr-FR",
     smart_formatting: true,
 
+    // Translation
+    translate_mode: false,
+    translate_source_lang: "fr",
+    translate_target_lang: "en",
+
     // API Keys
     openai_api_key: "",
-    deepgram_api_key: "",
     google_api_key: "",
 
     // Text

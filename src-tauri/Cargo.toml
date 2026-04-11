@@ -38,12 +38,8 @@ anyhow = "1"
 # Audio capture
 cpal = "0.15"
 
-# For async audio streaming
-futures = "0.3"
+# For async streaming (model downloads)
 futures-util = "0.3"
-
-# WebSocket for Deepgram streaming
-tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 
 # Audio file writing
 hound = "3.5"
@@ -55,9 +51,6 @@ reqwest = { version = "0.12", features = ["multipart", "json", "stream"] }
 whisper-rs = { version = "0.14", features = ["cuda"] }
 rubato = "0.15"
 tauri-plugin-fs = "2"
-
-# URL encoding for Deepgram keywords
-urlencoding = "2"
 
 # Keyboard simulation
 enigo = "0.2"
