@@ -1,4 +1,15 @@
-## [2.8.0] - 2026-04-11
+
+## [2.9.0] - 2026-04-12
+
+### ✨ Added
+- Rich-text editor for notes with context-sensitive bubble menu - appears on text selection to provide instant access to formatting tools
+- Text formatting options: bold, italic, underline, strikethrough
+- Block formatting: headings H1/H2/H3 with toggle support
+- Lists: bullet lists, ordered lists, task lists (checkboxes) with nested support and Tab/Shift+Tab indentation
+- Link management: inline URL editor with auto-prefix `https://`, preserves existing Ctrl+Click behavior for opening links externally
+- TipTap v3.22.3 rich-text engine with markdown shortcuts (e.g., `# Heading`, `- List`)
+
+## [2.8.0] - 2026-04-11 (beta only)
 
 ### ✨ Added
 - Release channel selection in settings - choose between Stable (default) for reliable updates or Beta for early access to new features
