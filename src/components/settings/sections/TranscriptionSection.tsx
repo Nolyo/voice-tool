@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ApiConfigDialog } from "@/components/api-config-dialog";
+import { ApiConfigDialog } from "@/components/common/ApiConfigDialog";
 import { useSettings } from "@/hooks/useSettings";
 import { useModelDownload } from "@/hooks/useModelDownload";
 import { SectionCard } from "../common/SectionCard";

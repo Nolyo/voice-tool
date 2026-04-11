@@ -9,10 +9,10 @@ import {
 } from "./dashboard/DashboardSidebar";
 import { HistoriqueTab } from "./dashboard/tabs/HistoriqueTab";
 import { SettingTabs } from "./settings/SettingTabs";
-import { LogsTab } from "./logs-tab";
-import { NotesTab } from "./notes-tab";
+import { LogsTab } from "./logs/LogsTab";
+import { NotesTab } from "./notes/NotesTab";
 import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
-import { UpdateModal } from "./update-modal";
+import { UpdateModal } from "./common/UpdateModal";
 import { useSettings } from "@/hooks/useSettings";
 import {
   useTranscriptionHistory,

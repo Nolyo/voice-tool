@@ -3,7 +3,7 @@ import { Check, Copy, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { AiActionMenu } from "@/components/ai-action-menu";
+import { AiActionMenu } from "@/components/notes/AiActionMenu";
 
 interface NotesEditorFooterProps {
   editor: Editor | null;

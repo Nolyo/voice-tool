@@ -13,7 +13,7 @@ Refactoriser le frontend (React + TS) vers une architecture feature-based, avec 
 - [x] **Phase 1** — Split `setting-tabs.tsx` (1370 → 16 fichiers, max 240 lignes, orchestrateur 85 lignes)
 - [x] **Phase 2** — Split `notes-editor.tsx` (910 → 10 fichiers, max 218 lignes, orchestrateur 218 lignes)
 - [x] **Phase 3** — Split `Dashboard.tsx` (584 → 199 lignes) + `src/lib/types.ts` populé
-- [ ] **Phase 4** — Réorganisation feature folders (dashboard/, notes/, common/, logs/)
+- [x] **Phase 4** — Réorganisation feature folders (10 fichiers déplacés, 6 imports corrigés)
 - [ ] **Phase 5** — Mini-window state machine + cleanup final
 
 ## Structure cible
@@ -92,25 +92,15 @@ L'ancien fichier `src/components/setting-tabs.tsx` sera **supprimé** et l'impor
 
 ## Next session
 
-Prochaine phase : **Phase 4 — Réorganisation finale des dossiers feature**
+Prochaine phase : **Phase 5 — mini-window state machine + cleanup final**
 
 Point de départ :
 1. Lire `docs/REFACTOR_FRONTEND_PROGRESS.md` + dernier commit sur la branche
-2. Déplacer les composants partagés vers `src/components/common/` :
-   - `recording-card.tsx` → `common/RecordingCard.tsx`
-   - `audio-visualizer.tsx` → `common/AudioVisualizer.tsx`
-   - `api-config-dialog.tsx` → `common/ApiConfigDialog.tsx`
-   - `update-modal.tsx` → `common/UpdateModal.tsx`
-3. Déplacer les composants dashboard :
-   - `transcription-list.tsx` → `dashboard/transcription/TranscriptionList.tsx`
-   - `transcription-details.tsx` → `dashboard/transcription/TranscriptionDetails.tsx`
-4. Déplacer `updater-tab.tsx` → `settings/UpdaterTab.tsx`
-5. Déplacer `logs-tab.tsx` → `logs/LogsTab.tsx`
-6. Déplacer `notes-tab.tsx` → `notes/NotesTab.tsx` et `ai-action-menu.tsx` → `notes/AiActionMenu.tsx`
-7. Mettre à jour tous les imports (chercher `./recording-card`, `./transcription-list`, etc.)
-8. Build + commit
-
-Risques : beaucoup de fichiers à renommer, probablement 15-20 imports à fixer. Faire par groupes (common/, dashboard/, etc.) pour rester incremental et permettre des builds intermédiaires.
+2. Lire `src/mini-window.tsx` (~295 lignes)
+3. Extraire `src/hooks/useMiniWindowState.ts` ← les 6 listeners Tauri + state machine (idle/recording/processing/success/error)
+4. Réduire `src/mini-window.tsx` à ~150 lignes (UI pure)
+5. Passe finale : vérifier qu'il ne reste plus de fichiers > 300 lignes (hors shadcn `ui/`)
+6. Build + commit
 
 ### Phase 1 — Résultats
 
@@ -123,6 +113,25 @@ Fichiers créés (1505 lignes au total répartis sur 16 fichiers) :
 - `src/hooks/` — useModelDownload (90), useAutostart (38), useHotkeyConfig (55)
 
 Le seul import externe mis à jour : `src/components/Dashboard.tsx` ligne 22.
+
+### Phase 4 — Résultats
+
+10 fichiers déplacés via `git mv` (le contenu est inchangé hormis les imports) :
+
+| Ancien path | Nouveau path |
+|---|---|
+| `components/recording-card.tsx` | `components/common/RecordingCard.tsx` |
+| `components/audio-visualizer.tsx` | `components/common/AudioVisualizer.tsx` |
+| `components/api-config-dialog.tsx` | `components/common/ApiConfigDialog.tsx` |
+| `components/update-modal.tsx` | `components/common/UpdateModal.tsx` |
+| `components/transcription-list.tsx` | `components/dashboard/transcription/TranscriptionList.tsx` |
+| `components/transcription-details.tsx` | `components/dashboard/transcription/TranscriptionDetails.tsx` |
+| `components/notes-tab.tsx` | `components/notes/NotesTab.tsx` |
+| `components/ai-action-menu.tsx` | `components/notes/AiActionMenu.tsx` |
+| `components/logs-tab.tsx` | `components/logs/LogsTab.tsx` |
+| `components/updater-tab.tsx` | `components/settings/UpdaterTab.tsx` |
+
+Imports corrigés dans 6 fichiers : `Dashboard.tsx`, `HistoriqueTab.tsx`, `NotesEditorFooter.tsx`, `TranscriptionSection.tsx`, `UpdaterSection.tsx`, `RecordingCard.tsx`. Les fichiers `UpdateModal.tsx` et `UpdaterTab.tsx` avaient des imports relatifs `./ui/` cassés par le déplacement — corrigés en `@/components/ui/`.
 
 ### Phase 3 — Résultats
 

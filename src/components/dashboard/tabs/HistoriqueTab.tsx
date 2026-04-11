@@ -1,6 +1,6 @@
-import { RecordingCard } from "@/components/recording-card";
-import { TranscriptionList } from "@/components/transcription-list";
-import { TranscriptionDetails } from "@/components/transcription-details";
+import { RecordingCard } from "@/components/common/RecordingCard";
+import { TranscriptionList } from "@/components/dashboard/transcription/TranscriptionList";
+import { TranscriptionDetails } from "@/components/dashboard/transcription/TranscriptionDetails";
 import type { Transcription } from "@/hooks/useTranscriptionHistory";
 
 interface HistoriqueTabProps {

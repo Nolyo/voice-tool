@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { UpdaterTab } from "@/components/updater-tab";
+import { UpdaterTab } from "@/components/settings/UpdaterTab";
 import { SectionCard } from "../common/SectionCard";
 
 export function UpdaterSection() {
