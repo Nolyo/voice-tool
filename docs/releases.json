@@ -2,41 +2,74 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/voice-tool",
-  "generated_at": "2026-04-12T15:18:12.051Z",
+  "generated_at": "2026-04-12T15:26:00.018Z",
   "latest": {
-    "version": "2.7.3",
-    "tag": "v2.7.3",
-    "published_at": "2026-04-05T13:32:27Z",
-    "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.7.3",
-    "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.3/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.3-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.3-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.3-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+    "version": "2.9.0",
+    "tag": "v2.9.0",
+    "published_at": "2026-04-12T15:25:50Z",
+    "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.9.0",
+    "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.9.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.9.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.9.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v2.9.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
     "windows": {
       "portable": {
-        "filename": "voice-tool-v2.7.3-portable.exe",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-portable.exe",
-        "size_bytes": 91333120,
-        "size_human": "87.1 MB",
-        "sha256": "38fda74868bf9757a74500d907119c6a0c67cf79bfc9e6d606dc2f4729b4c534",
-        "download_count": 1
+        "filename": "voice-tool-v2.9.0-portable.exe",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.9.0/voice-tool-v2.9.0-portable.exe",
+        "size_bytes": 90851840,
+        "size_human": "86.6 MB",
+        "sha256": "3e1b0ed60e0d1259ff4bed8acce33d822103f05595a1bb526449c7ccaf45e5ed",
+        "download_count": 0
       },
       "nsis_installer": {
-        "filename": "voice-tool-v2.7.3-setup.exe",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-setup.exe",
-        "size_bytes": 15754488,
+        "filename": "voice-tool-v2.9.0-setup.exe",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.9.0/voice-tool-v2.9.0-setup.exe",
+        "size_bytes": 15690660,
         "size_human": "15 MB",
-        "sha256": "79ffc0f27dae0c2ed7ba144b6c97cefcb61045952897362a29b23107715f37e3",
-        "download_count": 3
+        "sha256": "ee3de88785d65259e657113f67b82efddea9f74a6d3c3374334f3cb3e6001c53",
+        "download_count": 0
       },
       "msi_installer": {
-        "filename": "voice-tool-v2.7.3-setup.msi",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.3/voice-tool-v2.7.3-setup.msi",
-        "size_bytes": 28188672,
-        "size_human": "26.9 MB",
-        "sha256": "11fbddc49739f648b0eab4ddb7f6f3ace305de0c3c7616a4effe53440c79d807",
-        "download_count": 1
+        "filename": "voice-tool-v2.9.0-setup.msi",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.9.0/voice-tool-v2.9.0-setup.msi",
+        "size_bytes": 28061696,
+        "size_human": "26.8 MB",
+        "sha256": "89fcf7265ba6fb656bb82b52c324412818626b5c8ace2e4f142a5413ad2a50ce",
+        "download_count": 0
       }
     }
   },
   "releases": [
+    {
+      "version": "2.9.0",
+      "tag": "v2.9.0",
+      "published_at": "2026-04-12T15:25:50Z",
+      "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.9.0",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.9.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.9.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.9.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v2.9.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "windows": {
+        "portable": {
+          "filename": "voice-tool-v2.9.0-portable.exe",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.9.0/voice-tool-v2.9.0-portable.exe",
+          "size_bytes": 90851840,
+          "size_human": "86.6 MB",
+          "sha256": "3e1b0ed60e0d1259ff4bed8acce33d822103f05595a1bb526449c7ccaf45e5ed",
+          "download_count": 0
+        },
+        "nsis_installer": {
+          "filename": "voice-tool-v2.9.0-setup.exe",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.9.0/voice-tool-v2.9.0-setup.exe",
+          "size_bytes": 15690660,
+          "size_human": "15 MB",
+          "sha256": "ee3de88785d65259e657113f67b82efddea9f74a6d3c3374334f3cb3e6001c53",
+          "download_count": 0
+        },
+        "msi_installer": {
+          "filename": "voice-tool-v2.9.0-setup.msi",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.9.0/voice-tool-v2.9.0-setup.msi",
+          "size_bytes": 28061696,
+          "size_human": "26.8 MB",
+          "sha256": "89fcf7265ba6fb656bb82b52c324412818626b5c8ace2e4f142a5413ad2a50ce",
+          "download_count": 0
+        }
+      }
+    },
     {
       "version": "2.7.3",
       "tag": "v2.7.3",
