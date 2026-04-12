@@ -48,6 +48,9 @@ export function useRecordingWorkflow({
   onTranscriptionAdded,
 }: UseRecordingWorkflowOptions) {
   const { t } = useTranslation();
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
+
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const previousRecordingRef = useRef(isRecording);
@@ -147,7 +150,7 @@ export function useRecordingWorkflow({
       } catch (error) {
         console.error("Transcription error:", error);
         await emit("transcription-error", { error: String(error) });
-        alert(t('errors.transcriptionError', { error }));
+        alert(tRef.current('errors.transcriptionError', { error }));
         await invoke("log_separator");
       } finally {
         setIsTranscribing(false);
@@ -182,11 +185,11 @@ export function useRecordingWorkflow({
           );
 
           if (event.payload.isSilent) {
-            console.log("Enregistrement vide détecté, transcription annulée");
-            toast.info(t('errors.noSound'), {
-              description: t('errors.noSoundDesc'),
+            console.log("Empty recording detected, transcription cancelled");
+            toast.info(tRef.current('errors.noSound'), {
+              description: tRef.current('errors.noSoundDesc'),
             });
-            await emit("transcription-error", { error: t('errors.soundTooLow') });
+            await emit("transcription-error", { error: tRef.current('errors.soundTooLow') });
             return;
           }
 
@@ -230,7 +233,7 @@ export function useRecordingWorkflow({
   // recording-cancelled toast
   useEffect(() => {
     const unlisten = listen("recording-cancelled", () => {
-      toast.info(t('errors.recordingCancelled'));
+      toast.info(tRef.current('errors.recordingCancelled'));
     });
     return () => {
       unlisten.then((fn) => fn());
@@ -268,11 +271,11 @@ export function useRecordingWorkflow({
         setIsRecording(false);
 
         if (result.is_silent) {
-          console.log("Enregistrement vide détecté, transcription annulée");
-          toast.info(t('errors.noSound'), {
-            description: t('errors.noSoundDesc'),
+          console.log("Empty recording detected, transcription cancelled");
+          toast.info(tRef.current('errors.noSound'), {
+            description: tRef.current('errors.noSoundDesc'),
           });
-          await emit("transcription-error", { error: t('errors.soundTooLow') });
+          await emit("transcription-error", { error: tRef.current('errors.soundTooLow') });
           return;
         }
 
@@ -287,7 +290,7 @@ export function useRecordingWorkflow({
       }
     } catch (error) {
       console.error("Recording error:", error);
-      alert(t('errors.recordingError', { error }));
+      alert(tRef.current('errors.recordingError', { error }));
       setIsRecording(false);
       await emit("transcription-error", { error: String(error) });
     }

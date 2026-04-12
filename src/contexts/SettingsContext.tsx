@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Store } from "@tauri-apps/plugin-store";
+import { emit } from "@tauri-apps/api/event";
 import { AppSettings, DEFAULT_SETTINGS, mergeSettings } from "@/lib/settings";
 import { changeLanguage } from "@/i18n";
 
@@ -110,6 +111,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       // Sync i18n language when ui_language changes
       if (key === "ui_language" && typeof value === "string") {
         await changeLanguage(value);
+        // Notify mini window to sync its i18n instance
+        try { await emit("language-changed", value); } catch {}
         // Update tray menu labels to match new language
         try {
           const { invoke } = await import("@tauri-apps/api/core");
