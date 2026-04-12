@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import type { AppSettings } from "@/lib/settings";
 import type { Transcription } from "@/hooks/useTranscriptionHistory";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -46,6 +47,7 @@ export function useRecordingWorkflow({
   addTranscription,
   onTranscriptionAdded,
 }: UseRecordingWorkflowOptions) {
+  const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const previousRecordingRef = useRef(isRecording);
@@ -145,7 +147,7 @@ export function useRecordingWorkflow({
       } catch (error) {
         console.error("Transcription error:", error);
         await emit("transcription-error", { error: String(error) });
-        alert(`Erreur de transcription: ${error}`);
+        alert(t('errors.transcriptionError', { error }));
         await invoke("log_separator");
       } finally {
         setIsTranscribing(false);
@@ -181,11 +183,10 @@ export function useRecordingWorkflow({
 
           if (event.payload.isSilent) {
             console.log("Enregistrement vide détecté, transcription annulée");
-            toast.info("Aucun son détecté dans l'enregistrement", {
-              description:
-                "Le niveau sonore est trop faible pour être transcrit",
+            toast.info(t('errors.noSound'), {
+              description: t('errors.noSoundDesc'),
             });
-            await emit("transcription-error", { error: "Son trop faible" });
+            await emit("transcription-error", { error: t('errors.soundTooLow') });
             return;
           }
 
@@ -229,7 +230,7 @@ export function useRecordingWorkflow({
   // recording-cancelled toast
   useEffect(() => {
     const unlisten = listen("recording-cancelled", () => {
-      toast.info("Enregistrement annulé");
+      toast.info(t('errors.recordingCancelled'));
     });
     return () => {
       unlisten.then((fn) => fn());
@@ -268,10 +269,10 @@ export function useRecordingWorkflow({
 
         if (result.is_silent) {
           console.log("Enregistrement vide détecté, transcription annulée");
-          toast.info("Aucun son détecté dans l'enregistrement", {
-            description: "Le niveau sonore est trop faible pour être transcrit",
+          toast.info(t('errors.noSound'), {
+            description: t('errors.noSoundDesc'),
           });
-          await emit("transcription-error", { error: "Son trop faible" });
+          await emit("transcription-error", { error: t('errors.soundTooLow') });
           return;
         }
 
@@ -286,7 +287,7 @@ export function useRecordingWorkflow({
       }
     } catch (error) {
       console.error("Recording error:", error);
-      alert(`Erreur d'enregistrement: ${error}`);
+      alert(t('errors.recordingError', { error }));
       setIsRecording(false);
       await emit("transcription-error", { error: String(error) });
     }

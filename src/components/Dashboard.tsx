@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { DashboardHeader } from "./common/DashboardHeader";
 import {
@@ -24,6 +25,7 @@ import { useRecordingWorkflow } from "@/hooks/useRecordingWorkflow";
 import { useNotesWorkflow } from "@/hooks/useNotesWorkflow";
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const [selectedTranscription, setSelectedTranscription] =
     useState<Transcription | null>(null);
   const [activeTab, setActiveTab] = useState<DashboardTabId>("historique");
@@ -159,7 +161,7 @@ export default function Dashboard() {
             />
           ) : activeTab === "notes" ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              Sélectionnez une note ou créez-en une depuis la barre latérale
+              {t('dashboard.emptyNotes')}
             </div>
           ) : (
             <div className="overflow-y-auto h-full">

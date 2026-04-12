@@ -1,9 +1,12 @@
 import { useEffect, useMemo } from "react";
 import ReactDOM from "react-dom/client";
 import { useMiniWindowState } from "@/hooks/useMiniWindowState";
+import { useTranslation } from "react-i18next";
+import "./i18n";
 import "./App.css";
 
 function MiniWindow() {
+  const { t } = useTranslation();
   const {
     audioLevel,
     isRecording,
@@ -123,8 +126,8 @@ function MiniWindow() {
               }`}
               title={
                 translateMode
-                  ? "Mode traduction activé (FR→EN)"
-                  : "Activer mode traduction"
+                  ? t('mini.translateModeOn')
+                  : t('mini.translateModeOff')
               }
             >
               {translateMode ? "🌐 EN" : "—"}
@@ -140,7 +143,7 @@ function MiniWindow() {
             {status === "processing" && (
               <div className="flex items-center justify-center gap-2">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                <p className="text-xs text-slate-300">Envoi de l'audio...</p>
+                <p className="text-xs text-slate-300">{t('mini.sendingAudio')}</p>
               </div>
             )}
             {status === "error" && (
@@ -155,7 +158,7 @@ function MiniWindow() {
               <div className="flex items-center justify-center gap-2">
                 <span className="text-green-400 text-lg">✓</span>
                 <p className="text-xs text-green-400 font-medium">
-                  Transcription réussie
+                  {t('mini.transcriptionSuccess')}
                 </p>
               </div>
             )}

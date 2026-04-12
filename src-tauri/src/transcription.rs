@@ -268,16 +268,16 @@ pub async fn transcribe_with_openai(
         .map_err(|e| {
             if e.is_timeout() {
                 tracing::error!("Request timed out: {}", e);
-                anyhow!("Délai d'attente dépassé. Vérifiez votre connexion internet ou désactivez votre VPN.")
+                anyhow!("Request timed out. Check your internet connection or disable your VPN.")
             } else if e.is_connect() {
                 tracing::error!("Connection error: {}", e);
-                anyhow!("Impossible de se connecter à l'API OpenAI. Vérifiez votre connexion internet ou désactivez votre VPN.")
+                anyhow!("Cannot connect to OpenAI API. Check your internet connection or disable your VPN.")
             } else if e.is_request() {
                 tracing::error!("Request error: {}", e);
-                anyhow!("Erreur lors de l'envoi de la requête. Vérifiez votre connexion réseau.")
+                anyhow!("Failed to send request. Check your network connection.")
             } else {
                 tracing::error!("HTTP error: {}", e);
-                anyhow!("Erreur de connexion: {}", e)
+                anyhow!("Connection error: {}", e)
             }
         })?;
 

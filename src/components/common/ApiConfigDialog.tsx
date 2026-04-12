@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useSettings } from "@/hooks/useSettings";
 
 export function ApiConfigDialog() {
+  const { t } = useTranslation();
   const { settings, updateSettings } = useSettings();
   const [open, setOpen] = useState(false);
   const [apiKeys, setApiKeys] = useState({
@@ -41,26 +43,25 @@ export function ApiConfigDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" className="w-full bg-transparent">
-          Configurer les accès API...
+          {t('apiConfig.button')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Configuration des accès API</DialogTitle>
+          <DialogTitle>{t('apiConfig.title')}</DialogTitle>
           <DialogDescription>
-            Entrez vos clés API pour les services de transcription. Ces clés
-            sont stockées localement de manière sécurisée.
+            {t('apiConfig.description')}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="openai" className="text-sm font-medium">
-              OpenAI API Key
+              {t('apiConfig.openaiKey')}
             </Label>
             <Input
               id="openai"
               type="password"
-              placeholder="sk-..."
+              placeholder={t('apiConfig.openaiKeyPlaceholder')}
               value={apiKeys.openai_api_key}
               onChange={(e) =>
                 setApiKeys({ ...apiKeys, openai_api_key: e.target.value })
@@ -68,7 +69,7 @@ export function ApiConfigDialog() {
               className="font-mono text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              Obtenir une clé sur{" "}
+              {t('apiConfig.getHelp')}{" "}
               <button
                 type="button"
                 className="text-blue-500 underline hover:text-blue-400 cursor-pointer inline"
@@ -82,39 +83,12 @@ export function ApiConfigDialog() {
               </button>
             </p>
           </div>
-
-          {/* <div className="grid gap-2">
-            <Label htmlFor="google" className="text-sm font-medium">
-              Google Cloud API Key
-            </Label>
-            <Input
-              id="google"
-              type="password"
-              placeholder="..."
-              value={apiKeys.google_api_key}
-              onChange={(e) =>
-                setApiKeys({ ...apiKeys, google_api_key: e.target.value })
-              }
-              className="font-mono text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              Obtenir une clé sur{" "}
-              <a
-                href="https://console.cloud.google.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-foreground"
-              >
-                console.cloud.google.com
-              </a>
-            </p>
-          </div> */}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Annuler
+            {t('common.cancel')}
           </Button>
-          <Button onClick={handleSave}>Enregistrer</Button>
+          <Button onClick={handleSave}>{t('common.save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

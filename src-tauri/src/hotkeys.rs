@@ -15,16 +15,16 @@ pub(crate) fn hotkeys_conflict(config: &HotkeyConfig) -> Option<String> {
     };
 
     if equals(&config.record, &config.ptt) {
-        return Some("Les raccourcis Toggle et Push-to-talk doivent être différents.".into());
+        return Some("Toggle and Push-to-talk shortcuts must be different.".into());
     }
     if equals(&config.record, &config.open_window) || equals(&config.ptt, &config.open_window) {
-        return Some("Le raccourci d'ouverture de fenêtre doit être distinct des raccourcis d'enregistrement.".into());
+        return Some("Open window shortcut must be distinct from recording shortcuts.".into());
     }
     if equals(&config.cancel, &config.record)
         || equals(&config.cancel, &config.ptt)
         || equals(&config.cancel, &config.open_window)
     {
-        return Some("Le raccourci d'annulation doit être distinct des autres raccourcis.".into());
+        return Some("Cancel shortcut must be distinct from other shortcuts.".into());
     }
 
     None
@@ -33,7 +33,7 @@ pub(crate) fn hotkeys_conflict(config: &HotkeyConfig) -> Option<String> {
 pub(crate) fn parse_hotkey_str(value: &str) -> Result<Shortcut, String> {
     value
         .parse::<Shortcut>()
-        .map_err(|err| format!("Raccourci invalide \"{}\": {}", value, err))
+        .map_err(|err| format!("Invalid shortcut \"{}\": {}", value, err))
 }
 
 pub(crate) fn normalize_hotkey_value(value: Option<String>) -> Option<String> {
@@ -312,7 +312,7 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
             .on_shortcut(record_shortcut.clone(), handler)
             .map_err(|e| {
                 format!(
-                    "Impossible d'enregistrer le raccourci \"{}\": {}",
+                    "Failed to register shortcut \"{}\": {}",
                     record_label, e
                 )
             })?;
@@ -339,7 +339,7 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
             .on_shortcut(ptt_shortcut.clone(), handler)
             .map_err(|e| {
                 format!(
-                    "Impossible d'enregistrer le raccourci \"{}\": {}",
+                    "Failed to register shortcut \"{}\": {}",
                     ptt_label, e
                 )
             })?;
@@ -359,7 +359,7 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
             .on_shortcut(open_shortcut.clone(), handler)
             .map_err(|e| {
                 format!(
-                    "Impossible d'enregistrer le raccourci \"{}\": {}",
+                    "Failed to register shortcut \"{}\": {}",
                     open_label, e
                 )
             })?;

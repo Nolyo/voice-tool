@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Settings, AlertTriangle, Check, Download, Loader2, Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -17,6 +18,7 @@ import { SectionCard } from "../common/SectionCard";
 import { Divider } from "../common/Divider";
 
 export function TranscriptionSection() {
+  const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const {
     isDownloading,
@@ -32,8 +34,8 @@ export function TranscriptionSection() {
       id="section-transcription"
       icon={<Settings className="w-3.5 h-3.5 text-violet-500" />}
       iconBg="bg-violet-500/10"
-      title="IA"
-      subtitle="Transcription & notes intelligentes"
+      title={t('settings.transcription.title')}
+      subtitle={t('settings.transcription.subtitle')}
     >
       <div className="space-y-4">
         {/* Provider + Language on the same row */}
@@ -43,7 +45,7 @@ export function TranscriptionSection() {
               htmlFor="service-provider"
               className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
             >
-              Fournisseur
+              {t('settings.transcription.provider')}
             </Label>
             <Select
               value={settings.transcription_provider}
@@ -61,8 +63,8 @@ export function TranscriptionSection() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="OpenAI">OpenAI Whisper</SelectItem>
-                <SelectItem value="Local">Local (Offline)</SelectItem>
+                <SelectItem value="OpenAI">{t('settings.transcription.providerOpenai')}</SelectItem>
+                <SelectItem value="Local">{t('settings.transcription.providerLocal')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -72,7 +74,7 @@ export function TranscriptionSection() {
               htmlFor="language"
               className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
             >
-              Langue
+              {t('settings.transcription.language')}
             </Label>
             <Select
               value={settings.language}
@@ -82,10 +84,10 @@ export function TranscriptionSection() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="fr-FR">Français</SelectItem>
-                <SelectItem value="en-US">English</SelectItem>
-                <SelectItem value="es-ES">Español</SelectItem>
-                <SelectItem value="de-DE">Deutsch</SelectItem>
+                <SelectItem value="fr-FR">{t('settings.transcription.languageFr')}</SelectItem>
+                <SelectItem value="en-US">{t('settings.transcription.languageEn')}</SelectItem>
+                <SelectItem value="es-ES">{t('settings.transcription.languageEs')}</SelectItem>
+                <SelectItem value="de-DE">{t('settings.transcription.languageDe')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -95,11 +97,7 @@ export function TranscriptionSection() {
         {settings.transcription_provider === "OpenAI" && (
           <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-sm text-amber-600 dark:text-amber-400">
             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-            <span>
-              Ce service est payant à l'usage. Utilisez le mode{" "}
-              <strong>Local (Offline)</strong> pour une transcription gratuite et
-              privée.
-            </span>
+            <span>{t('settings.transcription.paidWarning')}</span>
           </div>
         )}
 
@@ -113,7 +111,7 @@ export function TranscriptionSection() {
                   htmlFor="model-size"
                   className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
                 >
-                  Modèle Whisper
+                  {t('settings.transcription.whisperModel')}
                 </Label>
                 <Select
                   value={settings.local_model_size}
@@ -137,16 +135,14 @@ export function TranscriptionSection() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="tiny">Tiny (39 MB) – Très Rapide</SelectItem>
-                    <SelectItem value="base">Base (74 MB) – Recommandé</SelectItem>
-                    <SelectItem value="small">Small (244 MB) – Précis</SelectItem>
-                    <SelectItem value="medium">Medium (1.5 GB) – Très Précis</SelectItem>
-                    <SelectItem value="large-v1">Large v1 (2.9 GB) – Excellent</SelectItem>
-                    <SelectItem value="large-v2">Large v2 (2.9 GB) – Excellent</SelectItem>
-                    <SelectItem value="large-v3">Large v3 (2.9 GB) – Meilleur</SelectItem>
-                    <SelectItem value="large-v3-turbo">
-                      Large v3 Turbo (1.6 GB) – Meilleur + Rapide ⭐
-                    </SelectItem>
+                    <SelectItem value="tiny">{t('settings.transcription.modelTiny')}</SelectItem>
+                    <SelectItem value="base">{t('settings.transcription.modelBase')}</SelectItem>
+                    <SelectItem value="small">{t('settings.transcription.modelSmall')}</SelectItem>
+                    <SelectItem value="medium">{t('settings.transcription.modelMedium')}</SelectItem>
+                    <SelectItem value="large-v1">{t('settings.transcription.modelLargeV1')}</SelectItem>
+                    <SelectItem value="large-v2">{t('settings.transcription.modelLargeV2')}</SelectItem>
+                    <SelectItem value="large-v3">{t('settings.transcription.modelLargeV3')}</SelectItem>
+                    <SelectItem value="large-v3-turbo">{t('settings.transcription.modelLargeV3Turbo')} ⭐</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -161,14 +157,14 @@ export function TranscriptionSection() {
                       disabled
                     >
                       <Check className="w-3.5 h-3.5" />
-                      Installé
+                      {t('settings.transcription.installed')}
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={remove}
                       className="h-9 w-9 text-destructive hover:bg-destructive/10 border-destructive/20"
-                      title="Supprimer le modèle"
+                      title={t('settings.transcription.deleteModel')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -187,7 +183,7 @@ export function TranscriptionSection() {
                     ) : (
                       <>
                         <Download className="w-3.5 h-3.5" />
-                        Télécharger
+                        {t('settings.transcription.download')}
                       </>
                     )}
                   </Button>
@@ -201,14 +197,14 @@ export function TranscriptionSection() {
 
         {/* Translation mode section */}
         <Divider />
-        <div className="space-y-3">
+        {/* <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label className="text-sm font-medium text-foreground">
-                Mode Traduction
+                {t('settings.transcription.translateMode')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Parler en français, écrire en anglais
+                {t('settings.transcription.translateModeDesc')}
               </p>
             </div>
             <Checkbox
@@ -220,18 +216,17 @@ export function TranscriptionSection() {
           </div>
           {settings.translate_mode && (
             <div className="p-3 rounded-md bg-blue-500/5 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400">
-              🌐 Utilise OpenAI Whisper pour traduire vers l'anglais
+              🌐 {t('settings.transcription.translateOpenaiInfo')}
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* API keys – always visible */}
         <Divider />
         <div className="space-y-2">
           <ApiConfigDialog />
           <p className="text-xs text-muted-foreground">
-            Utilisé par la transcription en ligne et l'assistant IA dans les notes.
-            Non requis si vous utilisez uniquement la transcription locale.
+            {t('settings.transcription.apiKeyHelp')}
           </p>
         </div>
       </div>

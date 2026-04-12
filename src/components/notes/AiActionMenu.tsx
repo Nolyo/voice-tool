@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Sparkles, ChevronRight, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AI_ACTIONS, getCustomPrompt, type AiAction } from "@/lib/ai-prompts";
+import { getAI_ACTIONS, getCustomPrompt, type AiAction } from "@/lib/ai-prompts";
 
 interface AiActionMenuProps {
   onAction: (systemPrompt: string) => void;
@@ -14,6 +15,8 @@ export function AiActionMenu({
   isLoading,
   disabled,
 }: AiActionMenuProps) {
+  const { t } = useTranslation();
+  const aiActions = getAI_ACTIONS();
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredGroup, setHoveredGroup] = useState<number | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
@@ -67,7 +70,7 @@ export function AiActionMenu({
         ) : (
           <Sparkles className="w-3.5 h-3.5" />
         )}
-        IA
+        {t('ai.button')}
       </Button>
 
       {isOpen && (
@@ -75,7 +78,7 @@ export function AiActionMenu({
           ref={menuRef}
           className="absolute bottom-full right-0 mb-1 w-52 bg-popover text-popover-foreground border rounded-md shadow-lg py-1 z-50"
         >
-          {AI_ACTIONS.map((group, groupIdx) => {
+          {aiActions.map((group, groupIdx) => {
             // Direct action (no sub-menu)
             if (group.actions && group.actions.length === 1) {
               const action = group.actions[0];
@@ -134,7 +137,7 @@ export function AiActionMenu({
               <input
                 type="text"
                 className="flex-1 text-xs bg-transparent border rounded px-2 py-1 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                placeholder="Instruction libre..."
+                placeholder={t('ai.customPromptPlaceholder')}
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
                 onKeyDown={(e) => {

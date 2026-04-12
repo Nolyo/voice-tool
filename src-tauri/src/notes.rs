@@ -219,7 +219,7 @@ pub async fn create_note(app_handle: AppHandle) -> Result<NoteMeta, String> {
     let now = chrono::Utc::now().to_rfc3339();
     let meta = NoteMeta {
         id,
-        title: "Note sans titre".to_string(),
+        title: "Untitled Note".to_string(),
         created_at: now.clone(),
         updated_at: now,
         favorite: false,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { FolderOpen, Trash2 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ interface LogsTabProps {
 }
 
 export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
+  const { t, i18n } = useTranslation();
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new logs arrive
@@ -45,10 +47,12 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
     );
   };
 
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR';
+
   const formatTimestamp = (timestamp: string) => {
     try {
       const date = new Date(timestamp);
-      return date.toLocaleTimeString("fr-FR", {
+      return date.toLocaleTimeString(locale, {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
@@ -65,7 +69,7 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           {logs.length} log{logs.length !== 1 ? "s" : ""}
-          {logs.length >= 500 && " (limite atteinte)"}
+          {logs.length >= 500 && ` ${t('logs.limitReached')}`}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -74,21 +78,21 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
             onClick={() => invoke("open_app_data_dir")}
           >
             <FolderOpen className="w-4 h-4 mr-2" />
-            Ouvrir le dossier
+            {t('logs.openFolder')}
           </Button>
           {logs.length > 0 && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                if (confirm(`Supprimer tous les ${logs.length} logs ?`)) {
+                if (confirm(t('logs.deleteAllConfirm', { count: logs.length }))) {
                   onClearLogs();
                 }
               }}
               className="dark:hover:border-red-800 dark:hover:bg-red-500"
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Tout effacer
+              {t('logs.deleteAll')}
             </Button>
           )}
         </div>
@@ -98,9 +102,9 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
       <div className="bg-black/90 rounded-lg p-4 max-h-[500px] overflow-y-auto font-mono text-xs">
         {logs.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">
-            <p>Aucun log pour le moment</p>
+            <p>{t('logs.empty')}</p>
             <p className="text-xs mt-2">
-              Les logs du backend apparaîtront ici automatiquement
+              {t('logs.emptySubtitle')}
             </p>
           </div>
         ) : (

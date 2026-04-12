@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import type { AppSettings } from "@/lib/settings";
 
 type LocalModelSize = AppSettings["settings"]["local_model_size"];
@@ -15,6 +16,7 @@ export function useModelDownload(
   provider: TranscriptionProvider,
   modelSize: LocalModelSize,
 ) {
+  const { t } = useTranslation();
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const [isDownloaded, setIsDownloaded] = useState(false);
@@ -57,11 +59,11 @@ export function useModelDownload(
     setProgress(0);
     try {
       await invoke("download_local_model", { model: modelSize });
-      toast.success(`Modèle ${modelSize} téléchargé avec succès !`);
+      toast.success(t('errors.modelDownloaded', { model: modelSize }));
       setIsDownloaded(true);
     } catch (error) {
       console.error("Download failed:", error);
-      toast.error(`Erreur lors du téléchargement : ${error}`);
+      toast.error(t('errors.modelDownloadError', { error }));
     } finally {
       setIsDownloading(false);
       setProgress(0);
@@ -71,11 +73,11 @@ export function useModelDownload(
   const remove = useCallback(async () => {
     try {
       await invoke("delete_local_model", { model: modelSize });
-      toast.success(`Modèle ${modelSize} supprimé`);
+      toast.success(t('errors.modelDeleted', { model: modelSize }));
       setIsDownloaded(false);
     } catch (error) {
       console.error("Delete failed:", error);
-      toast.error(`Erreur lors de la suppression : ${error}`);
+      toast.error(t('errors.modelDeleteError', { error }));
     }
   }, [modelSize]);
 

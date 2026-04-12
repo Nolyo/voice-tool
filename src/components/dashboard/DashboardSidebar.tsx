@@ -6,14 +6,15 @@ import {
   ScrollText,
   Settings2,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { NotesSidebarSection } from "@/components/notes/NotesSidebarSection";
 import { type NoteMeta } from "@/hooks/useNotes";
 
 export const DASHBOARD_NAV_ITEMS = [
-  { id: "historique", label: "Historique", icon: History },
-  { id: "parametres", label: "Paramètres", icon: Settings2 },
-  { id: "logs", label: "Logs", icon: ScrollText },
+  { id: "historique", labelKey: "sidebar.history", icon: History },
+  { id: "parametres", labelKey: "sidebar.settings", icon: Settings2 },
+  { id: "logs", labelKey: "sidebar.logs", icon: ScrollText },
 ] as const;
 
 export type DashboardTabId =
@@ -47,6 +48,8 @@ export function DashboardSidebar({
   onDeleteNote,
   searchNotes,
 }: DashboardSidebarProps) {
+  const { t } = useTranslation();
+
   return (
     <aside
       className={`flex flex-col border-r border-border shrink-0 transition-all duration-200 ${
@@ -63,17 +66,17 @@ export function DashboardSidebar({
           <Mic className="w-4 h-4 text-primary" />
         </div>
         {!collapsed && (
-          <span className="font-semibold text-sm truncate">Voice Tool</span>
+          <span className="font-semibold text-sm truncate">{t('header.title')}</span>
         )}
       </div>
 
       {/* Nav items */}
       <nav className="flex flex-col gap-1 p-2 shrink-0">
-        {DASHBOARD_NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+        {DASHBOARD_NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => (
           <button
             key={id}
             onClick={() => onTabChange(id)}
-            title={collapsed ? label : undefined}
+            title={collapsed ? t(labelKey) : undefined}
             className={`flex items-center gap-3 rounded-md transition-colors cursor-pointer ${
               collapsed ? "justify-center p-2" : "px-3 py-2"
             } ${
@@ -84,7 +87,7 @@ export function DashboardSidebar({
           >
             <Icon className="w-4 h-4 shrink-0" />
             {!collapsed && (
-              <span className="text-sm font-medium truncate">{label}</span>
+              <span className="text-sm font-medium truncate">{t(labelKey)}</span>
             )}
           </button>
         ))}
@@ -114,7 +117,7 @@ export function DashboardSidebar({
           size="icon"
           className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={onToggleCollapsed}
-          title={collapsed ? "Déplier le menu" : "Replier le menu"}
+          title={collapsed ? t('sidebar.expandMenu') : t('sidebar.collapseMenu')}
         >
           {collapsed ? (
             <PanelLeftOpen className="w-4 h-4" />

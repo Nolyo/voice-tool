@@ -96,11 +96,11 @@ pub fn load_recording(audio_path: String) -> Result<Vec<u8>, String> {
 
     let canonical_file = requested_path
         .canonicalize()
-        .map_err(|e| format!("Audio introuvable: {}", e))?;
+        .map_err(|e| format!("Audio not found: {}", e))?;
 
     if !canonical_file.starts_with(&canonical_dir) {
-        return Err("Accès au fichier audio refusé.".to_string());
+        return Err("Audio file access denied.".to_string());
     }
 
-    fs::read(&canonical_file).map_err(|e| format!("Lecture audio impossible: {}", e))
+    fs::read(&canonical_file).map_err(|e| format!("Unable to read audio: {}", e))
 }

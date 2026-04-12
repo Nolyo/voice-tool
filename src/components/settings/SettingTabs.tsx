@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/useSettings";
-import { NAV_ITEMS, SettingsNav } from "./common/SettingsNav";
+import { NAV_ITEM_DEFS, SettingsNav } from "./common/SettingsNav";
 import { TranscriptionSection } from "./sections/TranscriptionSection";
 import { AudioSection } from "./sections/AudioSection";
 import { TextSection } from "./sections/TextSection";
@@ -20,6 +21,7 @@ import { UpdaterSection } from "./sections/UpdaterSection";
  * - Assembles all settings sections; each section owns its own state via hooks
  */
 export function SettingTabs() {
+  const { t } = useTranslation();
   const { isLoaded } = useSettings();
   const [activeSection, setActiveSection] = useState("section-transcription");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -30,8 +32,8 @@ export function SettingTabs() {
 
     const handleScroll = () => {
       const containerTop = container.getBoundingClientRect().top;
-      let current = NAV_ITEMS[0].id;
-      for (const item of NAV_ITEMS) {
+      let current = NAV_ITEM_DEFS[0].id;
+      for (const item of NAV_ITEM_DEFS) {
         const el = document.getElementById(item.id);
         if (!el) continue;
         const rect = el.getBoundingClientRect();
@@ -49,7 +51,7 @@ export function SettingTabs() {
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Chargement des paramètres...</p>
+        <p className="text-muted-foreground">{t('settings.loading')}</p>
       </div>
     );
   }
@@ -77,11 +79,11 @@ export function SettingTabs() {
             await invoke("exit_app");
           }}
         >
-          Fermer complètement l'application
+          {t('settings.quitApp')}
         </Button>
         <div className="my-20">
           <p className="text-center text-sm text-muted-foreground">
-            © 2026 - Mises à jour automatiques via GitHub, Par <span className="line-through">Nolyo</span> <span className="text-xs">Claude</span>
+            {t('settings.footer')}
           </p>
         </div>
       </div>

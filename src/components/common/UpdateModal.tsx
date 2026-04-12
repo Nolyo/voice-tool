@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Download, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,7 @@ interface UpdateModalProps {
 }
 
 export function UpdateModal({ open, onOpenChange, onViewDetails }: UpdateModalProps) {
+  const { t, i18n } = useTranslation();
   const { updateInfo, downloadAndInstall, isDownloading } = useUpdaterContext();
 
   if (!updateInfo?.available) {
@@ -40,8 +42,9 @@ export function UpdateModal({ open, onOpenChange, onViewDetails }: UpdateModalPr
   };
 
   // Format date if available
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR';
   const formattedDate = updateInfo.date
-    ? new Date(updateInfo.date).toLocaleDateString('fr-FR', {
+    ? new Date(updateInfo.date).toLocaleDateString(locale, {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
@@ -54,13 +57,13 @@ export function UpdateModal({ open, onOpenChange, onViewDetails }: UpdateModalPr
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="w-5 h-5 text-primary" />
-            Nouvelle mise à jour disponible
+            {t('updater.updateModal.title')}
           </DialogTitle>
           <DialogDescription className="text-left">
-            La version <span className="font-semibold text-foreground">{updateInfo.version}</span> est prête à être installée.
+            {t('updater.updateModal.versionReady', { version: updateInfo.version })}
             {formattedDate && (
               <span className="block mt-1 text-xs text-muted-foreground">
-                Publiée le {formattedDate}
+                {t('updater.updateModal.publishedOn')} {formattedDate}
               </span>
             )}
           </DialogDescription>
@@ -69,13 +72,13 @@ export function UpdateModal({ open, onOpenChange, onViewDetails }: UpdateModalPr
         {updateInfo.body && (
           <div className="max-h-[200px] overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-              Notes de version
+              {t('updater.updateModal.releaseNotes')}
             </p>
             <div className="text-sm text-foreground whitespace-pre-wrap">
               {updateInfo.body.split('\n').slice(0, 10).join('\n')}
               {updateInfo.body.split('\n').length > 10 && (
                 <span className="block mt-2 text-xs text-muted-foreground italic">
-                  ... Voir les détails complets dans les paramètres
+                  {t('updater.updateModal.viewFullDetails')}
                 </span>
               )}
             </div>
@@ -89,7 +92,7 @@ export function UpdateModal({ open, onOpenChange, onViewDetails }: UpdateModalPr
             className="gap-2"
           >
             <ExternalLink className="w-4 h-4" />
-            Voir les détails
+            {t('updater.updateModal.viewDetails')}
           </Button>
           <Button
             onClick={handleInstall}
@@ -97,7 +100,7 @@ export function UpdateModal({ open, onOpenChange, onViewDetails }: UpdateModalPr
             className="gap-2 bg-primary hover:bg-primary/90"
           >
             <Download className="w-4 h-4" />
-            {isDownloading ? "Téléchargement..." : "Installer maintenant"}
+            {isDownloading ? t('updater.updateModal.downloading') : t('updater.updateModal.installNow')}
           </Button>
         </DialogFooter>
       </DialogContent>

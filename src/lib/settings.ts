@@ -48,6 +48,7 @@ export interface AppSettings {
 
     // Interface
     hide_recording_panel: boolean;
+    ui_language: "fr" | "en";
 
     // Mini Window
     show_transcription_in_mini_window: boolean;
@@ -108,6 +109,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Interface
     hide_recording_panel: false,
+    ui_language: "fr",
 
     // Mini Window
     show_transcription_in_mini_window: true,

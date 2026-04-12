@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -5,6 +6,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { SectionCard } from "../common/SectionCard";
 
 export function TextSection() {
+  const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
 
   return (
@@ -12,13 +14,13 @@ export function TextSection() {
       id="section-texte"
       icon={<span className="text-xs font-bold text-emerald-500 leading-none">T</span>}
       iconBg="bg-emerald-500/10"
-      title="Texte"
-      subtitle="Formatage et insertion automatique"
+      title={t('settings.text.title')}
+      subtitle={t('settings.text.subtitle')}
     >
       <div className="space-y-4">
         <div className="space-y-1">
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Mode d'insertion
+            {t('settings.text.insertionMode')}
           </Label>
           <RadioGroup
             value={settings.insertion_mode}
@@ -34,10 +36,10 @@ export function TextSection() {
               <RadioGroupItem value="cursor" id="mode-cursor" className="mt-0.5" />
               <div className="flex-1">
                 <span className="text-sm font-medium text-foreground leading-relaxed">
-                  Saisie directe au curseur
+                  {t('settings.text.modeCursor')}
                 </span>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Le texte est tapé directement, sans utiliser le presse-papiers
+                  {t('settings.text.modeCursorDesc')}
                 </p>
               </div>
             </label>
@@ -49,10 +51,10 @@ export function TextSection() {
               <RadioGroupItem value="clipboard" id="mode-clipboard" className="mt-0.5" />
               <div className="flex-1">
                 <span className="text-sm font-medium text-foreground leading-relaxed">
-                  Copier-coller
+                  {t('settings.text.modeClipboard')}
                 </span>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Le texte est copié dans le presse-papiers puis collé (Ctrl+V)
+                  {t('settings.text.modeClipboardDesc')}
                 </p>
               </div>
             </label>
@@ -64,10 +66,10 @@ export function TextSection() {
               <RadioGroupItem value="none" id="mode-none" className="mt-0.5" />
               <div className="flex-1">
                 <span className="text-sm font-medium text-foreground leading-relaxed">
-                  Aucune insertion
+                  {t('settings.text.modeNone')}
                 </span>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Le texte est uniquement ajouté à l'historique
+                  {t('settings.text.modeNoneDesc')}
                 </p>
               </div>
             </label>
@@ -90,7 +92,7 @@ export function TextSection() {
             htmlFor="smart-formatting"
             className="text-sm text-foreground cursor-pointer leading-relaxed flex-1"
           >
-            Formatage intelligent (ponctuation, majuscules, espaces)
+            {t('settings.text.smartFormatting')}
           </Label>
         </div>
       </div>

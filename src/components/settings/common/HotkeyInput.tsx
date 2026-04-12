@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2, RotateCcw } from "lucide-react";
 import { KeyBadge } from "./KeyBadge";
 
@@ -51,6 +52,7 @@ export function HotkeyInput({
   allowEscape = false,
   onChange,
 }: HotkeyInputProps) {
+  const { t } = useTranslation();
   const [isListening, setIsListening] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,8 +133,8 @@ export function HotkeyInput({
             ? error
             : isListening
               ? allowEscape
-                ? "Appuyez sur une touche (Échap pour effacer)…"
-                : "Appuyez sur la combinaison… (Échap pour annuler)"
+                ? t('hotkeyInput.listeningEscape')
+                : t('hotkeyInput.listening')
               : description}
         </p>
       </div>
@@ -148,7 +150,7 @@ export function HotkeyInput({
             setIsListening((prev) => !prev);
           }}
           disabled={isSaving}
-          title="Cliquer pour modifier"
+          title={t('hotkeyInput.clickToModify')}
           className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-all min-w-[88px] justify-center ${
             isListening
               ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20 cursor-default"
@@ -159,7 +161,7 @@ export function HotkeyInput({
             <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
           ) : isListening ? (
             <span className="text-[11px] text-primary font-medium animate-pulse whitespace-nowrap">
-              Appuyez…
+              {t('hotkeyInput.pressKey')}
             </span>
           ) : tokens.length > 0 ? (
             tokens.map((token, i) => (
@@ -181,7 +183,7 @@ export function HotkeyInput({
           type="button"
           onClick={handleReset}
           disabled={isSaving || isDefault}
-          title="Remettre par défaut"
+          title={t('hotkeyInput.reset')}
           className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
         >
           <RotateCcw className="w-3 h-3" />

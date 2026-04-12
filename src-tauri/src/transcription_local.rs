@@ -117,7 +117,7 @@ pub async fn transcribe_local<R: tauri::Runtime>(
 
     if !model_path.exists() {
         return Err(anyhow!(
-            "Modèle '{}' non téléchargé. Veuillez le télécharger depuis les paramètres (onglet API).",
+            "Model '{}' not downloaded. Please download it from settings (API tab).",
             model_type
         ));
     }

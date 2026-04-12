@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   ChevronRight,
@@ -29,9 +30,10 @@ interface NoteItemProps {
   onOpen: (note: NoteMeta) => void;
   onToggleFavorite: (id: string) => void;
   onDelete: (id: string) => void;
+  t: (key: string) => string;
 }
 
-function NoteItem({ note, isActive, onOpen, onToggleFavorite, onDelete }: NoteItemProps) {
+function NoteItem({ note, isActive, onOpen, onToggleFavorite, onDelete, t }: NoteItemProps) {
   return (
     <div
       className={`group relative flex items-center gap-1.5 px-3 py-1.5 cursor-pointer transition-colors ${
@@ -52,7 +54,7 @@ function NoteItem({ note, isActive, onOpen, onToggleFavorite, onDelete }: NoteIt
             e.stopPropagation();
             onToggleFavorite(note.id);
           }}
-          title={note.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+          title={note.favorite ? t('notes.removeFavorite') : t('notes.addFavorite')}
         >
           <Star className={`w-3 h-3 ${note.favorite ? "fill-current" : ""}`} />
         </button>
@@ -60,11 +62,11 @@ function NoteItem({ note, isActive, onOpen, onToggleFavorite, onDelete }: NoteIt
           className="p-0.5 rounded hover:bg-background text-muted-foreground/60 hover:text-destructive transition-colors"
           onClick={(e) => {
             e.stopPropagation();
-            if (confirm("Supprimer cette note ?")) {
+            if (confirm(t('notes.deleteConfirm'))) {
               onDelete(note.id);
             }
           }}
-          title="Supprimer"
+          title={t('notes.deleteButton')}
         >
           <Trash2 className="w-3 h-3" />
         </button>
@@ -82,6 +84,7 @@ export function NotesSidebarSection({
   onDeleteNote,
   searchNotes,
 }: NotesSidebarSectionProps) {
+  const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NoteMeta[] | null>(null);
@@ -133,14 +136,14 @@ export function NotesSidebarSection({
       {/* Header */}
       <div className="flex items-center px-3 py-2 shrink-0">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex-1 select-none">
-          Notes
+          {t('notes.title')}
         </span>
         <Button
           variant="ghost"
           size="icon"
           className="h-5 w-5 text-muted-foreground hover:text-foreground"
           onClick={handleToggleSearch}
-          title={searchOpen ? "Fermer la recherche" : "Rechercher"}
+          title={searchOpen ? t('notes.closeSearch') : t('notes.search')}
         >
           {searchOpen ? <X className="w-3 h-3" /> : <Search className="w-3 h-3" />}
         </Button>
@@ -149,7 +152,7 @@ export function NotesSidebarSection({
           size="icon"
           className="h-5 w-5 ml-0.5 text-muted-foreground hover:text-foreground"
           onClick={onCreateNote}
-          title="Nouvelle note"
+          title={t('notes.newNote')}
         >
           <Plus className="w-3 h-3" />
         </Button>
@@ -159,7 +162,7 @@ export function NotesSidebarSection({
       {searchOpen && (
         <div className="px-2 pb-2 shrink-0">
           <Input
-            placeholder="Rechercher..."
+            placeholder={t('notes.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             className="h-7 text-xs text-foreground"
@@ -184,7 +187,7 @@ export function NotesSidebarSection({
               )}
               <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
               <span className="text-xs text-muted-foreground select-none">
-                Favoris
+                {t('notes.favorites')}
               </span>
             </button>
             {!favoritesCollapsed &&
@@ -196,6 +199,7 @@ export function NotesSidebarSection({
                   onOpen={onOpenNote}
                   onToggleFavorite={onToggleFavorite}
                   onDelete={onDeleteNote}
+                  t={t}
                 />
               ))}
           </div>
@@ -206,13 +210,13 @@ export function NotesSidebarSection({
           {showFavoritesSection && (
             <div className="px-3 pt-2 pb-1">
               <span className="text-xs text-muted-foreground select-none">
-                Récents
+                {t('notes.recent')}
               </span>
             </div>
           )}
           {displayedNotes.length === 0 ? (
             <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-              {searchQuery ? "Aucune note trouvée" : "Aucune note"}
+              {searchQuery ? t('notes.emptySearch') : t('notes.empty')}
             </div>
           ) : (
             displayedNotes.map((note) => (
@@ -223,6 +227,7 @@ export function NotesSidebarSection({
                 onOpen={onOpenNote}
                 onToggleFavorite={onToggleFavorite}
                 onDelete={onDeleteNote}
+                t={t}
               />
             ))
           )}
