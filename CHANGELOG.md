@@ -13,6 +13,15 @@
 - Background highlight color picker in bubble menu - 8 color swatches + reset, highlights selected text
 - Inline code button in bubble menu for quick code formatting
 
+- Profile system: create and switch between multiple independent profiles (e.g. Personal / Work)
+- Each profile has its own settings (API keys, hotkeys, language…), notes, transcription history and recordings
+- Profile switcher at the bottom of the sidebar - shows current profile avatar with initials
+- Create new profiles directly from the sidebar dropdown
+- Manage profiles dialog: rename and delete profiles
+- Profile switching reloads the interface without restarting the app (works in both dev and production)
+- Automatic one-time migration: existing data moved into a default profile on first launch with this version
+- Shared resources (Whisper models) remain common across all profiles
+
 ### 🔧 Changed
 - Redesigned the note opening system
 - Overhauled architecture frontend/backend
