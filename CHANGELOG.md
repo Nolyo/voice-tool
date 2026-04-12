@@ -8,6 +8,14 @@
 - Lists: bullet lists, ordered lists, task lists (checkboxes) with nested support and Tab/Shift+Tab indentation
 - Link management: inline URL editor with auto-prefix `https://`, preserves existing Ctrl+Click behavior for opening links externally
 - TipTap v3.22.3 rich-text engine with markdown shortcuts (e.g., `# Heading`, `- List`)
+- Welcome note created automatically on first launch showcasing all available formatting (headings, bold, lists, task list, code, separator)
+- Text color picker in bubble menu - 8 color swatches + reset, applies inline color to selected text
+- Background highlight color picker in bubble menu - 8 color swatches + reset, highlights selected text
+- Inline code button in bubble menu for quick code formatting
+
+### 🔧 Changed
+- Redesigned the note opening system
+- Overhauled architecture frontend/backend
 
 ## [2.8.0] - 2026-04-11 (beta only)
 

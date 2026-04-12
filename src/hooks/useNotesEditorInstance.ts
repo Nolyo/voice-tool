@@ -5,6 +5,9 @@ import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Color } from "@tiptap/extension-color";
+import { Highlight } from "@tiptap/extension-highlight";
 import { type NoteData, type NoteMeta, deriveTitle } from "@/hooks/useNotes";
 
 interface UseNotesEditorInstanceOptions {
@@ -67,6 +70,9 @@ export function useNotesEditorInstance({
       TaskItem.configure({
         nested: true,
       }),
+      TextStyle,
+      Color,
+      Highlight.configure({ multicolor: true }),
     ],
     editorProps: {
       attributes: {
