@@ -84,7 +84,7 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
     // Read update channel from settings
     use tauri_plugin_store::StoreBuilder;
     let channel = {
-        let store = StoreBuilder::new(&app, "settings.json")
+        let store = StoreBuilder::new(&app, crate::profiles::settings_store_path(&app))
             .build()
             .map_err(|e| format!("Failed to load settings: {}", e))?;
 
@@ -155,7 +155,7 @@ pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
     // Read update channel from settings
     use tauri_plugin_store::StoreBuilder;
     let channel = {
-        let store = StoreBuilder::new(&app, "settings.json")
+        let store = StoreBuilder::new(&app, crate::profiles::settings_store_path(&app))
             .build()
             .map_err(|e| format!("Failed to load settings: {}", e))?;
 

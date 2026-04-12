@@ -27,6 +27,8 @@ pub struct AppState {
     pub(crate) audio_recorder: Mutex<AudioRecorder>,
     pub(crate) hotkeys: Mutex<HotkeyConfig>,
     pub whisper: WhisperState,
+    /// ID of the currently active profile — populated during setup by profiles::init_active_profile
+    pub active_profile_id: Mutex<String>,
 }
 
 pub(crate) fn create_app_state() -> AppState {
@@ -40,5 +42,6 @@ pub(crate) fn create_app_state() -> AppState {
                 loaded_model: String::new(),
             })),
         },
+        active_profile_id: Mutex::new(String::new()),
     }
 }

@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tauri_plugin_store::StoreBuilder;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,11 +25,9 @@ pub struct Transcription {
 }
 
 fn get_transcriptions_dir(app_handle: &AppHandle) -> Result<PathBuf> {
-    let app_data = app_handle
-        .path()
-        .app_data_dir()
-        .context("Could not resolve app data directory")?;
-    let dir = app_data.join("transcriptions");
+    let profile_dir = crate::profiles::get_active_profile_dir(app_handle)
+        .context("Could not resolve active profile directory")?;
+    let dir = profile_dir.join("transcriptions");
     if !dir.exists() {
         fs::create_dir_all(&dir)
             .with_context(|| format!("Failed to create transcriptions directory: {}", dir.display()))?;
@@ -37,9 +35,9 @@ fn get_transcriptions_dir(app_handle: &AppHandle) -> Result<PathBuf> {
     Ok(dir)
 }
 
-/// Remove legacy transcription_history key from settings.json if present.
+/// Remove legacy transcription_history key from the active profile's settings.json if present.
 pub fn cleanup_legacy_transcriptions(app_handle: &AppHandle) -> Result<()> {
-    let store = StoreBuilder::new(app_handle, "settings.json").build()?;
+    let store = StoreBuilder::new(app_handle, crate::profiles::settings_store_path(app_handle)).build()?;
     if store.has("transcription_history") {
         store.delete("transcription_history");
         let _ = store.save();

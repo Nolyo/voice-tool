@@ -4,9 +4,7 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tauri::AppHandle;
 
-use crate::transcription::{
-    cleanup_old_recordings, get_recordings_dir, save_audio_to_wav, transcribe_with_openai,
-};
+use crate::transcription::{cleanup_old_recordings, save_audio_to_wav, transcribe_with_openai};
 use crate::transcription_local;
 
 #[derive(Serialize)]
@@ -38,7 +36,7 @@ pub async fn transcribe_audio(
         translate
     );
 
-    let wav_path = save_audio_to_wav(&audio_samples, sample_rate)
+    let wav_path = save_audio_to_wav(&app_handle, &audio_samples, sample_rate)
         .map_err(|e| format!("Failed to save audio: {}", e))?;
 
     let dict = dictionary.as_deref().unwrap_or("");
@@ -71,7 +69,7 @@ pub async fn transcribe_audio(
 
     let transcription = transcription_result?;
 
-    let _ = cleanup_old_recordings(keep_last);
+    let _ = cleanup_old_recordings(&app_handle, keep_last);
 
     tracing::info!(
         "Transcription completed successfully: {} characters",
@@ -86,19 +84,26 @@ pub async fn transcribe_audio(
 
 /// Load a recorded audio file and return its raw bytes for playback.
 #[tauri::command]
-pub fn load_recording(audio_path: String) -> Result<Vec<u8>, String> {
+pub fn load_recording(app_handle: AppHandle, audio_path: String) -> Result<Vec<u8>, String> {
+    use tauri::Manager;
+
     let requested_path = PathBuf::from(&audio_path);
 
-    let recordings_dir = get_recordings_dir().map_err(|e| e.to_string())?;
-    let canonical_dir = recordings_dir
+    // Allow access to any recording under app_data_dir/profiles/*/recordings/
+    let app_data = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Could not resolve app data directory: {}", e))?;
+    let profiles_dir = app_data.join("profiles");
+    let canonical_profiles = profiles_dir
         .canonicalize()
-        .unwrap_or(recordings_dir.clone());
+        .unwrap_or(profiles_dir);
 
     let canonical_file = requested_path
         .canonicalize()
         .map_err(|e| format!("Audio not found: {}", e))?;
 
-    if !canonical_file.starts_with(&canonical_dir) {
+    if !canonical_file.starts_with(&canonical_profiles) {
         return Err("Audio file access denied.".to_string());
     }
 

@@ -48,9 +48,9 @@ fn read_logs_from_file(path: &PathBuf) -> Vec<AppLog> {
     }
 }
 
-/// Remove legacy app_logs key from settings.json if present.
+/// Remove legacy app_logs key from the active profile's settings.json if present.
 pub fn cleanup_legacy_logs(app_handle: &AppHandle) -> Result<()> {
-    let store = StoreBuilder::new(app_handle, "settings.json").build()?;
+    let store = StoreBuilder::new(app_handle, crate::profiles::settings_store_path(app_handle)).build()?;
     if store.has("app_logs") {
         store.delete("app_logs");
         let _ = store.save();

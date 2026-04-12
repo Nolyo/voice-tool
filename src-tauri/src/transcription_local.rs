@@ -213,7 +213,7 @@ pub fn preload_if_configured(app: &mut tauri::App) {
     use tauri_plugin_store::StoreBuilder;
 
     let preload_handle = app.handle().clone();
-    let preload_store = match StoreBuilder::new(app, "settings.json").build() {
+    let preload_store = match StoreBuilder::new(app, crate::profiles::settings_store_path(&preload_handle)).build() {
         Ok(s) => s,
         Err(e) => {
             tracing::warn!("Failed to load store for whisper preload: {}", e);

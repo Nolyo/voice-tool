@@ -5,6 +5,7 @@ mod hotkeys;
 mod logging;
 mod logs;
 mod notes;
+mod profiles;
 mod state;
 mod transcription;
 mod transcription_local;
@@ -84,11 +85,26 @@ pub fn run() {
             logs::list_logs,
             logs::save_log,
             logs::clear_logs,
-            tray::update_tray_labels
+            tray::update_tray_labels,
+            commands::profiles::list_profiles,
+            commands::profiles::get_active_profile,
+            commands::profiles::get_active_profile_settings_path,
+            commands::profiles::create_profile,
+            commands::profiles::rename_profile,
+            commands::profiles::delete_profile,
+            commands::profiles::switch_profile
         ])
         .setup(move |app| {
             // Enable logging to frontend
             log_layer.set_app_handle(app.handle().clone());
+
+            // Profile system: migrate legacy data then init active profile
+            if let Err(e) = profiles::migrate_legacy_to_default(app.handle()) {
+                tracing::warn!("Profiles migration failed: {}", e);
+            }
+            if let Err(e) = profiles::init_active_profile(app.handle()) {
+                tracing::error!("Failed to initialize active profile: {}", e);
+            }
 
             // Migrations
             if let Err(e) = transcriptions::cleanup_legacy_transcriptions(app.handle()) {

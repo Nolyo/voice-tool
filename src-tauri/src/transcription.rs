@@ -5,6 +5,7 @@ use reqwest::multipart;
 use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
+use tauri::AppHandle;
 
 const CHANNELS: u16 = 1;
 const BITS_PER_SAMPLE: u16 = 16;
@@ -15,70 +16,15 @@ struct WhisperResponse {
     text: String,
 }
 
-/// Get the recordings directory, creating it if it doesn't exist
-pub fn get_recordings_dir() -> Result<PathBuf> {
-    let app_data = std::env::var("APPDATA")
-        .or_else(|_| std::env::var("HOME"))
-        .context("Could not find application data directory")?;
-
-    let base_dir = PathBuf::from(&app_data).join("com.nolyo.voice-tool");
-    let recordings_dir = base_dir.join("recordings");
-    let legacy_dir = PathBuf::from(app_data)
-        .join("voice-tool")
-        .join("recordings");
+/// Get the recordings directory for the active profile, creating it if it doesn't exist
+pub fn get_recordings_dir(app: &AppHandle) -> Result<PathBuf> {
+    let profile_dir = crate::profiles::get_active_profile_dir(app)
+        .context("Could not resolve active profile directory")?;
+    let recordings_dir = profile_dir.join("recordings");
 
     if !recordings_dir.exists() {
-        fs::create_dir_all(&base_dir).with_context(|| {
-            format!(
-                "Failed to create application data directory: {}",
-                base_dir.display()
-            )
-        })?;
-
-        if legacy_dir.exists() && legacy_dir.is_dir() {
-            match fs::rename(&legacy_dir, &recordings_dir) {
-                Ok(_) => {
-                    tracing::info!(
-                        "Migrated recordings directory from legacy location: {} -> {}",
-                        legacy_dir.display(),
-                        recordings_dir.display()
-                    );
-                }
-                Err(rename_err) => {
-                    tracing::warn!(
-                        "Failed to move legacy recordings directory: {} -> {} ({}). Falling back to copy.",
-                        legacy_dir.display(),
-                        recordings_dir.display(),
-                        rename_err
-                    );
-                    fs::create_dir_all(&recordings_dir)
-                        .context("Failed to create recordings directory")?;
-
-                    if let Ok(entries) = fs::read_dir(&legacy_dir) {
-                        for entry in entries.flatten() {
-                            let src = entry.path();
-                            let file_name = match src.file_name() {
-                                Some(name) => name,
-                                None => continue,
-                            };
-                            let dest = recordings_dir.join(file_name);
-                            if dest.exists() {
-                                continue;
-                            }
-                            if let Err(copy_err) = fs::copy(&src, &dest) {
-                                tracing::warn!(
-                                    "Failed to copy legacy recording {}: {}",
-                                    src.display(),
-                                    copy_err
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            fs::create_dir_all(&recordings_dir).context("Failed to create recordings directory")?;
-        }
+        fs::create_dir_all(&recordings_dir)
+            .context("Failed to create recordings directory")?;
     } else if !recordings_dir.is_dir() {
         return Err(anyhow!(
             "Recordings path exists but is not a directory: {}",
@@ -89,10 +35,10 @@ pub fn get_recordings_dir() -> Result<PathBuf> {
     Ok(recordings_dir)
 }
 
-/// Save audio samples to a WAV file
-/// Returns the path to the created file
-pub fn save_audio_to_wav(samples: &[i16], sample_rate: u32) -> Result<PathBuf> {
-    let recordings_dir = get_recordings_dir()?;
+/// Save audio samples to a WAV file in the active profile's recordings directory.
+/// Returns the path to the created file.
+pub fn save_audio_to_wav(app: &AppHandle, samples: &[i16], sample_rate: u32) -> Result<PathBuf> {
+    let recordings_dir = get_recordings_dir(app)?;
 
     tracing::info!(
         "Saving {} audio samples to WAV at {} Hz",
@@ -164,9 +110,9 @@ pub fn save_audio_to_wav(samples: &[i16], sample_rate: u32) -> Result<PathBuf> {
     Ok(wav_path)
 }
 
-/// Clean up old recording files, keeping only the last N files
-pub fn cleanup_old_recordings(keep_last: usize) -> Result<()> {
-    let recordings_dir = get_recordings_dir()?;
+/// Clean up old recording files in the active profile, keeping only the last N files
+pub fn cleanup_old_recordings(app: &AppHandle, keep_last: usize) -> Result<()> {
+    let recordings_dir = get_recordings_dir(app)?;
 
     // Get all WAV files with their metadata
     let mut files: Vec<(PathBuf, std::time::SystemTime)> = fs::read_dir(&recordings_dir)?

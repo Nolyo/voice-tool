@@ -91,7 +91,7 @@ pub fn update_hotkeys(
 /// Get the current update channel setting (stable/beta)
 #[tauri::command]
 pub fn get_update_channel(app: AppHandle) -> Result<String, String> {
-    let store = StoreBuilder::new(&app, "settings.json")
+    let store = StoreBuilder::new(&app, crate::profiles::settings_store_path(&app))
         .build()
         .map_err(|e| format!("Failed to load settings: {}", e))?;
 
@@ -115,7 +115,7 @@ pub fn set_update_channel(app: AppHandle, channel: String) -> Result<(), String>
         ));
     }
 
-    let store = StoreBuilder::new(&app, "settings.json")
+    let store = StoreBuilder::new(&app, crate::profiles::settings_store_path(&app))
         .build()
         .map_err(|e| format!("Failed to load settings: {}", e))?;
 
@@ -138,7 +138,7 @@ pub fn set_update_channel(app: AppHandle, channel: String) -> Result<(), String>
 /// Set the translate mode preference and notify all windows
 #[tauri::command]
 pub fn set_translate_mode(app: AppHandle, enabled: bool) -> Result<(), String> {
-    let store = StoreBuilder::new(&app, "settings.json")
+    let store = StoreBuilder::new(&app, crate::profiles::settings_store_path(&app))
         .build()
         .map_err(|e| format!("Failed to load settings: {}", e))?;
 

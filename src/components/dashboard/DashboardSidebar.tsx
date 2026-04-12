@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { NotesSidebarSection } from "@/components/notes/NotesSidebarSection";
 import { type NoteMeta } from "@/hooks/useNotes";
+import { ProfileSwitcher } from "./ProfileSwitcher";
 
 export const DASHBOARD_NAV_ITEMS = [
   { id: "historique", labelKey: "sidebar.history", icon: History },
@@ -56,22 +57,38 @@ export function DashboardSidebar({
         collapsed ? "w-[52px]" : "w-[260px]"
       }`}
     >
-      {/* Logo */}
-      <div
-        className={`flex items-center border-b border-border h-[61px] px-3 shrink-0 ${
-          collapsed ? "justify-center" : "gap-2"
-        }`}
-      >
+      {/* Logo + collapse button (expanded: both in header / collapsed: only mic) */}
+      <div className="flex items-center border-b border-border h-[61px] px-3 gap-2 shrink-0">
         <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 shrink-0">
           <Mic className="w-4 h-4 text-primary" />
         </div>
         {!collapsed && (
-          <span className="font-semibold text-sm truncate">{t('header.title')}</span>
+          <>
+            <span className="font-semibold text-sm truncate flex-1">{t('header.title')}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+              onClick={onToggleCollapsed}
+              title={t('sidebar.collapseMenu')}
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </Button>
+          </>
         )}
       </div>
 
-      {/* Nav items */}
+      {/* Nav items + collapse button (collapsed: button is first nav item) */}
       <nav className="flex flex-col gap-1 p-2 shrink-0">
+        {collapsed && (
+          <button
+            onClick={onToggleCollapsed}
+            title={t('sidebar.expandMenu')}
+            className="flex items-center justify-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+          >
+            <PanelLeftOpen className="w-4 h-4 shrink-0" />
+          </button>
+        )}
         {DASHBOARD_NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => (
           <button
             key={id}
@@ -106,25 +123,12 @@ export function DashboardSidebar({
         />
       )}
 
-      {/* Toggle button at bottom */}
-      <div
-        className={`p-2 border-t border-border shrink-0 ${
-          collapsed ? "flex justify-center" : "flex justify-end"
-        }`}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
-          onClick={onToggleCollapsed}
-          title={collapsed ? t('sidebar.expandMenu') : t('sidebar.collapseMenu')}
-        >
-          {collapsed ? (
-            <PanelLeftOpen className="w-4 h-4" />
-          ) : (
-            <PanelLeftClose className="w-4 h-4" />
-          )}
-        </Button>
+      {/* Spacer to push profile to bottom */}
+      <div className="flex-1" />
+
+      {/* Profile switcher — always at the very bottom */}
+      <div className="border-t border-border shrink-0 p-2">
+        <ProfileSwitcher collapsed={collapsed} />
       </div>
     </aside>
   );

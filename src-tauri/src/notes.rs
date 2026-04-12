@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tauri_plugin_store::StoreBuilder;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,13 +34,11 @@ struct LegacyNote {
     updated_at: String,
 }
 
-/// Get the notes directory, creating it if needed
+/// Get the notes directory for the active profile, creating it if needed
 fn get_notes_dir(app_handle: &AppHandle) -> Result<PathBuf> {
-    let app_data = app_handle
-        .path()
-        .app_data_dir()
-        .context("Could not resolve app data directory")?;
-    let notes_dir = app_data.join("notes");
+    let profile_dir = crate::profiles::get_active_profile_dir(app_handle)
+        .context("Could not resolve active profile directory")?;
+    let notes_dir = profile_dir.join("notes");
     if !notes_dir.exists() {
         fs::create_dir_all(&notes_dir)
             .with_context(|| format!("Failed to create notes directory: {}", notes_dir.display()))?;
@@ -101,7 +99,7 @@ fn html_escape(text: &str) -> String {
 /// Migrate notes from settings.json store to file-based storage.
 /// Returns the number of migrated notes.
 pub fn migrate_notes_from_store(app_handle: &AppHandle) -> Result<u32> {
-    let store = StoreBuilder::new(app_handle, "settings.json").build()?;
+    let store = StoreBuilder::new(app_handle, crate::profiles::settings_store_path(app_handle)).build()?;
 
     let notes_value = match store.get("notes") {
         Some(value) => value.clone(),

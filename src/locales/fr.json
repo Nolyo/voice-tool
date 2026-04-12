@@ -23,6 +23,25 @@
     "expandMenu": "Déplier le menu",
     "collapseMenu": "Replier le menu"
   },
+  "profile": {
+    "label": "Profil",
+    "switchTo": "Passer à",
+    "active": "Actif",
+    "newProfile": "Nouveau profil...",
+    "manageProfiles": "Gérer les profils",
+    "createProfile": "Créer un profil",
+    "profileName": "Nom du profil",
+    "profileNamePlaceholder": "ex : Travail",
+    "rename": "Renommer",
+    "newName": "Nouveau nom",
+    "deleteConfirmTitle": "Supprimer le profil ?",
+    "deleteConfirmDesc": "Cette action est irréversible. Toutes les données de ce profil (notes, transcriptions, enregistrements) seront définitivement supprimées.",
+    "switchingRestart": "Changement de profil...",
+    "errorCreate": "Impossible de créer le profil",
+    "errorRename": "Impossible de renommer le profil",
+    "errorDelete": "Impossible de supprimer le profil",
+    "errorSwitch": "Impossible de changer de profil"
+  },
   "recording": {
     "transcribing": "Transcription en cours...",
     "recording": "Enregistrement en cours...",

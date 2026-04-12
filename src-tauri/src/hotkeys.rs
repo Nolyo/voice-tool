@@ -372,7 +372,8 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
 pub(crate) fn setup_initial_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     use tauri_plugin_store::StoreBuilder;
 
-    let store = StoreBuilder::new(app, "settings.json").build()?;
+    let settings_path = crate::profiles::settings_store_path(&app.handle());
+    let store = StoreBuilder::new(app, settings_path).build()?;
     let initial_hotkeys = load_hotkey_config(&store);
 
     match apply_hotkeys(&app.handle(), &initial_hotkeys) {

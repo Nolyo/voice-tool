@@ -2,6 +2,7 @@ pub mod ai;
 pub mod files;
 pub mod misc;
 pub mod model;
+pub mod profiles;
 pub mod recording;
 pub mod settings;
 pub mod transcription;

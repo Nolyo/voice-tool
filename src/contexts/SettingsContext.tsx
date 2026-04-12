@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Store } from "@tauri-apps/plugin-store";
+import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { AppSettings, DEFAULT_SETTINGS, mergeSettings } from "@/lib/settings";
 import { changeLanguage } from "@/i18n";
@@ -7,11 +8,12 @@ import { changeLanguage } from "@/i18n";
 let store: Store | null = null;
 
 /**
- * Initialize the store singleton
+ * Initialize the store singleton, resolved to the active profile's path.
  */
 async function getStore(): Promise<Store> {
   if (!store) {
-    store = await Store.load("settings.json");
+    const storePath = await invoke<string>("get_active_profile_settings_path");
+    store = await Store.load(storePath);
   }
   return store;
 }

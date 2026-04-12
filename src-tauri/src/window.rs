@@ -238,7 +238,8 @@ pub(crate) fn setup_main_window(app: &mut tauri::App) -> Result<(), Box<dyn std:
         .iter()
         .any(|arg| arg == "--minimized" || arg == "--hidden");
 
-    let window_store = StoreBuilder::new(app, "settings.json").build()?;
+    let settings_path = crate::profiles::settings_store_path(&app.handle());
+    let window_store = StoreBuilder::new(app, settings_path).build()?;
 
     let should_start_minimized = if has_minimized_flag {
         let start_minimized = window_store

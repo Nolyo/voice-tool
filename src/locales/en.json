@@ -23,6 +23,25 @@
     "expandMenu": "Expand menu",
     "collapseMenu": "Collapse menu"
   },
+  "profile": {
+    "label": "Profile",
+    "switchTo": "Switch to",
+    "active": "Active",
+    "newProfile": "New profile...",
+    "manageProfiles": "Manage profiles",
+    "createProfile": "Create profile",
+    "profileName": "Profile name",
+    "profileNamePlaceholder": "e.g. Work",
+    "rename": "Rename",
+    "newName": "New name",
+    "deleteConfirmTitle": "Delete profile?",
+    "deleteConfirmDesc": "This action cannot be undone. All data in this profile (notes, transcriptions, recordings) will be permanently deleted.",
+    "switchingRestart": "Switching profile...",
+    "errorCreate": "Failed to create profile",
+    "errorRename": "Failed to rename profile",
+    "errorDelete": "Failed to delete profile",
+    "errorSwitch": "Failed to switch profile"
+  },
   "recording": {
     "transcribing": "Transcribing...",
     "recording": "Recording...",
