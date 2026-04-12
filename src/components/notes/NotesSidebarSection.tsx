@@ -162,7 +162,7 @@ export function NotesSidebarSection({
             placeholder="Rechercher..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
-            className="h-7 text-xs"
+            className="h-7 text-xs text-foreground"
             autoFocus
           />
         </div>
