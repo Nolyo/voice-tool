@@ -187,9 +187,9 @@ Ce script :
 ## Créer une beta release
 
 ```powershell
-.github\scripts\bump-version.sh -beta 2.1.0-beta.1
+.github\scripts\bump-version.sh -beta 2.9.0-beta.1
 
-git add -A ; git commit -m "chore: bump version to 2.8.0-beta.1"
+git add -A ; git commit -m "chore: bump version to 2.9.0-beta.1"
 git push
 
 .\release.ps1 -Prerelease
