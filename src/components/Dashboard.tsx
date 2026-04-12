@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { DashboardHeader } from "./common/DashboardHeader";
 import {
@@ -10,7 +10,6 @@ import {
 import { HistoriqueTab } from "./dashboard/tabs/HistoriqueTab";
 import { SettingTabs } from "./settings/SettingTabs";
 import { LogsTab } from "./logs/LogsTab";
-import { NotesTab } from "./notes/NotesTab";
 import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./common/UpdateModal";
 import { useSettings } from "@/hooks/useSettings";
@@ -18,7 +17,7 @@ import {
   useTranscriptionHistory,
   type Transcription,
 } from "@/hooks/useTranscriptionHistory";
-import { useNotes } from "@/hooks/useNotes";
+import { useNotes, type NoteMeta } from "@/hooks/useNotes";
 import { useAppLogs } from "@/hooks/useAppLogs";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { useRecordingWorkflow } from "@/hooks/useRecordingWorkflow";
@@ -47,7 +46,6 @@ export default function Dashboard() {
     deleteNote,
     searchNotes,
     toggleFavorite,
-    reloadNotes,
   } = useNotes();
   const { logs, clearLogs } = useAppLogs();
 
@@ -59,7 +57,6 @@ export default function Dashboard() {
     });
 
   const {
-    editorOpen,
     openNoteIds,
     activeNoteId,
     setActiveNoteId,
@@ -67,8 +64,20 @@ export default function Dashboard() {
     handleOpenNote,
     handleCloseNoteTab,
     handleDeleteNote,
-    closeEditor,
   } = useNotesWorkflow({ createNote, deleteNote });
+
+  const handleOpenNoteFromSidebar = useCallback(
+    (note: NoteMeta) => {
+      handleOpenNote(note);
+      setActiveTab("notes");
+    },
+    [handleOpenNote],
+  );
+
+  const handleCreateNoteFromSidebar = useCallback(async () => {
+    await handleCreateNote();
+    setActiveTab("notes");
+  }, [handleCreateNote]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -118,6 +127,13 @@ export default function Dashboard() {
         onTabChange={setActiveTab}
         collapsed={sidebarCollapsed}
         onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
+        notes={notes}
+        activeNoteId={activeNoteId}
+        onOpenNote={handleOpenNoteFromSidebar}
+        onCreateNote={handleCreateNoteFromSidebar}
+        onToggleFavorite={toggleFavorite}
+        onDeleteNote={handleDeleteNote}
+        searchNotes={searchNotes}
       />
 
       {/* Main area */}
@@ -127,67 +143,58 @@ export default function Dashboard() {
           onUpdateClick={() => setShowUpdateModal(true)}
         />
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="container mx-auto px-6 py-8">
-            {activeTab === "historique" && (
-              <HistoriqueTab
-                isRecording={isRecording}
-                isTranscribing={isTranscribing}
-                onToggleRecording={handleToggleRecording}
-                hideRecordingPanel={settings.hide_recording_panel}
-                transcriptions={transcriptions}
-                selectedTranscription={selectedTranscription}
-                onSelectTranscription={setSelectedTranscription}
-                onCopy={handleCopy}
-                onDelete={handleDelete}
-                onClearAll={handleClearAll}
-              />
-            )}
+        <main className="flex-1 overflow-hidden">
+          {activeTab === "notes" && openNoteIds.length > 0 ? (
+            <NotesEditor
+              openNotes={notes.filter((n) => openNoteIds.includes(n.id))}
+              activeNoteId={activeNoteId}
+              onActivateNote={setActiveNoteId}
+              onCloseNote={handleCloseNoteTab}
+              onDeleteNote={handleDeleteNote}
+              onUpdateNote={updateNote}
+              onCreateNote={handleCreateNoteFromSidebar}
+              onCopyContent={handleCopy}
+              apiKey={settings.openai_api_key}
+              readNote={readNote}
+            />
+          ) : activeTab === "notes" ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+              Sélectionnez une note ou créez-en une depuis la barre latérale
+            </div>
+          ) : (
+            <div className="overflow-y-auto h-full">
+              <div className="container mx-auto px-6 py-8">
+                {activeTab === "historique" && (
+                  <HistoriqueTab
+                    isRecording={isRecording}
+                    isTranscribing={isTranscribing}
+                    onToggleRecording={handleToggleRecording}
+                    hideRecordingPanel={settings.hide_recording_panel}
+                    transcriptions={transcriptions}
+                    selectedTranscription={selectedTranscription}
+                    onSelectTranscription={setSelectedTranscription}
+                    onCopy={handleCopy}
+                    onDelete={handleDelete}
+                    onClearAll={handleClearAll}
+                  />
+                )}
 
-            {activeTab === "notes" && (
-              <Card className="p-6">
-                <NotesTab
-                  notes={notes}
-                  onCreateNote={handleCreateNote}
-                  onOpenNote={handleOpenNote}
-                  onDeleteNote={handleDeleteNote}
-                  onToggleFavorite={toggleFavorite}
-                  onReload={reloadNotes}
-                  searchNotes={searchNotes}
-                />
-              </Card>
-            )}
+                {activeTab === "parametres" && (
+                  <Card className="p-6">
+                    <SettingTabs />
+                  </Card>
+                )}
 
-            {activeTab === "parametres" && (
-              <Card className="p-6">
-                <SettingTabs />
-              </Card>
-            )}
-
-            {activeTab === "logs" && (
-              <Card className="p-6">
-                <LogsTab logs={logs} onClearLogs={clearLogs} />
-              </Card>
-            )}
-          </div>
+                {activeTab === "logs" && (
+                  <Card className="p-6">
+                    <LogsTab logs={logs} onClearLogs={clearLogs} />
+                  </Card>
+                )}
+              </div>
+            </div>
+          )}
         </main>
       </div>
-
-      {editorOpen && (
-        <NotesEditor
-          openNotes={notes.filter((n) => openNoteIds.includes(n.id))}
-          activeNoteId={activeNoteId}
-          onActivateNote={setActiveNoteId}
-          onCloseNote={handleCloseNoteTab}
-          onDeleteNote={handleDeleteNote}
-          onUpdateNote={updateNote}
-          onCreateNote={handleCreateNote}
-          onCopyContent={handleCopy}
-          onClose={closeEditor}
-          apiKey={settings.openai_api_key}
-          readNote={readNote}
-        />
-      )}
 
       <UpdateModal
         open={showUpdateModal}

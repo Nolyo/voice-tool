@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { type NoteData, type NoteMeta } from "@/hooks/useNotes";
-import { useNotesWindow } from "@/hooks/useNotesWindow";
 import { useNotesEditorInstance } from "@/hooks/useNotesEditorInstance";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
 import { useLinkEditor } from "@/hooks/useLinkEditor";
@@ -27,19 +26,15 @@ interface NotesEditorProps {
   onUpdateNote: (id: string, content: string, title: string) => void;
   onCreateNote: () => void;
   onCopyContent: (text: string) => void;
-  onClose: () => void;
   apiKey: string;
   readNote: (id: string) => Promise<NoteData>;
 }
 
-const DEFAULT_WIDTH = 500;
-const DEFAULT_HEIGHT = 400;
-
 /**
- * Floating notes modal. Composes four hooks (window state, TipTap editor,
- * AI assistant, link editor) with five subcomponents (title bar, content,
- * bubble menu, AI preview, footer). The orchestrator itself only handles
- * delete confirmation and the "close empty note" policy.
+ * Docked notes editor. Fills the entire main content area.
+ * Composes three hooks (TipTap editor, AI assistant, link editor) with four
+ * subcomponents (title bar, content, bubble menu, footer). The orchestrator
+ * only handles delete confirmation and the "close empty note" policy.
  */
 export function NotesEditor({
   openNotes,
@@ -50,24 +45,9 @@ export function NotesEditor({
   onUpdateNote,
   onCreateNote,
   onCopyContent,
-  onClose,
   apiKey,
   readNote,
 }: NotesEditorProps) {
-  const {
-    position,
-    size,
-    isMaximized,
-    isHalfScreen,
-    handleDragStart,
-    handleResizeStart,
-    toggleMaximize,
-    toggleHalfScreen,
-  } = useNotesWindow({
-    defaultWidth: DEFAULT_WIDTH,
-    defaultHeight: DEFAULT_HEIGHT,
-  });
-
   const { editor, isLoadingContent } = useNotesEditorInstance({
     openNotes,
     activeNoteId,
@@ -82,29 +62,18 @@ export function NotesEditor({
 
   const hasActiveNote = openNotes.some((n) => n.id === activeNoteId);
 
-  // True when the given id is the active note AND its editor content is empty.
-  // Inactive tabs are not inspected (we only cleanup on the active-tab path).
   const isActiveNoteEmpty = (id: string): boolean => {
     if (id !== activeNoteId) return false;
     if (!editor) return false;
     return editor.getText().trim() === "";
   };
 
-  // Tab close: delete the note if it's the active empty one, otherwise just close.
   const handleTabClose = (id: string) => {
     if (isActiveNoteEmpty(id)) {
       onDeleteNote(id);
     } else {
       onCloseNote(id);
     }
-  };
-
-  // Modal close (header X): delete the active note if empty, then close.
-  const handleModalClose = () => {
-    if (activeNoteId && isActiveNoteEmpty(activeNoteId)) {
-      onDeleteNote(activeNoteId);
-    }
-    onClose();
   };
 
   const handleConfirmDelete = () => {
@@ -114,33 +83,15 @@ export function NotesEditor({
     setConfirmDeleteOpen(false);
   };
 
-  const style: React.CSSProperties = {
-    position: "fixed",
-    left: position.x,
-    top: position.y,
-    width: size.width,
-    height: size.height,
-    zIndex: 9999,
-  };
-
   return (
-    <div
-      style={style}
-      className="flex flex-col bg-card border rounded-lg shadow-xl overflow-hidden"
-    >
+    <div className="flex flex-col h-full bg-card overflow-hidden">
       <NotesEditorTitleBar
         openNotes={openNotes}
         activeNoteId={activeNoteId}
         editor={editor}
-        isMaximized={isMaximized}
-        isHalfScreen={isHalfScreen}
-        onDragStart={handleDragStart}
-        onToggleMaximize={toggleMaximize}
-        onToggleHalfScreen={toggleHalfScreen}
         onActivateNote={onActivateNote}
         onTabClose={handleTabClose}
         onCreateNote={onCreateNote}
-        onModalClose={handleModalClose}
       />
 
       <NotesEditorContent
@@ -171,28 +122,10 @@ export function NotesEditor({
           onCopyContent={onCopyContent}
           onRequestDelete={() => setConfirmDeleteOpen(true)}
         />
-
-        {/* Resize handle */}
-        {!isMaximized && !isHalfScreen && (
-          <div
-            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize"
-            onMouseDown={handleResizeStart}
-          >
-            <svg
-              className="w-3 h-3 text-muted-foreground/50 absolute bottom-0.5 right-0.5"
-              viewBox="0 0 12 12"
-              fill="currentColor"
-            >
-              <circle cx="9" cy="9" r="1.5" />
-              <circle cx="5" cy="9" r="1.5" />
-              <circle cx="9" cy="5" r="1.5" />
-            </svg>
-          </div>
-        )}
       </div>
 
       <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <DialogContent className="max-w-sm z-[10000]">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Supprimer cette note ?</DialogTitle>
             <DialogDescription>

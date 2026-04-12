@@ -1,28 +1,37 @@
 import {
   History,
   Mic,
-  NotebookPen,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
   Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NotesSidebarSection } from "@/components/notes/NotesSidebarSection";
+import { type NoteMeta } from "@/hooks/useNotes";
 
 export const DASHBOARD_NAV_ITEMS = [
   { id: "historique", label: "Historique", icon: History },
-  { id: "notes", label: "Notes", icon: NotebookPen },
   { id: "parametres", label: "Paramètres", icon: Settings2 },
   { id: "logs", label: "Logs", icon: ScrollText },
 ] as const;
 
-export type DashboardTabId = (typeof DASHBOARD_NAV_ITEMS)[number]["id"];
+export type DashboardTabId =
+  | (typeof DASHBOARD_NAV_ITEMS)[number]["id"]
+  | "notes";
 
 interface DashboardSidebarProps {
   activeTab: string;
   onTabChange: (id: DashboardTabId) => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  notes: NoteMeta[];
+  activeNoteId: string | null;
+  onOpenNote: (note: NoteMeta) => void;
+  onCreateNote: () => void;
+  onToggleFavorite: (id: string) => void;
+  onDeleteNote: (id: string) => void;
+  searchNotes: (query: string) => Promise<NoteMeta[]>;
 }
 
 export function DashboardSidebar({
@@ -30,16 +39,23 @@ export function DashboardSidebar({
   onTabChange,
   collapsed,
   onToggleCollapsed,
+  notes,
+  activeNoteId,
+  onOpenNote,
+  onCreateNote,
+  onToggleFavorite,
+  onDeleteNote,
+  searchNotes,
 }: DashboardSidebarProps) {
   return (
     <aside
       className={`flex flex-col border-r border-border shrink-0 transition-all duration-200 ${
-        collapsed ? "w-[52px]" : "w-[180px]"
+        collapsed ? "w-[52px]" : "w-[260px]"
       }`}
     >
       {/* Logo */}
       <div
-        className={`flex items-center border-b border-border h-[61px] px-3 ${
+        className={`flex items-center border-b border-border h-[61px] px-3 shrink-0 ${
           collapsed ? "justify-center" : "gap-2"
         }`}
       >
@@ -52,7 +68,7 @@ export function DashboardSidebar({
       </div>
 
       {/* Nav items */}
-      <nav className="flex flex-col gap-1 p-2 flex-1">
+      <nav className="flex flex-col gap-1 p-2 shrink-0">
         {DASHBOARD_NAV_ITEMS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -74,9 +90,22 @@ export function DashboardSidebar({
         ))}
       </nav>
 
+      {/* Notes section (only when expanded) */}
+      {!collapsed && (
+        <NotesSidebarSection
+          notes={notes}
+          activeNoteId={activeNoteId}
+          onOpenNote={onOpenNote}
+          onCreateNote={onCreateNote}
+          onToggleFavorite={onToggleFavorite}
+          onDeleteNote={onDeleteNote}
+          searchNotes={searchNotes}
+        />
+      )}
+
       {/* Toggle button at bottom */}
       <div
-        className={`p-2 border-t border-border ${
+        className={`p-2 border-t border-border shrink-0 ${
           collapsed ? "flex justify-center" : "flex justify-end"
         }`}
       >
