@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/voice-tool",
-  "generated_at": "2026-04-11T11:49:55.030Z",
+  "generated_at": "2026-04-12T09:48:26.170Z",
   "latest": {
     "version": "2.7.3",
     "tag": "v2.7.3",
@@ -613,7 +613,7 @@
           "size_bytes": 18046976,
           "size_human": "17.2 MB",
           "sha256": "7a16f0660b440b6fa03726aad3e3ceba5874380ae82f9613d8a5f33d9165dee4",
-          "download_count": 2
+          "download_count": 3
         },
         "nsis_installer": {
           "filename": "voice-tool-v-2.1.0-setup.exe",
