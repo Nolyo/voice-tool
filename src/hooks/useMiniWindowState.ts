@@ -166,6 +166,7 @@ export function useMiniWindowState() {
       if (unlistenTranscriptionSuccessFn) unlistenTranscriptionSuccessFn();
       if (unlistenTranscriptionErrorFn) unlistenTranscriptionErrorFn();
       if (unlistenTranslateModeChangedFn) unlistenTranslateModeChangedFn();
+      if (unlistenLanguageChangedFn) unlistenLanguageChangedFn();
     };
   }, []);
 

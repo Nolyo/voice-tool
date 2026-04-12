@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { Settings, AlertTriangle, Check, Download, Loader2, Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
