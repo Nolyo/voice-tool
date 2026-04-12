@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +49,7 @@ export function NotesEditor({
   apiKey,
   readNote,
 }: NotesEditorProps) {
+  const { t } = useTranslation();
   const { editor, isLoadingContent } = useNotesEditorInstance({
     openNotes,
     activeNoteId,
@@ -127,9 +129,9 @@ export function NotesEditor({
       <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Supprimer cette note ?</DialogTitle>
+            <DialogTitle>{t('notes.editor.deleteConfirmTitle')}</DialogTitle>
             <DialogDescription>
-              Cette action est définitive. La note sera supprimée du disque.
+              {t('notes.editor.deleteConfirmDesc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -137,11 +139,11 @@ export function NotesEditor({
               variant="ghost"
               onClick={() => setConfirmDeleteOpen(false)}
             >
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleConfirmDelete}>
               <Trash2 className="w-4 h-4 mr-1" />
-              Supprimer
+              {t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

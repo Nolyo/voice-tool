@@ -1,22 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import i18n from '@/i18n';
 
 // Module-level flag: survives React StrictMode double-mount but resets on
 // full page reload, which is the correct scope for "first launch" detection.
 let welcomeNoteCreating = false;
 
-const WELCOME_NOTE_HTML = `<h1>Bienvenue dans Notes</h1>
-<p>Sélectionnez du texte pour faire apparaître le menu de formatage. Vous pouvez écrire en <strong>gras</strong>, en <em>italique</em>, le <u>souligner</u> ou le <s>barrer</s>.</p>
-<h2>Listes</h2>
-<ul><li><p>Liste à puces</p></li><li><p>Deuxième élément</p></li></ul>
-<ol><li><p>Liste numérotée</p></li><li><p>Deuxième élément</p></li></ol>
-<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><p>Tâche terminée</p></li><li data-type="taskItem" data-checked="false"><p>Tâche à faire</p></li></ul>
-<h2>Titres</h2>
-<p>Utilisez le menu de formatage pour appliquer des titres <strong>H1</strong>, <strong>H2</strong>, <strong>H3</strong> à vos paragraphes.</p>
-<h2>Code et séparateurs</h2>
-<p>Tapez <code>---</code> pour insérer un séparateur, ou <code>&#96;&#96;&#96;</code> pour un bloc de code.</p>
+function getWelcomeNoteHtml(): string {
+  const t = i18n.t;
+  return `<h1>${t('welcome.title')}</h1>
+${t('welcome.intro')}
+<h2>${t('welcome.listsTitle')}</h2>
+<ul><li><p>${t('welcome.bulletList')}</p></li><li><p>${t('welcome.secondItem')}</p></li></ul>
+<ol><li><p>${t('welcome.orderedList')}</p></li><li><p>${t('welcome.secondItem')}</p></li></ol>
+<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><p>${t('welcome.taskDone')}</p></li><li data-type="taskItem" data-checked="false"><p>${t('welcome.taskTodo')}</p></li></ul>
+<h2>${t('welcome.headingsTitle')}</h2>
+${t('welcome.headingsDesc')}
+<h2>${t('welcome.codeTitle')}</h2>
+${t('welcome.codeDesc')}
 <hr>
-<p>Commencez à écrire votre première note !</p>`;
+${t('welcome.start')}`;
+}
 
 export interface NoteMeta {
   id: string;
@@ -35,7 +39,7 @@ export function deriveTitle(content: string): string {
   // Extract text from HTML by stripping tags
   const text = content.replace(/<[^>]*>/g, '\n').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
   const firstLine = text.split('\n').find(line => line.trim().length > 0);
-  if (!firstLine) return 'Note sans titre';
+  if (!firstLine) return i18n.t('notes.editor.untitled');
   const trimmed = firstLine.trim();
   return trimmed.length > 50 ? trimmed.slice(0, 50) + '...' : trimmed;
 }
@@ -51,8 +55,9 @@ export function useNotes() {
       if (result.length === 0 && !welcomeNoteCreating) {
         welcomeNoteCreating = true;
         const meta = await invoke<NoteMeta>('create_note');
-        const title = deriveTitle(WELCOME_NOTE_HTML);
-        await invoke<NoteMeta>('update_note', { id: meta.id, content: WELCOME_NOTE_HTML, title });
+        const welcomeHtml = getWelcomeNoteHtml();
+        const title = deriveTitle(welcomeHtml);
+        await invoke<NoteMeta>('update_note', { id: meta.id, content: welcomeHtml, title });
         const updated = await invoke<NoteMeta[]>('list_notes');
         setNotes(updated);
       } else {

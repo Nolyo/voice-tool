@@ -25,7 +25,7 @@ pub async fn chat_completion(
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(60))
         .build()
-        .map_err(|e| anyhow!("Erreur lors de la création du client HTTP: {}", e))?;
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
 
     let body = serde_json::json!({
         "model": "gpt-4o-mini",
@@ -48,16 +48,16 @@ pub async fn chat_completion(
         .map_err(|e| {
             if e.is_timeout() {
                 tracing::error!("Request timed out: {}", e);
-                anyhow!("Délai d'attente dépassé. Vérifiez votre connexion internet.")
+                anyhow!("Request timed out. Check your internet connection.")
             } else if e.is_connect() {
                 tracing::error!("Connection error: {}", e);
-                anyhow!("Impossible de se connecter à l'API OpenAI. Vérifiez votre connexion internet.")
+                anyhow!("Cannot connect to OpenAI API. Check your internet connection.")
             } else if e.is_request() {
                 tracing::error!("Request error: {}", e);
-                anyhow!("Erreur lors de l'envoi de la requête. Vérifiez votre connexion réseau.")
+                anyhow!("Failed to send request. Check your network connection.")
             } else {
                 tracing::error!("HTTP error: {}", e);
-                anyhow!("Erreur de connexion: {}", e)
+                anyhow!("Connection error: {}", e)
             }
         })?;
 
@@ -68,21 +68,21 @@ pub async fn chat_completion(
         let error_text = response
             .text()
             .await
-            .unwrap_or_else(|_| "Erreur inconnue".to_string());
+            .unwrap_or_else(|_| "Unknown error".to_string());
         tracing::error!("OpenAI API error {}: {}", status, error_text);
 
         return Err(match status.as_u16() {
-            401 => anyhow!("Clé API OpenAI invalide. Vérifiez votre clé dans les paramètres."),
-            429 => anyhow!("Trop de requêtes. Veuillez patienter quelques instants."),
-            500..=599 => anyhow!("Erreur du serveur OpenAI. Réessayez dans quelques instants."),
-            _ => anyhow!("Erreur OpenAI ({}): {}", status, error_text),
+            401 => anyhow!("Invalid OpenAI API key. Check your key in settings."),
+            429 => anyhow!("Too many requests. Please wait a moment."),
+            500..=599 => anyhow!("OpenAI server error. Try again in a moment."),
+            _ => anyhow!("OpenAI error ({}): {}", status, error_text),
         });
     }
 
     let chat_response: ChatResponse = response
         .json()
         .await
-        .map_err(|e| anyhow!("Erreur lors de la lecture de la réponse: {}", e))?;
+        .map_err(|e| anyhow!("Failed to read response: {}", e))?;
 
     let text = chat_response
         .choices

@@ -1,3 +1,5 @@
+import i18n from "@/i18n";
+
 export type AiActionId =
   | "traduire"
   | "ameliorer_mail"
@@ -20,85 +22,81 @@ export interface AiActionGroup {
   subActions?: AiAction[];
 }
 
-const SUFFIX = "\nRetourne uniquement le texte traité, sans explication ni commentaire.";
+function getSuffix(): string {
+  return "\n" + i18n.t('ai.prompts.suffix');
+}
 
-export const AI_ACTIONS: AiActionGroup[] = [
-  {
-    label: "Traduire (FR ↔ EN)",
-    actions: [
-      {
-        id: "traduire",
-        label: "Traduire (FR ↔ EN)",
-        systemPrompt:
-          "Tu es un traducteur professionnel. Si le texte est en français, traduis-le en anglais. Si le texte est en anglais, traduis-le en français. Conserve le ton et le style du texte original." +
-          SUFFIX,
-      },
-    ],
-  },
-  {
-    label: "Améliorer",
-    subActions: [
-      {
-        id: "ameliorer_mail",
-        label: "Pour un mail",
-        systemPrompt:
-          "Tu es un assistant d'écriture. Améliore ce texte pour un email professionnel. Garde le même sens et le même ton général, en rendant le texte plus clair et structuré." +
-          SUFFIX,
-      },
-      {
-        id: "ameliorer_message",
-        label: "Pour un message",
-        systemPrompt:
-          "Tu es un assistant d'écriture. Améliore ce texte pour un message informel (chat, SMS). Garde le même sens en rendant le texte plus fluide et naturel." +
-          SUFFIX,
-      },
-      {
-        id: "ameliorer_formel",
-        label: "Ton formel",
-        systemPrompt:
-          "Tu es un assistant d'écriture. Améliore ce texte en adoptant un ton formel et soutenu, adapté à un contexte officiel ou administratif. Garde le même sens." +
-          SUFFIX,
-      },
-    ],
-  },
-  {
-    label: "Corriger",
-    actions: [
-      {
-        id: "corriger",
-        label: "Corriger",
-        systemPrompt:
-          "Tu es un correcteur orthographique et grammatical. Corrige toutes les fautes d'orthographe, de grammaire et de ponctuation dans ce texte sans changer le style ni le sens." +
-          SUFFIX,
-      },
-    ],
-  },
-  {
-    label: "Résumer",
-    actions: [
-      {
-        id: "resumer",
-        label: "Résumer",
-        systemPrompt:
-          "Tu es un assistant. Résume ce texte de manière concise en gardant les points essentiels et les informations clés." +
-          SUFFIX,
-      },
-    ],
-  },
-  {
-    label: "Reformuler",
-    actions: [
-      {
-        id: "reformuler",
-        label: "Reformuler",
-        systemPrompt:
-          "Tu es un assistant d'écriture. Reformule ce texte différemment tout en gardant exactement le même sens. Utilise des synonymes et une structure de phrase différente." +
-          SUFFIX,
-      },
-    ],
-  },
-];
+export function getAI_ACTIONS(): AiActionGroup[] {
+  const t = i18n.t;
+  const SUFFIX = getSuffix();
+
+  return [
+    {
+      label: t('ai.groups.translate'),
+      actions: [
+        {
+          id: "traduire",
+          label: t('ai.groups.translate'),
+          systemPrompt: t('ai.prompts.translate') + SUFFIX,
+        },
+      ],
+    },
+    {
+      label: t('ai.groups.improve'),
+      subActions: [
+        {
+          id: "ameliorer_mail",
+          label: t('ai.groups.improveMail'),
+          systemPrompt: t('ai.prompts.improveMail') + SUFFIX,
+        },
+        {
+          id: "ameliorer_message",
+          label: t('ai.groups.improveMessage'),
+          systemPrompt: t('ai.prompts.improveMessage') + SUFFIX,
+        },
+        {
+          id: "ameliorer_formel",
+          label: t('ai.groups.improveFormal'),
+          systemPrompt: t('ai.prompts.improveFormal') + SUFFIX,
+        },
+      ],
+    },
+    {
+      label: t('ai.groups.correct'),
+      actions: [
+        {
+          id: "corriger",
+          label: t('ai.groups.correct'),
+          systemPrompt: t('ai.prompts.correct') + SUFFIX,
+        },
+      ],
+    },
+    {
+      label: t('ai.groups.summarize'),
+      actions: [
+        {
+          id: "resumer",
+          label: t('ai.groups.summarize'),
+          systemPrompt: t('ai.prompts.summarize') + SUFFIX,
+        },
+      ],
+    },
+    {
+      label: t('ai.groups.rephrase'),
+      actions: [
+        {
+          id: "reformuler",
+          label: t('ai.groups.rephrase'),
+          systemPrompt: t('ai.prompts.rephrase') + SUFFIX,
+        },
+      ],
+    },
+  ];
+}
+
+// Keep static reference for components that import AI_ACTIONS directly
+export const AI_ACTIONS = getAI_ACTIONS();
 
 export function getCustomPrompt(userPrompt: string): string {
-  return userPrompt + SUFFIX;
+  return userPrompt + getSuffix();
 }

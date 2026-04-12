@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
 import { Check, Copy, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ export function NotesEditorFooter({
   onCopyContent,
   onRequestDelete,
 }: NotesEditorFooterProps) {
+  const { t } = useTranslation();
   const [justCopied, setJustCopied] = useState(false);
   const copyResetTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -49,14 +51,14 @@ export function NotesEditorFooter({
       onCopyContent(editorText);
     }
     setJustCopied(true);
-    toast.success("Copié dans le presse-papiers");
+    toast.success(t('notes.editor.copiedToClipboard'));
     clearTimeout(copyResetTimerRef.current);
     copyResetTimerRef.current = setTimeout(() => setJustCopied(false), 1500);
   };
 
   return (
     <>
-      <span className="text-xs text-foreground/50">Ctrl + F12 pour dicter</span>
+      <span className="text-xs text-foreground/50">{t('notes.editor.dictateHint')}</span>
       <div className="flex items-center gap-1">
         {hasActiveNote && (
           <>
@@ -76,14 +78,14 @@ export function NotesEditorFooter({
               ) : (
                 <Copy className="w-3.5 h-3.5" />
               )}
-              {justCopied ? "Copié" : "Copier"}
+              {justCopied ? t('notes.editor.copied') : t('common.copy')}
             </Button>
             <Button
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={onRequestDelete}
-              title="Supprimer la note"
+              title={t('notes.editor.deleteNote')}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </Button>

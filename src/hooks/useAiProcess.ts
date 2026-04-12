@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
 
 export type AiProcessState = "idle" | "loading" | "preview" | "error";
 
 export function useAiProcess() {
+  const { t } = useTranslation();
   const [state, setState] = useState<AiProcessState>("idle");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
@@ -12,9 +14,7 @@ export function useAiProcess() {
     async (text: string, systemPrompt: string, apiKey: string) => {
       if (!apiKey.trim()) {
         setState("error");
-        setError(
-          "Clé API OpenAI non configurée. Configurez-la dans les paramètres.",
-        );
+        setError(t('errors.apiKeyNotConfigured'));
         return;
       }
 
@@ -35,7 +35,7 @@ export function useAiProcess() {
         setState("preview");
       } catch (e) {
         setState("error");
-        setError(typeof e === "string" ? e : "Erreur lors du traitement.");
+        setError(typeof e === "string" ? e : t('errors.aiProcessError'));
       }
     },
     [],

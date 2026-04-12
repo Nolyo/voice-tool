@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { BookOpen, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,7 @@ import { SectionCard } from "../common/SectionCard";
 import { Divider } from "../common/Divider";
 
 export function VocabularySection() {
+  const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
 
   return (
@@ -13,16 +15,16 @@ export function VocabularySection() {
       id="section-vocabulaire"
       icon={<BookOpen className="w-3.5 h-3.5 text-cyan-500" />}
       iconBg="bg-cyan-500/10"
-      title="Vocabulaire"
-      subtitle="Snippets et mots personnalisés"
+      title={t('settings.vocabulary.title')}
+      subtitle={t('settings.vocabulary.subtitle')}
     >
       <div className="space-y-5">
         {/* Snippets */}
         <div className="space-y-3">
           <div>
-            <h4 className="text-sm font-medium text-foreground">Snippets</h4>
+            <h4 className="text-sm font-medium text-foreground">{t('settings.vocabulary.snippets')}</h4>
             <p className="text-xs text-muted-foreground">
-              Remplace automatiquement une phrase dictée par un texte prédéfini
+              {t('settings.vocabulary.snippetsDesc')}
             </p>
           </div>
 
@@ -30,7 +32,7 @@ export function VocabularySection() {
             <div key={index} className="flex items-center gap-2">
               <Input
                 value={snippet.trigger}
-                placeholder="Déclencheur"
+                placeholder={t('settings.vocabulary.triggerPlaceholder')}
                 className="flex-1 text-sm"
                 onChange={(e) => {
                   const updated = [...(settings.snippets ?? [])];
@@ -41,7 +43,7 @@ export function VocabularySection() {
               <span className="text-muted-foreground text-xs shrink-0">&rarr;</span>
               <Input
                 value={snippet.replacement}
-                placeholder="Remplacement"
+                placeholder={t('settings.vocabulary.replacementPlaceholder')}
                 className="flex-1 text-sm"
                 onChange={(e) => {
                   const updated = [...(settings.snippets ?? [])];
@@ -81,7 +83,7 @@ export function VocabularySection() {
             }}
           >
             <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Ajouter un snippet
+            {t('settings.vocabulary.addSnippet')}
           </Button>
         </div>
 
@@ -90,9 +92,9 @@ export function VocabularySection() {
         {/* Dictionnaire */}
         <div className="space-y-3">
           <div>
-            <h4 className="text-sm font-medium text-foreground">Dictionnaire</h4>
+            <h4 className="text-sm font-medium text-foreground">{t('settings.vocabulary.dictionary')}</h4>
             <p className="text-xs text-muted-foreground">
-              Mots ou expressions à favoriser lors de la transcription
+              {t('settings.vocabulary.dictionaryDesc')}
             </p>
           </div>
 
@@ -134,12 +136,12 @@ export function VocabularySection() {
           >
             <Input
               name="dict-word"
-              placeholder="Ajouter un mot..."
+              placeholder={t('settings.vocabulary.addWordPlaceholder')}
               className="flex-1 text-sm"
             />
             <Button type="submit" variant="outline" size="sm">
               <Plus className="w-3.5 h-3.5 mr-1.5" />
-              Ajouter
+              {t('settings.vocabulary.addWord')}
             </Button>
           </form>
         </div>

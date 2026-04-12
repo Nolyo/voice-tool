@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, RefreshCw, Check, AlertCircle, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
@@ -20,6 +21,7 @@ function Divider() {
 }
 
 export function UpdaterTab() {
+  const { t, i18n } = useTranslation();
   const {
     isChecking,
     updateInfo,
@@ -49,6 +51,8 @@ export function UpdaterTab() {
     checkUpdaterAvailability();
   }, [checkUpdaterAvailability]);
 
+  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR';
+
   return (
     <div className="space-y-3 pb-6">
       {/* Main card: version + check */}
@@ -60,7 +64,7 @@ export function UpdaterTab() {
               <Download className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Version installée</p>
+              <p className="text-xs text-muted-foreground">{t('updater.installedVersion')}</p>
               <p className="font-mono font-bold text-foreground text-base leading-tight">
                 v{currentVersion}
               </p>
@@ -75,7 +79,7 @@ export function UpdaterTab() {
             <RefreshCw
               className={`w-4 h-4 ${isChecking ? "animate-spin" : ""}`}
             />
-            {isChecking ? "Vérification..." : "Vérifier les mises à jour"}
+            {isChecking ? t('updater.checking') : t('updater.checkUpdates')}
           </Button>
         </div>
 
@@ -87,11 +91,10 @@ export function UpdaterTab() {
               <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Mises à jour automatiques indisponibles
+                  {t('updater.unavailableTitle')}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Non disponible en mode développement ou portable. Téléchargez
-                  manuellement depuis{" "}
+                  {t('updater.unavailableDesc').split('GitHub')[0]}
                   <button
                     type="button"
                     className="text-primary hover:underline"
@@ -119,10 +122,7 @@ export function UpdaterTab() {
             <div className="px-5 py-3 flex items-center gap-2.5 bg-green-500/5">
               <Check className="w-4 h-4 text-green-500 shrink-0" />
               <p className="text-sm text-green-600 dark:text-green-400 font-medium">
-                Vous êtes à jour !{" "}
-                <span className="font-normal opacity-80">
-                  Vous utilisez déjà la dernière version de Voice Tool.
-                </span>
+                {t('updater.upToDate')}
               </p>
             </div>
           </>
@@ -138,15 +138,15 @@ export function UpdaterTab() {
                   <Download className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      Nouvelle version disponible{" "}
+                      {t('updater.newVersionTitle')}{" "}
                       <span className="text-primary font-mono">
                         v{updateInfo.version}
                       </span>
                     </p>
                     {updateInfo.date && (
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Publiée le{" "}
-                        {new Date(updateInfo.date).toLocaleDateString("fr-FR", {
+                        {t('updater.publishedOn')}{" "}
+                        {new Date(updateInfo.date).toLocaleDateString(locale, {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
@@ -163,7 +163,7 @@ export function UpdaterTab() {
                     className="shrink-0"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    Installer
+                    {t('updater.install')}
                   </Button>
                 )}
               </div>
@@ -171,7 +171,7 @@ export function UpdaterTab() {
               {updateInfo.body && (
                 <div className="p-3 rounded-lg bg-muted/40 border border-border/60">
                   <p className="text-xs font-medium text-foreground mb-1.5">
-                    Notes de version
+                    {t('updater.releaseNotes')}
                   </p>
                   <div className="text-xs text-muted-foreground whitespace-pre-wrap max-h-40 overflow-y-auto">
                     {updateInfo.body}
@@ -183,7 +183,7 @@ export function UpdaterTab() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">
-                      Téléchargement en cours...
+                      {t('updater.downloading')}
                     </span>
                     <span className="font-mono font-bold text-primary tabular-nums">
                       {downloadProgress.percentage}%
@@ -216,7 +216,7 @@ export function UpdaterTab() {
               <AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Erreur lors de la vérification
+                  {t('updater.checkError')}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
               </div>
@@ -248,9 +248,9 @@ export function UpdaterTab() {
             htmlFor="auto-check-updates"
             className="text-sm text-foreground cursor-pointer leading-relaxed flex-1"
           >
-            Vérifier les mises à jour au démarrage
+            {t('updater.autoCheck')}
             <span className="block text-xs text-muted-foreground font-normal mt-0.5">
-              La vérification s'effectue 10 secondes après le lancement
+              {t('updater.autoCheckDesc')}
             </span>
           </Label>
         </div>
@@ -262,7 +262,7 @@ export function UpdaterTab() {
             htmlFor="update-channel"
             className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
           >
-            Canal de mise à jour
+            {t('updater.updateChannel')}
           </Label>
           <Select
             value={settings.update_channel ?? "stable"}
@@ -277,13 +277,12 @@ export function UpdaterTab() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="stable">Stable (Production)</SelectItem>
-              <SelectItem value="beta">Beta (Accès anticipé)</SelectItem>
+              <SelectItem value="stable">{t('updater.channelStable')}</SelectItem>
+              <SelectItem value="beta">{t('updater.channelBeta')}</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Le canal stable reçoit les versions testées. Le canal beta donne accès
-            aux nouvelles fonctionnalités plus tôt.
+            {t('updater.channelHelp')}
           </p>
         </div>
 
@@ -293,10 +292,9 @@ export function UpdaterTab() {
           <Shield className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
           <p className="text-xs text-muted-foreground leading-relaxed">
             <span className="font-medium text-foreground">
-              Mises à jour sécurisées —{" "}
+              {t('updater.secureUpdates')} —{" "}
             </span>
-            Vérifiées cryptographiquement et téléchargées depuis GitHub Releases
-            via HTTPS.
+            {t('updater.secureUpdatesDesc')}
           </p>
         </div>
       </div>

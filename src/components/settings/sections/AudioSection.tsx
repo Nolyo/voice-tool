@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Mic, RefreshCw } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,6 +16,7 @@ import { SectionCard } from "../common/SectionCard";
 import { Divider } from "../common/Divider";
 
 export function AudioSection() {
+  const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const {
     devices,
@@ -28,8 +30,8 @@ export function AudioSection() {
       id="section-audio"
       icon={<Mic className="w-3.5 h-3.5 text-blue-500" />}
       iconBg="bg-blue-500/10"
-      title="Audio"
-      subtitle="Configuration de l'enregistrement et des sons"
+      title={t('settings.audio.title')}
+      subtitle={t('settings.audio.subtitle')}
     >
       <div className="space-y-5">
         {/* Microphone */}
@@ -39,7 +41,7 @@ export function AudioSection() {
               htmlFor="microphone"
               className="text-sm font-medium text-foreground"
             >
-              Périphérique d'entrée
+              {t('settings.audio.inputDevice')}
             </Label>
             <Button
               variant="ghost"
@@ -67,24 +69,24 @@ export function AudioSection() {
               <SelectValue
                 placeholder={
                   devicesLoading
-                    ? "Chargement..."
+                    ? t('settings.audio.loadingDevices')
                     : devicesError
-                      ? "Erreur de chargement"
-                      : "Sélectionner un microphone"
+                      ? t('settings.audio.loadError')
+                      : t('settings.audio.selectDevice')
                 }
               />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="null">Par défaut (Système)</SelectItem>
+              <SelectItem value="null">{t('settings.audio.defaultDevice')}</SelectItem>
               {devices.map((device) => (
                 <SelectItem key={device.index} value={device.index.toString()}>
-                  {device.name} {device.is_default ? "(par défaut)" : ""}
+                  {device.name} {device.is_default ? t('settings.audio.defaultSuffix') : ""}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {devicesError && (
-            <p className="text-xs text-destructive">Erreur : {devicesError}</p>
+            <p className="text-xs text-destructive">{t('settings.audio.errorPrefix')} {devicesError}</p>
           )}
         </div>
 
@@ -95,7 +97,7 @@ export function AudioSection() {
               htmlFor="silence-threshold"
               className="text-sm font-medium text-foreground"
             >
-              Seuil de détection du silence
+              {t('settings.audio.silenceThreshold')}
             </Label>
             <span className="text-sm font-mono font-semibold text-primary tabular-nums">
               {(settings.silence_threshold * 100).toFixed(1)}%
@@ -114,8 +116,7 @@ export function AudioSection() {
             className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
           />
           <p className="text-xs text-muted-foreground">
-            Les enregistrements en dessous de ce seuil seront considérés comme
-            silence
+            {t('settings.audio.silenceThresholdHelp')}
           </p>
         </div>
 
@@ -138,7 +139,7 @@ export function AudioSection() {
               htmlFor="interface-sounds"
               className="text-sm text-foreground cursor-pointer flex-1"
             >
-              Sons d'interface
+              {t('settings.audio.interfaceSounds')}
             </Label>
           </div>
 
@@ -162,7 +163,7 @@ export function AudioSection() {
               htmlFor="show-listen"
               className="text-sm text-foreground cursor-pointer flex-1"
             >
-              Bouton Écouter dans l'historique
+              {t('settings.audio.historyAudioPreview')}
             </Label>
           </div>
         </div>

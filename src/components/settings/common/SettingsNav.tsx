@@ -1,65 +1,69 @@
 import type { ReactNode, RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import { BookOpen, Keyboard, Mic, RefreshCw, Settings } from "lucide-react";
 
-export interface NavItem {
+export interface NavItemDef {
   id: string;
   icon: ReactNode;
   iconBg: string;
-  title: string;
-  subtitle: string;
+  titleKey: string;
+  subtitleKey: string;
 }
 
-export const NAV_ITEMS: NavItem[] = [
+export const NAV_ITEM_DEFS: NavItemDef[] = [
   {
     id: "section-transcription",
     icon: <Settings className="w-3.5 h-3.5 text-violet-500" />,
     iconBg: "bg-violet-500/10",
-    title: "IA",
-    subtitle: "Transcription & notes intelligentes",
+    titleKey: "settings.nav.ai",
+    subtitleKey: "settings.nav.aiSubtitle",
   },
   {
     id: "section-audio",
     icon: <Mic className="w-3.5 h-3.5 text-blue-500" />,
     iconBg: "bg-blue-500/10",
-    title: "Audio",
-    subtitle: "Enregistrement et sons",
+    titleKey: "settings.nav.audio",
+    subtitleKey: "settings.nav.audioSubtitle",
   },
   {
     id: "section-texte",
     icon: <span className="text-xs font-bold text-emerald-500 leading-none">T</span>,
     iconBg: "bg-emerald-500/10",
-    title: "Texte",
-    subtitle: "Formatage et insertion",
+    titleKey: "settings.nav.text",
+    subtitleKey: "settings.nav.textSubtitle",
   },
   {
     id: "section-vocabulaire",
     icon: <BookOpen className="w-3.5 h-3.5 text-cyan-500" />,
     iconBg: "bg-cyan-500/10",
-    title: "Vocabulaire",
-    subtitle: "Snippets et mots",
+    titleKey: "settings.nav.vocabulary",
+    subtitleKey: "settings.nav.vocabularySubtitle",
   },
   {
     id: "section-systeme",
     icon: <Settings className="w-3.5 h-3.5 text-orange-500" />,
     iconBg: "bg-orange-500/10",
-    title: "Système",
-    subtitle: "Démarrage et fichiers",
+    titleKey: "settings.nav.system",
+    subtitleKey: "settings.nav.systemSubtitle",
   },
   {
     id: "section-raccourcis",
     icon: <Keyboard className="w-3.5 h-3.5 text-rose-500" />,
     iconBg: "bg-rose-500/10",
-    title: "Raccourcis",
-    subtitle: "Touches de commande",
+    titleKey: "settings.nav.shortcuts",
+    subtitleKey: "settings.nav.shortcutsSubtitle",
   },
   {
     id: "section-mises-a-jour",
     icon: <RefreshCw className="w-3.5 h-3.5 text-sky-500" />,
     iconBg: "bg-sky-500/10",
-    title: "Mises à jour",
-    subtitle: "Nouvelles versions",
+    titleKey: "settings.nav.updates",
+    subtitleKey: "settings.nav.updatesSubtitle",
   },
 ];
+
+// Keep backward compat alias
+export const NAV_ITEMS = NAV_ITEM_DEFS;
 
 interface SettingsNavProps {
   activeId: string;
@@ -67,6 +71,8 @@ interface SettingsNavProps {
 }
 
 export function SettingsNav({ activeId, scrollContainer }: SettingsNavProps) {
+  const { t } = useTranslation();
+
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (!el || !scrollContainer.current) return;
@@ -77,7 +83,7 @@ export function SettingsNav({ activeId, scrollContainer }: SettingsNavProps) {
 
   return (
     <nav className="w-48 shrink-0 sticky top-0 self-start space-y-0.5 pt-0.5">
-      {NAV_ITEMS.map((item) => (
+      {NAV_ITEM_DEFS.map((item) => (
         <button
           key={item.id}
           type="button"
@@ -99,10 +105,10 @@ export function SettingsNav({ activeId, scrollContainer }: SettingsNavProps) {
                 activeId === item.id ? "text-foreground" : ""
               }`}
             >
-              {item.title}
+              {t(item.titleKey)}
             </p>
             <p className="text-[10px] text-muted-foreground leading-tight mt-0.5 truncate">
-              {item.subtitle}
+              {t(item.subtitleKey)}
             </p>
           </div>
         </button>

@@ -83,7 +83,8 @@ pub fn run() {
             transcriptions::update_transcription,
             logs::list_logs,
             logs::save_log,
-            logs::clear_logs
+            logs::clear_logs,
+            tray::update_tray_labels
         ])
         .setup(move |app| {
             // Enable logging to frontend

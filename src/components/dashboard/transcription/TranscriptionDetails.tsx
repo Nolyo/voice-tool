@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Mic, Copy, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ export function TranscriptionDetails({
   transcription,
   onCopy,
 }: TranscriptionDetailsProps) {
+  const { t } = useTranslation();
   const { settings } = useSettings();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -55,12 +57,12 @@ export function TranscriptionDetails({
 
   const handleListen = useCallback(async () => {
     if (!transcription?.audioPath) {
-      alert("Aucun enregistrement audio associé à cette transcription.");
+      alert(t('transcriptionDetails.noAudio'));
       return;
     }
 
     if (!settings.enable_history_audio_preview) {
-      alert("La pré-écoute audio est désactivée dans les paramètres.");
+      alert(t('transcriptionDetails.previewDisabled'));
       return;
     }
 
@@ -83,7 +85,7 @@ export function TranscriptionDetails({
       const bytes =
         rawData instanceof Uint8Array ? rawData : new Uint8Array(rawData);
       if (!bytes || bytes.length === 0) {
-        throw new Error("Fichier audio vide");
+        throw new Error("Empty audio file");
       }
 
       const audioBlob = new Blob([bytes], { type: "audio/wav" });
@@ -104,7 +106,7 @@ export function TranscriptionDetails({
 
       audio.onerror = () => {
         console.error("Audio playback error");
-        alert("Impossible de lire l'audio.");
+        alert(t('transcriptionDetails.playbackError'));
         stopPlayback();
       };
 
@@ -112,7 +114,7 @@ export function TranscriptionDetails({
       setIsPlaying(true);
     } catch (error: unknown) {
       console.error("Failed to play audio preview:", error);
-      alert("Impossible de lire l'audio.");
+      alert(t('transcriptionDetails.playbackError'));
       stopPlayback();
     } finally {
       setIsLoading(false);
@@ -122,6 +124,7 @@ export function TranscriptionDetails({
     settings.enable_history_audio_preview,
     isPlaying,
     stopPlayback,
+    t,
   ]);
 
   const canListen =
@@ -129,25 +132,25 @@ export function TranscriptionDetails({
 
   return (
     <Card className="p-6 sticky top-24">
-      <h3 className="text-sm font-semibold text-foreground mb-4">Détails</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-4">{t('transcriptionDetails.details')}</h3>
       {transcription ? (
         <div className="space-y-4">
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Date et heure</p>
+            <p className="text-xs text-muted-foreground mb-1">{t('transcriptionDetails.dateTime')}</p>
             <p className="text-sm font-mono text-foreground">
               {transcription.date} {transcription.time}
             </p>
           </div>
           {transcription.apiCost !== undefined && (
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Coût</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('transcriptionDetails.cost')}</p>
               <p className="text-sm font-mono text-foreground">
-                {transcription.apiCost === 0 ? "Gratuit" : `$${transcription.apiCost.toFixed(4)} USD`}
+                {transcription.apiCost === 0 ? t('transcriptionDetails.free') : `$${transcription.apiCost.toFixed(4)} USD`}
               </p>
             </div>
           )}
           <div>
-            <p className="text-xs text-muted-foreground mb-2">Transcription</p>
+            <p className="text-xs text-muted-foreground mb-2">{t('transcriptionDetails.transcription')}</p>
             <p className="text-sm text-foreground leading-relaxed bg-muted/50 p-4 rounded-lg">
               {transcription.text}
             </p>
@@ -158,7 +161,7 @@ export function TranscriptionDetails({
               className="w-full cursor-pointer dark:hover:border-blue-800"
             >
               <Copy className="w-4 h-4 mr-2" />
-              Copier
+              {t('transcriptionDetails.copy')}
             </Button>
             <Button
               variant="outline"
@@ -171,17 +174,17 @@ export function TranscriptionDetails({
               ) : (
                 <Play className="w-4 h-4 mr-2" />
               )}
-              {isPlaying ? "Arrêter" : "Écouter"}
+              {isPlaying ? t('transcriptionDetails.stop') : t('transcriptionDetails.listen')}
             </Button>
             {transcription.audioPath &&
               !settings.enable_history_audio_preview && (
                 <p className="text-xs text-muted-foreground">
-                  Pré-écoute désactivée dans les paramètres audio.
+                  {t('transcriptionDetails.previewDisabledHelp')}
                 </p>
               )}
             {!transcription.audioPath && (
               <p className="text-xs text-muted-foreground">
-                Aucun audio sauvegardé pour cette transcription.
+                {t('transcriptionDetails.noAudioHelp')}
               </p>
             )}
           </div>
@@ -192,7 +195,7 @@ export function TranscriptionDetails({
             <Mic className="w-6 h-6 text-muted-foreground" />
           </div>
           <p className="text-sm text-muted-foreground">
-            Sélectionnez une transcription pour voir les détails
+            {t('transcriptionDetails.emptyState')}
           </p>
         </div>
       )}

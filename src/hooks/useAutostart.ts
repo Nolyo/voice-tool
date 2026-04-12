@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
 
 /**
  * Manage Windows autostart toggle state. Loads current value on mount and
  * exposes a `toggle` callback that persists to the OS via Tauri.
  */
 export function useAutostart() {
+  const { t } = useTranslation();
   const [enabled, setEnabled] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -28,7 +30,7 @@ export function useAutostart() {
       setEnabled(checked);
     } catch (error) {
       console.error("Failed to update autostart:", error);
-      alert(`Erreur lors de la mise à jour du démarrage automatique: ${error}`);
+      alert(t('errors.autostartError', { error }));
     } finally {
       setIsUpdating(false);
     }

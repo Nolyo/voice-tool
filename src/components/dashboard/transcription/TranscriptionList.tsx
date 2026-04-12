@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, Copy, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ export function TranscriptionList({
   onDelete,
   onClearAll,
 }: TranscriptionListProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredTranscriptions = useMemo(() => {
@@ -46,7 +48,7 @@ export function TranscriptionList({
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher dans les transcriptions..."
+              placeholder={t('history.search')}
               value={searchQuery}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setSearchQuery(e.target.value)
@@ -62,7 +64,7 @@ export function TranscriptionList({
               onClick={() => {
                 if (
                   confirm(
-                    `Supprimer toutes les ${transcriptions.length} transcriptions ?`
+                    t('history.deleteAllConfirm', { count: transcriptions.length })
                   )
                 ) {
                   onClearAll();
@@ -70,7 +72,7 @@ export function TranscriptionList({
               }}
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Tout effacer
+              {t('history.deleteAll')}
             </Button>
           )}
         </div>
@@ -81,11 +83,11 @@ export function TranscriptionList({
             <div className="py-12 text-center text-muted-foreground">
               <p>
                 {searchQuery
-                  ? "Aucune transcription trouvée"
-                  : "Aucune transcription pour le moment"}
+                  ? t('history.emptySearch')
+                  : t('history.empty')}
               </p>
               <p className="text-sm mt-2">
-                Enregistrez votre premier audio pour commencer
+                {t('history.emptySubtitle')}
               </p>
             </div>
           ) : (
@@ -132,7 +134,7 @@ export function TranscriptionList({
                         size="sm"
                         onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
-                          if (confirm("Supprimer cette transcription ?")) {
+                          if (confirm(t('history.deleteConfirm'))) {
                             onDelete(transcription.id);
                           }
                         }}
@@ -151,8 +153,7 @@ export function TranscriptionList({
         {transcriptions.length > 0 && (
           <div className="pt-4 border-t">
             <span className="text-sm text-muted-foreground">
-              {transcriptions.length} transcription
-              {transcriptions.length > 1 ? "s" : ""}
+              {t('history.count', { count: transcriptions.length })}
             </span>
           </div>
         )}

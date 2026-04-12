@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { listen, emit } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import i18n from "@/i18n";
 
 export type WindowStatus =
   | "idle"
@@ -66,6 +67,7 @@ export function useMiniWindowState() {
     let unlistenTranscriptionSuccessFn: (() => void) | null = null;
     let unlistenTranscriptionErrorFn: (() => void) | null = null;
     let unlistenTranslateModeChangedFn: (() => void) | null = null;
+    let unlistenLanguageChangedFn: (() => void) | null = null;
 
     const setupListeners = async () => {
       try {
@@ -84,6 +86,14 @@ export function useMiniWindowState() {
           "translate-mode-changed",
           (event) => {
             setTranslateMode(event.payload);
+          },
+        );
+
+        // Sync i18n language with main window
+        unlistenLanguageChangedFn = await listen<string>(
+          "language-changed",
+          (event) => {
+            i18n.changeLanguage(event.payload);
           },
         );
 

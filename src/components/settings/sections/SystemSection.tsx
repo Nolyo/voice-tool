@@ -1,14 +1,24 @@
+import { useTranslation } from "react-i18next";
 import { Minus, Plus, Settings } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSettings } from "@/hooks/useSettings";
 import { useAutostart } from "@/hooks/useAutostart";
+import { changeLanguage } from "@/i18n";
 import { SectionCard } from "../common/SectionCard";
 import { Divider } from "../common/Divider";
 
 export function SystemSection() {
+  const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { enabled: autoStartEnabled, isUpdating: isUpdatingAutostart, toggle } =
     useAutostart();
@@ -18,10 +28,37 @@ export function SystemSection() {
       id="section-systeme"
       icon={<Settings className="w-3.5 h-3.5 text-orange-500" />}
       iconBg="bg-orange-500/10"
-      title="Système"
-      subtitle="Démarrage et gestion des fichiers"
+      title={t('settings.system.title')}
+      subtitle={t('settings.system.subtitle')}
     >
       <div className="space-y-5">
+        {/* Language selector */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            {t('settings.system.language')}
+          </Label>
+          <Select
+            value={settings.ui_language}
+            onValueChange={async (value) => {
+              await updateSetting("ui_language", value as "fr" | "en");
+              changeLanguage(value);
+            }}
+          >
+            <SelectTrigger className="h-9 bg-background/50 w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="fr">Français</SelectItem>
+              <SelectItem value="en">English</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {t('settings.system.languageDesc')}
+          </p>
+        </div>
+
+        <Divider />
+
         {/* Autostart */}
         <div className="space-y-1">
           <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors">
@@ -35,10 +72,10 @@ export function SystemSection() {
               htmlFor="auto-start"
               className="text-sm text-foreground cursor-pointer flex-1"
             >
-              Démarrer avec Windows
+              {t('settings.system.startWithWindows')}
               {isUpdatingAutostart && (
                 <span className="text-muted-foreground ml-1 text-xs">
-                  (mise à jour...)
+                  {t('settings.system.updating')}
                 </span>
               )}
             </Label>
@@ -57,7 +94,7 @@ export function SystemSection() {
                 htmlFor="start-minimized"
                 className="text-sm text-muted-foreground cursor-pointer flex-1"
               >
-                Démarrer minimisé dans la barre système
+                {t('settings.system.startMinimized')}
               </Label>
             </div>
           )}
@@ -83,7 +120,7 @@ export function SystemSection() {
             htmlFor="hide-recording-panel"
             className="text-sm text-foreground cursor-pointer flex-1"
           >
-            Masquer le panneau d'enregistrement
+            {t('settings.system.hideRecordingPanel')}
           </Label>
         </div>
 
@@ -95,7 +132,7 @@ export function SystemSection() {
             htmlFor="keep-recordings"
             className="text-sm font-medium text-foreground"
           >
-            Enregistrements conservés (WAV)
+            {t('settings.system.recordingsKeep')}
           </Label>
           <div className="flex items-center gap-2">
             <Button
@@ -138,7 +175,7 @@ export function SystemSection() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Nombre de fichiers audio à conserver localement
+            {t('settings.system.recordingsKeepHelp')}
           </p>
         </div>
       </div>

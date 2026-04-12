@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Store } from "@tauri-apps/plugin-store";
+import { emit } from "@tauri-apps/api/event";
 import { AppSettings, DEFAULT_SETTINGS, mergeSettings } from "@/lib/settings";
+import { changeLanguage } from "@/i18n";
 
 let store: Store | null = null;
 
@@ -56,6 +58,19 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           }
 
           setSettings(merged);
+
+          // Sync i18n language with stored setting
+          if (merged.settings.ui_language) {
+            await changeLanguage(merged.settings.ui_language);
+            // Update tray labels on startup
+            try {
+              const { invoke } = await import("@tauri-apps/api/core");
+              await invoke("update_tray_labels", {
+                showLabel: merged.settings.ui_language === "en" ? "Show" : "Afficher",
+                quitLabel: merged.settings.ui_language === "en" ? "Quit" : "Quitter",
+              });
+            } catch {}
+          }
         } else {
           // First time: save default settings
           await storeInstance.set("settings", DEFAULT_SETTINGS);
@@ -92,6 +107,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       };
 
       setSettings(newSettings);
+
+      // Sync i18n language when ui_language changes
+      if (key === "ui_language" && typeof value === "string") {
+        await changeLanguage(value);
+        // Notify mini window to sync its i18n instance
+        try { await emit("language-changed", value); } catch {}
+        // Update tray menu labels to match new language
+        try {
+          const { invoke } = await import("@tauri-apps/api/core");
+          await invoke("update_tray_labels", {
+            showLabel: value === "en" ? "Show" : "Afficher",
+            quitLabel: value === "en" ? "Quit" : "Quitter",
+          });
+        } catch {}
+      }
+
       await storeInstance.set("settings", newSettings);
       await storeInstance.save();
     } catch (error) {

@@ -13,7 +13,7 @@ pub fn is_autostart_enabled(app_handle: AppHandle) -> Result<bool, String> {
     let autostart_manager = app_handle.autolaunch();
     autostart_manager.is_enabled().map_err(|e| {
         format!(
-            "Impossible de vérifier l'état du démarrage automatique: {}",
+            "Failed to check autostart status: {}",
             e
         )
     })
@@ -29,13 +29,13 @@ pub fn set_autostart(app_handle: AppHandle, enable: bool) -> Result<(), String> 
     if enable {
         autostart_manager
             .enable()
-            .map_err(|e| format!("Impossible d'activer le démarrage automatique: {}", e))?;
+            .map_err(|e| format!("Failed to enable autostart: {}", e))?;
     } else {
         if let Err(e) = autostart_manager.disable() {
             let error_msg = e.to_string();
             if !error_msg.contains("os error 2") && !error_msg.contains("not found") {
                 return Err(format!(
-                    "Impossible de désactiver le démarrage automatique: {}",
+                    "Failed to disable autostart: {}",
                     e
                 ));
             }

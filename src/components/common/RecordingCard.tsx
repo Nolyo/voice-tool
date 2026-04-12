@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { Mic } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { AudioVisualizer } from "./AudioVisualizer"
@@ -12,6 +13,7 @@ interface RecordingCardProps {
 }
 
 export function RecordingCard({ isRecording, isTranscribing = false, onToggleRecording }: RecordingCardProps) {
+  const { t } = useTranslation();
   const [duration, setDuration] = useState(0)
 
   useEffect(() => {
@@ -63,17 +65,17 @@ export function RecordingCard({ isRecording, isTranscribing = false, onToggleRec
         <div className="text-center space-y-2">
           <p className="text-lg font-medium text-foreground">
             {isTranscribing
-              ? "Transcription en cours..."
+              ? t('recording.transcribing')
               : isRecording
-                ? "Enregistrement en cours..."
-                : "Cliquez pour commencer"}
+                ? t('recording.recording')
+                : t('recording.clickToStart')}
           </p>
           <p className="text-sm text-muted-foreground">
             {isTranscribing
-              ? "Traitement de votre audio avec OpenAI Whisper..."
+              ? t('recording.transcribingDetail')
               : isRecording
-                ? "Parlez clairement dans votre microphone"
-                : "Votre transcription apparaîtra automatiquement"}
+                ? t('recording.recordingDetail')
+                : t('recording.idleDetail')}
           </p>
         </div>
 

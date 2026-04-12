@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettings } from "@/hooks/useSettings";
+import { useTranslation } from "react-i18next";
 
 export type HotkeyKey =
   | "record_hotkey"
@@ -14,6 +15,7 @@ export type HotkeyKey =
  * global shortcuts atomically), then saves the updated key in settings.
  */
 export function useHotkeyConfig() {
+  const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
 
   const handleHotkeyChange = useCallback(
@@ -24,7 +26,7 @@ export function useHotkeyConfig() {
         .filter(Boolean)
         .join("+");
 
-      if (!normalized) throw new Error("Le raccourci ne peut pas être vide.");
+      if (!normalized) throw new Error(t('errors.hotkeyEmpty'));
 
       const currentValue = settings[key];
       if (

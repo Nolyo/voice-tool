@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ export function NotesEditorTitleBar({
   onTabClose,
   onCreateNote,
 }: NotesEditorTitleBarProps) {
+  const { t } = useTranslation();
   const editorText = editor?.getText() ?? "";
 
   return (
@@ -57,7 +59,7 @@ export function NotesEditorTitleBar({
           size="sm"
           className="h-6 w-6 p-0 shrink-0 text-foreground"
           onClick={onCreateNote}
-          title="Nouvelle note"
+          title={t('notes.newNote')}
         >
           <Plus className="w-3.5 h-3.5" />
         </Button>

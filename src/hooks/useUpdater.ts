@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useTranslation } from "react-i18next";
 
 export interface UpdateInfo {
   version: string;
@@ -16,6 +17,7 @@ export interface DownloadProgress {
 }
 
 export function useUpdater() {
+  const { t } = useTranslation();
   const [isChecking, setIsChecking] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -50,7 +52,7 @@ export function useUpdater() {
       // First check if updater is available
       const available = await checkUpdaterAvailability();
       if (!available) {
-        setError("Mise à jour non disponible en mode développement ou portable");
+        setError(t('errors.updaterUnavailable'));
         return null;
       }
 

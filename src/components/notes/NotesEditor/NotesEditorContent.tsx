@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { Loader2 } from "lucide-react";
@@ -25,10 +26,12 @@ export function NotesEditorContent({
   ai,
   linkEditor,
 }: NotesEditorContentProps) {
+  const { t } = useTranslation();
+
   if (!hasActiveNote) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-        Aucune note ouverte
+        {t('notes.editor.noNote')}
       </div>
     );
   }
@@ -62,7 +65,7 @@ export function NotesEditorContent({
       {ai.state === "loading" && (
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-sm text-muted-foreground bg-card/80 px-3 py-1.5 rounded-md">
-            Traitement en cours...
+            {t('notes.editor.processing')}
           </span>
         </div>
       )}
