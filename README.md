@@ -143,57 +143,36 @@ Les modèles sont téléchargés automatiquement depuis Hugging Face lors de la 
 
 ## 🚢 Créer une nouvelle release
 
-### Étape 1 — Bumper la version
-
-Lancer le script de bump depuis la racine du projet (nécessite Git Bash ou WSL) :
-
-```bash
-.github/scripts/bump-version.sh 2.x.x
-```
-
-Ce script met à jour la version dans `package.json`, `src-tauri/Cargo.toml` et `src-tauri/tauri.conf.json`.
-
-### Étape 2 — Régénérer le Cargo.lock
-
-Cette étape n'est plus nécessaire, le Cargo.Lock est généré dans le bump-version.sh
-
-### Étape 3 — Commit et push
+Toutes les étapes (bump de version, commit, push, build signé, publication GitHub) sont orchestrées par un seul script :
 
 ```powershell
-git add -A
-git commit -m "chore: bump version to 2.x.x"
-git push
+# Release stable
+.\make-release.ps1 -Version 2.10.0
+
+# Release bêta
+.\make-release.ps1 -Version 2.10.0-beta.1 -Beta
+
+# Dry-run (build inclus, pas de tag ni de release GitHub)
+.\make-release.ps1 -Version 2.10.0 -DryRun
 ```
 
-### Étape 4 — Build signé local (et release GitHub)
+Le script effectue dans l'ordre :
 
-Lancer le script de release qui build avec signature, génère les artefacts et publie la release sur GitHub :
+1. Validation du format de version (`X.Y.Z` stable, `X.Y.Z-beta.N` bêta)
+2. Vérification que la branche est `main` et l'arbre propre
+3. Mise à jour de la version dans `package.json`, `src-tauri/Cargo.toml` et `src-tauri/tauri.conf.json`
+4. Régénération du `Cargo.lock` via `cargo check`
+5. Commit : `chore: bump version to X.Y.Z`
+6. Push vers `origin/main`
+7. Build des installateurs signés (NSIS + portable ; MSI ignoré pour les bêtas)
+8. Création du tag `vX.Y.Z` et push
+9. Publication de la release sur GitHub avec les artefacts, `latest.json` et checksums SHA256
+10. Pour les bêtas : mise à jour de `latest-beta.json` sur la dernière release stable
+11. Régénération de `docs/releases.json`
 
-```powershell
-.\release.ps1
-```
-
-Ce script :
-1. Lit la version depuis `tauri.conf.json`
-2. Charge la clé privée (`src-tauri/private.key`)
-3. Build les installateurs signés (NSIS, MSI, portable)
-4. Crée le tag Git `vX.Y.Z` et le pousse
-5. Publie la release sur GitHub avec les artefacts et le `latest.json` pour l'auto-updater
-
-> **Prérequis** : La clé privée doit être présente dans `src-tauri/private.key` et `gh` (GitHub CLI) doit être authentifié.
+> **Prérequis** : clé privée présente dans `src-tauri/private.key` et `gh` (GitHub CLI) authentifié.
 
 > Pour un build signé local **sans** publier de release, utiliser `build-signed.ps1` à la place.
-
-## Créer une beta release
-
-```powershell
-.github\scripts\bump-version.sh -beta 2.9.0-beta.1
-
-git add -A ; git commit -m "chore: bump version to 2.9.0-beta.1"
-git push
-
-.\release.ps1 -Prerelease
-```
 
 ## ⚠️ Notes importantes
 
