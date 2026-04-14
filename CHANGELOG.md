@@ -1,4 +1,17 @@
 
+## [2.10.0] - 2026-04-14
+
+### ✨ Added
+- Universal GPU acceleration via Vulkan backend - local transcription now uses GPU automatically on NVIDIA, AMD, and Intel hardware without requiring any additional installation
+- Automatic CPU fallback when no compatible GPU is detected, ensuring the app runs on any Windows machine
+
+### 🔧 Changed
+- Switched local transcription engine from CUDA to Vulkan - no NVIDIA CUDA runtime required anymore
+- Streamlined installer: only the recommended NSIS setup (voice-tool_x.x.x_x64-setup.exe) is now distributed, removing the MSI and portable variants that caused confusion with auto-updates
+
+### ℹ️ Note
+- The first transcription after installation may take longer than usual while GPU shaders are compiled and cached - subsequent transcriptions are fast as normal
+
 ## [2.9.0] - 2026-04-12
 
 ### ✨ Added

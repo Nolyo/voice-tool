@@ -48,7 +48,7 @@ hound = "3.5"
 reqwest = { version = "0.12", features = ["multipart", "json", "stream"] }
 
 # Local Transcription (native whisper-rs with model caching)
-whisper-rs = { version = "0.14", features = ["cuda"] }
+whisper-rs = { version = "0.14", features = ["vulkan"] }
 rubato = "0.15"
 tauri-plugin-fs = "2"
 
