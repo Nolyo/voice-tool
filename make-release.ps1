@@ -118,13 +118,16 @@ $env:PATH          = $env:PATH + ";C:\Program Files\CMake\bin"
 
 Push-Location "src-tauri"
 try {
-    cargo check --quiet 2>&1 | Out-Null
+    $ErrorActionPreference = "Continue"
+    cargo check --quiet
+    $ErrorActionPreference = "Stop"
     if ($LASTEXITCODE -ne 0) {
         Write-Warn "cargo check exited $LASTEXITCODE - Cargo.lock may not be fully updated, continuing anyway."
     } else {
         Write-Ok "Cargo.lock updated"
     }
 } finally {
+    $ErrorActionPreference = "Stop"
     Pop-Location
     $env:LIBCLANG_PATH = $origLibclang
     $env:PATH          = $origPath
