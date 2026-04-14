@@ -90,6 +90,25 @@ Write-Ok "Tag '$TAG' is free"
 
 Write-Step "Building application (pnpm tauri build)"
 
+# Ensure native build dependencies are available (LLVM/bindgen, cmake, Vulkan SDK)
+if (-not $env:LIBCLANG_PATH) { $env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin" }
+if ($env:PATH -notlike "*CMake*") { $env:PATH = $env:PATH + ";C:\Program Files\CMake\bin" }
+if (-not $env:VULKAN_SDK) {
+    $vulkanSdkReg = (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment' -Name VULKAN_SDK -ErrorAction SilentlyContinue).VULKAN_SDK
+    if ($vulkanSdkReg) {
+        $env:VULKAN_SDK = $vulkanSdkReg
+        Write-Ok "VULKAN_SDK set from registry: $env:VULKAN_SDK"
+    } else {
+        $sdkDir = Get-ChildItem "C:\VulkanSDK" -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+        if ($sdkDir) {
+            $env:VULKAN_SDK = $sdkDir.FullName
+            Write-Ok "VULKAN_SDK auto-detected: $env:VULKAN_SDK"
+        } else {
+            Write-Fail "VULKAN_SDK not found. Install the Vulkan SDK from https://vulkan.lunarg.com and reopen your terminal."
+        }
+    }
+}
+
 $privateKeyContent = Get-Content $privateKey -Raw
 $env:TAURI_SIGNING_PRIVATE_KEY = $privateKeyContent.Trim()
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
