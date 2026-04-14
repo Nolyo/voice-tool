@@ -85,7 +85,7 @@ $currentVersion = $Matches[1]
 Write-Ok "Current version: $currentVersion"
 
 if ($currentVersion -eq $Version) {
-    Write-Fail "Version is already $Version — nothing to bump."
+    Write-Fail "Version is already $Version - nothing to bump."
 }
 
 foreach ($file in $filesToBump) {
@@ -120,7 +120,7 @@ Push-Location "src-tauri"
 try {
     cargo check --quiet 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        Write-Warn "cargo check exited $LASTEXITCODE — Cargo.lock may not be fully updated, continuing anyway."
+        Write-Warn "cargo check exited $LASTEXITCODE - Cargo.lock may not be fully updated, continuing anyway."
     } else {
         Write-Ok "Cargo.lock updated"
     }
