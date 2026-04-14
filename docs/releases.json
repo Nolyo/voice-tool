@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/voice-tool",
-  "generated_at": "2026-04-12T15:26:00.018Z",
+  "generated_at": "2026-04-14T16:48:09.077Z",
   "latest": {
     "version": "2.9.0",
     "tag": "v2.9.0",
@@ -24,7 +24,7 @@
         "size_bytes": 15690660,
         "size_human": "15 MB",
         "sha256": "ee3de88785d65259e657113f67b82efddea9f74a6d3c3374334f3cb3e6001c53",
-        "download_count": 0
+        "download_count": 1
       },
       "msi_installer": {
         "filename": "voice-tool-v2.9.0-setup.msi",
@@ -32,7 +32,7 @@
         "size_bytes": 28061696,
         "size_human": "26.8 MB",
         "sha256": "89fcf7265ba6fb656bb82b52c324412818626b5c8ace2e4f142a5413ad2a50ce",
-        "download_count": 0
+        "download_count": 1
       }
     }
   },
@@ -58,7 +58,7 @@
           "size_bytes": 15690660,
           "size_human": "15 MB",
           "sha256": "ee3de88785d65259e657113f67b82efddea9f74a6d3c3374334f3cb3e6001c53",
-          "download_count": 0
+          "download_count": 1
         },
         "msi_installer": {
           "filename": "voice-tool-v2.9.0-setup.msi",
@@ -66,7 +66,7 @@
           "size_bytes": 28061696,
           "size_human": "26.8 MB",
           "sha256": "89fcf7265ba6fb656bb82b52c324412818626b5c8ace2e4f142a5413ad2a50ce",
-          "download_count": 0
+          "download_count": 1
         }
       }
     },
@@ -248,7 +248,7 @@
           "size_bytes": 90712576,
           "size_human": "86.5 MB",
           "sha256": "4948f1fb440243fa0096971d4221790b5cd864ea4bd2bacbc6deaac53dd5688a",
-          "download_count": 2
+          "download_count": 3
         },
         "nsis_installer": {
           "filename": "voice-tool-v2.6.0-setup.exe",
@@ -264,7 +264,7 @@
           "size_bytes": 27922432,
           "size_human": "26.6 MB",
           "sha256": "d6b916512492e2809047e1cc5f5316363705fbbdcc40fcbf2aca9475b4615b78",
-          "download_count": 1
+          "download_count": 2
         }
       }
     },
@@ -696,7 +696,7 @@
           "size_bytes": 18046976,
           "size_human": "17.2 MB",
           "sha256": "f4cda610c9f7a8a8b1d56ed1cbfdc93a610ad94c02a78f649531d03ed48c3849",
-          "download_count": 2
+          "download_count": 3
         },
         "nsis_installer": {
           "filename": "voice-tool-v-2.0.2-setup.exe",
