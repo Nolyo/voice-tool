@@ -84,86 +84,88 @@ if ($packageJson -notmatch '"version":\s*"([^"]+)"') {
 $currentVersion = $Matches[1]
 Write-Ok "Current version: $currentVersion"
 
-if ($currentVersion -eq $Version) {
-    Write-Fail "Version is already $Version - nothing to bump."
-}
+$alreadyBumped = ($currentVersion -eq $Version)
 
-foreach ($file in $filesToBump) {
-    if (-not (Test-Path $file)) { Write-Fail "File not found: $file" }
-    $content = Get-Content $file -Raw
-    $updated = $content -replace [regex]::Escape("`"version`": `"$currentVersion`""), "`"version`": `"$Version`""
-
-    # Cargo.toml uses a different format for the top-level version line
-    if ($file -eq "src-tauri\Cargo.toml") {
-        $updated = $content -replace "(?m)^version = `"$([regex]::Escape($currentVersion))`"", "version = `"$Version`""
-    }
-
-    if ($content -eq $updated) {
-        Write-Warn "$file : version string not found / already updated"
-    } else {
-        [System.IO.File]::WriteAllText((Resolve-Path $file).Path, $updated, [System.Text.Encoding]::UTF8)
-        Write-Ok "$file updated"
-    }
-}
-
-# ── Step 4: Update Cargo.lock ──────────────────────────────────────────────────
-
-Write-Step "Updating Cargo.lock"
-
-$origLibclang = $env:LIBCLANG_PATH
-$origPath     = $env:PATH
-
-$env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin"
-$env:PATH          = $env:PATH + ";C:\Program Files\CMake\bin"
-
-Push-Location "src-tauri"
-try {
-    $ErrorActionPreference = "Continue"
-    cargo check --quiet
-    $ErrorActionPreference = "Stop"
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warn "cargo check exited $LASTEXITCODE - Cargo.lock may not be fully updated, continuing anyway."
-    } else {
-        Write-Ok "Cargo.lock updated"
-    }
-} finally {
-    $ErrorActionPreference = "Stop"
-    Pop-Location
-    $env:LIBCLANG_PATH = $origLibclang
-    $env:PATH          = $origPath
-}
-
-# ── Step 5: Commit ─────────────────────────────────────────────────────────────
-
-Write-Step "Committing version bump"
-
-git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json src-tauri/Cargo.lock
-if ($LASTEXITCODE -ne 0) { Write-Fail "git add failed" }
-
-$commitMsg = "chore: bump version to $Version"
-git commit -m $commitMsg
-if ($LASTEXITCODE -ne 0) { Write-Fail "git commit failed" }
-Write-Ok "Committed: $commitMsg"
-
-# ── Step 6: Push ───────────────────────────────────────────────────────────────
-
-Write-Step "Pushing to origin/main"
-
-if ($DryRun) {
-    Write-Warn "[DRY RUN] Skipping git push"
+if ($alreadyBumped) {
+    Write-Warn "Version is already $Version - skipping bump, Cargo.lock update, commit and push."
 } else {
-    git push origin main
-    if ($LASTEXITCODE -ne 0) { Write-Fail "git push failed" }
-    Write-Ok "Pushed to origin/main"
-}
+    foreach ($file in $filesToBump) {
+        if (-not (Test-Path $file)) { Write-Fail "File not found: $file" }
+        $content = Get-Content $file -Raw
+        $updated = $content -replace [regex]::Escape("`"version`": `"$currentVersion`""), "`"version`": `"$Version`""
+
+        # Cargo.toml uses a different format for the top-level version line
+        if ($file -eq "src-tauri\Cargo.toml") {
+            $updated = $content -replace "(?m)^version = `"$([regex]::Escape($currentVersion))`"", "version = `"$Version`""
+        }
+
+        if ($content -eq $updated) {
+            Write-Warn "$file : version string not found / already updated"
+        } else {
+            [System.IO.File]::WriteAllText((Resolve-Path $file).Path, $updated, (New-Object System.Text.UTF8Encoding $false))
+            Write-Ok "$file updated"
+        }
+    }
+
+    # ── Step 4: Update Cargo.lock ──────────────────────────────────────────────────
+
+    Write-Step "Updating Cargo.lock"
+
+    $origLibclang = $env:LIBCLANG_PATH
+    $origPath     = $env:PATH
+
+    $env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin"
+    $env:PATH          = $env:PATH + ";C:\Program Files\CMake\bin"
+
+    Push-Location "src-tauri"
+    try {
+        $ErrorActionPreference = "Continue"
+        cargo check --quiet
+        $ErrorActionPreference = "Stop"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "cargo check exited $LASTEXITCODE - Cargo.lock may not be fully updated, continuing anyway."
+        } else {
+            Write-Ok "Cargo.lock updated"
+        }
+    } finally {
+        $ErrorActionPreference = "Stop"
+        Pop-Location
+        $env:LIBCLANG_PATH = $origLibclang
+        $env:PATH          = $origPath
+    }
+
+    # ── Step 5: Commit ─────────────────────────────────────────────────────────────
+
+    Write-Step "Committing version bump"
+
+    git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json src-tauri/Cargo.lock
+    if ($LASTEXITCODE -ne 0) { Write-Fail "git add failed" }
+
+    $commitMsg = "chore: bump version to $Version"
+    git commit -m $commitMsg
+    if ($LASTEXITCODE -ne 0) { Write-Fail "git commit failed" }
+    Write-Ok "Committed: $commitMsg"
+
+    # ── Step 6: Push ───────────────────────────────────────────────────────────────
+
+    Write-Step "Pushing to origin/main"
+
+    if ($DryRun) {
+        Write-Warn "[DRY RUN] Skipping git push"
+    } else {
+        git push origin main
+        if ($LASTEXITCODE -ne 0) { Write-Fail "git push failed" }
+        Write-Ok "Pushed to origin/main"
+    }
+} # end if (-not $alreadyBumped)
 
 # ── Step 7: Delegate to release.ps1 ───────────────────────────────────────────
 
 Write-Step "Handing off to release.ps1"
 
-$releaseArgs = @()
-if ($Beta)   { $releaseArgs += "-Prerelease" }
-if ($DryRun) { $releaseArgs += "-DryRun" }
+$releaseArgs = @{}
+if ($Beta)   { $releaseArgs["Prerelease"] = $true }
+if ($DryRun) { $releaseArgs["DryRun"] = $true }
 
 & "$PSScriptRoot\release.ps1" @releaseArgs
 
