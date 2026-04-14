@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/voice-tool",
-  "generated_at": "2026-04-14T16:48:09.077Z",
+  "generated_at": "2026-04-14T19:27:40.468Z",
   "latest": {
     "version": "2.9.0",
     "tag": "v2.9.0",
@@ -24,7 +24,7 @@
         "size_bytes": 15690660,
         "size_human": "15 MB",
         "sha256": "ee3de88785d65259e657113f67b82efddea9f74a6d3c3374334f3cb3e6001c53",
-        "download_count": 1
+        "download_count": 2
       },
       "msi_installer": {
         "filename": "voice-tool-v2.9.0-setup.msi",
@@ -58,7 +58,7 @@
           "size_bytes": 15690660,
           "size_human": "15 MB",
           "sha256": "ee3de88785d65259e657113f67b82efddea9f74a6d3c3374334f3cb3e6001c53",
-          "download_count": 1
+          "download_count": 2
         },
         "msi_installer": {
           "filename": "voice-tool-v2.9.0-setup.msi",
