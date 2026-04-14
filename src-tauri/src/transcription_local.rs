@@ -134,8 +134,7 @@ pub async fn transcribe_local<R: tauri::Runtime>(
         cache.context = None;
 
         let path_str = model_path.to_string_lossy().to_string();
-        let ctx = WhisperContext::new_with_params(&path_str, WhisperContextParameters::default())
-            .map_err(|e| anyhow!("Failed to load whisper model: {:?}", e))?;
+        let ctx = load_whisper_context(&path_str)?;
 
         let whisper_state = ctx
             .create_state()
@@ -259,7 +258,7 @@ pub fn preload_if_configured(app: &mut tauri::App) {
 
         if let Ok(model_path) = get_model_path(&model_size) {
             let path_str = model_path.to_string_lossy().to_string();
-            match WhisperContext::new_with_params(&path_str, WhisperContextParameters::default()) {
+            match load_whisper_context(&path_str) {
                 Ok(ctx) => match ctx.create_state() {
                     Ok(whisper_state) => {
                         cache.context = Some(ctx);
@@ -280,6 +279,28 @@ pub fn preload_if_configured(app: &mut tauri::App) {
             }
         }
     });
+}
+
+/// Try to create a WhisperContext with GPU acceleration; fall back to CPU if initialization fails.
+fn load_whisper_context(path_str: &str) -> Result<WhisperContext> {
+    let mut params = WhisperContextParameters::default();
+    params.use_gpu(true);
+    match WhisperContext::new_with_params(path_str, params) {
+        Ok(ctx) => {
+            tracing::info!("Whisper context loaded with GPU acceleration");
+            Ok(ctx)
+        }
+        Err(e) => {
+            tracing::warn!(
+                "GPU initialization failed ({:?}), retrying with CPU only",
+                e
+            );
+            let mut cpu_params = WhisperContextParameters::default();
+            cpu_params.use_gpu(false);
+            WhisperContext::new_with_params(path_str, cpu_params)
+                .map_err(|e| anyhow!("Failed to load whisper model: {:?}", e))
+        }
+    }
 }
 
 fn resample_to_16k(audio: &[f32], from_rate: u32) -> Result<Vec<f32>> {
