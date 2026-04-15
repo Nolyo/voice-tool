@@ -18,6 +18,13 @@ license = "MIT OR Apache-2.0"
 name = "voice_tool_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+# Enable Vulkan GPU acceleration for whisper (used in CI/release builds only).
+# Local dev builds omit this to avoid Windows MAX_PATH issues during cmake compilation.
+# Usage: cargo build --features vulkan-whisper
+# Tauri: pnpm tauri build -- --features vulkan-whisper
+vulkan-whisper = ["whisper-rs/vulkan"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -48,7 +55,7 @@ hound = "3.5"
 reqwest = { version = "0.12", features = ["multipart", "json", "stream"] }
 
 # Local Transcription (native whisper-rs with model caching)
-whisper-rs = { version = "0.14", features = ["vulkan"] }
+whisper-rs = { version = "0.14" }
 rubato = "0.15"
 tauri-plugin-fs = "2"
 
