@@ -2,7 +2,7 @@
 # Charge la clé privée et lance le build
 
 Write-Host "Loading signing key..." -ForegroundColor Cyan
-$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content src-tauri\private.key -Raw
+$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content "$PSScriptRoot\..\src-tauri\private.key" -Raw
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
 
 Write-Host "Building application..." -ForegroundColor Cyan

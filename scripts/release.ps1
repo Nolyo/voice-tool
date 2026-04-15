@@ -10,9 +10,9 @@
     Run all steps (including build) but skip git tag and GitHub release creation.
 
 .EXAMPLE
-    .\release.ps1
-    .\release.ps1 -Prerelease
-    .\release.ps1 -DryRun
+    .\scripts\release.ps1
+    .\scripts\release.ps1 -Prerelease
+    .\scripts\release.ps1 -DryRun
 #>
 [CmdletBinding()]
 param(
@@ -22,6 +22,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+Set-Location "$PSScriptRoot\.."
 
 function Write-Step { param([string]$msg) Write-Host "" ; Write-Host ">> $msg" -ForegroundColor Cyan }
 function Write-Ok   { param([string]$msg) Write-Host "   OK  $msg" -ForegroundColor Green }

@@ -147,13 +147,13 @@ Toutes les étapes (bump de version, commit, push, build signé, publication Git
 
 ```powershell
 # Release stable
-.\make-release.ps1 -Version 2.10.0
+.\scripts\make-release.ps1 -Version 2.10.0
 
 # Release bêta
-.\make-release.ps1 -Version 2.10.0-beta.1 -Beta
+.\scripts\make-release.ps1 -Version 2.10.0-beta.1 -Beta
 
 # Dry-run (build inclus, pas de tag ni de release GitHub)
-.\make-release.ps1 -Version 2.10.0 -DryRun
+.\scripts\make-release.ps1 -Version 2.10.0 -DryRun
 ```
 
 Le script effectue dans l'ordre :
@@ -172,7 +172,7 @@ Le script effectue dans l'ordre :
 
 > **Prérequis** : clé privée présente dans `src-tauri/private.key` et `gh` (GitHub CLI) authentifié.
 
-> Pour un build signé local **sans** publier de release, utiliser `build-signed.ps1` à la place.
+> Pour un build signé local **sans** publier de release, utiliser `scripts/build-signed.ps1` à la place.
 
 ## ⚠️ Notes importantes
 

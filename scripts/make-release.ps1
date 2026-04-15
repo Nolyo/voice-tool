@@ -15,9 +15,9 @@
     Run everything (including build) but skip git tag and GitHub release creation.
 
 .EXAMPLE
-    .\make-release.ps1 -Version 2.10.0
-    .\make-release.ps1 -Version 2.10.0-beta.1 -Beta
-    .\make-release.ps1 -Version 2.10.0 -DryRun
+    .\scripts\make-release.ps1 -Version 2.10.0
+    .\scripts\make-release.ps1 -Version 2.10.0-beta.1 -Beta
+    .\scripts\make-release.ps1 -Version 2.10.0 -DryRun
 #>
 [CmdletBinding()]
 param(
@@ -31,6 +31,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+Set-Location "$PSScriptRoot\.."
 
 function Write-Step { param([string]$msg) Write-Host ""; Write-Host ">> $msg" -ForegroundColor Cyan }
 function Write-Ok   { param([string]$msg) Write-Host "   OK  $msg" -ForegroundColor Green }
