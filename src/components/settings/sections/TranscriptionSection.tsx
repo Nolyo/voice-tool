@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Settings, AlertTriangle, Check, Download, Loader2, Trash2 } from "lucide-react";
+import { Settings, AlertTriangle, Check, Download, Loader2, Trash2, MemoryStick } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -191,6 +191,39 @@ export function TranscriptionSection() {
             </div>
 
             {isDownloading && <Progress value={progress} className="h-1.5" />}
+
+            {/* Keep model in memory option */}
+            {isDownloaded && (
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/40">
+                <div className="flex items-center gap-2 min-w-0">
+                  <MemoryStick className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <Label className="text-xs font-medium text-foreground">
+                      {t('settings.transcription.keepModelInMemory')}
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground leading-tight">
+                      {t('settings.transcription.keepModelInMemoryDesc')}
+                    </p>
+                  </div>
+                </div>
+                <Select
+                  value={settings.keep_model_in_memory === null ? "auto" : settings.keep_model_in_memory ? "true" : "false"}
+                  onValueChange={(value) => {
+                    const mapped = value === "auto" ? null : value === "true";
+                    updateSetting("keep_model_in_memory", mapped);
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-24 text-xs bg-background/50 shrink-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">{t('settings.transcription.keepModelInMemoryAuto')}</SelectItem>
+                    <SelectItem value="true">{t('common.yes')}</SelectItem>
+                    <SelectItem value="false">{t('common.no')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         )}
 

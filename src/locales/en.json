@@ -9,7 +9,9 @@
     "loading": "Loading...",
     "error": "Error",
     "new": "New",
-    "default": "Default"
+    "default": "Default",
+    "yes": "Yes",
+    "no": "No"
   },
   "header": {
     "title": "Voice Tool",
@@ -121,6 +123,9 @@
       "installed": "Installed",
       "deleteModel": "Delete model",
       "download": "Download",
+      "keepModelInMemory": "Keep model in memory",
+      "keepModelInMemoryDesc": "When disabled, the model is released after 2 min of inactivity to save RAM. Default: enabled on GPU, disabled on CPU.",
+      "keepModelInMemoryAuto": "Auto",
       "translateMode": "Translation Mode",
       "translateModeDesc": "Speak in French, write in English",
       "translateOpenaiInfo": "Uses OpenAI Whisper to translate to English",

@@ -14,6 +14,7 @@ export interface AppSettings {
     // Transcription
     transcription_provider: "OpenAI" | "Google" | "Local";
     local_model_size: "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo";
+    keep_model_in_memory: boolean | null;
     language: string;
     smart_formatting: boolean;
 
@@ -75,6 +76,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     // Transcription
     transcription_provider: "OpenAI",
     local_model_size: "base", // Recommended for old hardware
+    keep_model_in_memory: null, // null = auto (GPU: keep, CPU: unload after 2min)
     language: "fr-FR",
     smart_formatting: true,
 

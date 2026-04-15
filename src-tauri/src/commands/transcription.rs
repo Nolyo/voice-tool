@@ -26,6 +26,7 @@ pub async fn transcribe_audio(
     local_model_size: Option<String>,
     dictionary: Option<String>,
     translate: Option<bool>,
+    keep_model_in_memory: Option<bool>,
 ) -> Result<TranscriptionResponse, String> {
     let translate = translate.unwrap_or(false);
     tracing::info!(
@@ -52,6 +53,7 @@ pub async fn transcribe_audio(
             &language,
             dict,
             translate,
+            keep_model_in_memory,
         )
         .await
         .map_err(|e| {

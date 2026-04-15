@@ -38,6 +38,23 @@ pnpm tauri build     # Build complete application bundle
 
 **IMPORTANT**: Always use `pnpm tauri build` for production builds, NOT `cargo build`. The Tauri CLI orchestrates the full build process including frontend bundling.
 
+### Building without GPU (Vulkan)
+
+Vulkan GPU acceleration is **enabled by default**. On machines where it causes issues (e.g. Windows MAX_PATH errors during cmake compilation), disable it with `--no-default-features`:
+
+```bash
+# Dev
+pnpm tauri dev -- -- --no-default-features
+
+# Build
+pnpm tauri build -- --no-default-features
+
+# Cargo only
+cargo check --no-default-features
+```
+
+The app will still work — whisper inference falls back to CPU automatically. It's slower and uses more RAM, but functional.
+
 ### Frontend Only
 
 ```bash

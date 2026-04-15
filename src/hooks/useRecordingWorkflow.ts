@@ -126,6 +126,7 @@ export function useRecordingWorkflow({
             localModelSize: settings.local_model_size,
             dictionary: (settings.dictionary ?? []).join(", "),
             translate: settings.translate_mode,
+            keepModelInMemory: settings.keep_model_in_memory,
           },
         );
 

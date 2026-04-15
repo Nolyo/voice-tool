@@ -5,6 +5,7 @@ use std::cmp::min;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
@@ -112,6 +113,7 @@ pub async fn transcribe_local<R: tauri::Runtime>(
     language: &str,
     dictionary: &str,
     translate: bool,
+    keep_model_in_memory: Option<bool>,
 ) -> Result<String> {
     let model_path = get_model_path(model_type)?;
 
@@ -125,6 +127,11 @@ pub async fn transcribe_local<R: tauri::Runtime>(
     let state = app.state::<AppState>();
     let mut cache = state.whisper.cache.lock().await;
 
+    // Cancel any pending auto-unload timer
+    if let Some(handle) = cache.unload_handle.take() {
+        handle.abort();
+    }
+
     // --- 1. Load or reuse context + state ---
     if cache.context.is_none() || cache.loaded_model != model_type {
         tracing::info!("Loading whisper model: {}", model_type);
@@ -134,7 +141,7 @@ pub async fn transcribe_local<R: tauri::Runtime>(
         cache.context = None;
 
         let path_str = model_path.to_string_lossy().to_string();
-        let ctx = load_whisper_context(&path_str)?;
+        let (ctx, is_gpu) = load_whisper_context(&path_str)?;
 
         let whisper_state = ctx
             .create_state()
@@ -143,8 +150,12 @@ pub async fn transcribe_local<R: tauri::Runtime>(
         cache.context = Some(ctx);
         cache.state = Some(whisper_state);
         cache.loaded_model = model_type.to_string();
+        cache.is_gpu = is_gpu;
 
-        tracing::info!("Whisper model loaded and state cached");
+        tracing::info!(
+            "Whisper model loaded and state cached (gpu={})",
+            cache.is_gpu
+        );
     } else {
         tracing::info!("Reusing cached whisper context + state");
     }
@@ -204,6 +215,23 @@ pub async fn transcribe_local<R: tauri::Runtime>(
 
     let result = text.trim().to_string();
     tracing::info!("Local transcription completed: {} characters", result.len());
+
+    // --- 5. Schedule auto-unload if needed ---
+    // Default: keep in memory on GPU, auto-unload on CPU
+    let should_keep = keep_model_in_memory.unwrap_or(cache.is_gpu);
+    if !should_keep {
+        let whisper_cache = Arc::clone(&state.whisper.cache);
+        let handle = tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(120)).await;
+            let mut c = whisper_cache.lock().await;
+            c.state = None;
+            c.context = None;
+            c.loaded_model.clear();
+            tracing::info!("Whisper model auto-unloaded after 2 minutes of inactivity");
+        });
+        cache.unload_handle = Some(handle);
+    }
+
     Ok(result)
 }
 
@@ -221,22 +249,31 @@ pub fn preload_if_configured(app: &mut tauri::App) {
     };
 
     tauri::async_runtime::spawn(async move {
-        let provider = preload_store
+        let settings_obj = preload_store
             .get("settings")
-            .and_then(|root| root.get("settings").cloned())
+            .and_then(|root| root.get("settings").cloned());
+
+        let provider = settings_obj
+            .as_ref()
             .and_then(|s| {
                 s.get("transcription_provider")
                     .and_then(|v| v.as_str().map(String::from))
             });
 
-        let model_size = preload_store
-            .get("settings")
-            .and_then(|root| root.get("settings").cloned())
+        let model_size = settings_obj
+            .as_ref()
             .and_then(|s| {
                 s.get("local_model_size")
                     .and_then(|v| v.as_str().map(String::from))
             })
             .unwrap_or_else(|| "base".to_string());
+
+        let keep_model_in_memory = settings_obj
+            .as_ref()
+            .and_then(|s| {
+                s.get("keep_model_in_memory")
+                    .and_then(|v| v.as_bool())
+            });
 
         if provider.as_deref() != Some("Local") {
             tracing::info!("Skipping whisper preload (provider is not Local)");
@@ -251,6 +288,12 @@ pub fn preload_if_configured(app: &mut tauri::App) {
             return;
         }
 
+        // If keep_model_in_memory is explicitly false, skip preload
+        if keep_model_in_memory == Some(false) {
+            tracing::info!("Skipping whisper preload (keep_model_in_memory is disabled)");
+            return;
+        }
+
         tracing::info!("Preloading whisper model: {}", model_size);
 
         let state = preload_handle.state::<AppState>();
@@ -259,20 +302,34 @@ pub fn preload_if_configured(app: &mut tauri::App) {
         if let Ok(model_path) = get_model_path(&model_size) {
             let path_str = model_path.to_string_lossy().to_string();
             match load_whisper_context(&path_str) {
-                Ok(ctx) => match ctx.create_state() {
-                    Ok(whisper_state) => {
-                        cache.context = Some(ctx);
-                        cache.state = Some(whisper_state);
-                        cache.loaded_model = model_size.clone();
-                        tracing::info!("Whisper model '{}' preloaded successfully", model_size);
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            "Failed to create whisper state during preload: {:?}",
-                            e
+                Ok((ctx, is_gpu)) => {
+                    // If setting is not set (None) and we fell back to CPU, skip preload
+                    if !is_gpu && keep_model_in_memory.is_none() {
+                        tracing::info!(
+                            "Skipping whisper preload (GPU unavailable and keep_model_in_memory not set — would waste RAM)"
                         );
+                        return;
                     }
-                },
+                    match ctx.create_state() {
+                        Ok(whisper_state) => {
+                            cache.context = Some(ctx);
+                            cache.state = Some(whisper_state);
+                            cache.loaded_model = model_size.clone();
+                            cache.is_gpu = is_gpu;
+                            tracing::info!(
+                                "Whisper model '{}' preloaded successfully (gpu={})",
+                                model_size,
+                                is_gpu
+                            );
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to create whisper state during preload: {:?}",
+                                e
+                            );
+                        }
+                    }
+                }
                 Err(e) => {
                     tracing::warn!("Failed to preload whisper model: {:?}", e);
                 }
@@ -282,24 +339,28 @@ pub fn preload_if_configured(app: &mut tauri::App) {
 }
 
 /// Try to create a WhisperContext with GPU acceleration; fall back to CPU if initialization fails.
-fn load_whisper_context(path_str: &str) -> Result<WhisperContext> {
-    let mut params = WhisperContextParameters::default();
-    params.use_gpu(true);
+/// Returns (context, is_gpu).
+fn load_whisper_context(path_str: &str) -> Result<(WhisperContext, bool)> {
+    let params = WhisperContextParameters::default();
+    let gpu_enabled = params.use_gpu;
+
     match WhisperContext::new_with_params(path_str, params) {
         Ok(ctx) => {
-            tracing::info!("Whisper context loaded with GPU acceleration");
-            Ok(ctx)
+            tracing::info!("Whisper context loaded (gpu={})", gpu_enabled);
+            Ok((ctx, gpu_enabled))
         }
-        Err(e) => {
+        Err(e) if gpu_enabled => {
             tracing::warn!(
                 "GPU initialization failed ({:?}), retrying with CPU only",
                 e
             );
             let mut cpu_params = WhisperContextParameters::default();
             cpu_params.use_gpu(false);
-            WhisperContext::new_with_params(path_str, cpu_params)
-                .map_err(|e| anyhow!("Failed to load whisper model: {:?}", e))
+            let ctx = WhisperContext::new_with_params(path_str, cpu_params)
+                .map_err(|e| anyhow!("Failed to load whisper model: {:?}", e))?;
+            Ok((ctx, false))
         }
+        Err(e) => Err(anyhow!("Failed to load whisper model: {:?}", e)),
     }
 }
 

@@ -19,10 +19,12 @@ name = "voice_tool_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
-# Enable Vulkan GPU acceleration for whisper (used in CI/release builds only).
-# Local dev builds omit this to avoid Windows MAX_PATH issues during cmake compilation.
-# Usage: cargo build --features vulkan-whisper
-# Tauri: pnpm tauri build -- --features vulkan-whisper
+default = ["vulkan-whisper"]
+# Vulkan GPU acceleration for whisper inference.
+# Enabled by default. To build without GPU (e.g. MAX_PATH issues on some Windows machines):
+#   cargo check --no-default-features
+#   pnpm tauri dev -- -- --no-default-features
+#   pnpm tauri build -- --no-default-features
 vulkan-whisper = ["whisper-rs/vulkan"]
 
 [build-dependencies]

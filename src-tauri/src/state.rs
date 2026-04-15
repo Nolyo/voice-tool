@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 use tokio::sync::Mutex as TokioMutex;
+use tokio::task::JoinHandle;
 
 use crate::audio::AudioRecorder;
 
@@ -16,6 +17,10 @@ pub struct WhisperCache {
     pub context: Option<whisper_rs::WhisperContext>,
     pub state: Option<whisper_rs::WhisperState>,
     pub loaded_model: String,
+    /// Whether the model was loaded using GPU acceleration
+    pub is_gpu: bool,
+    /// Handle to the auto-unload timer task (cancelled on new transcription)
+    pub unload_handle: Option<JoinHandle<()>>,
 }
 
 pub struct WhisperState {
@@ -40,6 +45,8 @@ pub(crate) fn create_app_state() -> AppState {
                 context: None,
                 state: None,
                 loaded_model: String::new(),
+                is_gpu: false,
+                unload_handle: None,
             })),
         },
         active_profile_id: Mutex::new(String::new()),
