@@ -10,6 +10,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { NotesSidebarSection } from "@/components/notes/NotesSidebarSection";
+import { SettingsSidebarSection } from "@/components/settings/SettingsSidebarSection";
+import { type SettingsSectionId } from "@/components/settings/common/SettingsNav";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 
@@ -34,6 +36,8 @@ interface DashboardSidebarProps {
   onToggleFavorite: (id: string) => void;
   onDeleteNote: (id: string) => void;
   searchNotes: (query: string) => Promise<NoteMeta[]>;
+  activeSettingsSection: SettingsSectionId;
+  onSettingsSectionChange: (id: SettingsSectionId) => void;
 }
 
 export function DashboardSidebar({
@@ -48,6 +52,8 @@ export function DashboardSidebar({
   onToggleFavorite,
   onDeleteNote,
   searchNotes,
+  activeSettingsSection,
+  onSettingsSectionChange,
 }: DashboardSidebarProps) {
   const { t } = useTranslation();
 
@@ -120,6 +126,14 @@ export function DashboardSidebar({
           onToggleFavorite={onToggleFavorite}
           onDeleteNote={onDeleteNote}
           searchNotes={searchNotes}
+        />
+      )}
+
+      {/* Settings sub-navigation — visible only when the Settings tab is active */}
+      {!collapsed && activeTab === "parametres" && (
+        <SettingsSidebarSection
+          activeSection={activeSettingsSection}
+          onSectionChange={onSettingsSectionChange}
         />
       )}
 

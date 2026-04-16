@@ -10,6 +10,7 @@ import {
 } from "./dashboard/DashboardSidebar";
 import { HistoriqueTab } from "./dashboard/tabs/HistoriqueTab";
 import { SettingTabs } from "./settings/SettingTabs";
+import { type SettingsSectionId } from "./settings/common/SettingsNav";
 import { LogsTab } from "./logs/LogsTab";
 import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./common/UpdateModal";
@@ -30,6 +31,8 @@ export default function Dashboard() {
     useState<Transcription | null>(null);
   const [activeTab, setActiveTab] = useState<DashboardTabId>("historique");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeSettingsSection, setActiveSettingsSection] =
+    useState<SettingsSectionId>("section-transcription");
 
   const { settings } = useSettings();
   const { updateAvailable, showUpdateModal, setShowUpdateModal } =
@@ -136,6 +139,8 @@ export default function Dashboard() {
         onToggleFavorite={toggleFavorite}
         onDeleteNote={handleDeleteNote}
         searchNotes={searchNotes}
+        activeSettingsSection={activeSettingsSection}
+        onSettingsSectionChange={setActiveSettingsSection}
       />
 
       {/* Main area */}
@@ -183,7 +188,7 @@ export default function Dashboard() {
 
                 {activeTab === "parametres" && (
                   <Card className="p-6">
-                    <SettingTabs />
+                    <SettingTabs activeSection={activeSettingsSection} />
                   </Card>
                 )}
 

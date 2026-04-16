@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import { Minus, Plus, Settings } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -178,6 +179,18 @@ export function SystemSection() {
             {t('settings.system.recordingsKeepHelp')}
           </p>
         </div>
+
+        <Divider />
+
+        <Button
+          variant="destructive"
+          className="w-full h-10 font-medium"
+          onClick={async () => {
+            await invoke("exit_app");
+          }}
+        >
+          {t('settings.quitApp')}
+        </Button>
       </div>
     </SectionCard>
   );

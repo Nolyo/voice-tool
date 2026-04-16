@@ -59,7 +59,7 @@ function MiniWindow() {
   const bars = useMemo(() => {
     const BAR_COUNT = barModifiers.length;
     const MIN_HEIGHT = 4;
-    const MAX_HEIGHT = 28;
+    const MAX_HEIGHT = 33;
     const AMPLIFICATION = 2.4;
 
     return Array.from({ length: BAR_COUNT }).map((_, i) => {
@@ -130,7 +130,7 @@ function MiniWindow() {
                   : t('mini.translateModeOff')
               }
             >
-              {translateMode ? "🌐 EN" : "—"}
+              {translateMode ? "🌐 EN" : "x"}
             </button>
           </div>
         )}

@@ -10,6 +10,15 @@ export interface NavItemDef {
   subtitleKey: string;
 }
 
+export type SettingsSectionId =
+  | "section-transcription"
+  | "section-audio"
+  | "section-texte"
+  | "section-vocabulaire"
+  | "section-systeme"
+  | "section-raccourcis"
+  | "section-mises-a-jour";
+
 export const NAV_ITEM_DEFS: NavItemDef[] = [
   {
     id: "section-transcription",
