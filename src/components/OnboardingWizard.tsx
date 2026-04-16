@@ -1,0 +1,520 @@
+import { useCallback, useEffect, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import {
+  ArrowLeft,
+  Cloud,
+  Download,
+  HardDrive,
+  Info,
+  Loader2,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useSettings } from "@/hooks/useSettings";
+import type { AppSettings } from "@/lib/settings";
+
+type ModelSize = AppSettings["settings"]["local_model_size"];
+type Step = "choice" | "local" | "api";
+
+interface SystemInfo {
+  total_ram_gb: number;
+  has_discrete_gpu: boolean;
+  gpu_name: string | null;
+}
+
+const MODEL_OPTIONS: { value: ModelSize; label: string; size: string }[] = [
+  { value: "tiny", label: "Tiny", size: "39 Mo" },
+  { value: "base", label: "Base", size: "74 Mo" },
+  { value: "small", label: "Small", size: "244 Mo" },
+  { value: "medium", label: "Medium", size: "1,5 Go" },
+  { value: "large-v1", label: "Large v1", size: "2,9 Go" },
+  { value: "large-v2", label: "Large v2", size: "2,9 Go" },
+  { value: "large-v3", label: "Large v3", size: "2,9 Go" },
+  { value: "large-v3-turbo", label: "Large v3 Turbo", size: "1,6 Go" },
+];
+
+function recommendModel(info: SystemInfo): ModelSize | "api" {
+  if (info.has_discrete_gpu) return "large-v3-turbo";
+  if (info.total_ram_gb < 8) return "api";
+  if (info.total_ram_gb < 16) return "small";
+  return "large-v3-turbo";
+}
+
+export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
+  const { settings, updateSetting } = useSettings();
+  const [step, setStep] = useState<Step>("choice");
+
+  const [sysInfo, setSysInfo] = useState<SystemInfo | null>(null);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectionFailed, setDetectionFailed] = useState(false);
+  const [recommendedModel, setRecommendedModel] = useState<ModelSize | "api" | null>(null);
+
+  const [selectedModel, setSelectedModel] = useState<ModelSize>(
+    settings.local_model_size || "small",
+  );
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const [apiKey, setApiKey] = useState(settings.openai_api_key || "");
+  const [apiSaving, setApiSaving] = useState(false);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<number>("model-download-progress", (event) => {
+      setDownloadProgress(event.payload);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  const chooseLocal = useCallback(async () => {
+    await updateSetting("transcription_provider", "Local");
+    setStep("local");
+  }, [updateSetting]);
+
+  const chooseApi = useCallback(async () => {
+    await updateSetting("transcription_provider", "OpenAI");
+    setStep("api");
+  }, [updateSetting]);
+
+  const runDetection = useCallback(async () => {
+    setIsDetecting(true);
+    setDetectionFailed(false);
+    try {
+      const info = await invoke<SystemInfo>("get_system_info");
+      setSysInfo(info);
+      const reco = recommendModel(info);
+      setRecommendedModel(reco);
+      if (reco !== "api") {
+        setSelectedModel(reco);
+      }
+    } catch (e) {
+      console.error("System detection failed:", e);
+      setDetectionFailed(true);
+    } finally {
+      setIsDetecting(false);
+    }
+  }, []);
+
+  const handleDownload = useCallback(async () => {
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    setDownloadError(null);
+    try {
+      await updateSetting("local_model_size", selectedModel);
+      await invoke("download_local_model", { model: selectedModel });
+      onComplete();
+    } catch (e) {
+      console.error("Download failed:", e);
+      setDownloadError(String(e));
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress(0);
+    }
+  }, [selectedModel, updateSetting, onComplete]);
+
+  const handleSaveApiKey = useCallback(async () => {
+    if (!apiKey.trim()) return;
+    setApiSaving(true);
+    try {
+      await updateSetting("openai_api_key", apiKey.trim());
+      onComplete();
+    } finally {
+      setApiSaving(false);
+    }
+  }, [apiKey, updateSetting, onComplete]);
+
+  return (
+    <DialogPrimitive.Root open>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          className="dark fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+        />
+        <DialogPrimitive.Content
+          className="dark fixed left-[50%] top-[50%] z-50 grid w-full max-w-2xl translate-x-[-50%] translate-y-[-50%] gap-6 border bg-background p-8 text-foreground shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          {step === "choice" && (
+            <ChoiceStep onLocal={chooseLocal} onApi={chooseApi} />
+          )}
+          {step === "local" && (
+            <LocalStep
+              sysInfo={sysInfo}
+              isDetecting={isDetecting}
+              detectionFailed={detectionFailed}
+              recommendedModel={recommendedModel}
+              selectedModel={selectedModel}
+              onSelectModel={setSelectedModel}
+              onDetect={runDetection}
+              onDownload={handleDownload}
+              isDownloading={isDownloading}
+              downloadProgress={downloadProgress}
+              downloadError={downloadError}
+              onBack={() => setStep("choice")}
+              onSwitchToApi={() => setStep("api")}
+            />
+          )}
+          {step === "api" && (
+            <ApiStep
+              apiKey={apiKey}
+              onChangeApiKey={setApiKey}
+              onSave={handleSaveApiKey}
+              isSaving={apiSaving}
+              onBack={() => setStep("choice")}
+            />
+          )}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
+
+function ChoiceStep({
+  onLocal,
+  onApi,
+}: {
+  onLocal: () => void;
+  onApi: () => void;
+}) {
+  return (
+    <>
+      <div className="space-y-2 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/10">
+          <Sparkles className="h-6 w-6 text-violet-500" />
+        </div>
+        <DialogPrimitive.Title className="text-xl font-semibold">
+          Bienvenue ! Configurons la transcription
+        </DialogPrimitive.Title>
+        <DialogPrimitive.Description className="text-sm text-muted-foreground">
+          Pour commencer, choisis comment transcrire tes enregistrements.
+        </DialogPrimitive.Description>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={onLocal}
+          className={cn(
+            "group flex flex-col gap-2 rounded-lg border-2 border-border bg-card p-5 text-left transition-all cursor-pointer",
+            "hover:border-violet-500/60 hover:bg-violet-500/5 focus:outline-none focus:ring-2 focus:ring-violet-500/40",
+          )}
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-violet-500/10 text-violet-500">
+            <HardDrive className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="font-semibold">Local (recommandé)</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Gratuit, offline, tourne sur ton PC. Nécessite de télécharger un
+              modèle (entre 39 Mo et 3 Go).
+            </p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={onApi}
+          className={cn(
+            "group flex flex-col gap-2 rounded-lg border-2 border-border bg-card p-5 text-left transition-all cursor-pointer",
+            "hover:border-sky-500/60 hover:bg-sky-500/5 focus:outline-none focus:ring-2 focus:ring-sky-500/40",
+          )}
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-sky-500/10 text-sky-500">
+            <Cloud className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="font-semibold">API OpenAI</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Qualité maximale, requiert internet et une clé API OpenAI
+              (payant à l'usage).
+            </p>
+          </div>
+        </button>
+      </div>
+    </>
+  );
+}
+
+function LocalStep({
+  sysInfo,
+  isDetecting,
+  detectionFailed,
+  recommendedModel,
+  selectedModel,
+  onSelectModel,
+  onDetect,
+  onDownload,
+  isDownloading,
+  downloadProgress,
+  downloadError,
+  onBack,
+  onSwitchToApi,
+}: {
+  sysInfo: SystemInfo | null;
+  isDetecting: boolean;
+  detectionFailed: boolean;
+  recommendedModel: ModelSize | "api" | null;
+  selectedModel: ModelSize;
+  onSelectModel: (m: ModelSize) => void;
+  onDetect: () => void;
+  onDownload: () => void;
+  isDownloading: boolean;
+  downloadProgress: number;
+  downloadError: string | null;
+  onBack: () => void;
+  onSwitchToApi: () => void;
+}) {
+  const reco = MODEL_OPTIONS.find((m) => m.value === recommendedModel);
+
+  return (
+    <>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-muted-foreground hover:text-foreground"
+            disabled={isDownloading}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <DialogPrimitive.Title className="text-xl font-semibold">
+            Choisis ton modèle local
+          </DialogPrimitive.Title>
+        </div>
+        <DialogPrimitive.Description className="text-sm text-muted-foreground">
+          Le bouton ci-dessous analyse ta machine (RAM, GPU) et te propose le
+          modèle le plus adapté.
+        </DialogPrimitive.Description>
+      </div>
+
+      <div className="space-y-3">
+        {!sysInfo && !detectionFailed && (
+          <Button
+            type="button"
+            onClick={onDetect}
+            disabled={isDetecting}
+            className="w-full"
+            variant="outline"
+          >
+            {isDetecting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Analyse en cours...
+              </>
+            ) : (
+              <>
+                <Wand2 className="h-4 w-4" />
+                Détecter automatiquement le meilleur modèle
+              </>
+            )}
+          </Button>
+        )}
+
+        {detectionFailed && (
+          <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700 dark:text-amber-400">
+            Détection impossible. Choisis manuellement un modèle ci-dessous.
+          </div>
+        )}
+
+        {sysInfo && (
+          <div className="rounded-md border border-violet-500/30 bg-violet-500/5 p-4 space-y-2">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 mt-0.5 text-violet-500 shrink-0" />
+              <div className="text-sm">
+                <div className="font-medium text-foreground">
+                  RAM : {sysInfo.total_ram_gb.toFixed(1)} Go
+                  {sysInfo.has_discrete_gpu && sysInfo.gpu_name
+                    ? ` · GPU discret détecté (${sysInfo.gpu_name})`
+                    : sysInfo.has_discrete_gpu
+                      ? " · GPU discret détecté"
+                      : " · pas de GPU discret"}
+                </div>
+                {recommendedModel === "api" ? (
+                  <p className="mt-1 text-muted-foreground">
+                    Ton PC risque d'être limité pour le mode local. On te
+                    conseille d'utiliser l'API OpenAI.
+                  </p>
+                ) : reco ? (
+                  <p className="mt-1 text-muted-foreground">
+                    Recommandation : <strong>{reco.label}</strong> ({reco.size}).
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            {recommendedModel === "api" && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onSwitchToApi}
+                className="w-full"
+              >
+                Passer au mode API
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Modèle à télécharger
+        </label>
+        <Select
+          value={selectedModel}
+          onValueChange={(v) => onSelectModel(v as ModelSize)}
+          disabled={isDownloading}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="dark">
+            {MODEL_OPTIONS.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label} ({m.size})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+        <strong className="text-foreground">Astuce :</strong> si les
+        transcriptions sont trop lentes, essaie un modèle plus petit. Si ton PC
+        tient la charge, monte d'un cran. À toi de trouver le bon équilibre
+        qualité / vitesse.
+      </div>
+
+      {isDownloading && (
+        <div className="space-y-1.5">
+          <Progress value={downloadProgress} className="h-2" />
+          <p className="text-xs text-muted-foreground">
+            Téléchargement : {Math.round(downloadProgress)}%
+          </p>
+        </div>
+      )}
+
+      {downloadError && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          Erreur : {downloadError}
+        </div>
+      )}
+
+      <Button
+        type="button"
+        onClick={onDownload}
+        disabled={isDownloading}
+        className="w-full"
+      >
+        {isDownloading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Téléchargement...
+          </>
+        ) : (
+          <>
+            <Download className="h-4 w-4" />
+            Télécharger le modèle
+          </>
+        )}
+      </Button>
+    </>
+  );
+}
+
+function ApiStep({
+  apiKey,
+  onChangeApiKey,
+  onSave,
+  isSaving,
+  onBack,
+}: {
+  apiKey: string;
+  onChangeApiKey: (v: string) => void;
+  onSave: () => void;
+  isSaving: boolean;
+  onBack: () => void;
+}) {
+  return (
+    <>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-muted-foreground hover:text-foreground"
+            disabled={isSaving}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <DialogPrimitive.Title className="text-xl font-semibold">
+            Configure ton API OpenAI
+          </DialogPrimitive.Title>
+        </div>
+        <DialogPrimitive.Description className="text-sm text-muted-foreground">
+          Saisis ta clé API OpenAI. Tu peux en créer une sur{" "}
+          <a
+            href="https://platform.openai.com/api-keys"
+            target="_blank"
+            rel="noreferrer"
+            className="text-sky-500 underline"
+          >
+            platform.openai.com
+          </a>
+          .
+        </DialogPrimitive.Description>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Clé API
+        </label>
+        <Input
+          type="password"
+          value={apiKey}
+          onChange={(e) => onChangeApiKey(e.target.value)}
+          placeholder="sk-..."
+          disabled={isSaving}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSave();
+          }}
+        />
+      </div>
+
+      <Button
+        type="button"
+        onClick={onSave}
+        disabled={!apiKey.trim() || isSaving}
+        className="w-full"
+      >
+        {isSaving ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Enregistrement...
+          </>
+        ) : (
+          "Valider"
+        )}
+      </Button>
+    </>
+  );
+}

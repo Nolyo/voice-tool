@@ -45,6 +45,21 @@ pub fn check_model_exists(model_type: &str) -> bool {
     }
 }
 
+/// True if at least one ggml-*.bin file exists in the models directory.
+pub fn any_model_exists() -> bool {
+    let Ok(dir) = get_models_dir() else {
+        return false;
+    };
+    let Ok(entries) = fs::read_dir(&dir) else {
+        return false;
+    };
+    entries.flatten().any(|e| {
+        let name = e.file_name();
+        let name = name.to_string_lossy();
+        name.starts_with("ggml-") && name.ends_with(".bin")
+    })
+}
+
 /// Delete a downloaded model to free disk space
 pub fn delete_model(model_type: &str) -> Result<()> {
     let path = get_model_path(model_type)?;

@@ -74,7 +74,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     silence_threshold: 0.005, // RMS threshold below which audio is considered silent (0.5%)
 
     // Transcription
-    transcription_provider: "OpenAI",
+    transcription_provider: "Local",
     local_model_size: "base", // Recommended for old hardware
     keep_model_in_memory: null, // null = auto (GPU: keep, CPU: unload after 2min)
     language: "fr-FR",
@@ -95,7 +95,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     // System
     recordings_keep_last: 25,
     start_minimized_on_boot: true,
-    main_window_state: "normal",
+    main_window_state: "maximized",
     main_window_geometry: "800x600+0+0",
     history_cards_render_limit: 50,
     auto_check_updates: true,

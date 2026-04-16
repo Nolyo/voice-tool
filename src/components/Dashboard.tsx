@@ -14,7 +14,10 @@ import { type SettingsSectionId } from "./settings/common/SettingsNav";
 import { LogsTab } from "./logs/LogsTab";
 import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./common/UpdateModal";
+import { OnboardingWizard } from "./OnboardingWizard";
+import { SelectedModelMissingBanner } from "./SelectedModelMissingBanner";
 import { useSettings } from "@/hooks/useSettings";
+import { useOnboardingCheck } from "@/hooks/useOnboardingCheck";
 import {
   useTranscriptionHistory,
   type Transcription,
@@ -34,7 +37,11 @@ export default function Dashboard() {
   const [activeSettingsSection, setActiveSettingsSection] =
     useState<SettingsSectionId>("section-transcription");
 
-  const { settings } = useSettings();
+  const { settings, isLoaded: settingsLoaded } = useSettings();
+  const { showOnboarding, recheck: recheckOnboarding } = useOnboardingCheck(
+    settings,
+    settingsLoaded,
+  );
   const { updateAvailable, showUpdateModal, setShowUpdateModal } =
     useUpdaterContext();
   const {
@@ -150,6 +157,13 @@ export default function Dashboard() {
           onUpdateClick={() => setShowUpdateModal(true)}
         />
 
+        <SelectedModelMissingBanner
+          onGoToSettings={() => {
+            setActiveTab("parametres");
+            setActiveSettingsSection("section-transcription");
+          }}
+        />
+
         <main className="flex-1 overflow-hidden">
           {activeTab === "notes" && openNoteIds.length > 0 ? (
             <NotesEditor
@@ -208,6 +222,8 @@ export default function Dashboard() {
         onOpenChange={setShowUpdateModal}
         onViewDetails={() => setActiveTab("parametres")}
       />
+
+      {showOnboarding && <OnboardingWizard onComplete={recheckOnboarding} />}
     </div>
   );
 }

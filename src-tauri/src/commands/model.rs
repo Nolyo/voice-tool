@@ -16,6 +16,11 @@ pub fn check_local_model_exists(model: String) -> bool {
 }
 
 #[tauri::command]
+pub fn any_local_model_exists() -> bool {
+    transcription_local::any_model_exists()
+}
+
+#[tauri::command]
 pub fn delete_local_model(model: String) -> Result<(), String> {
     transcription_local::delete_model(&model).map_err(|e| e.to_string())
 }

@@ -83,3 +83,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 parking_lot = "0.12"
 num_cpus = "1.17.0"
+
+# Hardware detection for onboarding recommendations
+sysinfo = "0.32"
+wgpu = "22"
