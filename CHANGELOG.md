@@ -1,9 +1,12 @@
 
-## [2.10.0] - 2026-04-14
+## [2.10.0] - 2026-04-18
 
 ### ✨ Added
 - Universal GPU acceleration via Vulkan backend - local transcription now uses GPU automatically on NVIDIA, AMD, and Intel hardware without requiring any additional installation
 - Automatic CPU fallback when no compatible GPU is detected, ensuring the app runs on any Windows machine
+- Notes tab in sidebar navigation - quick access to notes alongside History, Settings, and Logs
+- Settings sub-navigation in sidebar - select individual settings sections without scrolling through all sections
+- Onboarding wizard for model setup - guides users through initial configuration and model selection on first launch
 
 ### 🔧 Changed
 - Switched local transcription engine from CUDA to Vulkan - no NVIDIA CUDA runtime required anymore
