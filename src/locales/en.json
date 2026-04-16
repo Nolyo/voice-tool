@@ -121,6 +121,7 @@
       "modelLargeV2": "Large v2 (2.9 GB) - Excellent",
       "modelLargeV3": "Large v3 (2.9 GB) - Best",
       "modelLargeV3Turbo": "Large v3 Turbo (1.6 GB) - Best + Fast",
+      "modelLargeV3TurboQ5": "Large v3 Turbo Q5 (547 MB) - Compact + Fast",
       "installed": "Installed",
       "deleteModel": "Delete model",
       "download": "Download",
