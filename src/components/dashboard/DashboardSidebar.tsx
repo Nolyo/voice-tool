@@ -1,4 +1,5 @@
 import {
+  FileText,
   History,
   Mic,
   PanelLeftClose,
@@ -14,13 +15,12 @@ import { ProfileSwitcher } from "./ProfileSwitcher";
 
 export const DASHBOARD_NAV_ITEMS = [
   { id: "historique", labelKey: "sidebar.history", icon: History },
+  { id: "notes", labelKey: "sidebar.notes", icon: FileText },
   { id: "parametres", labelKey: "sidebar.settings", icon: Settings2 },
   { id: "logs", labelKey: "sidebar.logs", icon: ScrollText },
 ] as const;
 
-export type DashboardTabId =
-  | (typeof DASHBOARD_NAV_ITEMS)[number]["id"]
-  | "notes";
+export type DashboardTabId = (typeof DASHBOARD_NAV_ITEMS)[number]["id"];
 
 interface DashboardSidebarProps {
   activeTab: string;
@@ -110,8 +110,8 @@ export function DashboardSidebar({
         ))}
       </nav>
 
-      {/* Notes section (only when expanded) */}
-      {!collapsed && (
+      {/* Notes section — visible only when the Notes tab is active */}
+      {!collapsed && activeTab === "notes" && (
         <NotesSidebarSection
           notes={notes}
           activeNoteId={activeNoteId}

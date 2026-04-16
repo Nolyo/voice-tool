@@ -20,6 +20,7 @@
   },
   "sidebar": {
     "history": "Historique",
+    "notes": "Notes",
     "settings": "Paramètres",
     "logs": "Logs",
     "expandMenu": "Déplier le menu",
