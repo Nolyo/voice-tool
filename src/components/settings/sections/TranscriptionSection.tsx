@@ -125,7 +125,8 @@ export function TranscriptionSection() {
                         | "large-v1"
                         | "large-v2"
                         | "large-v3"
-                        | "large-v3-turbo",
+                        | "large-v3-turbo"
+                        | "large-v3-turbo-q5_0",
                     )
                   }
                   disabled={isDownloading}
@@ -142,6 +143,7 @@ export function TranscriptionSection() {
                     <SelectItem value="large-v2">{t('settings.transcription.modelLargeV2')}</SelectItem>
                     <SelectItem value="large-v3">{t('settings.transcription.modelLargeV3')}</SelectItem>
                     <SelectItem value="large-v3-turbo">{t('settings.transcription.modelLargeV3Turbo')} ⭐</SelectItem>
+                    <SelectItem value="large-v3-turbo-q5_0">{t('settings.transcription.modelLargeV3TurboQ5')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
