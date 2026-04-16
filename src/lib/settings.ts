@@ -13,7 +13,7 @@ export interface AppSettings {
 
     // Transcription
     transcription_provider: "OpenAI" | "Google" | "Local";
-    local_model_size: "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo";
+    local_model_size: "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo" | "large-v3-turbo-q5_0";
     keep_model_in_memory: boolean | null;
     language: string;
     smart_formatting: boolean;
