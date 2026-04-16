@@ -43,13 +43,14 @@ const MODEL_OPTIONS: { value: ModelSize; label: string; size: string }[] = [
   { value: "large-v1", label: "Large v1", size: "2,9 Go" },
   { value: "large-v2", label: "Large v2", size: "2,9 Go" },
   { value: "large-v3", label: "Large v3", size: "2,9 Go" },
+  { value: "large-v3-turbo-q5_0", label: "Large v3 Turbo (quantifié)", size: "547 Mo" },
   { value: "large-v3-turbo", label: "Large v3 Turbo", size: "1,6 Go" },
 ];
 
 function recommendModel(info: SystemInfo): ModelSize | "api" {
   if (info.has_discrete_gpu) return "large-v3-turbo";
-  if (info.total_ram_gb < 8) return "api";
-  if (info.total_ram_gb < 16) return "small";
+  if (info.total_ram_gb < 6) return "api";
+  if (info.total_ram_gb < 12) return "large-v3-turbo-q5_0";
   return "large-v3-turbo";
 }
 
