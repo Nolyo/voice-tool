@@ -96,6 +96,8 @@
       "vocabularySubtitle": "Snippets et mots",
       "system": "Système",
       "systemSubtitle": "Démarrage et fichiers",
+      "miniWindow": "Mini fenêtre",
+      "miniWindowSubtitle": "Visualiseur & position",
       "shortcuts": "Raccourcis",
       "shortcutsSubtitle": "Touches de commande",
       "updates": "Mises à jour",
@@ -192,6 +194,19 @@
       "recordingsKeepHelp": "Nombre de fichiers audio à conserver localement",
       "language": "Langue",
       "languageDesc": "Langue de l'interface"
+    },
+    "miniWindow": {
+      "title": "Mini fenêtre",
+      "subtitle": "Visualiseur audio et positionnement",
+      "visualizer": "Visualiseur",
+      "visualizerBars": "Barres (classique)",
+      "visualizerWaveform": "Waveform défilant",
+      "visualizerDesc": "Choisis le rendu audio pendant l'enregistrement. Le waveform défile de droite à gauche.",
+      "showTranscript": "Afficher la transcription en mode étendu",
+      "showTranscriptDesc": "Quand la mini fenêtre est assez grande, affiche un aperçu du dernier texte transcrit.",
+      "position": "Position",
+      "recenter": "Recentrer la mini fenêtre",
+      "recenterDesc": "Remet la mini fenêtre à sa taille par défaut et la replace au-dessus de la barre des tâches."
     },
     "shortcuts": {
       "title": "Raccourcis clavier",
@@ -329,7 +344,9 @@
     "translateModeOn": "Mode traduction activé (FR→EN)",
     "translateModeOff": "Activer mode traduction",
     "sendingAudio": "Envoi de l'audio...",
-    "transcriptionSuccess": "Transcription réussie"
+    "transcriptionSuccess": "Transcription réussie",
+    "recordingHint": "Enregistrement…",
+    "noTranscriptYet": "Aucune transcription pour l'instant"
   },
   "logs": {
     "limitReached": "(limite atteinte)",

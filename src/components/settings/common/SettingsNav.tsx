@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Keyboard, Mic, RefreshCw, Settings } from "lucide-react";
+import { AudioWaveform, BookOpen, Keyboard, Mic, RefreshCw, Settings } from "lucide-react";
 
 export interface NavItemDef {
   id: string;
@@ -16,6 +16,7 @@ export type SettingsSectionId =
   | "section-texte"
   | "section-vocabulaire"
   | "section-systeme"
+  | "section-mini-window"
   | "section-raccourcis"
   | "section-mises-a-jour";
 
@@ -54,6 +55,13 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     iconBg: "bg-orange-500/10",
     titleKey: "settings.nav.system",
     subtitleKey: "settings.nav.systemSubtitle",
+  },
+  {
+    id: "section-mini-window",
+    icon: <AudioWaveform className="w-3.5 h-3.5 text-fuchsia-500" />,
+    iconBg: "bg-fuchsia-500/10",
+    titleKey: "settings.nav.miniWindow",
+    subtitleKey: "settings.nav.miniWindowSubtitle",
   },
   {
     id: "section-raccourcis",

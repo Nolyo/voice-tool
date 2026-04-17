@@ -6,6 +6,7 @@ import { AudioSection } from "./sections/AudioSection";
 import { TextSection } from "./sections/TextSection";
 import { VocabularySection } from "./sections/VocabularySection";
 import { SystemSection } from "./sections/SystemSection";
+import { MiniWindowSection } from "./sections/MiniWindowSection";
 import { ShortcutsSection } from "./sections/ShortcutsSection";
 import { UpdaterSection } from "./sections/UpdaterSection";
 
@@ -38,6 +39,7 @@ export function SettingTabs({ activeSection }: SettingTabsProps) {
       {activeSection === "section-texte" && <TextSection />}
       {activeSection === "section-vocabulaire" && <VocabularySection />}
       {activeSection === "section-systeme" && <SystemSection />}
+      {activeSection === "section-mini-window" && <MiniWindowSection />}
       {activeSection === "section-raccourcis" && <ShortcutsSection />}
       {activeSection === "section-mises-a-jour" && <UpdaterSection />}
     </div>

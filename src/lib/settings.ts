@@ -52,7 +52,17 @@ export interface AppSettings {
     ui_language: "fr" | "en";
 
     // Mini Window
+    /**
+     * When true and the mini-window is large enough (extended breakpoint),
+     * the last transcription preview is rendered below the visualizer.
+     * Acts as an opt-out: if false, the preview row is never shown regardless of size.
+     */
     show_transcription_in_mini_window: boolean;
+    mini_visualizer_mode: "bars" | "waveform";
+    /** Format "WIDTHxHEIGHT+X+Y". Empty string → auto-position via work_area. */
+    mini_window_geometry: string;
+    /** Ring-buffer capacity for the waveform visualizer (number of audio-level samples). */
+    mini_window_waveform_samples: number;
 
     // Vocabulary
     snippets: Array<{ trigger: string; replacement: string }>;
@@ -116,6 +126,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Mini Window
     show_transcription_in_mini_window: true,
+    mini_visualizer_mode: "bars",
+    mini_window_geometry: "",
+    mini_window_waveform_samples: 200,
 
     // Vocabulary
     snippets: [{ 

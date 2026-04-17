@@ -125,6 +125,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         } catch {}
       }
 
+      // Notify the mini window when the visualizer mode changes so it can switch live
+      if (key === "mini_visualizer_mode") {
+        try { await emit("mini-visualizer-mode-changed", value); } catch {}
+      }
+
       await storeInstance.set("settings", newSettings);
       await storeInstance.save();
     } catch (error) {

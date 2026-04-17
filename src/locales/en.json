@@ -96,6 +96,8 @@
       "vocabularySubtitle": "Snippets and words",
       "system": "System",
       "systemSubtitle": "Startup and files",
+      "miniWindow": "Mini window",
+      "miniWindowSubtitle": "Visualizer & position",
       "shortcuts": "Shortcuts",
       "shortcutsSubtitle": "Command keys",
       "updates": "Updates",
@@ -192,6 +194,19 @@
       "recordingsKeepHelp": "Number of audio files to keep locally",
       "language": "Language",
       "languageDesc": "Interface language"
+    },
+    "miniWindow": {
+      "title": "Mini window",
+      "subtitle": "Audio visualizer and positioning",
+      "visualizer": "Visualizer",
+      "visualizerBars": "Bars (classic)",
+      "visualizerWaveform": "Scrolling waveform",
+      "visualizerDesc": "Pick how audio is rendered during recording. The waveform scrolls from right to left.",
+      "showTranscript": "Show transcript preview in extended mode",
+      "showTranscriptDesc": "When the mini window is tall enough, display a preview of the last transcribed text.",
+      "position": "Position",
+      "recenter": "Recenter mini window",
+      "recenterDesc": "Resets the mini window to its default size and places it above the taskbar."
     },
     "shortcuts": {
       "title": "Keyboard shortcuts",
@@ -329,7 +344,9 @@
     "translateModeOn": "Translation mode enabled (FR→EN)",
     "translateModeOff": "Enable translation mode",
     "sendingAudio": "Sending audio...",
-    "transcriptionSuccess": "Transcription successful"
+    "transcriptionSuccess": "Transcription successful",
+    "recordingHint": "Recording…",
+    "noTranscriptYet": "No transcription yet"
   },
   "logs": {
     "limitReached": "(limit reached)",

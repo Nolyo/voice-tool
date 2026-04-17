@@ -58,6 +58,119 @@ pub(crate) fn update_window_settings<R: Runtime>(
     store.set("settings", data);
 }
 
+fn update_mini_window_geometry<R: Runtime>(
+    store: &Arc<tauri_plugin_store::Store<R>>,
+    geometry: String,
+) {
+    let mut data = store.get("settings").unwrap_or_else(|| json!({}));
+    if !data.is_object() {
+        data = json!({});
+    }
+
+    {
+        let root = data
+            .as_object_mut()
+            .expect("settings root should be an object");
+        let settings_value = root.entry("settings").or_insert_with(|| json!({}));
+
+        if !settings_value.is_object() {
+            *settings_value = json!({});
+        }
+
+        if let Some(settings_obj) = settings_value.as_object_mut() {
+            settings_obj.insert("mini_window_geometry".into(), json!(geometry));
+        }
+    }
+
+    store.set("settings", data);
+}
+
+pub(crate) fn capture_mini_window_state<R: Runtime>(
+    window: &WebviewWindow<R>,
+    store: &Arc<tauri_plugin_store::Store<R>>,
+) {
+    if let (Ok(size), Ok(position)) = (window.outer_size(), window.outer_position()) {
+        update_mini_window_geometry(store, format_geometry(size, position));
+    }
+}
+
+fn geometry_inside_any_work_area<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> bool {
+    let monitors = match app_handle.available_monitors() {
+        Ok(list) => list,
+        Err(_) => return false,
+    };
+
+    for monitor in monitors {
+        let area = monitor.work_area();
+        let left = area.position.x;
+        let top = area.position.y;
+        let right = left + area.size.width as i32;
+        let bottom = top + area.size.height as i32;
+
+        let win_right = x + width as i32;
+        let win_bottom = y + height as i32;
+
+        let horizontally_inside = x < right && win_right > left;
+        let vertically_inside = y < bottom && win_bottom > top;
+
+        if horizontally_inside && vertically_inside {
+            return true;
+        }
+    }
+
+    false
+}
+
+pub(crate) fn restore_mini_geometry<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    window: &WebviewWindow<R>,
+    store: &Arc<tauri_plugin_store::Store<R>>,
+) -> bool {
+    let Some(settings_value) = store.get("settings") else {
+        return false;
+    };
+
+    let Some(settings_obj) = settings_value.get("settings").and_then(Value::as_object) else {
+        return false;
+    };
+
+    let Some(geometry_str) = settings_obj
+        .get("mini_window_geometry")
+        .and_then(Value::as_str)
+    else {
+        return false;
+    };
+
+    if geometry_str.is_empty() {
+        return false;
+    }
+
+    let Some((width, height, x, y)) = parse_geometry(geometry_str) else {
+        return false;
+    };
+
+    if !geometry_inside_any_work_area(app_handle, x, y, width, height) {
+        return false;
+    }
+
+    if let Err(err) = window.set_size(Size::Physical(PhysicalSize { width, height })) {
+        eprintln!("[mini-window] Failed to apply size: {}", err);
+        return false;
+    }
+    if let Err(err) = window.set_position(Position::Physical(PhysicalPosition { x, y })) {
+        eprintln!("[mini-window] Failed to apply position: {}", err);
+        return false;
+    }
+
+    true
+}
+
 pub(crate) fn capture_window_state<R: Runtime>(
     window: &WebviewWindow<R>,
     store: &Arc<tauri_plugin_store::Store<R>>,
@@ -140,7 +253,7 @@ pub(crate) fn position_mini_window<R: Runtime>(app_handle: &AppHandle<R>, window
     let window_size = window
         .outer_size()
         .ok()
-        .unwrap_or_else(|| PhysicalSize::new(320, 76));
+        .unwrap_or_else(|| PhysicalSize::new(320, 42));
 
     let target_monitor = app_handle
         .get_webview_window("main")
@@ -152,18 +265,21 @@ pub(crate) fn position_mini_window<R: Runtime>(app_handle: &AppHandle<R>, window
         return;
     };
 
-    let monitor_size = monitor.size();
-    let monitor_position = monitor.position();
+    // Use work_area (excludes Windows taskbar, macOS Dock/menubar, Linux panels)
+    // instead of full monitor size so the mini never ends up under the taskbar.
+    let work_area = monitor.work_area();
+    let area_size = work_area.size;
+    let area_position = work_area.position;
 
     let window_width = window_size.width as i32;
     let window_height = window_size.height as i32;
 
-    let centered_x = monitor_position.x + ((monitor_size.width as i32 - window_width) / 2);
-    let bottom_y = monitor_position.y + monitor_size.height as i32 - window_height - MARGIN_BOTTOM;
+    let centered_x = area_position.x + ((area_size.width as i32 - window_width) / 2);
+    let bottom_y = area_position.y + area_size.height as i32 - window_height - MARGIN_BOTTOM;
 
     let new_position = PhysicalPosition {
         x: centered_x,
-        y: bottom_y.max(monitor_position.y),
+        y: bottom_y.max(area_position.y),
     };
 
     let _ = window.set_position(Position::Physical(new_position));
@@ -217,7 +333,8 @@ pub(crate) fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn s
 
     let mini = WebviewWindowBuilder::new(app, "mini", WebviewUrl::App("mini.html".into()))
         .title("Voice Tool - Mini")
-        .inner_size(233.0, 42.0)
+        .inner_size(320.0, 42.0)
+        .min_inner_size(180.0, 36.0)
         .resizable(true)
         .decorations(false)
         .always_on_top(true)
@@ -226,7 +343,23 @@ pub(crate) fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn s
         .focusable(false)
         .build()?;
 
-    position_mini_window(app, &mini);
+    // Share the same underlying store instance as setup_main_window
+    // (StoreBuilder returns the cached Arc<Store> when the path already exists).
+    let settings_path = crate::profiles::settings_store_path(app);
+    let mini_store = StoreBuilder::new(app, settings_path).build()?;
+
+    if !restore_mini_geometry(app, &mini, &mini_store) {
+        position_mini_window(app, &mini);
+    }
+
+    let events_window = mini.clone();
+    let events_store = mini_store.clone();
+    mini.on_window_event(move |event| match event {
+        WindowEvent::Moved(_) | WindowEvent::Resized(_) => {
+            capture_mini_window_state(&events_window, &events_store);
+        }
+        _ => {}
+    });
 
     Ok(())
 }

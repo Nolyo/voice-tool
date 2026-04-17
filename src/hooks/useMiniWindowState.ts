@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { listen, emit } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { Store } from "@tauri-apps/plugin-store";
 import i18n from "@/i18n";
+import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
 
 export type WindowStatus =
   | "idle"
@@ -10,18 +12,17 @@ export type WindowStatus =
   | "success"
   | "error";
 
+export type VisualizerMode = "bars" | "waveform";
+
 /**
  * State machine for the floating mini window.
  *
- * Owns:
- * - `audioLevel` (0..1) from the `audio-level` Tauri event
- * - `isRecording` from `recording-state`
- * - `status` driven by recording-state / transcription-start / -success / -error
- * - `recordingTime` auto-incrementing timer while recording
- * - `translateMode` from localStorage + `translate-mode-changed` event
- * - `errorMessage` set on transcription-error
+ * Reads the relevant mini-window settings once from the Tauri store and then
+ * listens for `mini-visualizer-mode-changed` to switch the visualizer live.
+ * Audio level, recording state and transcription lifecycle events come from
+ * the Rust backend and the main window's recording workflow.
  *
- * The mini window hides itself after success (1.5 s) or error (4 s) via
+ * The mini hides itself after success (1.5 s) or error (4 s) via
  * `close_mini_window` invoke.
  */
 export function useMiniWindowState() {
@@ -31,6 +32,17 @@ export function useMiniWindowState() {
   const [status, setStatus] = useState<WindowStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [translateMode, setTranslateMode] = useState(false);
+  const [visualizerMode, setVisualizerMode] = useState<VisualizerMode>(
+    DEFAULT_SETTINGS.settings.mini_visualizer_mode,
+  );
+  const [waveformCapacity, setWaveformCapacity] = useState(
+    DEFAULT_SETTINGS.settings.mini_window_waveform_samples,
+  );
+  const [showTranscriptPreview, setShowTranscriptPreview] = useState(
+    DEFAULT_SETTINGS.settings.show_transcription_in_mini_window,
+  );
+  const [lastTranscript, setLastTranscript] = useState("");
+  const [language, setLanguage] = useState<string | undefined>(undefined);
 
   // Recording timer
   useEffect(() => {
@@ -59,7 +71,7 @@ export function useMiniWindowState() {
     }
   };
 
-  // All Tauri event listeners + initial translate-mode read
+  // All Tauri event listeners + initial settings read
   useEffect(() => {
     let unlistenAudioFn: (() => void) | null = null;
     let unlistenRecordingFn: (() => void) | null = null;
@@ -68,18 +80,32 @@ export function useMiniWindowState() {
     let unlistenTranscriptionErrorFn: (() => void) | null = null;
     let unlistenTranslateModeChangedFn: (() => void) | null = null;
     let unlistenLanguageChangedFn: (() => void) | null = null;
+    let unlistenVisualizerModeChangedFn: (() => void) | null = null;
 
     const setupListeners = async () => {
       try {
-        // Load translate mode from settings stored in localStorage
-        const settingsJson = localStorage.getItem("settings");
-        if (settingsJson) {
-          try {
-            const settings = JSON.parse(settingsJson);
-            setTranslateMode(settings?.settings?.translate_mode ?? false);
-          } catch {
-            console.log("Could not parse settings from localStorage");
+        // Load settings from the profile-scoped Tauri store (same store the
+        // main window writes to). Used for initial mini-window-specific state.
+        try {
+          const storePath = await invoke<string>(
+            "get_active_profile_settings_path",
+          );
+          const store = await Store.load(storePath);
+          const saved = await store.get<AppSettings>("settings");
+          const s = saved?.settings;
+          if (s) {
+            setTranslateMode(Boolean(s.translate_mode));
+            if (s.mini_visualizer_mode) setVisualizerMode(s.mini_visualizer_mode);
+            if (typeof s.mini_window_waveform_samples === "number") {
+              setWaveformCapacity(s.mini_window_waveform_samples);
+            }
+            if (typeof s.show_transcription_in_mini_window === "boolean") {
+              setShowTranscriptPreview(s.show_transcription_in_mini_window);
+            }
+            if (s.language) setLanguage(s.language);
           }
+        } catch (e) {
+          console.log("Mini window: could not load settings from store", e);
         }
 
         unlistenTranslateModeChangedFn = await listen<boolean>(
@@ -97,6 +123,15 @@ export function useMiniWindowState() {
           },
         );
 
+        unlistenVisualizerModeChangedFn = await listen<VisualizerMode>(
+          "mini-visualizer-mode-changed",
+          (event) => {
+            if (event.payload === "bars" || event.payload === "waveform") {
+              setVisualizerMode(event.payload);
+            }
+          },
+        );
+
         unlistenAudioFn = await listen<number>("audio-level", (event) => {
           setAudioLevel(event.payload);
         });
@@ -109,6 +144,7 @@ export function useMiniWindowState() {
             if (recording) {
               setStatus("recording");
               setErrorMessage("");
+              setLastTranscript("");
             }
           },
         );
@@ -122,8 +158,11 @@ export function useMiniWindowState() {
 
         unlistenTranscriptionSuccessFn = await listen<{ text: string }>(
           "transcription-success",
-          async () => {
+          async (event) => {
             setStatus("success");
+            if (event.payload?.text) {
+              setLastTranscript(event.payload.text);
+            }
             setTimeout(async () => {
               setStatus("idle");
               try {
@@ -167,6 +206,7 @@ export function useMiniWindowState() {
       if (unlistenTranscriptionErrorFn) unlistenTranscriptionErrorFn();
       if (unlistenTranslateModeChangedFn) unlistenTranslateModeChangedFn();
       if (unlistenLanguageChangedFn) unlistenLanguageChangedFn();
+      if (unlistenVisualizerModeChangedFn) unlistenVisualizerModeChangedFn();
     };
   }, []);
 
@@ -178,5 +218,10 @@ export function useMiniWindowState() {
     errorMessage,
     translateMode,
     handleToggleTranslateMode,
+    visualizerMode,
+    waveformCapacity,
+    showTranscriptPreview,
+    lastTranscript,
+    language,
   };
 }
