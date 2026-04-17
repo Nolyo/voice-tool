@@ -11,6 +11,9 @@
 ### 🔧 Changed
 - Switched local transcription engine from CUDA to Vulkan - no NVIDIA CUDA runtime required anymore
 - Streamlined installer: only the recommended NSIS setup (voice-tool_x.x.x_x64-setup.exe) is now distributed, removing the MSI and portable variants that caused confusion with auto-updates
+- Redesigned the history panel: recording card is now a compact horizontal banner (full width), transcription details open in a sliding sidebar on the right instead of a fixed side panel
+- Keyboard shortcuts (toggle / push-to-talk) are now displayed directly on the recording card when idle
+- Copy and Listen buttons in the detail sidebar are now side by side
 
 ### ℹ️ Note
 - The first transcription after installation may take longer than usual while GPU shaders are compiled and cached - subsequent transcriptions are fast as normal
