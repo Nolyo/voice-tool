@@ -32,6 +32,7 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const [selectedTranscription, setSelectedTranscription] =
     useState<Transcription | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTabId>("historique");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSettingsSection, setActiveSettingsSection] =
@@ -106,6 +107,15 @@ export default function Dashboard() {
     setSelectedTranscription(null);
     await clearHistory();
   };
+
+  const handleSelectTranscription = useCallback((transcription: Transcription) => {
+    setSelectedTranscription(transcription);
+    setIsSidebarOpen(true);
+  }, []);
+
+  const handleCloseDetails = useCallback(() => {
+    setIsSidebarOpen(false);
+  }, []);
 
   // Keep `selectedTranscription` in sync with the history: default to the
   // most recent entry, drop the selection if its row was deleted, and clear
@@ -193,7 +203,9 @@ export default function Dashboard() {
                     hideRecordingPanel={settings.hide_recording_panel}
                     transcriptions={transcriptions}
                     selectedTranscription={selectedTranscription}
-                    onSelectTranscription={setSelectedTranscription}
+                    isSidebarOpen={isSidebarOpen}
+                    onSelectTranscription={handleSelectTranscription}
+                    onCloseDetails={handleCloseDetails}
                     onCopy={handleCopy}
                     onDelete={handleDelete}
                     onClearAll={handleClearAll}
