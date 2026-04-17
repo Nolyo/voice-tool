@@ -51,7 +51,8 @@
     "clickToStart": "Click to start",
     "transcribingDetail": "Processing your audio with OpenAI Whisper...",
     "recordingDetail": "Speak clearly into your microphone",
-    "idleDetail": "Your transcription will appear automatically"
+    "idleDetail": "Your transcription will appear automatically",
+    "shortcutsHint": "{{toggle}} · Hold {{ptt}}"
   },
   "history": {
     "search": "Search transcriptions...",
