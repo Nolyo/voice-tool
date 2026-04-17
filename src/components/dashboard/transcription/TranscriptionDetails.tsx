@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Mic, Copy, Play, Pause } from "lucide-react";
+import { Mic, Copy, Play, Pause, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { Transcription } from "@/hooks/useTranscriptionHistory";
@@ -12,11 +12,13 @@ import { invoke } from "@tauri-apps/api/core";
 interface TranscriptionDetailsProps {
   transcription: Transcription | null;
   onCopy: (text: string) => void;
+  onClose: () => void;
 }
 
 export function TranscriptionDetails({
   transcription,
   onCopy,
+  onClose,
 }: TranscriptionDetailsProps) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -131,8 +133,17 @@ export function TranscriptionDetails({
     Boolean(transcription?.audioPath) && settings.enable_history_audio_preview;
 
   return (
-    <Card className="p-6 sticky top-24">
-      <h3 className="text-sm font-semibold text-foreground mb-4">{t('transcriptionDetails.details')}</h3>
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground">{t('transcriptionDetails.details')}</h3>
+        <button
+          onClick={onClose}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Fermer"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
       {transcription ? (
         <div className="space-y-4">
           <div>
