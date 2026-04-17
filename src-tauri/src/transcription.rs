@@ -143,20 +143,22 @@ pub fn cleanup_old_recordings(app: &AppHandle, keep_last: usize) -> Result<()> {
     Ok(())
 }
 
-/// Transcribe audio file using OpenAI Whisper API
-pub async fn transcribe_with_openai(
+/// Generic transcription over any OpenAI-compatible Whisper HTTP API.
+///
+/// Both OpenAI and Groq expose the exact same shape (multipart fields, Bearer auth,
+/// JSON response). Only `base_url`, `model` and the provider label (used in logs/errors)
+/// change between providers.
+async fn transcribe_via_whisper_http(
+    provider_label: &str,
+    base_url: &str,
+    model: &str,
     wav_path: &Path,
     api_key: &str,
     language: &str,
     dictionary: &str,
     translate: bool,
 ) -> Result<String> {
-    if api_key.is_empty() {
-        return Err(anyhow!("OpenAI API key not configured"));
-    }
-
     tracing::info!("Reading audio file for transcription");
-    // Read the audio file
     let audio_bytes = fs::read(wav_path).context("Failed to read WAV file")?;
 
     let file_size_kb = audio_bytes.len() / 1024;
@@ -171,7 +173,13 @@ pub async fn transcribe_with_openai(
     };
 
     let action = if translate { "translation" } else { "transcription" };
-    tracing::info!("Preparing {} request (language: {})", action, lang_code);
+    tracing::info!(
+        "Preparing {} request via {} (model: {}, language: {})",
+        action,
+        provider_label,
+        model,
+        lang_code
+    );
 
     // Create multipart form
     let file_part = multipart::Part::bytes(audio_bytes)
@@ -180,7 +188,7 @@ pub async fn transcribe_with_openai(
 
     let mut form = multipart::Form::new()
         .part("file", file_part)
-        .text("model", "whisper-1")
+        .text("model", model.to_string())
         .text("response_format", "json");
 
     // Only add language parameter for transcription (not for translation)
@@ -193,20 +201,19 @@ pub async fn transcribe_with_openai(
     }
 
     let endpoint = if translate {
-        "https://api.openai.com/v1/audio/translations"
+        format!("{}/audio/translations", base_url)
     } else {
-        "https://api.openai.com/v1/audio/transcriptions"
+        format!("{}/audio/transcriptions", base_url)
     };
 
-    tracing::info!("Sending request to OpenAI Whisper API...");
-    // Send request to OpenAI with timeout
+    tracing::info!("Sending request to {} Whisper API...", provider_label);
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .context("Failed to create HTTP client")?;
 
     let response = client
-        .post(endpoint)
+        .post(&endpoint)
         .header("Authorization", format!("Bearer {}", api_key))
         .multipart(form)
         .send()
@@ -217,7 +224,10 @@ pub async fn transcribe_with_openai(
                 anyhow!("Request timed out. Check your internet connection or disable your VPN.")
             } else if e.is_connect() {
                 tracing::error!("Connection error: {}", e);
-                anyhow!("Cannot connect to OpenAI API. Check your internet connection or disable your VPN.")
+                anyhow!(
+                    "Cannot connect to {} API. Check your internet connection or disable your VPN.",
+                    provider_label
+                )
             } else if e.is_request() {
                 tracing::error!("Request error: {}", e);
                 anyhow!("Failed to send request. Check your network connection.")
@@ -228,31 +238,93 @@ pub async fn transcribe_with_openai(
         })?;
 
     tracing::info!(
-        "Received response from OpenAI (status: {})",
+        "Received response from {} (status: {})",
+        provider_label,
         response.status()
     );
 
-    // Check for errors
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response
             .text()
             .await
             .unwrap_or_else(|_| "Unknown error".to_string());
-        tracing::error!("OpenAI API error {}: {}", status, error_text);
-        return Err(anyhow!("OpenAI API error {}: {}", status, error_text));
+        tracing::error!("{} API error {}: {}", provider_label, status, error_text);
+        return Err(anyhow!(
+            "{} API error {}: {}",
+            provider_label,
+            status,
+            error_text
+        ));
     }
 
     tracing::info!("Parsing transcription response...");
-    // Parse response
     let whisper_response: WhisperResponse = response
         .json()
         .await
-        .context("Failed to parse OpenAI response")?;
+        .context(format!("Failed to parse {} response", provider_label))?;
 
     tracing::info!(
         "Transcription text received ({} characters)",
         whisper_response.text.len()
     );
     Ok(whisper_response.text)
+}
+
+/// Transcribe audio file using OpenAI Whisper API
+pub async fn transcribe_with_openai(
+    wav_path: &Path,
+    api_key: &str,
+    language: &str,
+    dictionary: &str,
+    translate: bool,
+) -> Result<String> {
+    if api_key.is_empty() {
+        return Err(anyhow!("OpenAI API key not configured"));
+    }
+
+    transcribe_via_whisper_http(
+        "OpenAI",
+        "https://api.openai.com/v1",
+        "whisper-1",
+        wav_path,
+        api_key,
+        language,
+        dictionary,
+        translate,
+    )
+    .await
+}
+
+/// Transcribe audio file using Groq's OpenAI-compatible Whisper endpoint.
+/// Defaults to `whisper-large-v3-turbo` (fastest/cheapest) if `model` is empty.
+pub async fn transcribe_with_groq(
+    wav_path: &Path,
+    api_key: &str,
+    language: &str,
+    dictionary: &str,
+    translate: bool,
+    model: &str,
+) -> Result<String> {
+    if api_key.is_empty() {
+        return Err(anyhow!("Groq API key not configured"));
+    }
+
+    let effective_model = if model.is_empty() {
+        "whisper-large-v3-turbo"
+    } else {
+        model
+    };
+
+    transcribe_via_whisper_http(
+        "Groq",
+        "https://api.groq.com/openai/v1",
+        effective_model,
+        wav_path,
+        api_key,
+        language,
+        dictionary,
+        translate,
+    )
+    .await
 }

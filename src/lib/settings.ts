@@ -12,8 +12,9 @@ export interface AppSettings {
     silence_threshold: number;
 
     // Transcription
-    transcription_provider: "OpenAI" | "Google" | "Local";
+    transcription_provider: "OpenAI" | "Google" | "Local" | "Groq";
     local_model_size: "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo" | "large-v3-turbo-q5_0";
+    groq_model: "whisper-large-v3-turbo" | "whisper-large-v3";
     keep_model_in_memory: boolean | null;
     language: string;
     smart_formatting: boolean;
@@ -26,6 +27,7 @@ export interface AppSettings {
     // API Keys
     openai_api_key: string;
     google_api_key: string;
+    groq_api_key: string;
 
     // Text
     insertion_mode: "cursor" | "clipboard" | "none";
@@ -87,6 +89,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     // Transcription
     transcription_provider: "Local",
     local_model_size: "base", // Recommended for old hardware
+    groq_model: "whisper-large-v3-turbo",
     keep_model_in_memory: null, // null = auto (GPU: keep, CPU: unload after 2min)
     language: "fr-FR",
     smart_formatting: true,
@@ -99,6 +102,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     // API Keys
     openai_api_key: "",
     google_api_key: "",
+    groq_api_key: "",
 
     // Text
     insertion_mode: "cursor",

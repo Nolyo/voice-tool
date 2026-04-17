@@ -4,7 +4,9 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tauri::AppHandle;
 
-use crate::transcription::{cleanup_old_recordings, save_audio_to_wav, transcribe_with_openai};
+use crate::transcription::{
+    cleanup_old_recordings, save_audio_to_wav, transcribe_with_groq, transcribe_with_openai,
+};
 use crate::transcription_local;
 
 #[derive(Serialize)]
@@ -28,6 +30,7 @@ pub async fn transcribe_audio(
     initial_prompt: Option<String>,
     translate: Option<bool>,
     keep_model_in_memory: Option<bool>,
+    groq_model: Option<String>,
 ) -> Result<TranscriptionResponse, String> {
     let translate = translate.unwrap_or(false);
     tracing::info!(
@@ -67,6 +70,21 @@ pub async fn transcribe_audio(
         .map_err(|e| {
             tracing::error!("Local transcription failed: {}", e);
             format!("Local transcription failed: {}", e)
+        })
+    } else if effective_provider == Some("Groq") {
+        let model = groq_model.unwrap_or_else(|| "whisper-large-v3-turbo".to_string());
+        transcribe_with_groq(
+            &wav_path,
+            &api_key,
+            &language,
+            &combined_prompt,
+            translate,
+            &model,
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!("Groq transcription failed: {}", e);
+            format!("Groq transcription failed: {}", e)
         })
     } else {
         transcribe_with_openai(&wav_path, &api_key, &language, &combined_prompt, translate)

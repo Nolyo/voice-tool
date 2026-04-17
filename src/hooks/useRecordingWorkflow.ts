@@ -114,12 +114,16 @@ export function useRecordingWorkflow({
       setIsTranscribing(true);
       try {
         await emit("transcription-start");
+        const providerApiKey =
+          settings.transcription_provider === "Groq"
+            ? settings.groq_api_key
+            : settings.openai_api_key;
         const result = await invoke<TranscriptionInvokeResult>(
           "transcribe_audio",
           {
             audioSamples: audioData,
             sampleRate: sampleRate,
-            apiKey: settings.openai_api_key,
+            apiKey: providerApiKey,
             language: settings.language,
             keepLast: settings.recordings_keep_last,
             provider: settings.transcription_provider,
@@ -128,6 +132,7 @@ export function useRecordingWorkflow({
             initialPrompt: settings.whisper_initial_prompt ?? "",
             translate: settings.translate_mode,
             keepModelInMemory: settings.keep_model_in_memory,
+            groqModel: settings.groq_model,
           },
         );
 
@@ -135,10 +140,18 @@ export function useRecordingWorkflow({
 
         const durationSeconds = audioData.length / sampleRate;
         const durationMinutes = durationSeconds / 60;
-        const apiCost =
-          settings.transcription_provider === "Local"
-            ? 0
-            : durationMinutes * 0.006;
+        const apiCost = (() => {
+          switch (settings.transcription_provider) {
+            case "Local":
+              return 0;
+            case "Groq":
+              // whisper-large-v3-turbo: $0.04/h ≈ $0.000667/min
+              return durationMinutes * 0.000667;
+            default:
+              // OpenAI whisper-1: $0.006/min
+              return durationMinutes * 0.006;
+          }
+        })();
 
         await handleTranscriptionFinal(
           result.text,

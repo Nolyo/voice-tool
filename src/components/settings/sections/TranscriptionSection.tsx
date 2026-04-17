@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Settings, AlertTriangle, Check, Download, Loader2, Trash2, MemoryStick } from "lucide-react";
+import { Settings, AlertTriangle, Check, Download, Loader2, Trash2, MemoryStick, Zap } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -51,7 +51,7 @@ export function TranscriptionSection() {
               onValueChange={(value) =>
                 updateSetting(
                   "transcription_provider",
-                  value as "OpenAI" | "Google",
+                  value as "OpenAI" | "Google" | "Local" | "Groq",
                 )
               }
             >
@@ -63,6 +63,7 @@ export function TranscriptionSection() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="OpenAI">{t('settings.transcription.providerOpenai')}</SelectItem>
+                <SelectItem value="Groq">{t('settings.transcription.providerGroq')}</SelectItem>
                 <SelectItem value="Local">{t('settings.transcription.providerLocal')}</SelectItem>
               </SelectContent>
             </Select>
@@ -97,6 +98,41 @@ export function TranscriptionSection() {
           <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-sm text-amber-600 dark:text-amber-400">
             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
             <span>{t('settings.transcription.paidWarning')}</span>
+          </div>
+        )}
+
+        {/* Groq model section */}
+        {settings.transcription_provider === "Groq" && (
+          <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/60 animate-in fade-in slide-in-from-top-1">
+            <div className="flex items-start gap-2 text-sm text-orange-600 dark:text-orange-400">
+              <Zap className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>{t('settings.transcription.groqInfo')}</span>
+            </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="groq-model"
+                className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+              >
+                {t('settings.transcription.groqModel')}
+              </Label>
+              <Select
+                value={settings.groq_model}
+                onValueChange={(value) =>
+                  updateSetting(
+                    "groq_model",
+                    value as "whisper-large-v3-turbo" | "whisper-large-v3",
+                  )
+                }
+              >
+                <SelectTrigger id="groq-model" className="h-9 bg-background/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="whisper-large-v3-turbo">{t('settings.transcription.groqModelTurbo')} ⭐</SelectItem>
+                  <SelectItem value="whisper-large-v3">{t('settings.transcription.groqModelLargeV3')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
 

@@ -21,6 +21,7 @@ export function ApiConfigDialog() {
   const [apiKeys, setApiKeys] = useState({
     openai_api_key: settings.openai_api_key,
     google_api_key: settings.google_api_key,
+    groq_api_key: settings.groq_api_key,
   });
 
   const handleSave = async () => {
@@ -34,6 +35,7 @@ export function ApiConfigDialog() {
       setApiKeys({
         openai_api_key: settings.openai_api_key,
         google_api_key: settings.google_api_key,
+        groq_api_key: settings.groq_api_key,
       });
     }
     setOpen(newOpen);
@@ -80,6 +82,36 @@ export function ApiConfigDialog() {
                 }}
               >
                 platform.openai.com
+              </button>
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="groq" className="text-sm font-medium">
+              {t('apiConfig.groqKey')}
+            </Label>
+            <Input
+              id="groq"
+              type="password"
+              placeholder={t('apiConfig.groqKeyPlaceholder')}
+              value={apiKeys.groq_api_key}
+              onChange={(e) =>
+                setApiKeys({ ...apiKeys, groq_api_key: e.target.value })
+              }
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('apiConfig.getHelp')}{" "}
+              <button
+                type="button"
+                className="text-blue-500 underline hover:text-blue-400 cursor-pointer inline"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  const { openUrl } = await import("@tauri-apps/plugin-opener");
+                  await openUrl("https://console.groq.com/keys");
+                }}
+              >
+                console.groq.com
               </button>
             </p>
           </div>

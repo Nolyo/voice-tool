@@ -109,6 +109,11 @@
       "provider": "Provider",
       "providerOpenai": "OpenAI Whisper",
       "providerLocal": "Local (Offline)",
+      "providerGroq": "Groq (Cloud)",
+      "groqInfo": "Ultra-fast Whisper hosted on Groq. Requires a Groq API key.",
+      "groqModel": "Groq model",
+      "groqModelTurbo": "whisper-large-v3-turbo (fastest, cheapest)",
+      "groqModelLargeV3": "whisper-large-v3 (most accurate)",
       "language": "Language",
       "languageFr": "Français",
       "languageEn": "English",
@@ -270,6 +275,8 @@
     "description": "Enter your API keys for transcription services. These keys are stored locally and securely.",
     "openaiKey": "OpenAI API Key",
     "openaiKeyPlaceholder": "sk-...",
+    "groqKey": "Groq API Key",
+    "groqKeyPlaceholder": "gsk_...",
     "getHelp": "Get a key from"
   },
   "notes": {
