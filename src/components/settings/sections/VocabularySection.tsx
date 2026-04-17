@@ -145,6 +145,39 @@ export function VocabularySection() {
             </Button>
           </form>
         </div>
+
+        <Divider />
+
+        {/* Initial prompt (Whisper context) */}
+        <div className="space-y-3">
+          <div>
+            <h4 className="text-sm font-medium text-foreground">
+              {t('settings.vocabulary.initialPrompt')}
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              {t('settings.vocabulary.initialPromptDesc')}
+            </p>
+          </div>
+
+          <textarea
+            id="initial-prompt"
+            value={settings.whisper_initial_prompt ?? ""}
+            onChange={(e) =>
+              updateSetting("whisper_initial_prompt", e.target.value)
+            }
+            placeholder={t('settings.vocabulary.initialPromptPlaceholder')}
+            rows={5}
+            className="w-full resize-y rounded-md border border-input bg-background/50 px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <p className="text-[10px] text-muted-foreground text-right">
+            {t('settings.vocabulary.initialPromptWordCount', {
+              count: (settings.whisper_initial_prompt ?? "")
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean).length,
+            })}
+          </p>
+        </div>
       </div>
     </SectionCard>
   );

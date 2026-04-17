@@ -85,3 +85,36 @@ pub fn is_recording(state: State<AppState>) -> bool {
     let recorder = state.inner().audio_recorder.lock().unwrap();
     recorder.is_recording()
 }
+
+/// Start monitor-only audio stream for the settings mic-test feature.
+/// Emits `audio-level` events without buffering samples and without changing
+/// the global recording state.
+#[tauri::command]
+pub fn start_audio_monitor(
+    state: State<AppState>,
+    app_handle: AppHandle,
+    device_index: Option<usize>,
+) -> Result<(), String> {
+    tracing::info!(
+        "Starting audio monitor (device_index: {:?})",
+        device_index
+    );
+    let mut recorder = state.inner().audio_recorder.lock().unwrap();
+    recorder
+        .start_monitoring(device_index, app_handle)
+        .map_err(|e| {
+            tracing::error!("Failed to start audio monitor: {}", e);
+            e.to_string()
+        })
+}
+
+/// Stop the monitor-only audio stream.
+#[tauri::command]
+pub fn stop_audio_monitor(state: State<AppState>) -> Result<(), String> {
+    tracing::info!("Stopping audio monitor");
+    let mut recorder = state.inner().audio_recorder.lock().unwrap();
+    recorder.stop_monitoring().map_err(|e| {
+        tracing::error!("Failed to stop audio monitor: {}", e);
+        e.to_string()
+    })
+}

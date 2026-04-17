@@ -146,7 +146,10 @@
       "silenceThreshold": "Silence detection threshold",
       "silenceThresholdHelp": "Recordings below this threshold will be considered silence",
       "interfaceSounds": "Interface sounds",
-      "historyAudioPreview": "Listen button in history"
+      "historyAudioPreview": "Listen button in history",
+      "testMic": "Test microphone",
+      "stopTest": "Stop test",
+      "inputLevel": "Input level"
     },
     "text": {
       "title": "Text",
@@ -171,7 +174,11 @@
       "dictionary": "Dictionary",
       "dictionaryDesc": "Words or phrases to favor during transcription",
       "addWordPlaceholder": "Add a word...",
-      "addWord": "Add"
+      "addWord": "Add",
+      "initialPrompt": "Context prompt",
+      "initialPromptDesc": "Free text Whisper uses to set vocabulary and style. Show, don't tell: paste a code snippet, a sentence in the right tone, key words.",
+      "initialPromptPlaceholder": "Stack: React, TypeScript, Tauri. Example: const user = await db.users.findMany({ where: { active: true } });",
+      "initialPromptWordCount": "{{count}} / 200 words"
     },
     "system": {
       "title": "System",

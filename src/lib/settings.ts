@@ -57,6 +57,7 @@ export interface AppSettings {
     // Vocabulary
     snippets: Array<{ trigger: string; replacement: string }>;
     dictionary: string[];
+    whisper_initial_prompt: string;
   };
 }
 
@@ -125,6 +126,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
       replacement: "https://github.com/exemple" 
     }],
     dictionary: ["Ollama"],
+    whisper_initial_prompt: "",
   },
 };
 

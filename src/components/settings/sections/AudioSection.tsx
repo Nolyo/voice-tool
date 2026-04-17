@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Mic, RefreshCw } from "lucide-react";
+import { Mic, MicOff, RefreshCw } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -24,6 +27,52 @@ export function AudioSection() {
     error: devicesError,
     refresh,
   } = useAudioDevices();
+  const [isTesting, setIsTesting] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
+
+  useEffect(() => {
+    if (!isTesting) return;
+
+    let unlisten: (() => void) | null = null;
+    let cancelled = false;
+
+    listen<number>("audio-level", (e) => setAudioLevel(e.payload)).then(
+      (fn) => {
+        if (cancelled) {
+          fn();
+        } else {
+          unlisten = fn;
+        }
+      },
+    );
+
+    return () => {
+      cancelled = true;
+      unlisten?.();
+      invoke("stop_audio_monitor").catch(() => {
+        // Ignore: the stream may already be stopped.
+      });
+      setAudioLevel(0);
+    };
+  }, [isTesting]);
+
+  const handleToggleTest = async () => {
+    if (isTesting) {
+      setIsTesting(false);
+      return;
+    }
+    try {
+      await invoke("start_audio_monitor", {
+        deviceIndex: settings.input_device_index ?? null,
+      });
+      setIsTesting(true);
+    } catch (err) {
+      console.error("Failed to start mic test:", err);
+    }
+  };
+
+  const levelColor =
+    audioLevel > 0.7 ? "#ef4444" : audioLevel > 0.35 ? "#f97316" : "#22c55e";
 
   return (
     <SectionCard
@@ -87,6 +136,45 @@ export function AudioSection() {
           </Select>
           {devicesError && (
             <p className="text-xs text-destructive">{t('settings.audio.errorPrefix')} {devicesError}</p>
+          )}
+        </div>
+
+        {/* Microphone test */}
+        <div className="space-y-2">
+          <Button
+            variant={isTesting ? "destructive" : "outline"}
+            size="sm"
+            onClick={handleToggleTest}
+            disabled={devicesLoading || !!devicesError}
+            className="w-full h-8 text-xs"
+          >
+            {isTesting ? (
+              <MicOff className="w-3.5 h-3.5 mr-1.5" />
+            ) : (
+              <Mic className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            {isTesting ? t('settings.audio.stopTest') : t('settings.audio.testMic')}
+          </Button>
+          {isTesting && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {t('settings.audio.inputLevel')}
+                </p>
+                <span className="text-xs font-mono tabular-nums text-muted-foreground">
+                  {Math.round(audioLevel * 100)}%
+                </span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-100"
+                  style={{
+                    width: `${Math.min(audioLevel * 100, 100)}%`,
+                    backgroundColor: levelColor,
+                  }}
+                />
+              </div>
+            </div>
           )}
         </div>
 

@@ -47,6 +47,8 @@ pub fn run() {
             commands::recording::start_recording,
             commands::recording::stop_recording,
             commands::recording::is_recording,
+            commands::recording::start_audio_monitor,
+            commands::recording::stop_audio_monitor,
             commands::window::exit_app,
             commands::window::set_mini_window_mode,
             commands::window::close_mini_window,

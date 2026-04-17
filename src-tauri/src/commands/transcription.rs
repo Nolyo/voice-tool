@@ -25,6 +25,7 @@ pub async fn transcribe_audio(
     provider: Option<String>,
     local_model_size: Option<String>,
     dictionary: Option<String>,
+    initial_prompt: Option<String>,
     translate: Option<bool>,
     keep_model_in_memory: Option<bool>,
 ) -> Result<TranscriptionResponse, String> {
@@ -40,7 +41,14 @@ pub async fn transcribe_audio(
     let wav_path = save_audio_to_wav(&app_handle, &audio_samples, sample_rate)
         .map_err(|e| format!("Failed to save audio: {}", e))?;
 
-    let dict = dictionary.as_deref().unwrap_or("");
+    let dict = dictionary.as_deref().unwrap_or("").trim();
+    let prompt = initial_prompt.as_deref().unwrap_or("").trim();
+    let combined_prompt = match (prompt.is_empty(), dict.is_empty()) {
+        (false, false) => format!("{}\n\n{}", prompt, dict),
+        (false, true) => prompt.to_string(),
+        (true, false) => dict.to_string(),
+        (true, true) => String::new(),
+    };
     let effective_provider = provider.as_deref();
 
     let transcription_result = if effective_provider == Some("Local") {
@@ -51,7 +59,7 @@ pub async fn transcribe_audio(
             sample_rate,
             &model,
             &language,
-            dict,
+            &combined_prompt,
             translate,
             keep_model_in_memory,
         )
@@ -61,7 +69,7 @@ pub async fn transcribe_audio(
             format!("Local transcription failed: {}", e)
         })
     } else {
-        transcribe_with_openai(&wav_path, &api_key, &language, dict, translate)
+        transcribe_with_openai(&wav_path, &api_key, &language, &combined_prompt, translate)
             .await
             .map_err(|e| {
                 tracing::error!("Transcription failed: {}", e);

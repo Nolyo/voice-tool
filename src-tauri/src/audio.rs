@@ -10,6 +10,7 @@ pub struct AudioRecorder {
     sample_rate: Arc<Mutex<u32>>,
     is_recording: Arc<Mutex<bool>>,
     stream_id: Arc<Mutex<u64>>, // Counter to identify current stream
+    monitor_only: Arc<Mutex<bool>>, // When true, callback emits levels but skips buffering
 }
 
 /// Information about an audio device
@@ -36,6 +37,7 @@ impl AudioRecorder {
             sample_rate: Arc::new(Mutex::new(16000)), // Default, will be updated when recording starts
             is_recording: Arc::new(Mutex::new(false)),
             stream_id: Arc::new(Mutex::new(0)),
+            monitor_only: Arc::new(Mutex::new(false)),
         }
     }
 
@@ -77,6 +79,10 @@ impl AudioRecorder {
             "start_recording called with device_index: {:?}",
             device_index
         );
+
+        // Ensure we are in real-recording mode (any active monitoring stream
+        // will be superseded by the stream_id increment below).
+        *self.monitor_only.lock().unwrap() = false;
 
         // Increment stream ID to invalidate old streams
         {
@@ -140,6 +146,8 @@ impl AudioRecorder {
         // Set recording flag
         *is_recording.lock().unwrap() = true;
 
+        let monitor_only = self.monitor_only.clone();
+
         // Build the input stream
         let stream = match sample_format {
             cpal::SampleFormat::I16 => self.build_input_stream::<i16, R>(
@@ -149,6 +157,7 @@ impl AudioRecorder {
                 is_recording.clone(),
                 stream_id.clone(),
                 current_stream_id,
+                monitor_only.clone(),
                 app_handle,
             )?,
             cpal::SampleFormat::U16 => self.build_input_stream::<u16, R>(
@@ -158,6 +167,7 @@ impl AudioRecorder {
                 is_recording.clone(),
                 stream_id.clone(),
                 current_stream_id,
+                monitor_only.clone(),
                 app_handle,
             )?,
             cpal::SampleFormat::F32 => self.build_input_stream::<f32, R>(
@@ -167,6 +177,7 @@ impl AudioRecorder {
                 is_recording.clone(),
                 stream_id.clone(),
                 current_stream_id,
+                monitor_only,
                 app_handle,
             )?,
             _ => return Err(anyhow!("Unsupported sample format: {:?}", sample_format)),
@@ -222,6 +233,31 @@ impl AudioRecorder {
         *self.is_recording.lock().unwrap()
     }
 
+    /// Start monitor-only mode: stream runs and emits `audio-level` events but
+    /// no samples are accumulated. Used by the settings mic-test feature.
+    pub fn start_monitoring<R: tauri::Runtime>(
+        &mut self,
+        device_index: Option<usize>,
+        app_handle: tauri::AppHandle<R>,
+    ) -> Result<()> {
+        // start_recording resets monitor_only=false at the top, so we must
+        // flip it back to true after the stream is up. The race window between
+        // stream.play() and this assignment is microseconds, but worst case a
+        // handful of samples land in the buffer — they are discarded by the
+        // next start_recording (which clears the buffer).
+        self.start_recording(device_index, app_handle)?;
+        *self.monitor_only.lock().unwrap() = true;
+        Ok(())
+    }
+
+    /// Stop monitor-only mode.
+    pub fn stop_monitoring(&mut self) -> Result<()> {
+        *self.is_recording.lock().unwrap() = false;
+        *self.monitor_only.lock().unwrap() = false;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        Ok(())
+    }
+
     /// Get the appropriate device
     fn get_device(&self, host: &Host, device_index: Option<usize>) -> Result<Device> {
         if let Some(idx) = device_index {
@@ -243,6 +279,7 @@ impl AudioRecorder {
         is_recording: Arc<Mutex<bool>>,
         stream_id: Arc<Mutex<u64>>,
         my_stream_id: u64,
+        monitor_only: Arc<Mutex<bool>>,
         app_handle: tauri::AppHandle<R>,
     ) -> Result<Stream>
     where
@@ -296,8 +333,10 @@ impl AudioRecorder {
                 // Typical speech RMS is around 0.01-0.05, so we need 20-50x amplification
                 let normalized_level = (rms * 50.0).min(1.0);
 
-                // Store in buffer
-                {
+                // Store in buffer (skip when in monitor-only mode — used by the
+                // mic-test feature in settings to visualize input level without
+                // accumulating samples).
+                if !*monitor_only.lock().unwrap() {
                     let mut buf = buffer.lock().unwrap();
                     buf.extend_from_slice(&samples);
                 }
