@@ -10,7 +10,9 @@ interface HistoriqueTabProps {
   hideRecordingPanel: boolean;
   transcriptions: Transcription[];
   selectedTranscription: Transcription | null;
+  isSidebarOpen: boolean;
   onSelectTranscription: (transcription: Transcription) => void;
+  onCloseDetails: () => void;
   onCopy: (text: string) => void;
   onDelete: (id: string) => void;
   onClearAll: () => void;
@@ -28,34 +30,47 @@ export function HistoriqueTab({
   hideRecordingPanel,
   transcriptions,
   selectedTranscription,
+  isSidebarOpen,
   onSelectTranscription,
+  onCloseDetails,
   onCopy,
   onDelete,
   onClearAll,
 }: HistoriqueTabProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {!hideRecordingPanel && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RecordingCard
-            isRecording={isRecording}
-            isTranscribing={isTranscribing}
-            onToggleRecording={onToggleRecording}
-          />
-          <TranscriptionDetails
-            transcription={selectedTranscription}
+        <RecordingCard
+          isRecording={isRecording}
+          isTranscribing={isTranscribing}
+          onToggleRecording={onToggleRecording}
+        />
+      )}
+      <div className="flex gap-4 items-start">
+        <div className="flex-1 min-w-0">
+          <TranscriptionList
+            transcriptions={transcriptions}
+            selectedId={isSidebarOpen ? selectedTranscription?.id : undefined}
+            onSelectTranscription={onSelectTranscription}
             onCopy={onCopy}
+            onDelete={onDelete}
+            onClearAll={onClearAll}
           />
         </div>
-      )}
-      <TranscriptionList
-        transcriptions={transcriptions}
-        selectedId={selectedTranscription?.id}
-        onSelectTranscription={onSelectTranscription}
-        onCopy={onCopy}
-        onDelete={onDelete}
-        onClearAll={onClearAll}
-      />
+        <div
+          className={`transition-all duration-300 overflow-hidden flex-shrink-0 ${
+            isSidebarOpen ? "w-96" : "w-0"
+          }`}
+        >
+          <div className="w-96">
+            <TranscriptionDetails
+              transcription={selectedTranscription}
+              onCopy={onCopy}
+              onClose={onCloseDetails}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
