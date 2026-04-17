@@ -155,17 +155,17 @@ export function TranscriptionDetails({
               {transcription.text}
             </p>
           </div>
-          <div className="flex flex-col gap-2 pt-4">
+          <div className="flex flex-row gap-2 pt-4">
             <Button
               onClick={() => onCopy(transcription.text)}
-              className="w-full cursor-pointer dark:hover:border-blue-800"
+              className="flex-1 cursor-pointer dark:hover:border-blue-800"
             >
               <Copy className="w-4 h-4 mr-2" />
               {t('transcriptionDetails.copy')}
             </Button>
             <Button
               variant="outline"
-              className="w-full bg-transparent"
+              className="flex-1 bg-transparent"
               onClick={handleListen}
               disabled={!canListen || isLoading}
             >
