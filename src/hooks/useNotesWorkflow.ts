@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import type { NoteMeta } from "@/hooks/useNotes";
 
 interface UseNotesWorkflowOptions {
-  createNote: () => Promise<NoteMeta>;
+  createNote: (folderId?: string | null) => Promise<NoteMeta>;
   deleteNote: (id: string) => Promise<void>;
 }
 
@@ -23,8 +23,8 @@ export function useNotesWorkflow({
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
 
-  const handleCreateNote = useCallback(async () => {
-    const note = await createNote();
+  const handleCreateNote = useCallback(async (folderId: string | null = null) => {
+    const note = await createNote(folderId);
     setOpenNoteIds((prev) => [...prev, note.id]);
     setActiveNoteId(note.id);
   }, [createNote]);

@@ -286,6 +286,17 @@
     "recent": "Recent",
     "emptySearch": "No notes found",
     "empty": "No notes",
+    "folders": {
+      "newFolder": "New folder",
+      "newFolderAndMove": "New folder...",
+      "rename": "Rename",
+      "delete": "Delete folder",
+      "deleteConfirm": "Delete this folder? Notes will be moved to root.",
+      "unfiled": "Unfiled",
+      "moveTo": "Move to...",
+      "moveToRoot": "No folder (root)",
+      "namePrompt": "Folder name"
+    },
     "editor": {
       "noNote": "No note open",
       "processing": "Processing...",

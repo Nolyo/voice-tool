@@ -1,6 +1,7 @@
 mod audio;
 mod chat;
 mod commands;
+mod folders;
 mod hotkeys;
 mod logging;
 mod logs;
@@ -82,6 +83,11 @@ pub fn run() {
             notes::delete_note,
             notes::search_notes,
             notes::toggle_note_favorite,
+            notes::move_note_to_folder,
+            folders::list_folders,
+            folders::create_folder,
+            folders::rename_folder,
+            folders::delete_folder,
             transcriptions::list_transcriptions,
             transcriptions::save_transcription,
             transcriptions::delete_transcription,

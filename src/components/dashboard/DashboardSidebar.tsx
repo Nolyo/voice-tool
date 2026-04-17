@@ -13,6 +13,7 @@ import { NotesSidebarSection } from "@/components/notes/NotesSidebarSection";
 import { SettingsSidebarSection } from "@/components/settings/SettingsSidebarSection";
 import { type SettingsSectionId } from "@/components/settings/common/SettingsNav";
 import { type NoteMeta } from "@/hooks/useNotes";
+import { type FolderMeta } from "@/hooks/useFolders";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 
 export const DASHBOARD_NAV_ITEMS = [
@@ -30,12 +31,17 @@ interface DashboardSidebarProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   notes: NoteMeta[];
+  folders: FolderMeta[];
   activeNoteId: string | null;
   onOpenNote: (note: NoteMeta) => void;
-  onCreateNote: () => void;
+  onCreateNote: (folderId?: string | null) => void;
   onToggleFavorite: (id: string) => void;
   onDeleteNote: (id: string) => void;
   searchNotes: (query: string) => Promise<NoteMeta[]>;
+  onCreateFolder: (name: string) => Promise<FolderMeta>;
+  onRenameFolder: (id: string, name: string) => Promise<void>;
+  onDeleteFolder: (id: string) => Promise<void>;
+  onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
   activeSettingsSection: SettingsSectionId;
   onSettingsSectionChange: (id: SettingsSectionId) => void;
 }
@@ -46,12 +52,17 @@ export function DashboardSidebar({
   collapsed,
   onToggleCollapsed,
   notes,
+  folders,
   activeNoteId,
   onOpenNote,
   onCreateNote,
   onToggleFavorite,
   onDeleteNote,
   searchNotes,
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  onMoveNote,
   activeSettingsSection,
   onSettingsSectionChange,
 }: DashboardSidebarProps) {
@@ -120,12 +131,17 @@ export function DashboardSidebar({
       {!collapsed && activeTab === "notes" && (
         <NotesSidebarSection
           notes={notes}
+          folders={folders}
           activeNoteId={activeNoteId}
           onOpenNote={onOpenNote}
           onCreateNote={onCreateNote}
           onToggleFavorite={onToggleFavorite}
           onDeleteNote={onDeleteNote}
           searchNotes={searchNotes}
+          onCreateFolder={onCreateFolder}
+          onRenameFolder={onRenameFolder}
+          onDeleteFolder={onDeleteFolder}
+          onMoveNote={onMoveNote}
         />
       )}
 

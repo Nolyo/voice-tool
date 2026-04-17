@@ -28,6 +28,7 @@ export interface NoteMeta {
   createdAt: string;
   updatedAt: string;
   favorite: boolean;
+  folderId?: string;
 }
 
 export interface NoteData {
@@ -54,7 +55,7 @@ export function useNotes() {
       const result = await invoke<NoteMeta[]>('list_notes');
       if (result.length === 0 && !welcomeNoteCreating) {
         welcomeNoteCreating = true;
-        const meta = await invoke<NoteMeta>('create_note');
+        const meta = await invoke<NoteMeta>('create_note', { folderId: null });
         const welcomeHtml = getWelcomeNoteHtml();
         const title = deriveTitle(welcomeHtml);
         await invoke<NoteMeta>('update_note', { id: meta.id, content: welcomeHtml, title });
@@ -74,10 +75,15 @@ export function useNotes() {
     loadNotes();
   }, [loadNotes]);
 
-  const createNote = async (): Promise<NoteMeta> => {
-    const meta = await invoke<NoteMeta>('create_note');
+  const createNote = async (folderId: string | null = null): Promise<NoteMeta> => {
+    const meta = await invoke<NoteMeta>('create_note', { folderId });
     setNotes(prev => [meta, ...prev]);
     return meta;
+  };
+
+  const moveNoteToFolder = async (noteId: string, folderId: string | null): Promise<void> => {
+    const updated = await invoke<NoteMeta>('move_note_to_folder', { noteId, folderId });
+    setNotes(prev => prev.map(n => n.id === noteId ? updated : n));
   };
 
   const readNote = async (id: string): Promise<NoteData> => {
@@ -113,6 +119,7 @@ export function useNotes() {
     deleteNote,
     searchNotes,
     toggleFavorite,
+    moveNoteToFolder,
     reloadNotes: loadNotes,
   };
 }

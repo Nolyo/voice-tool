@@ -14,6 +14,8 @@ pub struct NoteMeta {
     pub updated_at: String,
     #[serde(default)]
     pub favorite: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,6 +144,7 @@ pub fn migrate_notes_from_store(app_handle: &AppHandle) -> Result<u32> {
             created_at: note.created_at.clone(),
             updated_at: note.updated_at.clone(),
             favorite: false,
+            folder_id: None,
         };
         let meta_json = serde_json::to_string_pretty(&meta)?;
         fs::write(note_dir.join("note.json"), meta_json)?;
@@ -206,7 +209,10 @@ pub async fn read_note(app_handle: AppHandle, id: String) -> Result<NoteData, St
 }
 
 #[tauri::command]
-pub async fn create_note(app_handle: AppHandle) -> Result<NoteMeta, String> {
+pub async fn create_note(
+    app_handle: AppHandle,
+    folder_id: Option<String>,
+) -> Result<NoteMeta, String> {
     let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -221,6 +227,7 @@ pub async fn create_note(app_handle: AppHandle) -> Result<NoteMeta, String> {
         created_at: now.clone(),
         updated_at: now,
         favorite: false,
+        folder_id,
     };
 
     let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
@@ -286,6 +293,56 @@ pub async fn toggle_note_favorite(app_handle: AppHandle, id: String) -> Result<N
     fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;
 
     Ok(meta)
+}
+
+#[tauri::command]
+pub async fn move_note_to_folder(
+    app_handle: AppHandle,
+    note_id: String,
+    folder_id: Option<String>,
+) -> Result<NoteMeta, String> {
+    let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
+    let note_dir = notes_dir.join(&note_id);
+
+    if !note_dir.exists() {
+        return Err(format!("Note not found: {}", note_id));
+    }
+
+    let mut meta = read_note_meta(&note_dir).map_err(|e| e.to_string())?;
+    meta.folder_id = folder_id;
+    meta.updated_at = chrono::Utc::now().to_rfc3339();
+
+    let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
+    fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;
+
+    Ok(meta)
+}
+
+/// Reset folder_id to None for all notes currently in the given folder.
+/// Used when a folder is deleted — notes become orphans (root) instead of being lost.
+pub fn orphan_notes_in_folder(app_handle: &AppHandle, folder_id: &str) -> Result<()> {
+    let notes_dir = get_notes_dir(app_handle)?;
+
+    let entries = fs::read_dir(&notes_dir)?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        let mut meta = match read_note_meta(&path) {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+
+        if meta.folder_id.as_deref() == Some(folder_id) {
+            meta.folder_id = None;
+            let meta_json = serde_json::to_string_pretty(&meta)?;
+            fs::write(path.join("note.json"), meta_json)?;
+        }
+    }
+
+    Ok(())
 }
 
 #[tauri::command]

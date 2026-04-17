@@ -286,6 +286,17 @@
     "recent": "Récents",
     "emptySearch": "Aucune note trouvée",
     "empty": "Aucune note",
+    "folders": {
+      "newFolder": "Nouveau dossier",
+      "newFolderAndMove": "Nouveau dossier...",
+      "rename": "Renommer",
+      "delete": "Supprimer le dossier",
+      "deleteConfirm": "Supprimer ce dossier ? Les notes seront déplacées à la racine.",
+      "unfiled": "Sans dossier",
+      "moveTo": "Déplacer vers...",
+      "moveToRoot": "Aucun dossier (racine)",
+      "namePrompt": "Nom du dossier"
+    },
     "editor": {
       "noNote": "Aucune note ouverte",
       "processing": "Traitement en cours...",

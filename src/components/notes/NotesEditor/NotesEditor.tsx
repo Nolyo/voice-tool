@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { type NoteData, type NoteMeta } from "@/hooks/useNotes";
+import { type FolderMeta } from "@/hooks/useFolders";
 import { useNotesEditorInstance } from "@/hooks/useNotesEditorInstance";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
 import { useLinkEditor } from "@/hooks/useLinkEditor";
@@ -21,12 +22,15 @@ import { NotesEditorFooter } from "./NotesEditorFooter";
 interface NotesEditorProps {
   openNotes: NoteMeta[];
   activeNoteId: string | null;
+  folders: FolderMeta[];
   onActivateNote: (id: string) => void;
   onCloseNote: (id: string) => void;
   onDeleteNote: (id: string) => void;
   onUpdateNote: (id: string, content: string, title: string) => void;
   onCreateNote: () => void;
   onCopyContent: (text: string) => void;
+  onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
+  onCreateFolder: (name: string) => Promise<FolderMeta>;
   apiKey: string;
   readNote: (id: string) => Promise<NoteData>;
 }
@@ -40,12 +44,15 @@ interface NotesEditorProps {
 export function NotesEditor({
   openNotes,
   activeNoteId,
+  folders,
   onActivateNote,
   onCloseNote,
   onDeleteNote,
   onUpdateNote,
   onCreateNote,
   onCopyContent,
+  onMoveNote,
+  onCreateFolder,
   apiKey,
   readNote,
 }: NotesEditorProps) {
@@ -90,10 +97,13 @@ export function NotesEditor({
       <NotesEditorTitleBar
         openNotes={openNotes}
         activeNoteId={activeNoteId}
+        folders={folders}
         editor={editor}
         onActivateNote={onActivateNote}
         onTabClose={handleTabClose}
         onCreateNote={onCreateNote}
+        onMoveNote={onMoveNote}
+        onCreateFolder={onCreateFolder}
       />
 
       <NotesEditorContent

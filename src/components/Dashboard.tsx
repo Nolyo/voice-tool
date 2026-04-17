@@ -23,6 +23,7 @@ import {
   type Transcription,
 } from "@/hooks/useTranscriptionHistory";
 import { useNotes, type NoteMeta } from "@/hooks/useNotes";
+import { useFolders } from "@/hooks/useFolders";
 import { useAppLogs } from "@/hooks/useAppLogs";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { useRecordingWorkflow } from "@/hooks/useRecordingWorkflow";
@@ -59,7 +60,14 @@ export default function Dashboard() {
     deleteNote,
     searchNotes,
     toggleFavorite,
+    moveNoteToFolder,
   } = useNotes();
+  const {
+    folders,
+    createFolder,
+    renameFolder,
+    deleteFolder,
+  } = useFolders();
   const { logs, clearLogs } = useAppLogs();
 
   const { isRecording, isTranscribing, handleToggleRecording } =
@@ -87,10 +95,13 @@ export default function Dashboard() {
     [handleOpenNote],
   );
 
-  const handleCreateNoteFromSidebar = useCallback(async () => {
-    await handleCreateNote();
-    setActiveTab("notes");
-  }, [handleCreateNote]);
+  const handleCreateNoteFromSidebar = useCallback(
+    async (folderId: string | null = null) => {
+      await handleCreateNote(folderId);
+      setActiveTab("notes");
+    },
+    [handleCreateNote],
+  );
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -150,12 +161,17 @@ export default function Dashboard() {
         collapsed={sidebarCollapsed}
         onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
         notes={notes}
+        folders={folders}
         activeNoteId={activeNoteId}
         onOpenNote={handleOpenNoteFromSidebar}
         onCreateNote={handleCreateNoteFromSidebar}
         onToggleFavorite={toggleFavorite}
         onDeleteNote={handleDeleteNote}
         searchNotes={searchNotes}
+        onCreateFolder={createFolder}
+        onRenameFolder={async (id, name) => { await renameFolder(id, name); }}
+        onDeleteFolder={deleteFolder}
+        onMoveNote={moveNoteToFolder}
         activeSettingsSection={activeSettingsSection}
         onSettingsSectionChange={setActiveSettingsSection}
       />
@@ -179,12 +195,15 @@ export default function Dashboard() {
             <NotesEditor
               openNotes={notes.filter((n) => openNoteIds.includes(n.id))}
               activeNoteId={activeNoteId}
+              folders={folders}
               onActivateNote={setActiveNoteId}
               onCloseNote={handleCloseNoteTab}
               onDeleteNote={handleDeleteNote}
               onUpdateNote={updateNote}
-              onCreateNote={handleCreateNoteFromSidebar}
+              onCreateNote={() => handleCreateNoteFromSidebar(null)}
               onCopyContent={handleCopy}
+              onMoveNote={moveNoteToFolder}
+              onCreateFolder={createFolder}
               apiKey={settings.openai_api_key}
               readNote={readNote}
             />
