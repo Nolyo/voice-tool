@@ -16,7 +16,7 @@ export function SettingsSidebarSection({
 
   if (collapsed) {
     return (
-      <div className="flex flex-col border-t border-border overflow-y-auto flex-1 min-h-0 p-2 gap-1 items-center">
+      <div className="flex flex-col border-t border-border overflow-y-auto flex-1 min-h-0 p-1 gap-1 items-center">
         {NAV_ITEM_DEFS.map((item) => {
           const isActive = activeSection === item.id;
           return (
@@ -25,14 +25,14 @@ export function SettingsSidebarSection({
               type="button"
               onClick={() => onSectionChange(item.id as SettingsSectionId)}
               title={t(item.titleKey)}
-              className={`flex items-center justify-center p-1.5 rounded-md transition-colors cursor-pointer ${
+              className={`flex items-center justify-center p-1 rounded-md transition-colors cursor-pointer ${
                 isActive
                   ? "bg-accent"
                   : "hover:bg-accent/50"
               }`}
             >
               <div
-                className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${item.iconBg}`}
+                className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${item.iconBg}`}
               >
                 {item.icon}
               </div>

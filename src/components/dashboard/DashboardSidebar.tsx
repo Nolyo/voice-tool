@@ -154,8 +154,10 @@ export function DashboardSidebar({
         />
       )}
 
-      {/* Spacer to push profile to bottom */}
-      <div className="flex-1" />
+      {/* Spacer to push profile to bottom — only when no sub-nav takes the remaining space */}
+      {activeTab !== "parametres" && !(activeTab === "notes" && !collapsed) && (
+        <div className="flex-1" />
+      )}
 
       {/* Profile switcher — always at the very bottom */}
       <div className="border-t border-border shrink-0 p-2">
