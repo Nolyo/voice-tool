@@ -1,20 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { type NoteData, type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
 import { useNotesEditorInstance } from "@/hooks/useNotesEditorInstance";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
 import { useLinkEditor } from "@/hooks/useLinkEditor";
+import { ConfirmDeleteDialog } from "../ConfirmDeleteDialog";
 import { NotesEditorTitleBar } from "./NotesEditorTitleBar";
 import { NotesEditorContent } from "./NotesEditorContent";
 import { NotesEditorFooter } from "./NotesEditorFooter";
@@ -136,28 +127,13 @@ export function NotesEditor({
         />
       </div>
 
-      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('notes.editor.deleteConfirmTitle')}</DialogTitle>
-            <DialogDescription>
-              {t('notes.editor.deleteConfirmDesc')}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setConfirmDeleteOpen(false)}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button variant="destructive" onClick={handleConfirmDelete}>
-              <Trash2 className="w-4 h-4 mr-1" />
-              {t('common.delete')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDeleteDialog
+        open={confirmDeleteOpen}
+        title={t('notes.editor.deleteConfirmTitle')}
+        description={t('notes.editor.deleteConfirmDesc')}
+        onOpenChange={setConfirmDeleteOpen}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

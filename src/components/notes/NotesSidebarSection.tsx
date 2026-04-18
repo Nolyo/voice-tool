@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FloatingMenu, type FloatingMenuEntry } from "@/components/ui/floating-menu";
+import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
 
@@ -38,12 +39,12 @@ interface NoteItemProps {
   indented?: boolean;
   onOpen: (note: NoteMeta) => void;
   onToggleFavorite: (id: string) => void;
-  onDelete: (id: string) => void;
+  onRequestDelete: (note: NoteMeta) => void;
   onContextMenu: (e: React.MouseEvent, note: NoteMeta) => void;
   t: (key: string) => string;
 }
 
-function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, onDelete, onContextMenu, t }: NoteItemProps) {
+function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, onRequestDelete, onContextMenu, t }: NoteItemProps) {
   return (
     <div
       className={`group relative flex items-center gap-1.5 ${indented ? "pl-8 pr-3" : "px-3"} py-1.5 cursor-pointer transition-colors ${
@@ -73,9 +74,7 @@ function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, 
           className="p-0.5 rounded hover:bg-background text-muted-foreground/60 hover:text-destructive transition-colors"
           onClick={(e) => {
             e.stopPropagation();
-            if (confirm(t('notes.deleteConfirm'))) {
-              onDelete(note.id);
-            }
+            onRequestDelete(note);
           }}
           title={t('notes.deleteButton')}
         >
@@ -94,10 +93,10 @@ interface FolderSectionProps {
   onToggle: () => void;
   onOpenNote: (note: NoteMeta) => void;
   onToggleFavorite: (id: string) => void;
-  onDeleteNote: (id: string) => void;
+  onRequestDeleteNote: (note: NoteMeta) => void;
   onNoteContextMenu: (e: React.MouseEvent, note: NoteMeta) => void;
   onRename: (id: string, currentName: string) => void;
-  onDelete: (id: string) => void;
+  onRequestDelete: (folder: FolderMeta) => void;
   onCreateNoteIn: (folderId: string) => void;
   t: (key: string) => string;
 }
@@ -110,10 +109,10 @@ function FolderSection({
   onToggle,
   onOpenNote,
   onToggleFavorite,
-  onDeleteNote,
+  onRequestDeleteNote,
   onNoteContextMenu,
   onRename,
-  onDelete,
+  onRequestDelete,
   onCreateNoteIn,
   t,
 }: FolderSectionProps) {
@@ -162,7 +161,7 @@ function FolderSection({
             className="p-0.5 rounded hover:bg-background text-muted-foreground/60 hover:text-destructive transition-colors"
             onClick={(e) => {
               e.stopPropagation();
-              onDelete(folder.id);
+              onRequestDelete(folder);
             }}
             title={t('notes.folders.delete')}
           >
@@ -178,7 +177,7 @@ function FolderSection({
           indented
           onOpen={onOpenNote}
           onToggleFavorite={onToggleFavorite}
-          onDelete={onDeleteNote}
+          onRequestDelete={onRequestDeleteNote}
           onContextMenu={onNoteContextMenu}
           t={t}
         />
@@ -208,6 +207,8 @@ export function NotesSidebarSection({
   const [rootCollapsed, setRootCollapsed] = useState(false);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; note: NoteMeta } | null>(null);
+  const [noteToDelete, setNoteToDelete] = useState<NoteMeta | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<FolderMeta | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleSearch = useCallback(
@@ -270,8 +271,10 @@ export function NotesSidebarSection({
     }
   };
 
-  const handleDeleteFolder = async (id: string) => {
-    if (!confirm(t('notes.folders.deleteConfirm'))) return;
+  const confirmDeleteFolder = async () => {
+    if (!folderToDelete) return;
+    const id = folderToDelete.id;
+    setFolderToDelete(null);
     try {
       await onDeleteFolder(id);
     } catch (error) {
@@ -401,7 +404,7 @@ export function NotesSidebarSection({
                 isActive={note.id === activeNoteId}
                 onOpen={onOpenNote}
                 onToggleFavorite={onToggleFavorite}
-                onDelete={onDeleteNote}
+                onRequestDelete={setNoteToDelete}
                 onContextMenu={handleNoteContextMenu}
                 t={t}
               />
@@ -438,7 +441,7 @@ export function NotesSidebarSection({
                       indented
                       onOpen={onOpenNote}
                       onToggleFavorite={onToggleFavorite}
-                      onDelete={onDeleteNote}
+                      onRequestDelete={setNoteToDelete}
                       onContextMenu={handleNoteContextMenu}
                       t={t}
                     />
@@ -457,10 +460,10 @@ export function NotesSidebarSection({
                 onToggle={() => toggleFolderCollapsed(folder.id)}
                 onOpenNote={onOpenNote}
                 onToggleFavorite={onToggleFavorite}
-                onDeleteNote={onDeleteNote}
+                onRequestDeleteNote={setNoteToDelete}
                 onNoteContextMenu={handleNoteContextMenu}
                 onRename={handleRenameFolder}
-                onDelete={handleDeleteFolder}
+                onRequestDelete={setFolderToDelete}
                 onCreateNoteIn={(id) => onCreateNote(id)}
                 t={t}
               />
@@ -501,7 +504,7 @@ export function NotesSidebarSection({
                       indented={folders.length > 0}
                       onOpen={onOpenNote}
                       onToggleFavorite={onToggleFavorite}
-                      onDelete={onDeleteNote}
+                      onRequestDelete={setNoteToDelete}
                       onContextMenu={handleNoteContextMenu}
                       t={t}
                     />
@@ -522,6 +525,25 @@ export function NotesSidebarSection({
           items={buildContextMenuItems(contextMenu.note)}
         />
       )}
+
+      <ConfirmDeleteDialog
+        open={noteToDelete !== null}
+        title={t('notes.editor.deleteConfirmTitle')}
+        description={t('notes.editor.deleteConfirmDesc')}
+        onOpenChange={(open) => { if (!open) setNoteToDelete(null); }}
+        onConfirm={() => {
+          if (noteToDelete) onDeleteNote(noteToDelete.id);
+          setNoteToDelete(null);
+        }}
+      />
+
+      <ConfirmDeleteDialog
+        open={folderToDelete !== null}
+        title={t('notes.folders.deleteConfirmTitle')}
+        description={t('notes.folders.deleteConfirmDesc')}
+        onOpenChange={(open) => { if (!open) setFolderToDelete(null); }}
+        onConfirm={confirmDeleteFolder}
+      />
     </div>
   );
 }
