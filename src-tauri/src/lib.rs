@@ -100,6 +100,7 @@ pub fn run() {
             commands::profiles::list_profiles,
             commands::profiles::get_active_profile,
             commands::profiles::get_active_profile_settings_path,
+            commands::profiles::get_active_profile_notes_tabs_path,
             commands::profiles::create_profile,
             commands::profiles::rename_profile,
             commands::profiles::delete_profile,

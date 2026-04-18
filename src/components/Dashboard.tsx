@@ -54,6 +54,7 @@ export default function Dashboard() {
   } = useTranscriptionHistory();
   const {
     notes,
+    isLoading: notesLoading,
     createNote,
     readNote,
     updateNote,
@@ -85,7 +86,12 @@ export default function Dashboard() {
     handleOpenNote,
     handleCloseNoteTab,
     handleDeleteNote,
-  } = useNotesWorkflow({ createNote, deleteNote });
+  } = useNotesWorkflow({
+    createNote,
+    deleteNote,
+    notes,
+    notesLoaded: !notesLoading,
+  });
 
   const handleOpenNoteFromSidebar = useCallback(
     (note: NoteMeta) => {
