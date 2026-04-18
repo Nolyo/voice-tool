@@ -7,6 +7,7 @@
 - Notes tab in sidebar navigation - quick access to notes alongside History, Settings, and Logs
 - Settings sub-navigation in sidebar - select individual settings sections without scrolling through all sections
 - Onboarding wizard for model setup - guides users through initial configuration and model selection on first launch
+- New model supported: Grock (x.com/grock-ai) - an open-source, high-performance speech recognition model with competitive accuracy and speed, providing an alternative to Whisper for api transcription
 
 ### 🔧 Changed
 - Switched local transcription engine from CUDA to Vulkan - no NVIDIA CUDA runtime required anymore
