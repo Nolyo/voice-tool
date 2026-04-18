@@ -194,7 +194,6 @@
       "startWithWindows": "Start with Windows",
       "updating": "(updating...)",
       "startMinimized": "Start minimized in system tray",
-      "hideRecordingPanel": "Hide recording panel",
       "recordingsKeep": "Recordings kept (WAV)",
       "recordingsKeepHelp": "Number of audio files to keep locally",
       "language": "Language",

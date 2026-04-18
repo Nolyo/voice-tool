@@ -21,8 +21,6 @@ export interface AppSettings {
 
     // Translation
     translate_mode: boolean;
-    translate_source_lang: string;
-    translate_target_lang: string;
 
     // API Keys
     openai_api_key: string;
@@ -37,7 +35,6 @@ export interface AppSettings {
     start_minimized_on_boot: boolean;
     main_window_state: string;
     main_window_geometry: string;
-    history_cards_render_limit: number;
     auto_check_updates: boolean;
     update_channel: "stable" | "beta";
 
@@ -47,12 +44,10 @@ export interface AppSettings {
     cancel_hotkey: string;
     /** Only active while recording. Empty = disabled. Toggles translate_mode. */
     translate_toggle_hotkey: string;
-    record_modes: ("toggle" | "ptt")[];
     ptt_hotkey: string;
     record_mode: "toggle" | "ptt";
 
     // Interface
-    hide_recording_panel: boolean;
     ui_language: "fr" | "en";
 
     // Mini Window
@@ -98,8 +93,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Translation
     translate_mode: false,
-    translate_source_lang: "fr",
-    translate_target_lang: "en",
 
     // API Keys
     openai_api_key: "",
@@ -114,7 +107,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
     start_minimized_on_boot: true,
     main_window_state: "maximized",
     main_window_geometry: "800x600+0+0",
-    history_cards_render_limit: 50,
     auto_check_updates: true,
     update_channel: "stable",
 
@@ -123,12 +115,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
     open_window_hotkey: "Ctrl+Alt+O",
     cancel_hotkey: "Escape",
     translate_toggle_hotkey: "",
-    record_modes: ["toggle", "ptt"],
     ptt_hotkey: "Ctrl+F12",
     record_mode: "toggle",
 
     // Interface
-    hide_recording_panel: false,
     ui_language: "fr",
 
     // Mini Window
