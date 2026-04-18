@@ -1,7 +1,6 @@
 import {
   FileText,
   History,
-  Mic,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -74,38 +73,28 @@ export function DashboardSidebar({
         collapsed ? "w-[52px]" : "w-[260px]"
       }`}
     >
-      {/* Logo + collapse button (expanded: both in header / collapsed: only mic) */}
-      <div className="flex items-center border-b border-border h-[61px] px-3 gap-2 shrink-0">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 shrink-0">
-          <Mic className="w-4 h-4 text-primary" />
-        </div>
+      {/* Header: title (expanded only) + collapse/expand button (always in the same corner) */}
+      <div
+        className={`flex items-center border-b border-border h-[61px] shrink-0 ${
+          collapsed ? "justify-center px-2" : "px-3 gap-2"
+        }`}
+      >
         {!collapsed && (
-          <>
-            <span className="font-semibold text-sm truncate flex-1">{t('header.title')}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
-              onClick={onToggleCollapsed}
-              title={t('sidebar.collapseMenu')}
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </Button>
-          </>
+          <span className="font-semibold text-sm truncate flex-1">{t('header.title')}</span>
         )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+          onClick={onToggleCollapsed}
+          title={collapsed ? t('sidebar.expandMenu') : t('sidebar.collapseMenu')}
+        >
+          {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+        </Button>
       </div>
 
-      {/* Nav items + collapse button (collapsed: button is first nav item) */}
+      {/* Nav items */}
       <nav className="flex flex-col gap-1 p-2 shrink-0">
-        {collapsed && (
-          <button
-            onClick={onToggleCollapsed}
-            title={t('sidebar.expandMenu')}
-            className="flex items-center justify-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
-          >
-            <PanelLeftOpen className="w-4 h-4 shrink-0" />
-          </button>
-        )}
         {DASHBOARD_NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => (
           <button
             key={id}
