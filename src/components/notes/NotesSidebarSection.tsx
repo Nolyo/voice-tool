@@ -35,6 +35,7 @@ interface NotesSidebarSectionProps {
 interface NoteItemProps {
   note: NoteMeta;
   isActive: boolean;
+  indented?: boolean;
   onOpen: (note: NoteMeta) => void;
   onToggleFavorite: (id: string) => void;
   onDelete: (id: string) => void;
@@ -42,10 +43,10 @@ interface NoteItemProps {
   t: (key: string) => string;
 }
 
-function NoteItem({ note, isActive, onOpen, onToggleFavorite, onDelete, onContextMenu, t }: NoteItemProps) {
+function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, onDelete, onContextMenu, t }: NoteItemProps) {
   return (
     <div
-      className={`group relative flex items-center gap-1.5 px-3 py-1.5 cursor-pointer transition-colors ${
+      className={`group relative flex items-center gap-1.5 ${indented ? "pl-8 pr-3" : "px-3"} py-1.5 cursor-pointer transition-colors ${
         isActive
           ? "bg-accent text-foreground border-l-2 border-primary"
           : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
@@ -174,6 +175,7 @@ function FolderSection({
           key={note.id}
           note={note}
           isActive={note.id === activeNoteId}
+          indented
           onOpen={onOpenNote}
           onToggleFavorite={onToggleFavorite}
           onDelete={onDeleteNote}
@@ -433,6 +435,7 @@ export function NotesSidebarSection({
                       key={note.id}
                       note={note}
                       isActive={note.id === activeNoteId}
+                      indented
                       onOpen={onOpenNote}
                       onToggleFavorite={onToggleFavorite}
                       onDelete={onDeleteNote}
@@ -495,6 +498,7 @@ export function NotesSidebarSection({
                       key={note.id}
                       note={note}
                       isActive={note.id === activeNoteId}
+                      indented={folders.length > 0}
                       onOpen={onOpenNote}
                       onToggleFavorite={onToggleFavorite}
                       onDelete={onDeleteNote}
