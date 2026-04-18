@@ -45,7 +45,10 @@ export function MiniShell() {
   }, []);
 
   const showPreviewRow =
-    layout === "extended" && showTranscriptPreview && status !== "error";
+    layout === "extended" &&
+    showTranscriptPreview &&
+    status !== "error" &&
+    status !== "recording";
 
   // Bars scale with available height: subtract shell padding and preview row if any
   const barMaxHeight = Math.max(
@@ -122,7 +125,6 @@ export function MiniShell() {
           <MiniTranscriptPreview
             status={status}
             lastTranscript={lastTranscript}
-            recordingTime={recordingTime}
           />
         )}
       </div>

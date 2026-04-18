@@ -133,7 +133,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Mini Window
     show_transcription_in_mini_window: true,
-    mini_visualizer_mode: "bars",
+    mini_visualizer_mode: "waveform",
     mini_window_geometry: "",
     mini_window_waveform_samples: 200,
 

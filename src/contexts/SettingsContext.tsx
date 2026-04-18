@@ -127,6 +127,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           "translate-mode-changed",
           settingsRef.current.settings.translate_mode,
         );
+        await emit(
+          "mini-visualizer-mode-changed",
+          settingsRef.current.settings.mini_visualizer_mode,
+        );
       } catch {}
     }).then((fn) => {
       unlisten = fn;

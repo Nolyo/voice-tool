@@ -4,30 +4,18 @@ import type { WindowStatus } from "@/hooks/useMiniWindowState";
 interface MiniTranscriptPreviewProps {
   status: WindowStatus;
   lastTranscript: string;
-  recordingTime: number;
-}
-
-function formatTime(seconds: number) {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins.toString().padStart(2, "0")}:${secs
-    .toString()
-    .padStart(2, "0")}`;
 }
 
 export function MiniTranscriptPreview({
   status,
   lastTranscript,
-  recordingTime,
 }: MiniTranscriptPreviewProps) {
   const { t } = useTranslation();
 
   let content: string;
   let className = "text-xs text-slate-400 truncate";
 
-  if (status === "recording") {
-    content = `${t("mini.recordingHint", { defaultValue: "Recording…" })} ${formatTime(recordingTime)}`;
-  } else if (status === "processing") {
+  if (status === "processing") {
     content = t("mini.sendingAudio");
     className = "text-xs text-slate-300 truncate italic";
   } else if (lastTranscript) {

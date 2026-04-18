@@ -7,6 +7,9 @@ use tauri::{
 };
 use tauri_plugin_store::StoreBuilder;
 
+pub(crate) const DEFAULT_MINI_WIDTH: f64 = 246.0;
+pub(crate) const DEFAULT_MINI_HEIGHT: f64 = 57.0;
+
 pub(crate) fn parse_geometry(value: &str) -> Option<(u32, u32, i32, i32)> {
     let mut parts = value.split('+');
     let size_part = parts.next()?;
@@ -89,7 +92,10 @@ pub(crate) fn capture_mini_window_state<R: Runtime>(
     window: &WebviewWindow<R>,
     store: &Arc<tauri_plugin_store::Store<R>>,
 ) {
-    if let (Ok(size), Ok(position)) = (window.outer_size(), window.outer_position()) {
+    // Tauri's set_size() sets the *inner* (client) size, so we must store the
+    // inner size too — otherwise each round-trip (save outer → restore as inner)
+    // drifts by the DWM extended frame width on Windows.
+    if let (Ok(size), Ok(position)) = (window.inner_size(), window.outer_position()) {
         update_mini_window_geometry(store, format_geometry(size, position));
     }
 }
@@ -253,7 +259,9 @@ pub(crate) fn position_mini_window<R: Runtime>(app_handle: &AppHandle<R>, window
     let window_size = window
         .outer_size()
         .ok()
-        .unwrap_or_else(|| PhysicalSize::new(320, 42));
+        .unwrap_or_else(|| {
+            PhysicalSize::new(DEFAULT_MINI_WIDTH as u32, DEFAULT_MINI_HEIGHT as u32)
+        });
 
     let target_monitor = app_handle
         .get_webview_window("main")
@@ -333,7 +341,7 @@ pub(crate) fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn s
 
     let mini = WebviewWindowBuilder::new(app, "mini", WebviewUrl::App("mini.html".into()))
         .title("Voice Tool - Mini")
-        .inner_size(320.0, 42.0)
+        .inner_size(DEFAULT_MINI_WIDTH, DEFAULT_MINI_HEIGHT)
         .min_inner_size(180.0, 36.0)
         .resizable(true)
         .decorations(false)

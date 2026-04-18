@@ -1,8 +1,9 @@
-use tauri::{AppHandle, Manager, PhysicalSize, Size};
+use tauri::{AppHandle, LogicalSize, Manager, Size};
 use tauri_plugin_store::StoreBuilder;
 
 use crate::window::{
-    capture_mini_window_state, hide_mini_window, position_mini_window,
+    DEFAULT_MINI_HEIGHT, DEFAULT_MINI_WIDTH, capture_mini_window_state, hide_mini_window,
+    position_mini_window,
 };
 
 /// Exit the application completely
@@ -50,9 +51,9 @@ pub fn recenter_mini_window(app_handle: AppHandle) -> Result<(), String> {
         .ok_or_else(|| "Mini window not found".to_string())?;
 
     mini_window
-        .set_size(Size::Physical(PhysicalSize {
-            width: 320,
-            height: 42,
+        .set_size(Size::Logical(LogicalSize {
+            width: DEFAULT_MINI_WIDTH,
+            height: DEFAULT_MINI_HEIGHT,
         }))
         .map_err(|e| format!("Failed to resize mini window: {}", e))?;
 

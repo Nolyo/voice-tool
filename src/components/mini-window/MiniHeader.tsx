@@ -63,7 +63,10 @@ export function MiniHeader({
         data-tauri-drag-region="false"
         onClick={onToggleTranslateMode}
         aria-pressed={translateMode}
-        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded whitespace-nowrap flex-shrink-0 transition-colors ${
+        aria-label={
+          translateMode ? t("mini.translateModeOn") : t("mini.translateModeOff")
+        }
+        className={`inline-flex items-center justify-center p-1.5 rounded flex-shrink-0 transition-colors ${
           translateMode
             ? "bg-blue-500/30 text-blue-300 border border-blue-500/50 hover:bg-blue-500/40"
             : "bg-slate-700/30 text-slate-400 border border-slate-600/40 hover:bg-slate-700/50 hover:text-slate-200"
@@ -72,8 +75,7 @@ export function MiniHeader({
           translateMode ? t("mini.translateModeOn") : t("mini.translateModeOff")
         }
       >
-        <Languages className="h-3 w-3" aria-hidden="true" />
-        <span>{translateMode ? "EN" : "TRAD"}</span>
+        <Languages className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </>
   );
