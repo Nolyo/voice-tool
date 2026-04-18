@@ -4,13 +4,44 @@ import { NAV_ITEM_DEFS, type SettingsSectionId } from "./common/SettingsNav";
 interface SettingsSidebarSectionProps {
   activeSection: SettingsSectionId;
   onSectionChange: (id: SettingsSectionId) => void;
+  collapsed?: boolean;
 }
 
 export function SettingsSidebarSection({
   activeSection,
   onSectionChange,
+  collapsed = false,
 }: SettingsSidebarSectionProps) {
   const { t } = useTranslation();
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col border-t border-border overflow-y-auto flex-1 min-h-0 p-2 gap-1 items-center">
+        {NAV_ITEM_DEFS.map((item) => {
+          const isActive = activeSection === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSectionChange(item.id as SettingsSectionId)}
+              title={t(item.titleKey)}
+              className={`flex items-center justify-center p-1.5 rounded-md transition-colors cursor-pointer ${
+                isActive
+                  ? "bg-accent"
+                  : "hover:bg-accent/50"
+              }`}
+            >
+              <div
+                className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${item.iconBg}`}
+              >
+                {item.icon}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col border-t border-border overflow-y-auto flex-1 min-h-0 p-2 gap-0.5">

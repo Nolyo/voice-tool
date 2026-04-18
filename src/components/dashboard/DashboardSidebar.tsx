@@ -145,11 +145,12 @@ export function DashboardSidebar({
         />
       )}
 
-      {/* Settings sub-navigation — visible only when the Settings tab is active */}
-      {!collapsed && activeTab === "parametres" && (
+      {/* Settings sub-navigation — visible when the Settings tab is active (collapsed shows icon-only nav) */}
+      {activeTab === "parametres" && (
         <SettingsSidebarSection
           activeSection={activeSettingsSection}
           onSectionChange={onSettingsSectionChange}
+          collapsed={collapsed}
         />
       )}
 
