@@ -2,41 +2,58 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/voice-tool",
-  "generated_at": "2026-04-18T15:44:46.356Z",
+  "generated_at": "2026-04-18T16:15:05.171Z",
   "latest": {
-    "version": "2.9.0",
-    "tag": "v2.9.0",
-    "published_at": "2026-04-12T15:25:50Z",
-    "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.9.0",
-    "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.9.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.9.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.9.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v2.9.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+    "version": "2.10.0",
+    "tag": "v2.10.0",
+    "published_at": "2026-04-18T16:14:03Z",
+    "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.10.0",
+    "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.10.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.10.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.10.0-setup.exe** : NSIS installer (recommended)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
     "windows": {
       "portable": {
-        "filename": "voice-tool-v2.9.0-portable.exe",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.9.0/voice-tool-v2.9.0-portable.exe",
-        "size_bytes": 90851840,
-        "size_human": "86.6 MB",
-        "sha256": "3e1b0ed60e0d1259ff4bed8acce33d822103f05595a1bb526449c7ccaf45e5ed",
+        "filename": "voice-tool-v2.10.0-portable.exe",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.10.0/voice-tool-v2.10.0-portable.exe",
+        "size_bytes": 41337856,
+        "size_human": "39.4 MB",
+        "sha256": "eade1293d80270c8b4886226e038da8d60fbec4a7ff803695f1b6bb940f4890a",
         "download_count": 0
       },
       "nsis_installer": {
-        "filename": "voice-tool-v2.9.0-setup.exe",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.9.0/voice-tool-v2.9.0-setup.exe",
-        "size_bytes": 15690660,
-        "size_human": "15 MB",
-        "sha256": "ee3de88785d65259e657113f67b82efddea9f74a6d3c3374334f3cb3e6001c53",
-        "download_count": 2
-      },
-      "msi_installer": {
-        "filename": "voice-tool-v2.9.0-setup.msi",
-        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.9.0/voice-tool-v2.9.0-setup.msi",
-        "size_bytes": 28061696,
-        "size_human": "26.8 MB",
-        "sha256": "89fcf7265ba6fb656bb82b52c324412818626b5c8ace2e4f142a5413ad2a50ce",
-        "download_count": 1
+        "filename": "voice-tool-v2.10.0-setup.exe",
+        "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.10.0/voice-tool-v2.10.0-setup.exe",
+        "size_bytes": 7629418,
+        "size_human": "7.3 MB",
+        "sha256": "7f4632b21aff7f3c1c8d0f7468c0cf1dd7727beecedc17de675e7e0ea43b319b",
+        "download_count": 0
       }
     }
   },
   "releases": [
+    {
+      "version": "2.10.0",
+      "tag": "v2.10.0",
+      "published_at": "2026-04-18T16:14:03Z",
+      "changelog_url": "https://github.com/Nolyo/voice-tool/releases/tag/v2.10.0",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.10.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.10.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.10.0-setup.exe** : NSIS installer (recommended)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "windows": {
+        "portable": {
+          "filename": "voice-tool-v2.10.0-portable.exe",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.10.0/voice-tool-v2.10.0-portable.exe",
+          "size_bytes": 41337856,
+          "size_human": "39.4 MB",
+          "sha256": "eade1293d80270c8b4886226e038da8d60fbec4a7ff803695f1b6bb940f4890a",
+          "download_count": 0
+        },
+        "nsis_installer": {
+          "filename": "voice-tool-v2.10.0-setup.exe",
+          "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.10.0/voice-tool-v2.10.0-setup.exe",
+          "size_bytes": 7629418,
+          "size_human": "7.3 MB",
+          "sha256": "7f4632b21aff7f3c1c8d0f7468c0cf1dd7727beecedc17de675e7e0ea43b319b",
+          "download_count": 0
+        }
+      }
+    },
     {
       "version": "2.9.0",
       "tag": "v2.9.0",
@@ -115,7 +132,7 @@
           "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-portable.exe",
           "size_bytes": 91112448,
           "size_human": "86.9 MB",
-          "sha256": "77f80ed3ab84b431d7c8b90b47c03a8dfd2c8366ae5412a412f23d603367b998",
+          "sha256": null,
           "download_count": 1
         },
         "nsis_installer": {
@@ -123,7 +140,7 @@
           "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-setup.exe",
           "size_bytes": 15737664,
           "size_human": "15 MB",
-          "sha256": "458d60a14631a2fe63c2ed8df1f6e9f86c443890356cc8a0ff766460383e8669",
+          "sha256": null,
           "download_count": 2
         },
         "msi_installer": {
@@ -131,7 +148,7 @@
           "url": "https://github.com/Nolyo/voice-tool/releases/download/v2.7.2/voice-tool-v2.7.2-setup.msi",
           "size_bytes": 28131328,
           "size_human": "26.8 MB",
-          "sha256": "6ff186737000d8180992b16c2aad4a0f49795d8c7d97d2054737ab0a99d9417f",
+          "sha256": null,
           "download_count": 1
         }
       }
