@@ -197,7 +197,19 @@
       "recordingsKeep": "Enregistrements conservés (WAV)",
       "recordingsKeepHelp": "Nombre de fichiers audio à conserver localement",
       "language": "Langue",
-      "languageDesc": "Langue de l'interface"
+      "languageDesc": "Langue de l'interface",
+      "danger": {
+        "title": "Zone de danger",
+        "subtitle": "Effacer toutes les données du logiciel et repartir d'une installation vierge.",
+        "resetButton": "Réinitialiser toutes les données",
+        "dialogTitle": "Réinitialiser toutes les données",
+        "dialogWarning": "Cette action supprime définitivement tous les paramètres, profils, transcriptions, enregistrements, notes, modèles téléchargés et logs. L'application redémarrera automatiquement.",
+        "dialogConfirmInstruction": "Pour confirmer, tapez exactement la phrase ci-dessous :",
+        "confirmationLabel": "Phrase de confirmation",
+        "cancel": "Annuler",
+        "confirmReset": "Effacer et redémarrer",
+        "error": "La réinitialisation a échoué. Vérifiez les logs."
+      }
     },
     "miniWindow": {
       "title": "Mini fenêtre",

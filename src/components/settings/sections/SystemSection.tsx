@@ -17,6 +17,7 @@ import { useAutostart } from "@/hooks/useAutostart";
 import { changeLanguage } from "@/i18n";
 import { SectionCard } from "../common/SectionCard";
 import { Divider } from "../common/Divider";
+import { DangerZone } from "./DangerZone";
 
 export function SystemSection() {
   const { t } = useTranslation();
@@ -167,6 +168,10 @@ export function SystemSection() {
         >
           {t('settings.quitApp')}
         </Button>
+
+        <Divider />
+
+        <DangerZone />
       </div>
     </SectionCard>
   );

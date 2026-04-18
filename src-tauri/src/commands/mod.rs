@@ -4,6 +4,7 @@ pub mod misc;
 pub mod model;
 pub mod profiles;
 pub mod recording;
+pub mod reset;
 pub mod settings;
 pub mod system;
 pub mod transcription;

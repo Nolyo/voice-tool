@@ -197,7 +197,19 @@
       "recordingsKeep": "Recordings kept (WAV)",
       "recordingsKeepHelp": "Number of audio files to keep locally",
       "language": "Language",
-      "languageDesc": "Interface language"
+      "languageDesc": "Interface language",
+      "danger": {
+        "title": "Danger zone",
+        "subtitle": "Wipe all application data and start over from a clean install.",
+        "resetButton": "Reset all data",
+        "dialogTitle": "Reset all data",
+        "dialogWarning": "This permanently deletes all settings, profiles, transcriptions, recordings, notes, downloaded models and logs. The app will restart automatically.",
+        "dialogConfirmInstruction": "To confirm, type the phrase below exactly:",
+        "confirmationLabel": "Confirmation phrase",
+        "cancel": "Cancel",
+        "confirmReset": "Erase and restart",
+        "error": "Reset failed. Check the logs."
+      }
     },
     "miniWindow": {
       "title": "Mini window",

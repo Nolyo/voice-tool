@@ -104,7 +104,8 @@ pub fn run() {
             commands::profiles::create_profile,
             commands::profiles::rename_profile,
             commands::profiles::delete_profile,
-            commands::profiles::switch_profile
+            commands::profiles::switch_profile,
+            commands::reset::reset_app_data
         ])
         .setup(move |app| {
             // Enable logging to frontend
