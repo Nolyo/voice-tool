@@ -305,14 +305,22 @@
 body.mini-window-body {
   background: transparent !important;
   color: #f9fafb;
+  height: 100%;
+  margin: 0;
+}
+
+html:has(body.mini-window-body) {
+  height: 100%;
 }
 
 body.mini-window-body #root {
   background: transparent !important;
+  height: 100%;
 }
 
 .mini-shell {
   padding: 6px 16px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(22, 24, 30, 0.92);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45),
