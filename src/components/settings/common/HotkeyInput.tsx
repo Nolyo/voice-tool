@@ -96,7 +96,7 @@ export function HotkeyInput({
   }, [isListening, onChange, value, allowEscape]);
 
   const handleReset = useCallback(async () => {
-    if (!defaultValue || value.toLowerCase() === defaultValue.toLowerCase()) return;
+    if (value.toLowerCase() === defaultValue.toLowerCase()) return;
     setIsSaving(true);
     try {
       await onChange(defaultValue);
@@ -112,8 +112,7 @@ export function HotkeyInput({
   const tokens = value
     ? value.split("+").map((t) => t.trim()).filter(Boolean)
     : [];
-  const isDefault =
-    !defaultValue || value.toLowerCase() === defaultValue.toLowerCase();
+  const isDefault = value.toLowerCase() === defaultValue.toLowerCase();
 
   return (
     <div className="flex items-center justify-between gap-4 py-3">

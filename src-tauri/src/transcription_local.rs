@@ -192,24 +192,40 @@ pub async fn transcribe_local<R: tauri::Runtime>(
     let n_threads = num_cpus::get_physical() as i32;
     let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
 
-    let lang_code = if language.len() >= 2 {
+    let source_lang = if language.len() >= 2 {
         &language[..2]
     } else {
         language
     };
-    params.set_language(Some(lang_code));
+    // Whisper translate is hardcoded to English. Per the official whisper-rs
+    // example, pass "en" as the language when translating; otherwise pass the
+    // source language for pure transcription.
+    let effective_lang = if translate { "en" } else { source_lang };
+    params.set_language(Some(effective_lang));
     params.set_n_threads(n_threads);
     params.set_print_realtime(false);
     params.set_print_progress(false);
     params.set_print_timestamps(false);
+    // Reduce stray leading punctuation/non-speech artifacts, most visible in EN.
+    params.set_suppress_blank(true);
+    params.set_suppress_nst(true);
     if translate {
         params.set_translate(true);
-    }
-    if !dictionary.is_empty() {
+        if !dictionary.is_empty() {
+            tracing::info!(
+                "Translate mode enabled: ignoring initial_prompt to avoid source-language bias"
+            );
+        }
+    } else if !dictionary.is_empty() {
         params.set_initial_prompt(dictionary);
     }
 
-    tracing::info!("Running whisper inference with {} threads", n_threads);
+    tracing::info!(
+        "Running whisper inference (threads={}, translate={}, language={})",
+        n_threads,
+        translate,
+        effective_lang
+    );
 
     whisper_state
         .full(params, &audio_16k)
@@ -228,7 +244,14 @@ pub async fn transcribe_local<R: tauri::Runtime>(
         text.push(' ');
     }
 
-    let result = text.trim().to_string();
+    // Whisper sometimes emits a stray leading punctuation token (observed
+    // mainly in English output). Strip any leading whitespace + punctuation.
+    let result: String = text
+        .trim_start_matches(|c: char| {
+            c.is_whitespace() || matches!(c, '.' | ',' | '!' | '?' | ';' | ':')
+        })
+        .trim_end()
+        .to_string();
     tracing::info!("Local transcription completed: {} characters", result.len());
 
     // --- 5. Schedule auto-unload if needed ---

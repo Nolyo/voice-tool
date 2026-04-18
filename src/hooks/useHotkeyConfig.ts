@@ -7,7 +7,8 @@ export type HotkeyKey =
   | "record_hotkey"
   | "ptt_hotkey"
   | "open_window_hotkey"
-  | "cancel_hotkey";
+  | "cancel_hotkey"
+  | "translate_toggle_hotkey";
 
 /**
  * Persist a hotkey change: normalizes the shortcut, calls the Rust
@@ -26,7 +27,9 @@ export function useHotkeyConfig() {
         .filter(Boolean)
         .join("+");
 
-      if (!normalized) throw new Error(t('errors.hotkeyEmpty'));
+      // Allow empty string for optional hotkeys (translate_toggle_hotkey).
+      const allowEmpty = key === "translate_toggle_hotkey";
+      if (!normalized && !allowEmpty) throw new Error(t('errors.hotkeyEmpty'));
 
       const currentValue = settings[key];
       if (
@@ -46,6 +49,10 @@ export function useHotkeyConfig() {
             : settings.open_window_hotkey,
         cancelHotkey:
           key === "cancel_hotkey" ? normalized : settings.cancel_hotkey,
+        translateToggleHotkey:
+          key === "translate_toggle_hotkey"
+            ? normalized
+            : settings.translate_toggle_hotkey,
       });
 
       await updateSetting(key, normalized);

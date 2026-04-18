@@ -10,6 +10,8 @@ pub(crate) struct HotkeyConfig {
     pub(crate) ptt: Option<String>,
     pub(crate) open_window: Option<String>,
     pub(crate) cancel: Option<String>,
+    /// Only active while a recording is in progress. Toggles `translate_mode`.
+    pub(crate) translate_toggle: Option<String>,
 }
 
 /// Holds a cached whisper context + state so state buffers are allocated once

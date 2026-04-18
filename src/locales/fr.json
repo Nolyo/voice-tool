@@ -223,7 +223,9 @@
       "showWindow": "Afficher la fenêtre",
       "showWindowDesc": "Ouvre et met au premier plan la fenêtre principale",
       "cancel": "Annuler l'enregistrement",
-      "cancelDesc": "Stoppe l'enregistrement sans transcrire"
+      "cancelDesc": "Stoppe l'enregistrement sans transcrire",
+      "translateToggle": "Toggle mode traduction",
+      "translateToggleDesc": "Actif uniquement pendant l'enregistrement. Bascule FR/EN."
     },
     "updater": {
       "title": "Mises à jour",

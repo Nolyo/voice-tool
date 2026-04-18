@@ -55,6 +55,16 @@ export function ShortcutsSection() {
           allowEscape={true}
           onChange={(shortcut) => handleHotkeyChange("cancel_hotkey", shortcut)}
         />
+        <HotkeyInput
+          id="shortcut-translate-toggle"
+          label={t('settings.shortcuts.translateToggle')}
+          value={settings.translate_toggle_hotkey}
+          defaultValue={DEFAULT_SETTINGS.settings.translate_toggle_hotkey}
+          description={t('settings.shortcuts.translateToggleDesc')}
+          onChange={(shortcut) =>
+            handleHotkeyChange("translate_toggle_hotkey", shortcut)
+          }
+        />
       </div>
     </SectionCard>
   );

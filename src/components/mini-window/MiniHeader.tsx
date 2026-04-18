@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Languages } from "lucide-react";
 import type { MiniLayout } from "@/hooks/useMiniWindowSize";
 
 interface MiniHeaderProps {
@@ -61,16 +62,18 @@ export function MiniHeader({
       <button
         data-tauri-drag-region="false"
         onClick={onToggleTranslateMode}
-        className={`px-2 py-1 text-xs font-medium rounded whitespace-nowrap flex-shrink-0 transition-colors ${
+        aria-pressed={translateMode}
+        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded whitespace-nowrap flex-shrink-0 transition-colors ${
           translateMode
             ? "bg-blue-500/30 text-blue-300 border border-blue-500/50 hover:bg-blue-500/40"
-            : "bg-slate-700/30 text-slate-400 border border-slate-600/30 hover:bg-slate-700/40"
+            : "bg-slate-700/30 text-slate-400 border border-slate-600/40 hover:bg-slate-700/50 hover:text-slate-200"
         }`}
         title={
           translateMode ? t("mini.translateModeOn") : t("mini.translateModeOff")
         }
       >
-        {translateMode ? "🌐 EN" : "x"}
+        <Languages className="h-3 w-3" aria-hidden="true" />
+        <span>{translateMode ? "EN" : "TRAD"}</span>
       </button>
     </>
   );

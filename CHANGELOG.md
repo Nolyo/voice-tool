@@ -1,4 +1,15 @@
 
+## [Unreleased]
+
+### ✨ Added
+- Translation mode now works with the local Whisper engine (previously only reliable with the OpenAI API)
+- Configurable hotkey to toggle translation mode while recording — active only during an active recording so it does not interfere with your other keyboard shortcuts (Settings → Shortcuts → "Toggle translation mode")
+- Redesigned translate button in the mini window with a clearer icon and label (TRAD/EN) instead of the ambiguous "x"
+
+### 🐛 Fixed
+- Translation mode state is now kept in sync between the main window and the mini window in real time — toggling on either side updates the other immediately, no app restart required
+- Removed stray leading punctuation sometimes emitted at the start of English transcriptions
+
 ## [2.10.0] - 2026-04-18
 
 ### ✨ Added

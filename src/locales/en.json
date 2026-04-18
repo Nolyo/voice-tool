@@ -223,7 +223,9 @@
       "showWindow": "Show window",
       "showWindowDesc": "Opens and brings the main window to the foreground",
       "cancel": "Cancel recording",
-      "cancelDesc": "Stops recording without transcribing"
+      "cancelDesc": "Stops recording without transcribing",
+      "translateToggle": "Toggle translation mode",
+      "translateToggleDesc": "Only active while recording. Flips FR/EN."
     },
     "updater": {
       "title": "Updates",

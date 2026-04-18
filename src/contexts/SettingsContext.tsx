@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Store } from "@tauri-apps/plugin-store";
 import { invoke } from "@tauri-apps/api/core";
-import { emit } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { AppSettings, DEFAULT_SETTINGS, mergeSettings } from "@/lib/settings";
 import { changeLanguage } from "@/i18n";
 
@@ -37,6 +37,11 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
+  // Always-fresh mirror so cross-window listeners read the latest value.
+  const settingsRef = useRef<AppSettings>(DEFAULT_SETTINGS);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   // Load settings on mount
   useEffect(() => {
@@ -60,6 +65,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           }
 
           setSettings(merged);
+
+          // Broadcast current translate_mode so the mini window stays in sync
+          // on startup (it may have loaded before we wrote defaults).
+          try { await emit("translate-mode-changed", merged.settings.translate_mode); } catch {}
 
           // Sync i18n language with stored setting
           if (merged.settings.ui_language) {
@@ -86,6 +95,45 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
 
     loadSettings();
+  }, []);
+
+  // Sync translate_mode when the mini window toggles it via the Rust command.
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    listen<boolean>("translate-mode-changed", (event) => {
+      setSettings((prev) => {
+        if (prev.settings.translate_mode === event.payload) return prev;
+        return {
+          ...prev,
+          settings: { ...prev.settings, translate_mode: event.payload },
+        };
+      });
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // When the mini window reports ready, push the current translate_mode so its
+  // button matches the stored state even if it mounted before the store was
+  // populated.
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    listen("mini-window-ready", async () => {
+      try {
+        await emit(
+          "translate-mode-changed",
+          settingsRef.current.settings.translate_mode,
+        );
+      } catch {}
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
   }, []);
 
   /**
@@ -128,6 +176,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       // Notify the mini window when the visualizer mode changes so it can switch live
       if (key === "mini_visualizer_mode") {
         try { await emit("mini-visualizer-mode-changed", value); } catch {}
+      }
+
+      // Keep the mini window in sync when translate_mode is toggled from settings
+      if (key === "translate_mode") {
+        try { await emit("translate-mode-changed", value); } catch {}
       }
 
       await storeInstance.set("settings", newSettings);
