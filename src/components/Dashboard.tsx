@@ -179,6 +179,9 @@ export default function Dashboard() {
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
+          isRecording={isRecording}
+          isTranscribing={isTranscribing}
+          onToggleRecording={handleToggleRecording}
           updateAvailable={updateAvailable}
           onUpdateClick={() => setShowUpdateModal(true)}
         />
@@ -216,10 +219,6 @@ export default function Dashboard() {
               <div className="container mx-auto px-6 py-8">
                 {activeTab === "historique" && (
                   <HistoriqueTab
-                    isRecording={isRecording}
-                    isTranscribing={isTranscribing}
-                    onToggleRecording={handleToggleRecording}
-                    hideRecordingPanel={settings.hide_recording_panel}
                     transcriptions={transcriptions}
                     selectedTranscription={selectedTranscription}
                     isSidebarOpen={isSidebarOpen}
