@@ -1,15 +1,4 @@
 
-## [Unreleased]
-
-### ✨ Added
-- Translation mode now works with the local Whisper engine (previously only reliable with the OpenAI API)
-- Configurable hotkey to toggle translation mode while recording — active only during an active recording so it does not interfere with your other keyboard shortcuts (Settings → Shortcuts → "Toggle translation mode")
-- Redesigned translate button in the mini window with a clearer icon and label (TRAD/EN) instead of the ambiguous "x"
-
-### 🐛 Fixed
-- Translation mode state is now kept in sync between the main window and the mini window in real time — toggling on either side updates the other immediately, no app restart required
-- Removed stray leading punctuation sometimes emitted at the start of English transcriptions
-
 ## [2.10.0] - 2026-04-18
 
 ### ✨ Added
@@ -19,6 +8,9 @@
 - Settings sub-navigation in sidebar - select individual settings sections without scrolling through all sections
 - Onboarding wizard for model setup - guides users through initial configuration and model selection on first launch
 - New model supported: Grock (x.com/grock-ai) - an open-source, high-performance speech recognition model with competitive accuracy and speed, providing an alternative to Whisper for api transcription
+- Translation mode now works with the local Whisper engine (previously only reliable with the OpenAI API)
+- Configurable hotkey to toggle translation mode while recording — active only during an active recording so it does not interfere with your other keyboard shortcuts (Settings → Shortcuts → "Toggle translation mode")
+- Redesigned translate button in the mini window with a clearer icon and label (TRAD/EN) instead of the ambiguous "x"
 
 ### 🔧 Changed
 - Switched local transcription engine from CUDA to Vulkan - no NVIDIA CUDA runtime required anymore
@@ -26,6 +18,10 @@
 - Redesigned the history panel: recording card is now a compact horizontal banner (full width), transcription details open in a sliding sidebar on the right instead of a fixed side panel
 - Keyboard shortcuts (toggle / push-to-talk) are now displayed directly on the recording card when idle
 - Copy and Listen buttons in the detail sidebar are now side by side
+
+### 🐛 Fixed
+- Translation mode state is now kept in sync between the main window and the mini window in real time — toggling on either side updates the other immediately, no app restart required
+- Removed stray leading punctuation sometimes emitted at the start of English transcriptions
 
 ### ℹ️ Note
 - The first transcription after installation may take longer than usual while GPU shaders are compiled and cached - subsequent transcriptions are fast as normal
