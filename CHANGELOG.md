@@ -7,6 +7,9 @@
 ### 🐛 Fixed
 - Enhance Markdown handling in AI assistant with Turndown and Marked integration (preserve line breaks, support tables, code blocks, lists)
 
+### 🔧 Changed
+- Improved layout and styling of Transcription history
+
 ## [2.10.0] - 2026-04-18
 
 ### ✨ Added
