@@ -126,9 +126,11 @@
 ## EPIC-08 — Comptes utilisateurs & service payant (v3)
 
 **Objectif** : introduire des comptes utilisateurs et une offre payante, en gardant la transcription gratuite et l'usage offline possible.
-**Version cible** : 3.0.0
+**Version cible** : 3.0.0 → 3.2.0 (phasage)
 **Complexité** : très élevée.
 **Dépendances** : EPIC-07 doit être terminé (au moins sur les findings critiques/majeurs).
+
+> 📂 **Cet épique a son dossier dédié**: [`docs/v3/`](v3/) — voir [`docs/v3/EPIC.md`](v3/EPIC.md) pour le document chapeau, le découpage en sous-épiques, les décisions actées (ADR) et les questions encore ouvertes.
 
 ### Contraintes produit déjà actées
 
@@ -136,15 +138,26 @@
 - L'export des paramètres reste possible.
 - L'app reste utilisable totalement gratuitement.
 
-### Stories (à raffiner après EPIC-07)
+### Découpage (raffiné dans `docs/v3/`)
 
-- **USER-1** — Définition de l'offre payante : quelles features sont premium ?
-- **USER-2** — Choix du back-end auth (self-hosted / Supabase / Clerk / Auth0…)
-- **USER-3** — Flow login / signup intégré à l'app
-- **USER-4** — Intégration paiement (Stripe ?) + gestion abonnement
-- **USER-5** — Sync cloud optionnelle (settings, notes, historique)
-- **USER-6** — Gating technique des features premium
-- **USER-7** — Onboarding & pages marketing premium
+| Sous-épique | Cible | Statut |
+|---|---|---|
+| 08.0 — Threat model & sécurité fondations | v3.0 | 📝 Stub |
+| 08.1 — Auth & comptes | v3.0 | 📝 Stub |
+| 08.2 — Sync settings (sans clés API) | v3.0 | 📝 Stub |
+| 08.3 — Sync notes | v3.1 | 📝 Stub |
+| 08.4 — Billing & gating premium | v3.0 | 📝 Stub (POC fait) |
+| 08.5 — Service managé transcription | v3.2 | 📝 Stub |
+| 08.6 — Onboarding & marketing premium | v3.0 → v3.1 | 📝 Stub |
+
+### Décisions structurantes déjà actées (cf. [ADRs](v3/decisions/))
+
+- Billing: **Lemon Squeezy** (Merchant of Record)
+- Périmètre sync v3.0: **settings + notes texte uniquement** (pas d'audio, pas d'historique)
+- Posture chiffrement: **server-side, style Notion**
+- Clés API: **jamais syncées**, device-local uniquement
+- Auth: **Email/password + Magic link + Google OAuth**
+- Flow callback: **page web HTTPS + deep link `voice-tool://`**
 
 ---
 
