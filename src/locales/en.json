@@ -198,6 +198,10 @@
       "recordingsKeepHelp": "Number of audio files to keep locally",
       "language": "Language",
       "languageDesc": "Interface language",
+      "theme": "Theme",
+      "themeDesc": "Dark or light appearance of the interface",
+      "themeDark": "Dark",
+      "themeLight": "Light",
       "danger": {
         "title": "Danger zone",
         "subtitle": "Wipe all application data and start over from a clean install.",

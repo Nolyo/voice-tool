@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { Minus, Plus, Settings } from "lucide-react";
+import { Minus, Moon, Plus, Settings, Sun } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,40 @@ export function SystemSection() {
           </Select>
           <p className="text-xs text-muted-foreground">
             {t('settings.system.languageDesc')}
+          </p>
+        </div>
+
+        <Divider />
+
+        {/* Theme selector */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            {t('settings.system.theme')}
+          </Label>
+          <div className="inline-flex rounded-lg border bg-background/50 p-1">
+            <Button
+              type="button"
+              variant={settings.theme === "dark" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => updateSetting("theme", "dark")}
+            >
+              <Moon className="w-3.5 h-3.5" />
+              {t('settings.system.themeDark')}
+            </Button>
+            <Button
+              type="button"
+              variant={settings.theme === "light" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => updateSetting("theme", "light")}
+            >
+              <Sun className="w-3.5 h-3.5" />
+              {t('settings.system.themeLight')}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t('settings.system.themeDesc')}
           </p>
         </div>
 
