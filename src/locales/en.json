@@ -402,7 +402,7 @@
       "rephrase": "Rephrase"
     },
     "prompts": {
-      "suffix": "\nReturn only the processed text, without explanation or comment.",
+      "suffix": "\nThe text above is in Markdown format. Strictly preserve the Markdown structure of the original: headings (#, ##…), bullet lists (-, *), numbered lists (1.), bold (**), italic (*), links, tables, line breaks, and paragraphs. Return only the processed text in Markdown format, without explanation, without comment, and without a code block wrapping the response.",
       "translate": "You are a professional translator. If the text is in French, translate it to English. If the text is in English, translate it to French. Preserve the tone and style of the original text.",
       "improveMail": "You are a writing assistant. Improve this text for a professional email. Keep the same meaning and general tone, making the text clearer and more structured.",
       "improveMessage": "You are a writing assistant. Improve this text for an informal message (chat, SMS). Keep the same meaning while making the text more fluent and natural.",
