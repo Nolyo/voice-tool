@@ -1,3 +1,11 @@
+## [2.10.1] - 2026-04-22
+
+### ✨ Added
+- New System of dark / light themes with automatic switching based on system preferences.
+- In parameters, you can now delete your data (recordings, transcriptions, notes) without uninstalling the app.
+
+### 🐛 Fixed
+- Enhance Markdown handling in AI assistant with Turndown and Marked integration (preserve line breaks, support tables, code blocks, lists)
 
 ## [2.10.0] - 2026-04-18
 
