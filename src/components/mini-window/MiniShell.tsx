@@ -16,6 +16,8 @@ export function MiniShell() {
     errorMessage,
     translateMode,
     handleToggleTranslateMode,
+    postProcessEnabled,
+    handleTogglePostProcess,
     visualizerMode,
     waveformCapacity,
     showTranscriptPreview,
@@ -83,6 +85,8 @@ export function MiniShell() {
               recordingTime={recordingTime}
               translateMode={translateMode}
               onToggleTranslateMode={handleToggleTranslateMode}
+              postProcessEnabled={postProcessEnabled}
+              onTogglePostProcess={handleTogglePostProcess}
               layout={layout}
               language={language}
             />

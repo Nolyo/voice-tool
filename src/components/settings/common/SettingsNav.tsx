@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { AudioWaveform, BookOpen, Keyboard, Mic, RefreshCw, Settings } from "lucide-react";
+import { AudioWaveform, BookOpen, Keyboard, Mic, RefreshCw, Settings, Sparkles } from "lucide-react";
 
 export interface NavItemDef {
   id: string;
@@ -14,6 +14,7 @@ export type SettingsSectionId =
   | "section-transcription"
   | "section-audio"
   | "section-texte"
+  | "section-post-process"
   | "section-vocabulaire"
   | "section-systeme"
   | "section-mini-window"
@@ -41,6 +42,13 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     iconBg: "bg-emerald-500/10",
     titleKey: "settings.nav.text",
     subtitleKey: "settings.nav.textSubtitle",
+  },
+  {
+    id: "section-post-process",
+    icon: <Sparkles className="w-3.5 h-3.5 text-pink-500" />,
+    iconBg: "bg-pink-500/10",
+    titleKey: "settings.nav.postProcess",
+    subtitleKey: "settings.nav.postProcessSubtitle",
   },
   {
     id: "section-vocabulaire",

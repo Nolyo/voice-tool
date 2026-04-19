@@ -18,6 +18,12 @@
     "subtitle": "Transcription vocale intelligente",
     "newVersion": "Nouvelle version disponible"
   },
+  "postProcess": {
+    "processing": "Post-traitement IA en cours...",
+    "missingKey": "Clé API manquante pour le post-traitement. Renseigne-la dans les paramètres.",
+    "missingCustomPrompt": "Instruction personnalisée vide. Remplis-la dans l'onglet Post Process.",
+    "error": "Post-traitement IA échoué : {{error}}"
+  },
   "sidebar": {
     "history": "Historique",
     "notes": "Notes",
@@ -63,7 +69,8 @@
     "emptySubtitle": "Enregistrez votre premier audio pour commencer",
     "deleteConfirm": "Supprimer cette transcription ?",
     "count_one": "{{count}} transcription",
-    "count_other": "{{count}} transcriptions"
+    "count_other": "{{count}} transcriptions",
+    "postProcessedBadge": "Post-traité par IA"
   },
   "transcriptionDetails": {
     "noAudio": "Aucun enregistrement audio associé à cette transcription.",
@@ -74,6 +81,9 @@
     "cost": "Coût",
     "free": "Gratuit",
     "transcription": "Transcription",
+    "transcriptionFinal": "Transcription finale",
+    "postProcessTitle": "Traitement IA appliqué",
+    "originalHint": "Texte brut de Whisper, avant reformulation :",
     "copy": "Copier",
     "stop": "Arrêter",
     "listen": "Écouter",
@@ -92,6 +102,8 @@
       "audioSubtitle": "Enregistrement et sons",
       "text": "Texte",
       "textSubtitle": "Formatage et insertion",
+      "postProcess": "Post Process",
+      "postProcessSubtitle": "Reformatage IA après dictée",
       "vocabulary": "Vocabulaire",
       "vocabularySubtitle": "Snippets et mots",
       "system": "Système",
@@ -170,6 +182,55 @@
       "modeNone": "Aucune insertion",
       "modeNoneDesc": "Le texte est uniquement ajouté à l'historique",
       "smartFormatting": "Formatage intelligent (ponctuation, majuscules, espaces)"
+    },
+    "postProcess": {
+      "title": "Post Process",
+      "subtitle": "Reformate la transcription avec une IA (OpenAI ou Groq)",
+      "enable": "Activer le post-traitement IA",
+      "enableDesc": "Après chaque transcription, le texte est repassé par une IA selon le mode choisi.",
+      "delayWarning": "Un appel IA ajoute 1 à 3 secondes avant que le texte soit inséré.",
+      "provider": "Fournisseur IA",
+      "providerOpenai": "OpenAI",
+      "providerGroq": "Groq",
+      "missingKey": "Clé API {{provider}} manquante. Configure-la dans l'onglet IA avant d'activer ce mode.",
+      "mode": "Mode de reformatage",
+      "customPrompt": "Instruction personnalisée",
+      "customPromptPlaceholder": "Ex : Transforme la dictée en note Jira avec des sections 'Contexte', 'Travail à faire', 'Critères d'acceptation'.",
+      "customPromptRequired": "Saisis une instruction avant d'utiliser ce mode.",
+      "modes": {
+        "auto": {
+          "label": "Auto (détection contextuelle)",
+          "desc": "Détecte liste, email ou texte libre et reformate automatiquement."
+        },
+        "list": {
+          "label": "Liste à puces",
+          "desc": "Convertit l'énumération dictée en liste Markdown à puces."
+        },
+        "email": {
+          "label": "Email",
+          "desc": "Restructure la dictée en email (salutation, corps, formule de politesse)."
+        },
+        "formal": {
+          "label": "Ton formel",
+          "desc": "Réécrit dans un ton professionnel, sans tics de langage."
+        },
+        "casual": {
+          "label": "Ton décontracté",
+          "desc": "Réécrit dans un ton fluide et naturel, sans formalisme."
+        },
+        "summary": {
+          "label": "Résumé",
+          "desc": "Condense la dictée en 2 à 3 phrases essentielles."
+        },
+        "grammar": {
+          "label": "Correction grammaticale",
+          "desc": "Corrige l'orthographe et la grammaire sans reformuler le fond."
+        },
+        "custom": {
+          "label": "Personnalisé",
+          "desc": "Utilise ta propre instruction IA."
+        }
+      }
     },
     "vocabulary": {
       "title": "Vocabulaire",
@@ -379,6 +440,8 @@
   "mini": {
     "translateModeOn": "Mode traduction activé (FR→EN)",
     "translateModeOff": "Activer mode traduction",
+    "postProcessOn": "Post-traitement activé",
+    "postProcessOff": "Activer le post-traitement",
     "sendingAudio": "Envoi de l'audio...",
     "transcriptionSuccess": "Transcription réussie",
     "recordingHint": "Enregistrement…",

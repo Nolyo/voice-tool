@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, Copy, Trash2 } from "lucide-react";
+import { Search, Copy, Trash2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -112,6 +112,15 @@ export function TranscriptionList({
                       >
                         {transcription.time}
                       </Badge>
+                      {transcription.originalText && (
+                        <span
+                          className="inline-flex items-center justify-center h-4 w-4 rounded bg-violet-500/15 text-violet-400 border border-violet-500/30 shrink-0"
+                          title={t('history.postProcessedBadge')}
+                          aria-label={t('history.postProcessedBadge')}
+                        >
+                          <Sparkles className="w-2.5 h-2.5" aria-hidden="true" />
+                        </span>
+                      )}
                       <span className="text-[11px] text-muted-foreground shrink-0">
                         {transcription.date}
                       </span>

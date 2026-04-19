@@ -163,3 +163,28 @@ pub fn set_translate_mode(app: AppHandle, enabled: bool) -> Result<(), String> {
     tracing::info!("Translate mode set to: {}", enabled);
     Ok(())
 }
+
+/// Set the post-process preference and notify all windows
+#[tauri::command]
+pub fn set_post_process_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let store = StoreBuilder::new(&app, crate::profiles::settings_store_path(&app))
+        .build()
+        .map_err(|e| format!("Failed to load settings: {}", e))?;
+
+    let mut data = store.get("settings").unwrap_or_else(|| json!({}));
+    if let Some(root) = data.as_object_mut() {
+        let settings_value = root.entry("settings").or_insert_with(|| json!({}));
+        if let Some(settings_obj) = settings_value.as_object_mut() {
+            settings_obj.insert("post_process_enabled".into(), json!(enabled));
+        }
+    }
+    store.set("settings", data);
+    store
+        .save()
+        .map_err(|e| format!("Failed to save settings: {}", e))?;
+
+    let _ = app.emit("post-process-enabled-changed", enabled);
+
+    tracing::info!("Post-process enabled set to: {}", enabled);
+    Ok(())
+}

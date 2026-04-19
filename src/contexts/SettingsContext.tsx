@@ -121,6 +121,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Same sync for post_process_enabled toggled from the mini window.
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    listen<boolean>("post-process-enabled-changed", (event) => {
+      setSettings((prev) => {
+        if (prev.settings.post_process_enabled === event.payload) return prev;
+        return {
+          ...prev,
+          settings: { ...prev.settings, post_process_enabled: event.payload },
+        };
+      });
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
   // When the mini window reports ready, push the current translate_mode so its
   // button matches the stored state even if it mounted before the store was
   // populated.
@@ -131,6 +150,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         await emit(
           "translate-mode-changed",
           settingsRef.current.settings.translate_mode,
+        );
+        await emit(
+          "post-process-enabled-changed",
+          settingsRef.current.settings.post_process_enabled,
         );
         await emit(
           "mini-visualizer-mode-changed",
@@ -194,6 +217,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       // Keep the mini window in sync when translate_mode is toggled from settings
       if (key === "translate_mode") {
         try { await emit("translate-mode-changed", value); } catch {}
+      }
+
+      // Same sync for post_process_enabled toggled from the settings dialog
+      if (key === "post_process_enabled") {
+        try { await emit("post-process-enabled-changed", value); } catch {}
       }
 
       // Apply theme change live and broadcast to the mini window

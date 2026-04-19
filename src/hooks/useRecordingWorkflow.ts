@@ -16,7 +16,74 @@ type AddTranscription = (
   provider?: "whisper",
   audioPath?: string,
   apiCost?: number,
+  originalText?: string,
+  postProcessMode?: string,
 ) => Promise<Transcription>;
+
+interface PostProcessOutcome {
+  /** Final text to use (post-processed if applied, otherwise the input). */
+  text: string;
+  /** Original Whisper text — set only when post-process actually modified it. */
+  originalText?: string;
+  /** Mode applied — same condition as `originalText`. */
+  mode?: string;
+}
+
+async function maybePostProcess(
+  originalText: string,
+  settings: AppSettings["settings"],
+  translate: (key: string, opts?: Record<string, unknown>) => string,
+): Promise<PostProcessOutcome> {
+  if (!settings.post_process_enabled) return { text: originalText };
+
+  const trimmed = originalText.trim();
+  if (!trimmed) return { text: originalText };
+
+  const provider = settings.post_process_provider;
+  const apiKey =
+    provider === "OpenAI" ? settings.openai_api_key : settings.groq_api_key;
+  if (!apiKey.trim()) {
+    toast.warning(translate("postProcess.missingKey"));
+    return { text: originalText };
+  }
+
+  if (
+    settings.post_process_mode === "custom" &&
+    !settings.post_process_custom_prompt.trim()
+  ) {
+    toast.warning(translate("postProcess.missingCustomPrompt"));
+    return { text: originalText };
+  }
+
+  const toastId = toast.loading(translate("postProcess.processing"));
+  try {
+    const processed = await invoke<string>("post_process_text", {
+      provider,
+      apiKey,
+      mode: settings.post_process_mode,
+      customPrompt: settings.post_process_custom_prompt,
+      text: trimmed,
+    });
+    toast.dismiss(toastId);
+    const result = processed?.trim();
+    if (!result || result.length === 0 || result === trimmed) {
+      return { text: originalText };
+    }
+    return {
+      text: result,
+      originalText: trimmed,
+      mode: settings.post_process_mode,
+    };
+  } catch (err) {
+    toast.dismiss(toastId);
+    toast.error(
+      translate("postProcess.error", {
+        error: typeof err === "string" ? err : String(err),
+      }),
+    );
+    return { text: originalText };
+  }
+}
 
 interface UseRecordingWorkflowOptions {
   settings: AppSettings["settings"];
@@ -65,6 +132,8 @@ export function useRecordingWorkflow({
       provider: "whisper",
       audioPath?: string,
       apiCost?: number,
+      originalText?: string,
+      postProcessMode?: string,
     ) => {
       const trimmed = text?.trim();
       if (!trimmed) {
@@ -84,6 +153,8 @@ export function useRecordingWorkflow({
         provider,
         audioPath,
         apiCost,
+        originalText,
+        postProcessMode,
       );
       onTranscriptionAdded(newEntry);
       playSuccess();
@@ -138,6 +209,9 @@ export function useRecordingWorkflow({
 
         console.log("Transcription:", result.text);
 
+        const processed = await maybePostProcess(result.text, settings, tRef.current);
+        const finalText = processed.text;
+
         const durationSeconds = audioData.length / sampleRate;
         const durationMinutes = durationSeconds / 60;
         const apiCost = (() => {
@@ -154,13 +228,15 @@ export function useRecordingWorkflow({
         })();
 
         await handleTranscriptionFinal(
-          result.text,
+          finalText,
           "whisper",
           result.audioPath,
           apiCost,
+          processed.originalText,
+          processed.mode,
         );
 
-        await emit("transcription-success", { text: result.text });
+        await emit("transcription-success", { text: finalText });
         await invoke("log_separator");
       } catch (error) {
         console.error("Transcription error:", error);

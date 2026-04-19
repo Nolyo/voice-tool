@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Languages } from "lucide-react";
+import { Languages, Sparkles } from "lucide-react";
 import type { MiniLayout } from "@/hooks/useMiniWindowSize";
 
 interface MiniHeaderProps {
@@ -7,6 +7,8 @@ interface MiniHeaderProps {
   recordingTime: number;
   translateMode: boolean;
   onToggleTranslateMode: () => void;
+  postProcessEnabled: boolean;
+  onTogglePostProcess: () => void;
   layout: MiniLayout;
   language?: string;
 }
@@ -24,6 +26,8 @@ export function MiniHeader({
   recordingTime,
   translateMode,
   onToggleTranslateMode,
+  postProcessEnabled,
+  onTogglePostProcess,
   layout,
   language,
 }: MiniHeaderProps) {
@@ -76,6 +80,28 @@ export function MiniHeader({
         }
       >
         <Languages className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+      <button
+        data-tauri-drag-region="false"
+        onClick={onTogglePostProcess}
+        aria-pressed={postProcessEnabled}
+        aria-label={
+          postProcessEnabled
+            ? t("mini.postProcessOn")
+            : t("mini.postProcessOff")
+        }
+        className={`inline-flex items-center justify-center p-1.5 rounded flex-shrink-0 transition-colors ${
+          postProcessEnabled
+            ? "bg-violet-500/30 text-violet-300 border border-violet-500/50 hover:bg-violet-500/40"
+            : "bg-slate-700/30 text-slate-400 border border-slate-600/40 hover:bg-slate-700/50 hover:text-slate-200"
+        }`}
+        title={
+          postProcessEnabled
+            ? t("mini.postProcessOn")
+            : t("mini.postProcessOff")
+        }
+      >
+        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </>
   );

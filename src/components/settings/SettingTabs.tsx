@@ -4,6 +4,7 @@ import { type SettingsSectionId } from "./common/SettingsNav";
 import { TranscriptionSection } from "./sections/TranscriptionSection";
 import { AudioSection } from "./sections/AudioSection";
 import { TextSection } from "./sections/TextSection";
+import { PostProcessSection } from "./sections/PostProcessSection";
 import { VocabularySection } from "./sections/VocabularySection";
 import { SystemSection } from "./sections/SystemSection";
 import { MiniWindowSection } from "./sections/MiniWindowSection";
@@ -37,6 +38,7 @@ export function SettingTabs({ activeSection }: SettingTabsProps) {
       {activeSection === "section-transcription" && <TranscriptionSection />}
       {activeSection === "section-audio" && <AudioSection />}
       {activeSection === "section-texte" && <TextSection />}
+      {activeSection === "section-post-process" && <PostProcessSection />}
       {activeSection === "section-vocabulaire" && <VocabularySection />}
       {activeSection === "section-systeme" && <SystemSection />}
       {activeSection === "section-mini-window" && <MiniWindowSection />}

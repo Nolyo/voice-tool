@@ -68,6 +68,20 @@ export interface AppSettings {
     snippets: Array<{ trigger: string; replacement: string }>;
     dictionary: string[];
     whisper_initial_prompt: string;
+
+    // Post-process (AI reformatting after transcription)
+    post_process_enabled: boolean;
+    post_process_provider: "OpenAI" | "Groq";
+    post_process_mode:
+      | "auto"
+      | "list"
+      | "email"
+      | "formal"
+      | "casual"
+      | "summary"
+      | "grammar"
+      | "custom";
+    post_process_custom_prompt: string;
   };
 }
 
@@ -139,6 +153,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
     }],
     dictionary: ["Ollama"],
     whisper_initial_prompt: "",
+
+    // Post-process
+    post_process_enabled: false,
+    post_process_provider: "OpenAI",
+    post_process_mode: "auto",
+    post_process_custom_prompt: "",
   },
 };
 

@@ -33,7 +33,7 @@ pub fn paste_text_to_active_window(_text: String) -> Result<(), String> {
 /// Unlike paste_text_to_active_window, this does NOT touch the clipboard
 #[tauri::command]
 pub fn type_text_at_cursor(text: String) -> Result<(), String> {
-    use enigo::{Enigo, Keyboard, Settings};
+    use enigo::{Direction, Enigo, Key, Keyboard, Settings};
     use std::thread;
     use std::time::Duration;
 
@@ -49,10 +49,24 @@ pub fn type_text_at_cursor(text: String) -> Result<(), String> {
         format!("Failed to initialize keyboard: {}", e)
     })?;
 
-    enigo.text(&text).map_err(|e| {
-        tracing::error!("Failed to type text: {}", e);
-        format!("Failed to type text: {}", e)
-    })?;
+    // enigo.text() on Windows sends chars via Unicode SendInput; '\n' (0x0A) is
+    // not interpreted as Enter by most apps. Split on '\n' and emit Key::Return
+    // between lines so Markdown lists and other multi-line outputs insert correctly.
+    for (i, line) in text.split('\n').enumerate() {
+        if i > 0 {
+            enigo.key(Key::Return, Direction::Click).map_err(|e| {
+                tracing::error!("Failed to press Return: {}", e);
+                format!("Failed to press Return: {}", e)
+            })?;
+        }
+        let trimmed = line.strip_suffix('\r').unwrap_or(line);
+        if !trimmed.is_empty() {
+            enigo.text(trimmed).map_err(|e| {
+                tracing::error!("Failed to type text: {}", e);
+                format!("Failed to type text: {}", e)
+            })?;
+        }
+    }
 
     tracing::info!("Text typed successfully at cursor position");
     Ok(())

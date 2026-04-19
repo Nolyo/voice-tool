@@ -18,6 +18,12 @@
     "subtitle": "Intelligent voice transcription",
     "newVersion": "New version available"
   },
+  "postProcess": {
+    "processing": "Running AI post-processing...",
+    "missingKey": "Missing API key for post-processing. Configure it in settings.",
+    "missingCustomPrompt": "Custom instruction is empty. Fill it in the Post Process tab.",
+    "error": "AI post-processing failed: {{error}}"
+  },
   "sidebar": {
     "history": "History",
     "notes": "Notes",
@@ -63,7 +69,8 @@
     "emptySubtitle": "Record your first audio to get started",
     "deleteConfirm": "Delete this transcription?",
     "count_one": "{{count}} transcription",
-    "count_other": "{{count}} transcriptions"
+    "count_other": "{{count}} transcriptions",
+    "postProcessedBadge": "AI post-processed"
   },
   "transcriptionDetails": {
     "noAudio": "No audio recording associated with this transcription.",
@@ -74,6 +81,9 @@
     "cost": "Cost",
     "free": "Free",
     "transcription": "Transcription",
+    "transcriptionFinal": "Final transcription",
+    "postProcessTitle": "AI post-processing applied",
+    "originalHint": "Raw Whisper output, before reformatting:",
     "copy": "Copy",
     "stop": "Stop",
     "listen": "Listen",
@@ -92,6 +102,8 @@
       "audioSubtitle": "Recording and sounds",
       "text": "Text",
       "textSubtitle": "Formatting and insertion",
+      "postProcess": "Post Process",
+      "postProcessSubtitle": "AI reformatting after dictation",
       "vocabulary": "Vocabulary",
       "vocabularySubtitle": "Snippets and words",
       "system": "System",
@@ -170,6 +182,55 @@
       "modeNone": "No insertion",
       "modeNoneDesc": "Text is only added to history",
       "smartFormatting": "Smart formatting (punctuation, capitals, spaces)"
+    },
+    "postProcess": {
+      "title": "Post Process",
+      "subtitle": "Reformat the transcription with AI (OpenAI or Groq)",
+      "enable": "Enable AI post-processing",
+      "enableDesc": "After each transcription, the text goes through AI using the selected mode.",
+      "delayWarning": "An AI call adds 1 to 3 seconds before the text is inserted.",
+      "provider": "AI provider",
+      "providerOpenai": "OpenAI",
+      "providerGroq": "Groq",
+      "missingKey": "Missing {{provider}} API key. Configure it in the AI tab before enabling this mode.",
+      "mode": "Reformatting mode",
+      "customPrompt": "Custom instruction",
+      "customPromptPlaceholder": "e.g.: Turn the dictation into a Jira note with 'Context', 'Work to do', 'Acceptance criteria' sections.",
+      "customPromptRequired": "Enter an instruction before using this mode.",
+      "modes": {
+        "auto": {
+          "label": "Auto (context detection)",
+          "desc": "Detects list, email, or free text and reformats automatically."
+        },
+        "list": {
+          "label": "Bullet list",
+          "desc": "Converts the dictated enumeration into a Markdown bullet list."
+        },
+        "email": {
+          "label": "Email",
+          "desc": "Restructures the dictation into an email (greeting, body, closing)."
+        },
+        "formal": {
+          "label": "Formal tone",
+          "desc": "Rewrites in a professional tone, without filler words."
+        },
+        "casual": {
+          "label": "Casual tone",
+          "desc": "Rewrites in a fluid, natural tone without formality."
+        },
+        "summary": {
+          "label": "Summary",
+          "desc": "Condenses the dictation into 2 to 3 essential sentences."
+        },
+        "grammar": {
+          "label": "Grammar correction",
+          "desc": "Corrects spelling and grammar without reformulating the content."
+        },
+        "custom": {
+          "label": "Custom",
+          "desc": "Use your own AI instruction."
+        }
+      }
     },
     "vocabulary": {
       "title": "Vocabulary",
@@ -379,6 +440,8 @@
   "mini": {
     "translateModeOn": "Translation mode enabled (FR→EN)",
     "translateModeOff": "Enable translation mode",
+    "postProcessOn": "Post-processing enabled",
+    "postProcessOff": "Enable post-processing",
     "sendingAudio": "Sending audio...",
     "transcriptionSuccess": "Transcription successful",
     "recordingHint": "Recording…",

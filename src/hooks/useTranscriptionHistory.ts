@@ -11,6 +11,10 @@ export interface Transcription {
   isStreaming?: boolean;
   audioPath?: string;
   apiCost?: number;
+  /** Raw Whisper output before post-process. Set only when post-process modified the text. */
+  originalText?: string;
+  /** Mode applied by the post-process step ("auto", "list", "email", ...). */
+  postProcessMode?: string;
 }
 
 export function useTranscriptionHistory() {
@@ -37,7 +41,9 @@ export function useTranscriptionHistory() {
     text: string,
     provider: 'whisper' = 'whisper',
     audioPath?: string,
-    apiCost?: number
+    apiCost?: number,
+    originalText?: string,
+    postProcessMode?: string
   ): Promise<Transcription> => {
     const now = new Date();
     const newTranscription: Transcription = {
@@ -52,6 +58,8 @@ export function useTranscriptionHistory() {
       provider,
       audioPath,
       apiCost,
+      originalText,
+      postProcessMode,
     };
 
     await invoke('save_transcription', { transcription: newTranscription });

@@ -33,6 +33,7 @@ export function useMiniWindowState() {
   const [status, setStatus] = useState<WindowStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [translateMode, setTranslateMode] = useState(false);
+  const [postProcessEnabled, setPostProcessEnabled] = useState(false);
   const [visualizerMode, setVisualizerMode] = useState<VisualizerMode>(
     DEFAULT_SETTINGS.settings.mini_visualizer_mode,
   );
@@ -72,6 +73,15 @@ export function useMiniWindowState() {
     }
   };
 
+  // Toggle post-process via Rust command
+  const handleTogglePostProcess = async () => {
+    try {
+      await invoke("set_post_process_enabled", { enabled: !postProcessEnabled });
+    } catch (e) {
+      console.error("Failed to toggle post-process:", e);
+    }
+  };
+
   // All Tauri event listeners + initial settings read
   useEffect(() => {
     let unlistenAudioFn: (() => void) | null = null;
@@ -80,6 +90,7 @@ export function useMiniWindowState() {
     let unlistenTranscriptionSuccessFn: (() => void) | null = null;
     let unlistenTranscriptionErrorFn: (() => void) | null = null;
     let unlistenTranslateModeChangedFn: (() => void) | null = null;
+    let unlistenPostProcessEnabledChangedFn: (() => void) | null = null;
     let unlistenLanguageChangedFn: (() => void) | null = null;
     let unlistenVisualizerModeChangedFn: (() => void) | null = null;
     let unlistenThemeChangedFn: (() => void) | null = null;
@@ -97,6 +108,7 @@ export function useMiniWindowState() {
           const s = saved?.settings;
           if (s) {
             setTranslateMode(Boolean(s.translate_mode));
+            setPostProcessEnabled(Boolean(s.post_process_enabled));
             if (s.mini_visualizer_mode) setVisualizerMode(s.mini_visualizer_mode);
             if (typeof s.mini_window_waveform_samples === "number") {
               setWaveformCapacity(s.mini_window_waveform_samples);
@@ -119,6 +131,13 @@ export function useMiniWindowState() {
           "translate-mode-changed",
           (event) => {
             setTranslateMode(event.payload);
+          },
+        );
+
+        unlistenPostProcessEnabledChangedFn = await listen<boolean>(
+          "post-process-enabled-changed",
+          (event) => {
+            setPostProcessEnabled(event.payload);
           },
         );
 
@@ -221,6 +240,7 @@ export function useMiniWindowState() {
       if (unlistenTranscriptionSuccessFn) unlistenTranscriptionSuccessFn();
       if (unlistenTranscriptionErrorFn) unlistenTranscriptionErrorFn();
       if (unlistenTranslateModeChangedFn) unlistenTranslateModeChangedFn();
+      if (unlistenPostProcessEnabledChangedFn) unlistenPostProcessEnabledChangedFn();
       if (unlistenLanguageChangedFn) unlistenLanguageChangedFn();
       if (unlistenVisualizerModeChangedFn) unlistenVisualizerModeChangedFn();
       if (unlistenThemeChangedFn) unlistenThemeChangedFn();
@@ -235,6 +255,8 @@ export function useMiniWindowState() {
     errorMessage,
     translateMode,
     handleToggleTranslateMode,
+    postProcessEnabled,
+    handleTogglePostProcess,
     visualizerMode,
     waveformCapacity,
     showTranscriptPreview,
