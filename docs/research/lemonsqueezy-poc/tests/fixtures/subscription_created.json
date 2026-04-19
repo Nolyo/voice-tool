@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "event_name": "subscription_created",
+    "custom_data": { "user_id": "00000000-0000-0000-0000-000000000001" }
+  },
+  "data": {
+    "type": "subscriptions",
+    "id": "1234567",
+    "attributes": {
+      "store_id": 11111,
+      "customer_id": 2222222,
+      "order_id": 3333333,
+      "order_item_id": 4444444,
+      "product_id": 555555,
+      "product_name": "Voice Tool Pro (POC)",
+      "variant_id": 666666,
+      "variant_name": "Monthly",
+      "user_name": "Jane Doe",
+      "user_email": "jane@example.com",
+      "status": "active",
+      "card_brand": "visa",
+      "card_last_four": "4242",
+      "pause": null,
+      "cancelled": false,
+      "trial_ends_at": null,
+      "billing_anchor": 17,
+      "renews_at": "2026-05-18T10:00:00.000Z",
+      "ends_at": null,
+      "created_at": "2026-04-18T10:00:00.000Z",
+      "updated_at": "2026-04-18T10:00:00.000Z"
+    }
+  }
+}
