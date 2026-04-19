@@ -1,4 +1,5 @@
 use crate::chat::{self, ChatProvider};
+use serde::Serialize;
 
 #[tauri::command]
 pub async fn ai_process_text(
@@ -9,6 +10,17 @@ pub async fn ai_process_text(
     chat::chat_completion(&api_key, &system_prompt, &user_text)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostProcessResult {
+    pub text: String,
+    /// USD cost based on token usage and model pricing. 0 if pricing unknown.
+    pub cost: f64,
+    pub prompt_tokens: u32,
+    pub completion_tokens: u32,
+    pub model: String,
 }
 
 /// Run a post-process pass on freshly transcribed text.
@@ -22,20 +34,40 @@ pub async fn post_process_text(
     mode: String,
     custom_prompt: Option<String>,
     text: String,
-) -> Result<String, String> {
+) -> Result<PostProcessResult, String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
-        return Ok(String::new());
+        return Ok(PostProcessResult {
+            text: String::new(),
+            cost: 0.0,
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            model: String::new(),
+        });
     }
 
     let provider = ChatProvider::parse(&provider).map_err(|e| e.to_string())?;
     let system_prompt = build_post_process_prompt(&mode, custom_prompt.as_deref())?;
 
-    let result = chat::chat_completion_with_provider(provider, &api_key, &system_prompt, trimmed)
+    let outcome = chat::chat_completion_with_provider(provider, &api_key, &system_prompt, trimmed)
         .await
         .map_err(|e| e.to_string())?;
 
-    Ok(strip_wrapping_quotes(result.trim()).to_string())
+    let cost = match chat::model_pricing_per_million(outcome.model) {
+        Some((input_per_m, output_per_m)) => {
+            (outcome.usage.prompt_tokens as f64 / 1_000_000.0) * input_per_m
+                + (outcome.usage.completion_tokens as f64 / 1_000_000.0) * output_per_m
+        }
+        None => 0.0,
+    };
+
+    Ok(PostProcessResult {
+        text: strip_wrapping_quotes(outcome.text.trim()).to_string(),
+        cost,
+        prompt_tokens: outcome.usage.prompt_tokens,
+        completion_tokens: outcome.usage.completion_tokens,
+        model: outcome.model.to_string(),
+    })
 }
 
 fn build_post_process_prompt(mode: &str, custom_prompt: Option<&str>) -> Result<String, String> {

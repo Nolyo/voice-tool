@@ -15,6 +15,8 @@ export interface Transcription {
   originalText?: string;
   /** Mode applied by the post-process step ("auto", "list", "email", ...). */
   postProcessMode?: string;
+  /** USD cost of the post-process LLM call (separate from `apiCost` which covers Whisper). */
+  postProcessCost?: number;
 }
 
 export function useTranscriptionHistory() {
@@ -43,7 +45,8 @@ export function useTranscriptionHistory() {
     audioPath?: string,
     apiCost?: number,
     originalText?: string,
-    postProcessMode?: string
+    postProcessMode?: string,
+    postProcessCost?: number
   ): Promise<Transcription> => {
     const now = new Date();
     const newTranscription: Transcription = {
@@ -60,6 +63,7 @@ export function useTranscriptionHistory() {
       apiCost,
       originalText,
       postProcessMode,
+      postProcessCost,
     };
 
     await invoke('save_transcription', { transcription: newTranscription });

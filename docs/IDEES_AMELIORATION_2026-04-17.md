@@ -16,7 +16,7 @@
 
 ## 1. Enregistrement audio & capture
 
-### 1.1 ⚡ Indicateur visuel de niveau d'entrée dans les settings
+### 1.1 ⚡ Indicateur visuel de niveau d'entrée dans les settings ✅
 Quand l'utilisateur teste un micro dans les paramètres, afficher en direct le niveau RMS pour qu'il vérifie sans lancer d'enregistrement.
 
 ### 1.2 ⚡ Rappel sonore configurable (bip de début/fin)
@@ -47,28 +47,28 @@ Pour les notes de réunion : identifier qui parle (Speaker 1, 2…). Possible av
 
 ## 2. Transcription — qualité & moteurs
 
-### 2.1 ⚡ Afficher la langue détectée automatiquement
+### 2.1 ⚡ Afficher la langue détectée automatiquement ❌
 Aujourd'hui la langue est forcée dans les settings. Ajouter un indicateur "langue détectée : XX" après chaque transcription, utile pour multilingues.
 
-### 2.2 ⚡ Prompt initial ("initial prompt") configurable
+### 2.2 ⚡ Prompt initial ("initial prompt") configurable ✅
 Whisper accepte un prompt qui influence le vocabulaire et le style. L'exposer dans les settings (en plus du dictionnaire), avec des templates (dev, médical, juridique, gaming…).
 
-### 2.3 🔧 Intégration du dictionnaire dans l'initial prompt
+### 2.3 🔧 Intégration du dictionnaire dans l'initial prompt ✅
 Aujourd'hui `dictionary: string[]` existe dans les settings mais son usage réel via Whisper initial prompt n'est pas évident. Documenter / renforcer.
 
-### 2.4 🔧 Correction post-transcription via LLM local (petit modèle)
+### 2.4 🔧 Correction post-transcription via LLM local (petit modèle) ✅ (fait avec appel via api pas cloud)
 Passer chaque transcription brute dans un petit LLM local (Llama 3.2 3B en Q4, ou Phi) pour corriger orthographe/ponctuation sans appel cloud. Option à activer.
 
-### 2.5 🔧 Support Deepgram / AssemblyAI comme provider
+### 2.5 🔧 Support Deepgram / AssemblyAI comme provider ❌
 En plus d'OpenAI, proposer Deepgram (streaming, moins cher) et AssemblyAI (meilleure ponctuation). `transcription_provider` est déjà une enum, facile à étendre.
 
-### 2.6 🔧 Support Groq (Whisper large-v3-turbo hébergé, ultra rapide)
+### 2.6 🔧 Support Groq (Whisper large-v3-turbo hébergé, ultra rapide) ✅
 Groq héberge Whisper à des vitesses absurdes et prix bas. Un provider "Groq" serait le meilleur compromis rapidité/coût/qualité pour un power user.
 
 ### 2.7 🏗️ Transcription streaming (résultats partiels pendant l'enregistrement)
 Afficher le texte qui se construit pendant qu'on parle, comme Wispr Flow ou Dragon. Whisper n'est pas naturellement streaming mais des hacks existent (chunking avec overlap), et Deepgram le fait nativement.
 
-### 2.8 🏗️ Mode "dictée longue" avec pauses
+### 2.8 🏗️ Mode "dictée longue" avec pauses ❌
 Pour enregistrer 10-30 min sans stress : découpage en chunks, assemblage propre, correction de jointures, export unique.
 
 ### 2.9 🏗️ Fallback automatique provider
@@ -77,29 +77,29 @@ Si OpenAI plante (timeout, quota), basculer automatiquement sur le modèle local
 ### 2.10 🚀 Mix providers : rapide + précis
 Transcription immédiate via `tiny` local pour preview, puis re-transcription via `large-v3-turbo` en arrière-plan qui remplace le texte. Best of both worlds.
 
-### 2.11 🚀 Fine-tuning du modèle sur la voix de l'utilisateur
+### 2.11 🚀 Fine-tuning du modèle sur la voix de l'utilisateur ❌
 Optionnel, offline : l'utilisateur enregistre 10 minutes de calibration, l'app fine-tune un adapter (LoRA) local. Gain de précision massif pour noms propres, jargon perso.
 
 ---
 
 ## 3. Mini-window & UX d'enregistrement
 
-### 3.1 ⚡ Timer visible en permanence (pas seulement pendant l'enregistrement)
+### 3.1 ⚡ Timer visible en permanence (pas seulement pendant l'enregistrement) ❌
 Afficher la durée depuis la dernière transcription ou un compteur "silence depuis X s" pour guider.
 
-### 3.2 ⚡ Bouton "annuler" directement dans la mini-window
+### 3.2 ⚡ Bouton "annuler" directement dans la mini-window ❌
 Aujourd'hui il faut le raccourci clavier `cancel_hotkey`. Ajouter un bouton visible sur hover.
 
 ### 3.3 ⚡ Indication visuelle du mode actif (toggle vs PTT)
 Badge discret dans la mini-window pour savoir quel mode est en cours.
 
-### 3.4 🔧 Taille configurable de la mini-window
+### 3.4 🔧 Taille configurable de la mini-window ✅
 Certains utilisateurs veulent une barre plus discrète, d'autres plus grande avec plus d'infos. Ajouter un slider.
 
 ### 3.5 🔧 Position mémorisée (pas forcément bottom-center)
 Permettre à l'utilisateur de drag la mini-window où il veut et la retrouver à cet endroit.
 
-### 3.6 🔧 Mode "waveform" au lieu de "bars"
+### 3.6 🔧 Mode "waveform" au lieu de "bars" ✅
 Alternative graphique : oscilloscope/waveform continue, plus riche visuellement.
 
 ### 3.7 🏗️ Mini-window interactive : afficher texte en streaming
@@ -108,7 +108,7 @@ Pendant le streaming (voir 2.7), afficher le texte qui se construit dans la mini
 ### 3.8 🏗️ Overlay "dictated" temporaire
 Après collage auto, afficher 2 secondes un toast "✓ 42 mots dictés" en corner d'écran. Réassurance.
 
-### 3.9 🚀 Mini-window contextuelle qui s'adapte à l'app active
+### 3.9 🚀 Mini-window contextuelle qui s'adapte à l'app active ❌
 Si l'utilisateur est dans VS Code → suggestion "mode code" (sans ponctuation aléatoire). Dans Outlook → "mode mail". Via détection de la fenêtre active.
 
 ---
@@ -121,16 +121,16 @@ Un hotkey global "nouveau note + enregistrer" qui ouvre l'éditeur et déclenche
 ### 4.2 ⚡ Export Markdown / PDF / DOCX des notes
 Actuellement les notes sont dans l'app uniquement. Export simple via copy-to-markdown ou via headless browser → PDF.
 
-### 4.3 ⚡ Recherche dans toutes les notes (full-text)
+### 4.3 ⚡ Recherche dans toutes les notes (full-text) ✅
 `searchNotes` existe mais à vérifier qu'elle couvre le contenu et pas juste le titre.
 
 ### 4.4 🔧 Tags / catégories de notes
 Organiser les notes avec des tags colorés, filtrage par tag.
 
-### 4.5 🔧 Favoris pour notes ET pour transcriptions
+### 4.5 🔧 Favoris pour notes ET pour transcriptions ❌
 `toggleFavorite` existe pour notes. L'étendre aux transcriptions de l'historique.
 
-### 4.6 🔧 Dossiers / arborescence
+### 4.6 🔧 Dossiers / arborescence ✅
 Pour utilisateurs qui ont beaucoup de notes, structure en dossiers.
 
 ### 4.7 🔧 Templates de notes
@@ -139,14 +139,11 @@ Pour utilisateurs qui ont beaucoup de notes, structure en dossiers.
 ### 4.8 🔧 Historique de versions par note
 Chaque save crée une version. Rollback possible. Pratique quand une action IA a dégradé le contenu.
 
-### 4.9 🏗️ Commandes vocales pendant la dictée dans une note
+### 4.9 🏗️ Commandes vocales pendant la dictée dans une note ✅
 "Nouveau paragraphe", "liste à puce", "titre 2 : XXX", détectées et appliquées automatiquement.
 
 ### 4.10 🏗️ Continuation de note par dictée
 Au lieu de créer une nouvelle transcription, dicter directement dans la note active en mode append.
-
-### 4.11 🚀 "Note intelligente" : structuration IA en temps réel
-L'utilisateur dicte en flux de conscience, l'IA structure automatiquement en titres, listes, sections. Un peu comme Granola / Reflect mais offline-capable.
 
 ---
 
@@ -155,35 +152,35 @@ L'utilisateur dicte en flux de conscience, l'IA structure automatiquement en tit
 ### 5.1 ⚡ Import/export snippets + dictionnaire
 Aujourd'hui dans le JSON settings. Un bouton export/import pour partager entre machines ou avec des collègues.
 
-### 5.2 ⚡ Activation/désactivation globale des snippets sans les supprimer
+### 5.2 ⚡ Activation/désactivation globale des snippets sans les supprimer ❌
 Toggle général pour les désactiver temporairement (pour quelqu'un qui code et ne veut pas que "mon adresse mail" soit remplacé).
 
-### 5.3 🔧 Snippets contextuels par application
+### 5.3 🔧 Snippets contextuels par application ❌
 "mon adresse mail" → `perso@…` dans Gmail, `pro@…` dans Outlook.
 
-### 5.4 🔧 Variables dans les snippets
+### 5.4 🔧 Variables dans les snippets ❌
 `{{date}}`, `{{time}}`, `{{user}}`, curseur `|`. Format à la TextExpander.
 
-### 5.5 🔧 Snippets dynamiques (scripts)
+### 5.5 🔧 Snippets dynamiques (scripts) ❌
 Le remplacement est le résultat d'un petit script/shell/JS. Ex : "mon IP publique" → appel à ipify.
 
-### 5.6 🏗️ Partage de packs de snippets
+### 5.6 🏗️ Partage de packs de snippets ❌ ❌
 Marketplace communautaire (ou juste un export GitHub Gists) : pack "développeur web", pack "médecin", pack "commercial".
 
-### 5.7 🏗️ Apprentissage automatique du dictionnaire
+### 5.7 🏗️ Apprentissage automatique du dictionnaire ❌
 Détecter les mots que Whisper rate systématiquement et proposer à l'utilisateur de les ajouter au dictionnaire. "Ollama" a l'air d'avoir été ajouté parce que Whisper le ratait ; automatiser.
 
 ---
 
 ## 6. IA & actions sur le texte
 
-### 6.1 ⚡ Raccourci clavier pour chaque action IA fréquente
+### 6.1 ⚡ Raccourci clavier pour chaque action IA fréquente ❌
 Cmd+Shift+T = traduire, Cmd+Shift+C = corriger… Dans les notes.
 
-### 6.2 ⚡ Historique des actions IA (undo intelligent)
+### 6.2 ⚡ Historique des actions IA (undo intelligent) ❌
 Voir ce que l'IA a changé, pouvoir revenir en arrière précisément.
 
-### 6.3 🔧 Actions IA sur la sélection dans n'importe quelle app
+### 6.3 🔧 Actions IA sur la sélection dans n'importe quelle app ❌
 Pas seulement dans l'éditeur de notes : raccourci global qui prend le texte sélectionné n'importe où, le passe dans une action IA, remet le résultat à la place. Concurrent direct de Raycast AI, GrammarlyGO, Wispr Flow.
 
 ### 6.4 🔧 Actions IA personnalisées sauvegardables
@@ -195,7 +192,7 @@ Pour "corriger" → GPT-4o mini (rapide, pas cher). Pour "améliorer formel" →
 ### 6.6 🔧 Support LLM local (Ollama, llama.cpp)
 Les actions IA actuelles passent par OpenAI. Permettre de les router vers un Ollama local. 100% offline.
 
-### 6.7 🏗️ Mode "clean up voice notes" : correction automatique de toute transcription
+### 6.7 🏗️ Mode "clean up voice notes" : correction automatique de toute transcription ✅
 Toute transcription brute est passée dans un LLM discret qui enlève les "euh", "voilà", répétitions, et formate joliment. Option on/off. Différent de `smart_formatting` qui est côté Whisper.
 
 ### 6.8 🏗️ "Ask your notes" : chat avec ses notes
@@ -208,10 +205,10 @@ Interroger son corpus de notes en langage naturel. Embeddings locaux + LLM. Rech
 
 ## 7. Productivité & workflow
 
-### 7.1 ⚡ Historique partageable (lien, export zip)
+### 7.1 ⚡ Historique partageable (lien, export zip) ❌
 Exporter un lot de transcriptions avec audio en zip.
 
-### 7.2 ⚡ Copie d'une transcription avec formatage (Markdown, HTML, texte)
+### 7.2 ⚡ Copie d'une transcription avec formatage (Markdown, HTML, texte) ❌
 Menu de copie contextuel : "copier en MD", "copier en texte brut".
 
 ### 7.3 🔧 Raccourci clavier pour re-coller la dernière transcription
@@ -223,45 +220,45 @@ Si on enchaîne 5 dictées rapidement pendant que la transcription est lente, le
 ### 7.5 🔧 Stats d'usage
 "Tu as dicté 1h23 cette semaine, 14 528 mots, économisé ~47 min comparé au clavier". Motivation + data perso.
 
-### 7.6 🏗️ Intégration avec le presse-papier (historique)
+### 7.6 🏗️ Intégration avec le presse-papier (historique) ❌
 Mini clipboard manager intégré, combiné à la dictée. Chaque transcription = une entrée du clipboard.
 
-### 7.7 🏗️ Actions post-transcription chaînables
+### 7.7 🏗️ Actions post-transcription chaînables  ✅
 "Chaque fois que je dicte, passe dans → corriger → traduire en anglais → copier". Pipeline configurable.
 
-### 7.8 🚀 Macros vocales programmables
+### 7.8 🚀 Macros vocales programmables ❌
 L'utilisateur définit "envoyer mail à X" → ouvre Outlook, tabule, colle X, tabule, colle le texte dicté, envoie. Via enigo qui est déjà là. Un peu comme AutoHotkey mais déclenché par la voix.
 
 ---
 
 ## 8. Intégrations externes
 
-### 8.1 ⚡ Webhooks sortants
+### 8.1 ⚡ Webhooks sortants ❌
 "Envoie chaque transcription en POST à cette URL". Permet à un utilisateur technique de brancher n'importe quoi (Zapier, n8n, Obsidian via local-rest-api…).
 
 ### 8.2 🔧 Intégration Obsidian / Logseq
 Écrire directement dans un vault Obsidian en tant que daily note ou nouvelle note. Très gros public cible.
 
-### 8.3 🔧 Intégration Notion
+### 8.3 🔧 Intégration Notion ❌
 API Notion : créer une page, ajouter un bloc… depuis une dictée.
 
-### 8.4 🔧 Intégration Todoist / Things / TickTick
+### 8.4 🔧 Intégration Todoist / Things / TickTick ❌
 "Ajoute une tâche : appeler le médecin demain" → création directe.
 
-### 8.5 🏗️ URL scheme / deep links
+### 8.5 🏗️ URL scheme / deep links ❌
 `voice-tool://record?mode=ptt&paste=false` pour déclencher des actions depuis d'autres outils.
 
-### 8.6 🏗️ Serveur HTTP local
+### 8.6 🏗️ Serveur HTTP local ❌
 L'app expose une API REST/WebSocket locale (localhost:port). Permet à des plugins d'autres apps (VSCode, navigateurs) de s'intégrer.
 
-### 8.7 🚀 Extensions / plugins communautaires
+### 8.7 🚀 Extensions / plugins communautaires ❌
 Système de plugins (sandbox JS ou WASM) pour que la communauté développe des intégrations. Marketplace.
 
 ---
 
 ## 9. Personnalisation & apparence
 
-### 9.1 ⚡ Dark / light mode toggle
+### 9.1 ⚡ Dark / light mode toggle ✅
 À vérifier si déjà là. Si non, rapide avec Tailwind.
 
 ### 9.2 ⚡ Choix des couleurs d'accent

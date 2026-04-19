@@ -29,6 +29,9 @@ pub struct Transcription {
     /// Mode applied by the post-process step (e.g. "auto", "list", "email").
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub post_process_mode: Option<String>,
+    /// USD cost of the post-process LLM call, separate from `api_cost` (Whisper).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub post_process_cost: Option<f64>,
 }
 
 fn get_transcriptions_dir(app_handle: &AppHandle) -> Result<PathBuf> {

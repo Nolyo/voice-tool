@@ -155,9 +155,26 @@ export function TranscriptionDetails({
           {transcription.apiCost !== undefined && (
             <div>
               <p className="text-xs text-muted-foreground mb-1">{t('transcriptionDetails.cost')}</p>
-              <p className="text-sm font-mono text-foreground">
-                {transcription.apiCost === 0 ? t('transcriptionDetails.free') : `$${transcription.apiCost.toFixed(4)} USD`}
-              </p>
+              {transcription.postProcessCost !== undefined ? (
+                <div className="space-y-0.5 text-sm font-mono text-foreground">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-muted-foreground">{t('transcriptionDetails.costWhisper')}</span>
+                    <span>{transcription.apiCost === 0 ? t('transcriptionDetails.free') : `$${transcription.apiCost.toFixed(5)}`}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-violet-400">{t('transcriptionDetails.costPostProcess')}</span>
+                    <span className="text-violet-300">${transcription.postProcessCost.toFixed(5)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-border/50 pt-0.5 mt-0.5">
+                    <span className="text-xs font-medium">{t('transcriptionDetails.costTotal')}</span>
+                    <span className="font-medium">${(transcription.apiCost + transcription.postProcessCost).toFixed(5)} USD</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm font-mono text-foreground">
+                  {transcription.apiCost === 0 ? t('transcriptionDetails.free') : `$${transcription.apiCost.toFixed(4)} USD`}
+                </p>
+              )}
             </div>
           )}
           {transcription.originalText && (

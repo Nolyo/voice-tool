@@ -11,9 +11,27 @@ struct ChatChoice {
     message: ChatMessage,
 }
 
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ChatUsage {
+    #[serde(default)]
+    pub prompt_tokens: u32,
+    #[serde(default)]
+    pub completion_tokens: u32,
+}
+
 #[derive(Debug, Deserialize)]
 struct ChatResponse {
     choices: Vec<ChatChoice>,
+    #[serde(default)]
+    usage: Option<ChatUsage>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ChatCompletionOutcome {
+    pub text: String,
+    pub usage: ChatUsage,
+    pub model: &'static str,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,7 +77,9 @@ pub async fn chat_completion(
     system_prompt: &str,
     user_text: &str,
 ) -> Result<String> {
-    chat_completion_with_provider(ChatProvider::OpenAI, api_key, system_prompt, user_text).await
+    chat_completion_with_provider(ChatProvider::OpenAI, api_key, system_prompt, user_text)
+        .await
+        .map(|o| o.text)
 }
 
 /// Call a Chat Completions API on the given provider (OpenAI-compatible schema).
@@ -68,7 +88,7 @@ pub async fn chat_completion_with_provider(
     api_key: &str,
     system_prompt: &str,
     user_text: &str,
-) -> Result<String> {
+) -> Result<ChatCompletionOutcome> {
     if api_key.trim().is_empty() {
         return Err(anyhow!(
             "Missing {} API key. Configure it in settings.",
@@ -152,6 +172,7 @@ pub async fn chat_completion_with_provider(
         .await
         .map_err(|e| anyhow!("Failed to read response: {}", e))?;
 
+    let usage = chat_response.usage.unwrap_or_default();
     let text = chat_response
         .choices
         .into_iter()
@@ -159,6 +180,27 @@ pub async fn chat_completion_with_provider(
         .and_then(|c| c.message.content)
         .unwrap_or_default();
 
-    tracing::info!("AI response received ({} characters)", text.len());
-    Ok(text)
+    tracing::info!(
+        "AI response received ({} characters, {} input tokens, {} output tokens)",
+        text.len(),
+        usage.prompt_tokens,
+        usage.completion_tokens
+    );
+    Ok(ChatCompletionOutcome {
+        text,
+        usage,
+        model: provider.default_model(),
+    })
+}
+
+/// Price per 1M tokens for (input, output) for the known models.
+/// Returns `None` if the model is not in the table — caller should fall back to 0.
+pub fn model_pricing_per_million(model: &str) -> Option<(f64, f64)> {
+    match model {
+        // OpenAI
+        "gpt-4o-mini" => Some((0.150, 0.600)),
+        // Groq
+        "llama-3.1-8b-instant" => Some((0.05, 0.08)),
+        _ => None,
+    }
 }

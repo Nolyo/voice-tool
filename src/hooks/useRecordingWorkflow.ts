@@ -18,7 +18,16 @@ type AddTranscription = (
   apiCost?: number,
   originalText?: string,
   postProcessMode?: string,
+  postProcessCost?: number,
 ) => Promise<Transcription>;
+
+interface PostProcessBackendResult {
+  text: string;
+  cost: number;
+  promptTokens: number;
+  completionTokens: number;
+  model: string;
+}
 
 interface PostProcessOutcome {
   /** Final text to use (post-processed if applied, otherwise the input). */
@@ -27,6 +36,8 @@ interface PostProcessOutcome {
   originalText?: string;
   /** Mode applied — same condition as `originalText`. */
   mode?: string;
+  /** USD cost of the post-process LLM call — set only when post-process ran. */
+  cost?: number;
 }
 
 async function maybePostProcess(
@@ -57,7 +68,7 @@ async function maybePostProcess(
 
   const toastId = toast.loading(translate("postProcess.processing"));
   try {
-    const processed = await invoke<string>("post_process_text", {
+    const processed = await invoke<PostProcessBackendResult>("post_process_text", {
       provider,
       apiKey,
       mode: settings.post_process_mode,
@@ -65,7 +76,7 @@ async function maybePostProcess(
       text: trimmed,
     });
     toast.dismiss(toastId);
-    const result = processed?.trim();
+    const result = processed?.text?.trim();
     if (!result || result.length === 0 || result === trimmed) {
       return { text: originalText };
     }
@@ -73,6 +84,7 @@ async function maybePostProcess(
       text: result,
       originalText: trimmed,
       mode: settings.post_process_mode,
+      cost: processed.cost,
     };
   } catch (err) {
     toast.dismiss(toastId);
@@ -134,6 +146,7 @@ export function useRecordingWorkflow({
       apiCost?: number,
       originalText?: string,
       postProcessMode?: string,
+      postProcessCost?: number,
     ) => {
       const trimmed = text?.trim();
       if (!trimmed) {
@@ -155,12 +168,30 @@ export function useRecordingWorkflow({
         apiCost,
         originalText,
         postProcessMode,
+        postProcessCost,
       );
       onTranscriptionAdded(newEntry);
       playSuccess();
 
       if (settings.insertion_mode === "cursor") {
-        await invoke("type_text_at_cursor", { text: finalText });
+        const { readText, writeText } = await import(
+          "@tauri-apps/plugin-clipboard-manager"
+        );
+        // Save the user's clipboard so we can restore it after our paste.
+        // readText throws if the clipboard holds a non-text format (image, files);
+        // accept losing that rather than corrupting the cursor insertion.
+        let previousClipboard: string | null = null;
+        try {
+          previousClipboard = await readText();
+        } catch {}
+        await writeText(finalText);
+        await invoke("paste_text_to_active_window", { text: finalText });
+        await new Promise((r) => setTimeout(r, 200));
+        if (previousClipboard !== null) {
+          try {
+            await writeText(previousClipboard);
+          } catch {}
+        }
       } else if (settings.insertion_mode === "clipboard") {
         const { writeText } = await import(
           "@tauri-apps/plugin-clipboard-manager"
@@ -234,6 +265,7 @@ export function useRecordingWorkflow({
           apiCost,
           processed.originalText,
           processed.mode,
+          processed.cost,
         );
 
         await emit("transcription-success", { text: finalText });
