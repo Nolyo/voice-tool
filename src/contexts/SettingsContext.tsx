@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { AppSettings, DEFAULT_SETTINGS, mergeSettings } from "@/lib/settings";
 import { changeLanguage } from "@/i18n";
+import { applyTheme } from "@/lib/theme";
 
 let store: Store | null = null;
 
@@ -66,6 +67,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
           setSettings(merged);
 
+          // Apply the stored theme immediately so the UI matches persisted state.
+          applyTheme(merged.settings.theme);
+
           // Broadcast current translate_mode so the mini window stays in sync
           // on startup (it may have loaded before we wrote defaults).
           try { await emit("translate-mode-changed", merged.settings.translate_mode); } catch {}
@@ -84,6 +88,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           }
         } else {
           // First time: save default settings
+          applyTheme(DEFAULT_SETTINGS.settings.theme);
           await storeInstance.set("settings", DEFAULT_SETTINGS);
           await storeInstance.save();
         }
@@ -130,6 +135,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         await emit(
           "mini-visualizer-mode-changed",
           settingsRef.current.settings.mini_visualizer_mode,
+        );
+        await emit(
+          "theme-changed",
+          settingsRef.current.settings.theme,
         );
       } catch {}
     }).then((fn) => {
@@ -185,6 +194,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       // Keep the mini window in sync when translate_mode is toggled from settings
       if (key === "translate_mode") {
         try { await emit("translate-mode-changed", value); } catch {}
+      }
+
+      // Apply theme change live and broadcast to the mini window
+      if (key === "theme" && (value === "light" || value === "dark")) {
+        applyTheme(value);
+        try { await emit("theme-changed", value); } catch {}
       }
 
       await storeInstance.set("settings", newSettings);

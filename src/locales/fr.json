@@ -198,6 +198,10 @@
       "recordingsKeepHelp": "Nombre de fichiers audio à conserver localement",
       "language": "Langue",
       "languageDesc": "Langue de l'interface",
+      "theme": "Thème",
+      "themeDesc": "Apparence sombre ou claire de l'interface",
+      "themeDark": "Sombre",
+      "themeLight": "Clair",
       "danger": {
         "title": "Zone de danger",
         "subtitle": "Effacer toutes les données du logiciel et repartir d'une installation vierge.",

@@ -49,6 +49,7 @@ export interface AppSettings {
 
     // Interface
     ui_language: "fr" | "en";
+    theme: "light" | "dark";
 
     // Mini Window
     /**
@@ -120,6 +121,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Interface
     ui_language: "fr",
+    theme: "dark",
 
     // Mini Window
     show_transcription_in_mini_window: true,

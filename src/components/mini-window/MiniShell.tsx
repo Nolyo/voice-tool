@@ -58,7 +58,7 @@ export function MiniShell() {
 
   return (
     <div
-      className="dark flex h-full w-full items-center justify-center bg-transparent overflow-hidden"
+      className="flex h-full w-full items-center justify-center bg-transparent overflow-hidden"
       data-tauri-drag-region
     >
       <div

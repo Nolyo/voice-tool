@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Store } from "@tauri-apps/plugin-store";
 import i18n from "@/i18n";
 import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
+import { applyTheme, type Theme } from "@/lib/theme";
 
 export type WindowStatus =
   | "idle"
@@ -81,6 +82,7 @@ export function useMiniWindowState() {
     let unlistenTranslateModeChangedFn: (() => void) | null = null;
     let unlistenLanguageChangedFn: (() => void) | null = null;
     let unlistenVisualizerModeChangedFn: (() => void) | null = null;
+    let unlistenThemeChangedFn: (() => void) | null = null;
 
     const setupListeners = async () => {
       try {
@@ -103,6 +105,11 @@ export function useMiniWindowState() {
               setShowTranscriptPreview(s.show_transcription_in_mini_window);
             }
             if (s.language) setLanguage(s.language);
+            if (s.theme === "light" || s.theme === "dark") {
+              applyTheme(s.theme);
+            } else {
+              applyTheme(DEFAULT_SETTINGS.settings.theme);
+            }
           }
         } catch (e) {
           console.log("Mini window: could not load settings from store", e);
@@ -128,6 +135,15 @@ export function useMiniWindowState() {
           (event) => {
             if (event.payload === "bars" || event.payload === "waveform") {
               setVisualizerMode(event.payload);
+            }
+          },
+        );
+
+        unlistenThemeChangedFn = await listen<Theme>(
+          "theme-changed",
+          (event) => {
+            if (event.payload === "light" || event.payload === "dark") {
+              applyTheme(event.payload);
             }
           },
         );
@@ -207,6 +223,7 @@ export function useMiniWindowState() {
       if (unlistenTranslateModeChangedFn) unlistenTranslateModeChangedFn();
       if (unlistenLanguageChangedFn) unlistenLanguageChangedFn();
       if (unlistenVisualizerModeChangedFn) unlistenVisualizerModeChangedFn();
+      if (unlistenThemeChangedFn) unlistenThemeChangedFn();
     };
   }, []);
 
