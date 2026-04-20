@@ -868,3 +868,201 @@ body.mini-window-body #root {
   border-color: var(--vt-accent);
   box-shadow: 0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25);
 }
+
+/* ── Logs console design ──────────────────────────────────────────────── */
+
+.vt-app {
+  --vt-info: oklch(0.72 0.15 240);
+  --vt-debug: oklch(0.7 0.02 264);
+  --vt-trace: oklch(0.72 0.17 295);
+}
+
+.vt-app .log-row {
+  display: grid;
+  grid-template-columns: 104px 72px 1fr;
+  gap: 14px;
+  padding: 5px 16px 5px 16px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  align-items: baseline;
+  transition: background 0.08s;
+}
+.vt-app .log-row:hover {
+  background: oklch(1 0 0 / 0.025);
+}
+.vt-app .log-row[data-selected="true"] {
+  background: oklch(1 0 0 / 0.04);
+}
+.vt-app .log-row[data-level="error"] {
+  border-left-color: oklch(from var(--vt-danger) l c h / 0.5);
+}
+.vt-app .log-row[data-level="warn"] {
+  border-left-color: oklch(from var(--vt-warn) l c h / 0.4);
+}
+.vt-app .log-row[data-level="info"] {
+  border-left-color: oklch(from var(--vt-info) l c h / 0.3);
+}
+.vt-app .log-row[data-level="debug"] {
+  border-left-color: oklch(from var(--vt-debug) l c h / 0.25);
+}
+.vt-app .log-row[data-level="trace"] {
+  border-left-color: oklch(from var(--vt-trace) l c h / 0.3);
+}
+.vt-app .log-row[data-level="error"]:hover {
+  background: oklch(from var(--vt-danger) l c h / 0.05);
+}
+.vt-app .log-row[data-level="warn"]:hover {
+  background: oklch(from var(--vt-warn) l c h / 0.04);
+}
+
+.vt-app .lvl-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.vt-app .lvl-error {
+  background: oklch(from var(--vt-danger) l c h / 0.18);
+  color: var(--vt-danger);
+}
+.vt-app .lvl-warn {
+  background: oklch(from var(--vt-warn) l c h / 0.2);
+  color: var(--vt-warn);
+}
+.vt-app .lvl-info {
+  background: oklch(from var(--vt-info) l c h / 0.2);
+  color: var(--vt-info);
+}
+.vt-app .lvl-debug {
+  background: oklch(from var(--vt-debug) l c h / 0.3);
+  color: oklch(0.82 0.01 264);
+}
+.vt-app .lvl-trace {
+  background: oklch(from var(--vt-trace) l c h / 0.2);
+  color: var(--vt-trace);
+}
+
+.vt-app .log-time {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--vt-fg-4);
+}
+.vt-app .log-msg {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--vt-fg-2);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.vt-app .log-row[data-level="error"] .log-msg {
+  color: oklch(0.88 0.05 25);
+}
+.vt-app .log-row[data-level="warn"] .log-msg {
+  color: oklch(0.92 0.07 75);
+}
+
+.vt-app .lvl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: "JetBrains Mono", monospace;
+  border: 1px solid var(--vt-border);
+  background: transparent;
+  color: var(--vt-fg-3);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.vt-app .lvl-btn:hover {
+  background: var(--vt-surface);
+  color: var(--vt-fg);
+}
+.vt-app .lvl-btn[data-on="true"][data-level="error"] {
+  background: oklch(from var(--vt-danger) l c h / 0.15);
+  border-color: oklch(from var(--vt-danger) l c h / 0.4);
+  color: var(--vt-danger);
+}
+.vt-app .lvl-btn[data-on="true"][data-level="warn"] {
+  background: oklch(from var(--vt-warn) l c h / 0.18);
+  border-color: oklch(from var(--vt-warn) l c h / 0.4);
+  color: var(--vt-warn);
+}
+.vt-app .lvl-btn[data-on="true"][data-level="info"] {
+  background: oklch(from var(--vt-info) l c h / 0.18);
+  border-color: oklch(from var(--vt-info) l c h / 0.4);
+  color: var(--vt-info);
+}
+.vt-app .lvl-btn[data-on="true"][data-level="debug"] {
+  background: oklch(from var(--vt-debug) l c h / 0.3);
+  border-color: var(--vt-border-strong);
+  color: var(--vt-fg-2);
+}
+.vt-app .lvl-btn[data-on="true"][data-level="trace"] {
+  background: oklch(from var(--vt-trace) l c h / 0.18);
+  border-color: oklch(from var(--vt-trace) l c h / 0.4);
+  color: var(--vt-trace);
+}
+
+.vt-app .dot-live {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--vt-ok);
+  animation: vtLivePulse 1.8s infinite;
+}
+@keyframes vtLivePulse {
+  0% {
+    box-shadow: 0 0 0 0 oklch(from var(--vt-ok) l c h / 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 6px oklch(from var(--vt-ok) l c h / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 oklch(from var(--vt-ok) l c h / 0);
+  }
+}
+
+.vt-app .mini-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 28px;
+}
+.vt-app .mini-bar > span {
+  width: 3px;
+  border-radius: 1px;
+  display: block;
+}
+
+.vt-app .log-highlight {
+  background: oklch(from var(--vt-warn) l c h / 0.28);
+  color: var(--vt-warn);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.vt-app .count-chip {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: oklch(1 0 0 / 0.04);
+  border: 1px solid var(--vt-border);
+  color: var(--vt-fg-3);
+}
+
+.vt-app .vt-btn-active {
+  background: oklch(from var(--vt-accent) l c h / 0.15);
+  border-color: oklch(from var(--vt-accent) l c h / 0.4);
+  color: var(--vt-accent-2);
+}

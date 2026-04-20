@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card } from "@/components/ui/card";
 import { DashboardHeader } from "./common/DashboardHeader";
 import {
   DashboardSidebar,
@@ -11,7 +10,11 @@ import {
 import { HistoriqueTab } from "./dashboard/tabs/HistoriqueTab";
 import { SettingTabs } from "./settings/SettingTabs";
 import { type SettingsSectionId } from "./settings/common/SettingsNav";
-import { LogsTab } from "./logs/LogsTab";
+import {
+  ALL_LEVELS_ON,
+  LogsTab,
+  type LevelFilter,
+} from "./logs/LogsTab";
 import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./common/UpdateModal";
 import { OnboardingWizard } from "./OnboardingWizard";
@@ -38,6 +41,9 @@ export default function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSettingsSection, setActiveSettingsSection] =
     useState<SettingsSectionId>("section-transcription");
+  const [logsLevelFilter, setLogsLevelFilter] =
+    useState<LevelFilter>(ALL_LEVELS_ON);
+  const [logsSourceFilter, setLogsSourceFilter] = useState<string | null>(null);
 
   const { settings, isLoaded: settingsLoaded } = useSettings();
   const { showOnboarding, recheck: recheckOnboarding } = useOnboardingCheck(
@@ -223,6 +229,11 @@ export default function Dashboard() {
         activeSettingsSection={activeSettingsSection}
         onSettingsSectionChange={setActiveSettingsSection}
         transcriptions={transcriptions}
+        logs={logs}
+        levelFilter={logsLevelFilter}
+        onLevelFilterChange={setLogsLevelFilter}
+        sourceFilter={logsSourceFilter}
+        onSourceFilterChange={setLogsSourceFilter}
       />
 
       {/* Main area */}
@@ -266,31 +277,33 @@ export default function Dashboard() {
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
               {t('dashboard.emptyNotes')}
             </div>
+          ) : activeTab === "logs" ? (
+            <LogsTab
+              logs={logs}
+              onClearLogs={clearLogs}
+              levelFilter={logsLevelFilter}
+              sourceFilter={logsSourceFilter}
+              onSourceFilterChange={setLogsSourceFilter}
+            />
           ) : (
             <div className="overflow-y-auto h-full">
               {activeTab === "parametres" ? (
                 <SettingTabs activeSection={activeSettingsSection} />
               ) : (
-              <div className="container mx-auto px-6 py-8">
-                {activeTab === "historique" && (
-                  <HistoriqueTab
-                    transcriptions={transcriptions}
-                    selectedTranscription={selectedTranscription}
-                    isSidebarOpen={isSidebarOpen}
-                    onSelectTranscription={handleSelectTranscription}
-                    onCloseDetails={handleCloseDetails}
-                    onCopy={handleCopy}
-                    onDelete={handleDelete}
-                    onClearAll={handleClearAll}
-                  />
-                )}
-
-                {activeTab === "logs" && (
-                  <Card className="p-6">
-                    <LogsTab logs={logs} onClearLogs={clearLogs} />
-                  </Card>
-                )}
-              </div>
+                <div className="container mx-auto px-6 py-8">
+                  {activeTab === "historique" && (
+                    <HistoriqueTab
+                      transcriptions={transcriptions}
+                      selectedTranscription={selectedTranscription}
+                      isSidebarOpen={isSidebarOpen}
+                      onSelectTranscription={handleSelectTranscription}
+                      onCloseDetails={handleCloseDetails}
+                      onCopy={handleCopy}
+                      onDelete={handleDelete}
+                      onClearAll={handleClearAll}
+                    />
+                  )}
+                </div>
               )}
             </div>
           )}

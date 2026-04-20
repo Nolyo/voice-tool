@@ -2,10 +2,15 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_store::StoreBuilder;
 
 const MAX_LOGS: usize = 500;
+
+/// Serializes concurrent writes to `logs.json` so tracing events firing from
+/// multiple threads don't clobber each other.
+static LOGS_FILE_LOCK: Mutex<()> = Mutex::new(());
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,6 +19,8 @@ pub struct AppLog {
     pub timestamp: String,
     pub level: String,
     pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 fn get_logs_path(app_handle: &AppHandle) -> Result<PathBuf> {
@@ -65,21 +72,31 @@ pub async fn list_logs(app_handle: AppHandle) -> Result<Vec<AppLog>, String> {
     Ok(read_logs_from_file(&path))
 }
 
-#[tauri::command]
-pub async fn save_log(app_handle: AppHandle, log: AppLog) -> Result<(), String> {
-    let path = get_logs_path(&app_handle).map_err(|e| e.to_string())?;
+/// Append a log to disk with the usual cap enforcement. Used by the tracing
+/// layer so every log (including those emitted during `setup()` before the
+/// webview exists) is persisted.
+pub fn append_log(app_handle: &AppHandle, log: AppLog) -> Result<()> {
+    let path = get_logs_path(app_handle)?;
+    let _guard = LOGS_FILE_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+
     let mut logs = read_logs_from_file(&path);
     logs.push(log);
 
-    // Enforce cap
     if logs.len() > MAX_LOGS {
         let drain_count = logs.len() - MAX_LOGS;
         logs.drain(..drain_count);
     }
 
-    let json = serde_json::to_string_pretty(&logs).map_err(|e| e.to_string())?;
-    fs::write(&path, json).map_err(|e| e.to_string())?;
+    let json = serde_json::to_string_pretty(&logs)
+        .context("Failed to serialize logs")?;
+    fs::write(&path, json)
+        .with_context(|| format!("Failed to write logs file: {}", path.display()))?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn save_log(app_handle: AppHandle, log: AppLog) -> Result<(), String> {
+    append_log(&app_handle, log).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

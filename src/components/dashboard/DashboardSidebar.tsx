@@ -14,8 +14,13 @@ import { type SettingsSectionId } from "@/components/settings/common/SettingsNav
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
+import { type AppLog } from "@/hooks/useAppLogs";
+import {
+  type LevelFilter,
+} from "@/components/logs/LogsTab";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 import { HistoriqueSidebarSection } from "./HistoriqueSidebarSection";
+import { LogsSidebarSection } from "./LogsSidebarSection";
 
 export const DASHBOARD_NAV_ITEMS = [
   { id: "historique", labelKey: "sidebar.history", icon: History },
@@ -48,6 +53,11 @@ interface DashboardSidebarProps {
   activeSettingsSection: SettingsSectionId;
   onSettingsSectionChange: (id: SettingsSectionId) => void;
   transcriptions: Transcription[];
+  logs: AppLog[];
+  levelFilter: LevelFilter;
+  onLevelFilterChange: (next: LevelFilter) => void;
+  sourceFilter: string | null;
+  onSourceFilterChange: (next: string | null) => void;
 }
 
 export function DashboardSidebar({
@@ -72,6 +82,11 @@ export function DashboardSidebar({
   activeSettingsSection,
   onSettingsSectionChange,
   transcriptions,
+  logs,
+  levelFilter,
+  onLevelFilterChange,
+  sourceFilter,
+  onSourceFilterChange,
 }: DashboardSidebarProps) {
   const { t } = useTranslation();
 
@@ -158,10 +173,22 @@ export function DashboardSidebar({
         <HistoriqueSidebarSection transcriptions={transcriptions} />
       )}
 
+      {/* Logs level filters — expanded sidebar only */}
+      {!collapsed && activeTab === "logs" && (
+        <LogsSidebarSection
+          logs={logs}
+          levelFilter={levelFilter}
+          onLevelFilterChange={onLevelFilterChange}
+          sourceFilter={sourceFilter}
+          onSourceFilterChange={onSourceFilterChange}
+        />
+      )}
+
       {/* Spacer to push profile to bottom — only when no sub-nav takes the remaining space */}
       {activeTab !== "parametres" &&
         !(activeTab === "notes" && !collapsed) &&
-        !(activeTab === "historique" && !collapsed) && (
+        !(activeTab === "historique" && !collapsed) &&
+        !(activeTab === "logs" && !collapsed) && (
           <div className="flex-1" />
         )}
 

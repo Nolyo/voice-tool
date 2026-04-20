@@ -7,6 +7,10 @@ export interface AppLog {
   timestamp: string;
   level: "info" | "warn" | "error" | "debug" | "trace";
   message: string;
+  /** Short source tag derived from the tracing target (e.g. "audio",
+   * "transcription"). Logs persisted before this field was introduced have
+   * no source — the UI falls back to "inconnu". */
+  source?: string;
 }
 
 export function useAppLogs() {
@@ -40,20 +44,19 @@ export function useAppLogs() {
           timestamp: string;
           level: string;
           message: string;
+          source?: string;
         }>("app-log", (event) => {
           const newLog: AppLog = {
             id: crypto.randomUUID(),
             timestamp: event.payload.timestamp,
             level: event.payload.level as AppLog["level"],
             message: event.payload.message,
+            source: event.payload.source,
           };
 
           setLogs((prevLogs) => [newLog, ...prevLogs]);
-
-          // Fire-and-forget save to backend
-          invoke("save_log", { log: newLog }).catch((error) => {
-            console.error("Failed to save log:", error);
-          });
+          // Persistence is handled by the Rust tracing layer
+          // (`logs::append_log`), so no `save_log` call here.
         });
 
         if (disposed) {

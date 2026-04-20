@@ -117,6 +117,11 @@ pub fn run() {
             // Enable logging to frontend
             log_layer.set_app_handle(app.handle().clone());
 
+            tracing::info!(
+                "Voice Tool v{} started",
+                app.package_info().version
+            );
+
             // Profile system: migrate legacy data then init active profile
             if let Err(e) = profiles::migrate_legacy_to_default(app.handle()) {
                 tracing::warn!("Profiles migration failed: {}", e);
