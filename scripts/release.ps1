@@ -23,6 +23,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 Set-Location "$PSScriptRoot\.."
+# Sync .NET current directory with PowerShell's $PWD so [System.IO.File] resolves
+# relative paths against the project root, not the shell's launch dir.
+[System.Environment]::CurrentDirectory = (Get-Location).Path
 
 function Write-Step { param([string]$msg) Write-Host "" ; Write-Host ">> $msg" -ForegroundColor Cyan }
 function Write-Ok   { param([string]$msg) Write-Host "   OK  $msg" -ForegroundColor Green }

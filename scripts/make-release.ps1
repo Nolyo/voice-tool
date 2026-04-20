@@ -32,6 +32,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 Set-Location "$PSScriptRoot\.."
+[System.Environment]::CurrentDirectory = (Get-Location).Path
 
 function Write-Step { param([string]$msg) Write-Host ""; Write-Host ">> $msg" -ForegroundColor Cyan }
 function Write-Ok   { param([string]$msg) Write-Host "   OK  $msg" -ForegroundColor Green }
