@@ -44,16 +44,17 @@ pub async fn transcribe_audio(
     );
 
     let audio_samples = if trim_silence.unwrap_or(true) {
+        let input_len = audio_samples.len();
         let result = audio_trim::trim_silence(&audio_samples, sample_rate);
-        if result.trimmed_start_ms > 0 || result.trimmed_end_ms > 0 {
-            tracing::info!(
-                "Silence trim: -{}ms start, -{}ms end ({} → {} samples)",
-                result.trimmed_start_ms,
-                result.trimmed_end_ms,
-                audio_samples.len(),
-                result.samples.len(),
-            );
-        }
+        tracing::info!(
+            "Silence trim: peak={:.4}, threshold={:.4}, -{}ms start, -{}ms end ({} → {} samples)",
+            result.peak_rms,
+            result.threshold,
+            result.trimmed_start_ms,
+            result.trimmed_end_ms,
+            input_len,
+            result.samples.len(),
+        );
         result.samples
     } else {
         audio_samples

@@ -4,69 +4,98 @@
 //! (cloud or local) receives tighter input, reducing hallucinations on
 //! empty leading/trailing segments and saving a few API cents.
 //!
-//! The algorithm scans the signal by fixed-size windows (~20 ms), flags
-//! a window as "speech" when its RMS is above `RMS_THRESHOLD`, and
-//! requires two consecutive speech windows to mark the start/end of
-//! speech (guards against isolated clicks). A symmetric padding of
-//! `PADDING_MS` is kept on each side so the attack of consonants like
-//! P/T/K is never chopped.
+//! The algorithm scans the signal by fixed-size windows (~20 ms) and
+//! derives a speech threshold from the recording itself (10% of the
+//! peak window RMS, clamped). This makes the detector robust to mic
+//! gain, distance, and the natural decrease in energy at the end of
+//! declarative phrases. A window is "speech" when its RMS is above that
+//! threshold, and the start/end of speech require two consecutive speech
+//! windows (guards against isolated clicks).
 //!
-//! Safety rails: if trimming would leave less than `MIN_OUTPUT_MS` of
-//! audio, or would cut more than `MAX_TRIM_RATIO` of the signal, or if
-//! no speech is detected at all, the original samples are returned
-//! untouched.
+//! Padding is asymmetric (300 ms start, 700 ms end) because phrase
+//! endings tend to fade while beginnings have a sharp attack.
+//!
+//! Safety rails: if the overall signal is weaker than the noise floor,
+//! if trimming would leave less than `MIN_OUTPUT_MS` of audio, if it
+//! would cut more than `MAX_TRIM_RATIO` of the signal, or if no speech
+//! is detected at all, the original samples are returned untouched.
 
-const RMS_THRESHOLD: f32 = 0.015;
 const WINDOW_MS: u32 = 20;
-const PADDING_MS: u32 = 300;
+// Asymmetric padding: phrase starts with a sharp attack so 300ms is plenty,
+// but phrase endings often fade out (trailing consonants, decaying vowels) —
+// 700ms catches those tails without sending much extra silence to Whisper.
+const PADDING_START_MS: u32 = 300;
+const PADDING_END_MS: u32 = 700;
 const MIN_OUTPUT_MS: u32 = 500;
 const MAX_TRIM_RATIO: f32 = 0.80;
+
+// Adaptive threshold: scales with the loudness of *this* recording so the
+// algorithm is robust to mic gain, distance, and natural prosody (phrases
+// that descend in energy at the end). A hardcoded threshold would either
+// miss fading tails for quiet speakers or clip brief breaths for loud ones.
+const THRESHOLD_FRACTION: f32 = 0.10;
+const MIN_THRESHOLD: f32 = 0.004;
+const MAX_THRESHOLD: f32 = 0.020;
+// If the recording peak is below this, we consider the signal too weak to
+// confidently distinguish speech from noise — bail out and keep everything.
+const NOISE_FLOOR_PEAK: f32 = 0.010;
 
 pub struct TrimResult {
     pub samples: Vec<i16>,
     pub trimmed_start_ms: u32,
     pub trimmed_end_ms: u32,
+    /// Peak window RMS observed in the input. Useful for logging/debug.
+    pub peak_rms: f32,
+    /// Threshold actually used for speech detection (0.0 when no trim ran).
+    pub threshold: f32,
 }
 
 pub fn trim_silence(samples: &[i16], sample_rate: u32) -> TrimResult {
     if samples.is_empty() || sample_rate == 0 {
-        return passthrough(samples);
+        return passthrough(samples, 0.0, 0.0);
     }
 
     let window_size = ((sample_rate as u64 * WINDOW_MS as u64) / 1000) as usize;
     if window_size == 0 {
-        return passthrough(samples);
+        return passthrough(samples, 0.0, 0.0);
     }
 
     let num_windows = samples.len() / window_size;
     if num_windows < 2 {
-        return passthrough(samples);
+        return passthrough(samples, 0.0, 0.0);
     }
 
-    let first = find_first_speech_window(samples, window_size, num_windows);
-    let last = find_last_speech_window(samples, window_size, num_windows);
+    let peak = peak_window_rms(samples, window_size, num_windows);
+    if peak < NOISE_FLOOR_PEAK {
+        return passthrough(samples, peak, 0.0);
+    }
+    let threshold = (peak * THRESHOLD_FRACTION).clamp(MIN_THRESHOLD, MAX_THRESHOLD);
+
+    let first = find_first_speech_window(samples, window_size, num_windows, threshold);
+    let last = find_last_speech_window(samples, window_size, num_windows, threshold);
 
     let (first_win, last_win) = match (first, last) {
         (Some(f), Some(l)) if l >= f => (f, l),
-        _ => return passthrough(samples),
+        _ => return passthrough(samples, peak, threshold),
     };
 
     let start_sample = first_win * window_size;
     let end_sample = ((last_win + 1) * window_size).min(samples.len());
 
-    let padding_samples = ((sample_rate as u64 * PADDING_MS as u64) / 1000) as usize;
-    let start_trimmed = start_sample.saturating_sub(padding_samples);
-    let end_trimmed = (end_sample + padding_samples).min(samples.len());
+    let start_padding = ((sample_rate as u64 * PADDING_START_MS as u64) / 1000) as usize;
+    let end_padding = ((sample_rate as u64 * PADDING_END_MS as u64) / 1000) as usize;
+    let start_trimmed = start_sample.saturating_sub(start_padding);
+    let end_trimmed = (end_sample + end_padding).min(samples.len());
 
     let output_len = end_trimmed.saturating_sub(start_trimmed);
     let min_output_samples = ((sample_rate as u64 * MIN_OUTPUT_MS as u64) / 1000) as usize;
     if output_len < min_output_samples {
-        return passthrough(samples);
+        return passthrough(samples, peak, threshold);
     }
 
     let trim_ratio = 1.0 - (output_len as f32 / samples.len() as f32);
     if trim_ratio > MAX_TRIM_RATIO {
-        return passthrough(samples);
+        return passthrough(samples, peak, threshold);
     }
 
     let trimmed_start_ms = samples_to_ms(start_trimmed, sample_rate);
@@ -76,14 +105,18 @@ pub fn trim_silence(samples: &[i16], sample_rate: u32) -> TrimResult {
         samples: samples[start_trimmed..end_trimmed].to_vec(),
         trimmed_start_ms,
         trimmed_end_ms,
+        peak_rms: peak,
+        threshold,
     }
 }
 
-fn passthrough(samples: &[i16]) -> TrimResult {
+fn passthrough(samples: &[i16], peak_rms: f32, threshold: f32) -> TrimResult {
     TrimResult {
         samples: samples.to_vec(),
         trimmed_start_ms: 0,
         trimmed_end_ms: 0,
+        peak_rms,
+        threshold,
     }
 }
 
@@ -111,6 +144,17 @@ fn rms(samples: &[i16]) -> f32 {
     (sum / samples.len() as f64).sqrt() as f32
 }
 
+fn peak_window_rms(samples: &[i16], window_size: usize, num_windows: usize) -> f32 {
+    let mut peak = 0.0f32;
+    for w in 0..num_windows {
+        let r = window_rms(samples, w, window_size);
+        if r > peak {
+            peak = r;
+        }
+    }
+    peak
+}
+
 /// Return the index of the first speech window, defined as the first
 /// window at index `w` such that both window `w` and window `w+1` have
 /// an RMS above the threshold. Requiring two consecutive windows filters
@@ -119,10 +163,11 @@ fn find_first_speech_window(
     samples: &[i16],
     window_size: usize,
     num_windows: usize,
+    threshold: f32,
 ) -> Option<usize> {
     let mut prev_above = false;
     for w in 0..num_windows {
-        let above = window_rms(samples, w, window_size) > RMS_THRESHOLD;
+        let above = window_rms(samples, w, window_size) > threshold;
         if above && prev_above {
             return Some(w - 1);
         }
@@ -138,10 +183,11 @@ fn find_last_speech_window(
     samples: &[i16],
     window_size: usize,
     num_windows: usize,
+    threshold: f32,
 ) -> Option<usize> {
     let mut next_above = false;
     for w in (0..num_windows).rev() {
-        let above = window_rms(samples, w, window_size) > RMS_THRESHOLD;
+        let above = window_rms(samples, w, window_size) > threshold;
         if above && next_above {
             return Some(w + 1);
         }
@@ -200,16 +246,16 @@ mod tests {
 
         let result = trim_silence(&input, SR);
 
-        // 2s leading silence minus 300ms padding ≈ 1700ms trimmed
+        // 2s leading silence minus 300ms start padding ≈ 1700ms trimmed
         assert!(
             result.trimmed_start_ms >= 1500 && result.trimmed_start_ms <= 1800,
             "expected ~1700ms trimmed from start, got {}",
             result.trimmed_start_ms
         );
-        // 1s trailing silence minus 300ms padding ≈ 700ms trimmed
+        // 1s trailing silence minus 700ms end padding ≈ 300ms trimmed
         assert!(
-            result.trimmed_end_ms >= 500 && result.trimmed_end_ms <= 800,
-            "expected ~700ms trimmed from end, got {}",
+            result.trimmed_end_ms >= 150 && result.trimmed_end_ms <= 450,
+            "expected ~300ms trimmed from end, got {}",
             result.trimmed_end_ms
         );
         // Output is shorter than input but keeps all of the speech
@@ -277,7 +323,9 @@ mod tests {
         let s2 = silence(1500, 16_000);
         let input = concat(&[&s1, &sp, &s2]);
         let result = trim_silence(&input, 16_000);
+        // 2000ms leading - 300ms padding ≈ 1700ms
         assert!(result.trimmed_start_ms >= 1500);
-        assert!(result.trimmed_end_ms >= 1000);
+        // 1500ms trailing - 700ms padding ≈ 800ms
+        assert!(result.trimmed_end_ms >= 600);
     }
 }
