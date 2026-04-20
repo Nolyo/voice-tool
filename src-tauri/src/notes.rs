@@ -16,6 +16,8 @@ pub struct NoteMeta {
     pub favorite: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub folder_id: Option<String>,
+    #[serde(default)]
+    pub order: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -145,6 +147,7 @@ pub fn migrate_notes_from_store(app_handle: &AppHandle) -> Result<u32> {
             updated_at: note.updated_at.clone(),
             favorite: false,
             folder_id: None,
+            order: 0,
         };
         let meta_json = serde_json::to_string_pretty(&meta)?;
         fs::write(note_dir.join("note.json"), meta_json)?;
@@ -228,6 +231,7 @@ pub async fn create_note(
         updated_at: now,
         favorite: false,
         folder_id,
+        order: 0,
     };
 
     let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
@@ -311,11 +315,43 @@ pub async fn move_note_to_folder(
     let mut meta = read_note_meta(&note_dir).map_err(|e| e.to_string())?;
     meta.folder_id = folder_id;
     meta.updated_at = chrono::Utc::now().to_rfc3339();
+    // Reset order so the moved note sits at the top of its new folder until
+    // the user reorders that folder explicitly.
+    meta.order = 0;
 
     let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
     fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;
 
     Ok(meta)
+}
+
+#[tauri::command]
+pub async fn reorder_notes_in_folder(
+    app_handle: AppHandle,
+    folder_id: Option<String>,
+    note_ids: Vec<String>,
+) -> Result<(), String> {
+    let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
+
+    for (index, note_id) in note_ids.iter().enumerate() {
+        let note_dir = notes_dir.join(note_id);
+        if !note_dir.exists() {
+            continue;
+        }
+        let mut meta = match read_note_meta(&note_dir) {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        // Defensive: only update if the note is actually in the declared folder.
+        if meta.folder_id != folder_id {
+            continue;
+        }
+        meta.order = index as i32;
+        let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
+        fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }
 
 /// Reset folder_id to None for all notes currently in the given folder.

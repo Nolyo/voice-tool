@@ -66,6 +66,12 @@ pub fn notes_tabs_store_path(app: &AppHandle) -> String {
     format!("profiles/{}/notes-tabs.json", id)
 }
 
+/// Return the notes-sidebar store path for the active profile (relative to app_data_dir)
+pub fn notes_sidebar_store_path(app: &AppHandle) -> String {
+    let id = get_active_id(app);
+    format!("profiles/{}/notes-sidebar.json", id)
+}
+
 fn load_manifest_from_path(path: &PathBuf) -> Result<ProfilesManifest> {
     let content = fs::read_to_string(path)
         .with_context(|| format!("Failed to read profiles.json: {}", path.display()))?;

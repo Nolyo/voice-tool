@@ -29,6 +29,7 @@ export interface NoteMeta {
   updatedAt: string;
   favorite: boolean;
   folderId?: string;
+  order: number;
 }
 
 export interface NoteData {
@@ -109,6 +110,25 @@ export function useNotes() {
     setNotes(prev => prev.map(n => n.id === id ? updated : n));
   };
 
+  const reorderNotesInFolder = async (
+    folderId: string | null,
+    noteIds: string[],
+  ): Promise<void> => {
+    const indexOf = new Map(noteIds.map((id, i) => [id, i]));
+    setNotes(prev =>
+      prev.map(n => {
+        const idx = indexOf.get(n.id);
+        return idx !== undefined ? { ...n, order: idx } : n;
+      }),
+    );
+    try {
+      await invoke('reorder_notes_in_folder', { folderId, noteIds });
+    } catch (error) {
+      console.error('Failed to reorder notes:', error);
+      await loadNotes();
+    }
+  };
+
   return {
     notes,
     isLoading,
@@ -120,6 +140,7 @@ export function useNotes() {
     searchNotes,
     toggleFavorite,
     moveNoteToFolder,
+    reorderNotesInFolder,
     reloadNotes: loadNotes,
   };
 }

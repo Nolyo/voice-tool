@@ -40,6 +40,8 @@ interface DashboardSidebarProps {
   onCreateFolder: (name: string) => Promise<FolderMeta>;
   onRenameFolder: (id: string, name: string) => Promise<void>;
   onDeleteFolder: (id: string) => Promise<void>;
+  onReorderFolders: (ids: string[]) => Promise<void>;
+  onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
   activeSettingsSection: SettingsSectionId;
   onSettingsSectionChange: (id: SettingsSectionId) => void;
@@ -61,6 +63,8 @@ export function DashboardSidebar({
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
+  onReorderFolders,
+  onReorderNotes,
   onMoveNote,
   activeSettingsSection,
   onSettingsSectionChange,
@@ -130,6 +134,8 @@ export function DashboardSidebar({
           onCreateFolder={onCreateFolder}
           onRenameFolder={onRenameFolder}
           onDeleteFolder={onDeleteFolder}
+          onReorderFolders={onReorderFolders}
+          onReorderNotes={onReorderNotes}
           onMoveNote={onMoveNote}
         />
       )}

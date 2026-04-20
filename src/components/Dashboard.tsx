@@ -62,12 +62,14 @@ export default function Dashboard() {
     searchNotes,
     toggleFavorite,
     moveNoteToFolder,
+    reorderNotesInFolder,
   } = useNotes();
   const {
     folders,
     createFolder,
     renameFolder,
     deleteFolder,
+    reorderFolders,
   } = useFolders();
   const { logs, clearLogs } = useAppLogs();
 
@@ -140,6 +142,7 @@ export default function Dashboard() {
           createdAt: "",
           updatedAt: "",
           favorite: false,
+          order: 0,
         });
       }
     },
@@ -214,6 +217,8 @@ export default function Dashboard() {
         onCreateFolder={createFolder}
         onRenameFolder={async (id, name) => { await renameFolder(id, name); }}
         onDeleteFolder={deleteFolder}
+        onReorderFolders={reorderFolders}
+        onReorderNotes={reorderNotesInFolder}
         onMoveNote={moveNoteToFolder}
         activeSettingsSection={activeSettingsSection}
         onSettingsSectionChange={setActiveSettingsSection}

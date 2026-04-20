@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   ChevronRight,
+  Clock,
   FileText,
   Folder,
   FolderPlus,
@@ -11,12 +12,27 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FloatingMenu, type FloatingMenuEntry } from "@/components/ui/floating-menu";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
+import { useSidebarCollapseState } from "@/hooks/useSidebarCollapseState";
 
 interface NotesSidebarSectionProps {
   notes: NoteMeta[];
@@ -30,6 +46,8 @@ interface NotesSidebarSectionProps {
   onCreateFolder: (name: string) => Promise<FolderMeta>;
   onRenameFolder: (id: string, name: string) => Promise<void>;
   onDeleteFolder: (id: string) => Promise<void>;
+  onReorderFolders: (ids: string[]) => Promise<void>;
+  onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
 }
 
@@ -42,6 +60,25 @@ interface NoteItemProps {
   onRequestDelete: (note: NoteMeta) => void;
   onContextMenu: (e: React.MouseEvent, note: NoteMeta) => void;
   t: (key: string) => string;
+}
+
+interface SortableNoteItemProps extends NoteItemProps {
+  sortableId: string;
+}
+
+function SortableNoteItem({ sortableId, ...props }: SortableNoteItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: sortableId });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <NoteItem {...props} />
+    </div>
+  );
 }
 
 function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, onRequestDelete, onContextMenu, t }: NoteItemProps) {
@@ -98,6 +135,7 @@ interface FolderSectionProps {
   onRename: (id: string, currentName: string) => void;
   onRequestDelete: (folder: FolderMeta) => void;
   onCreateNoteIn: (folderId: string) => void;
+  onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
   t: (key: string) => string;
 }
 
@@ -114,11 +152,36 @@ function FolderSection({
   onRename,
   onRequestDelete,
   onCreateNoteIn,
+  onReorderNotes,
   t,
 }: FolderSectionProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: folder.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  const noteSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
+  const handleNoteDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = notes.findIndex((n) => n.id === active.id);
+    const newIndex = notes.findIndex((n) => n.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const next = [...notes];
+    const [moved] = next.splice(oldIndex, 1);
+    next.splice(newIndex, 0, moved);
+    void onReorderNotes(folder.id, next.map((n) => n.id));
+  };
   return (
-    <div>
-      <div className="group flex items-center gap-1.5 px-3 py-1 hover:bg-accent/30 transition-colors">
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <div
+        className="group flex items-center gap-1.5 px-3 py-1 hover:bg-accent/30 transition-colors"
+        {...listeners}
+      >
         <button
           className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
           onClick={onToggle}
@@ -169,19 +232,33 @@ function FolderSection({
           </button>
         </div>
       </div>
-      {!collapsed && notes.map((note) => (
-        <NoteItem
-          key={note.id}
-          note={note}
-          isActive={note.id === activeNoteId}
-          indented
-          onOpen={onOpenNote}
-          onToggleFavorite={onToggleFavorite}
-          onRequestDelete={onRequestDeleteNote}
-          onContextMenu={onNoteContextMenu}
-          t={t}
-        />
-      ))}
+      {!collapsed && (
+        <DndContext
+          sensors={noteSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleNoteDragEnd}
+        >
+          <SortableContext
+            items={notes.map((n) => n.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {notes.map((note) => (
+              <SortableNoteItem
+                key={note.id}
+                sortableId={note.id}
+                note={note}
+                isActive={note.id === activeNoteId}
+                indented
+                onOpen={onOpenNote}
+                onToggleFavorite={onToggleFavorite}
+                onRequestDelete={onRequestDeleteNote}
+                onContextMenu={onNoteContextMenu}
+                t={t}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      )}
     </div>
   );
 }
@@ -198,14 +275,42 @@ export function NotesSidebarSection({
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
+  onReorderFolders,
+  onReorderNotes,
   onMoveNote,
 }: NotesSidebarSectionProps) {
   const { t } = useTranslation();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
+
+  const rootNoteSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
+
+  const handleFolderDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = folders.findIndex((f) => f.id === active.id);
+    const newIndex = folders.findIndex((f) => f.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const next = [...folders];
+    const [moved] = next.splice(oldIndex, 1);
+    next.splice(newIndex, 0, moved);
+    void onReorderFolders(next.map((f) => f.id));
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NoteMeta[] | null>(null);
-  const [favoritesCollapsed, setFavoritesCollapsed] = useState(false);
-  const [rootCollapsed, setRootCollapsed] = useState(false);
-  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const {
+    state: collapseState,
+    toggleFavorites,
+    toggleRecents,
+    toggleRoot,
+    toggleFolder: toggleFolderCollapsed,
+  } = useSidebarCollapseState();
+  const favoritesCollapsed = collapseState.favorites;
+  const recentsCollapsed = collapseState.recents;
+  const rootCollapsed = collapseState.root;
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; note: NoteMeta } | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<NoteMeta | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<FolderMeta | null>(null);
@@ -236,15 +341,6 @@ export function NotesSidebarSection({
   useEffect(() => {
     return () => clearTimeout(debounceRef.current);
   }, []);
-
-  const toggleFolderCollapsed = (id: string) => {
-    setCollapsedFolders((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   const handleNoteContextMenu = (e: React.MouseEvent, note: NoteMeta) => {
     e.preventDefault();
@@ -290,7 +386,16 @@ export function NotesSidebarSection({
     [displayedNotes],
   );
 
-  // Group notes by folder (only valid folder ids; orphan folder_id falls back to root)
+  // "Récents" shows the 10 most recently updated notes across all folders.
+  // `displayedNotes` is already sorted by updatedAt desc by the backend.
+  const recentNotes = useMemo(
+    () => displayedNotes.slice(0, 10),
+    [displayedNotes],
+  );
+
+  // Group notes by folder (only valid folder ids; orphan folder_id falls back to root).
+  // Within each group, sort by `order` ASC then `updatedAt` DESC so un-reordered notes
+  // keep their "most recently modified first" feel.
   const { notesByFolder, rootNotes } = useMemo(() => {
     const folderIds = new Set(folders.map((f) => f.id));
     const byFolder = new Map<string, NoteMeta[]>();
@@ -306,10 +411,16 @@ export function NotesSidebarSection({
       }
     }
 
+    const cmp = (a: NoteMeta, b: NoteMeta) =>
+      a.order - b.order || b.updatedAt.localeCompare(a.updatedAt);
+    for (const list of byFolder.values()) list.sort(cmp);
+    root.sort(cmp);
+
     return { notesByFolder: byFolder, rootNotes: root };
   }, [displayedNotes, folders]);
 
   const showFavoritesSection = favoriteNotes.length > 0 && !isSearching;
+  const showRecentsSection = recentNotes.length > 0 && !isSearching;
 
   // Build context menu items for a given note
   const buildContextMenuItems = (note: NoteMeta): FloatingMenuEntry[] => {
@@ -417,7 +528,7 @@ export function NotesSidebarSection({
               <div>
                 <button
                   className="flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors"
-                  onClick={() => setFavoritesCollapsed((v) => !v)}
+                  onClick={toggleFavorites}
                 >
                   {favoritesCollapsed ? (
                     <ChevronRight className="w-3 h-3 text-muted-foreground" />
@@ -449,25 +560,74 @@ export function NotesSidebarSection({
               </div>
             )}
 
-            {/* Folders */}
-            {folders.map((folder) => (
-              <FolderSection
-                key={folder.id}
-                folder={folder}
-                notes={notesByFolder.get(folder.id) ?? []}
-                activeNoteId={activeNoteId}
-                collapsed={collapsedFolders.has(folder.id)}
-                onToggle={() => toggleFolderCollapsed(folder.id)}
-                onOpenNote={onOpenNote}
-                onToggleFavorite={onToggleFavorite}
-                onRequestDeleteNote={setNoteToDelete}
-                onNoteContextMenu={handleNoteContextMenu}
-                onRename={handleRenameFolder}
-                onRequestDelete={setFolderToDelete}
-                onCreateNoteIn={(id) => onCreateNote(id)}
-                t={t}
-              />
-            ))}
+            {/* Recents section — virtual, non-reorderable, top 10 by updatedAt */}
+            {showRecentsSection && (
+              <div>
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors"
+                  onClick={toggleRecents}
+                >
+                  {recentsCollapsed ? (
+                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                  )}
+                  <Clock className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground select-none">
+                    {t('notes.recent')}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60 select-none">
+                    ({recentNotes.length})
+                  </span>
+                </button>
+                {!recentsCollapsed &&
+                  recentNotes.map((note) => (
+                    <NoteItem
+                      key={note.id}
+                      note={note}
+                      isActive={note.id === activeNoteId}
+                      indented
+                      onOpen={onOpenNote}
+                      onToggleFavorite={onToggleFavorite}
+                      onRequestDelete={setNoteToDelete}
+                      onContextMenu={handleNoteContextMenu}
+                      t={t}
+                    />
+                  ))}
+              </div>
+            )}
+
+            {/* Folders (drag-reorderable) */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleFolderDragEnd}
+            >
+              <SortableContext
+                items={folders.map((f) => f.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {folders.map((folder) => (
+                  <FolderSection
+                    key={folder.id}
+                    folder={folder}
+                    notes={notesByFolder.get(folder.id) ?? []}
+                    activeNoteId={activeNoteId}
+                    collapsed={collapseState.folders[folder.id] ?? false}
+                    onToggle={() => toggleFolderCollapsed(folder.id)}
+                    onOpenNote={onOpenNote}
+                    onToggleFavorite={onToggleFavorite}
+                    onRequestDeleteNote={setNoteToDelete}
+                    onNoteContextMenu={handleNoteContextMenu}
+                    onRename={handleRenameFolder}
+                    onRequestDelete={setFolderToDelete}
+                    onCreateNoteIn={(id) => onCreateNote(id)}
+                    onReorderNotes={onReorderNotes}
+                    t={t}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
 
             {/* Root / unfiled notes */}
             {(rootNotes.length > 0 || folders.length === 0) && (
@@ -475,7 +635,7 @@ export function NotesSidebarSection({
                 {folders.length > 0 && (
                   <button
                     className="flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors"
-                    onClick={() => setRootCollapsed((v) => !v)}
+                    onClick={toggleRoot}
                   >
                     {rootCollapsed ? (
                       <ChevronRight className="w-3 h-3 text-muted-foreground" />
@@ -495,20 +655,43 @@ export function NotesSidebarSection({
                     {t('notes.empty')}
                   </div>
                 )}
-                {!rootCollapsed &&
-                  rootNotes.map((note) => (
-                    <NoteItem
-                      key={note.id}
-                      note={note}
-                      isActive={note.id === activeNoteId}
-                      indented={folders.length > 0}
-                      onOpen={onOpenNote}
-                      onToggleFavorite={onToggleFavorite}
-                      onRequestDelete={setNoteToDelete}
-                      onContextMenu={handleNoteContextMenu}
-                      t={t}
-                    />
-                  ))}
+                {!rootCollapsed && rootNotes.length > 0 && (
+                  <DndContext
+                    sensors={rootNoteSensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(event) => {
+                      const { active, over } = event;
+                      if (!over || active.id === over.id) return;
+                      const oldIndex = rootNotes.findIndex((n) => n.id === active.id);
+                      const newIndex = rootNotes.findIndex((n) => n.id === over.id);
+                      if (oldIndex < 0 || newIndex < 0) return;
+                      const next = [...rootNotes];
+                      const [moved] = next.splice(oldIndex, 1);
+                      next.splice(newIndex, 0, moved);
+                      void onReorderNotes(null, next.map((n) => n.id));
+                    }}
+                  >
+                    <SortableContext
+                      items={rootNotes.map((n) => n.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {rootNotes.map((note) => (
+                        <SortableNoteItem
+                          key={note.id}
+                          sortableId={note.id}
+                          note={note}
+                          isActive={note.id === activeNoteId}
+                          indented={folders.length > 0}
+                          onOpen={onOpenNote}
+                          onToggleFavorite={onToggleFavorite}
+                          onRequestDelete={setNoteToDelete}
+                          onContextMenu={handleNoteContextMenu}
+                          t={t}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                )}
               </div>
             )}
           </>
