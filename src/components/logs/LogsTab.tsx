@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
+  ArrowLeft,
   Check,
   Copy,
   Download,
@@ -24,6 +25,7 @@ interface LogsTabProps {
   levelFilter: LevelFilter;
   sourceFilter: string | null;
   onSourceFilterChange: (next: string | null) => void;
+  isCompact: boolean;
 }
 
 export type LogLevel = AppLog["level"];
@@ -181,10 +183,12 @@ function LogDetail({
   log,
   onClose,
   onCopy,
+  compact = false,
 }: {
   log: AppLog | null;
   onClose: () => void;
   onCopy: (text: string) => void;
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   if (!log) {
@@ -279,11 +283,28 @@ function LogDetail({
         <button
           type="button"
           onClick={onClose}
-          className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5"
+          className={
+            compact
+              ? "inline-flex items-center gap-1.5 px-2 h-7 rounded-md text-[12px] hover:bg-white/5"
+              : "w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5"
+          }
           style={{ color: "var(--vt-fg-3)" }}
-          aria-label={t("transcriptionDetails.copy")}
+          aria-label={
+            compact
+              ? t("transcriptionDetails.backToList", {
+                  defaultValue: "Retour à la liste",
+                })
+              : "Fermer"
+          }
         >
-          <X className="w-3.5 h-3.5" />
+          {compact ? (
+            <>
+              <ArrowLeft className="w-3.5 h-3.5" />
+              {t("transcriptionDetails.back", { defaultValue: "Retour" })}
+            </>
+          ) : (
+            <X className="w-3.5 h-3.5" />
+          )}
         </button>
       </div>
 
@@ -343,6 +364,7 @@ export function LogsTab({
   levelFilter,
   sourceFilter,
   onSourceFilterChange,
+  isCompact,
 }: LogsTabProps) {
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -427,11 +449,17 @@ export function LogsTab({
     );
   };
 
+  const showDetailOnly = isCompact && selected !== null;
+  const showStreamOnly = isCompact && selected === null;
+
   return (
     <div className="vt-app flex flex-col h-full min-h-0 overflow-hidden">
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Left: toolbar + timeline + stream */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div
+          className="flex-1 flex flex-col min-w-0"
+          style={{ display: showDetailOnly ? "none" : undefined }}
+        >
           {/* Toolbar */}
           <div
             className="px-6 pt-5 pb-3 flex flex-col gap-3"
@@ -701,20 +729,29 @@ export function LogsTab({
         </div>
 
         {/* Right: detail panel */}
-        <div
-          className="shrink-0 p-5 overflow-y-auto"
-          style={{
-            width: 400,
-            borderLeft: "1px solid var(--vt-border)",
-            background: "oklch(from var(--vt-bg) calc(l - 0.005) c h)",
-          }}
-        >
-          <LogDetail
-            log={selected}
-            onClose={() => setSelectedId(null)}
-            onCopy={handleCopy}
-          />
-        </div>
+        {!showStreamOnly && (
+          <div
+            className={
+              showDetailOnly
+                ? "flex-1 min-w-0 p-5 overflow-y-auto"
+                : "shrink-0 p-5 overflow-y-auto"
+            }
+            style={{
+              width: showDetailOnly ? undefined : 400,
+              borderLeft: showDetailOnly
+                ? undefined
+                : "1px solid var(--vt-border)",
+              background: "oklch(from var(--vt-bg) calc(l - 0.005) c h)",
+            }}
+          >
+            <LogDetail
+              log={selected}
+              onClose={() => setSelectedId(null)}
+              onCopy={handleCopy}
+              compact={isCompact}
+            />
+          </div>
+        )}
       </div>
 
       {/* Toast */}

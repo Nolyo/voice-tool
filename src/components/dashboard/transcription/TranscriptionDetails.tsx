@@ -8,6 +8,7 @@ import {
   Play,
   Pause,
   X,
+  ArrowLeft,
   Sparkles,
   Download,
   Trash2,
@@ -23,6 +24,7 @@ interface TranscriptionDetailsProps {
   onCopy: (text: string) => void;
   onClose: () => void;
   onDelete?: (id: string) => void;
+  compact?: boolean;
 }
 
 const DAY_NAMES = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
@@ -121,6 +123,7 @@ export function TranscriptionDetails({
   onCopy,
   onClose,
   onDelete,
+  compact = false,
 }: TranscriptionDetailsProps) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -217,9 +220,23 @@ export function TranscriptionDetails({
   if (!transcription) {
     return (
       <div
-        className="vt-card-sectioned p-10 text-center flex flex-col items-center gap-3"
+        className="vt-card-sectioned p-10 text-center flex flex-col items-center gap-3 relative"
         style={{ minHeight: 400 }}
       >
+        {compact && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[12px] hover:bg-white/5"
+            style={{ color: "var(--vt-fg-3)" }}
+            aria-label={t("transcriptionDetails.backToList", {
+              defaultValue: "Retour à la liste",
+            })}
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            {t("transcriptionDetails.back", { defaultValue: "Retour" })}
+          </button>
+        )}
         <div
           className="w-12 h-12 rounded-xl flex items-center justify-center"
           style={{ background: "oklch(1 0 0 / 0.04)", color: "var(--vt-fg-4)" }}
@@ -331,11 +348,28 @@ export function TranscriptionDetails({
         <button
           type="button"
           onClick={onClose}
-          className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5"
+          className={
+            compact
+              ? "inline-flex items-center gap-1.5 px-2 h-7 rounded-md text-[12px] hover:bg-white/5"
+              : "w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5"
+          }
           style={{ color: "var(--vt-fg-3)" }}
-          aria-label="Fermer"
+          aria-label={
+            compact
+              ? t("transcriptionDetails.backToList", {
+                  defaultValue: "Retour à la liste",
+                })
+              : "Fermer"
+          }
         >
-          <X className="w-3.5 h-3.5" />
+          {compact ? (
+            <>
+              <ArrowLeft className="w-3.5 h-3.5" />
+              {t("transcriptionDetails.back", { defaultValue: "Retour" })}
+            </>
+          ) : (
+            <X className="w-3.5 h-3.5" />
+          )}
         </button>
       </div>
 

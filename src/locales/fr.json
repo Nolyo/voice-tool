@@ -92,7 +92,9 @@
     "listen": "Écouter",
     "previewDisabledHelp": "Pré-écoute désactivée dans les paramètres audio.",
     "noAudioHelp": "Aucun audio sauvegardé pour cette transcription.",
-    "emptyState": "Sélectionnez une transcription pour voir les détails"
+    "emptyState": "Sélectionnez une transcription pour voir les détails",
+    "back": "Retour",
+    "backToList": "Retour à la liste"
   },
   "settings": {
     "loading": "Chargement des paramètres...",

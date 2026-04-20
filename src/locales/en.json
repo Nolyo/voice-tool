@@ -92,7 +92,9 @@
     "listen": "Listen",
     "previewDisabledHelp": "Audio preview disabled in audio settings.",
     "noAudioHelp": "No audio saved for this transcription.",
-    "emptyState": "Select a transcription to see details"
+    "emptyState": "Select a transcription to see details",
+    "back": "Back",
+    "backToList": "Back to list"
   },
   "settings": {
     "loading": "Loading settings...",

@@ -16,6 +16,8 @@
         "title": "Voice Tool",
         "width": 800,
         "height": 600,
+        "minWidth": 800,
+        "minHeight": 600,
         "maximized": true,
         "visible": false
       }

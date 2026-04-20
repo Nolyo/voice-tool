@@ -31,6 +31,7 @@ import { useAppLogs } from "@/hooks/useAppLogs";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { useRecordingWorkflow } from "@/hooks/useRecordingWorkflow";
 import { useNotesWorkflow } from "@/hooks/useNotesWorkflow";
+import { useIsCompactLayout } from "@/hooks/useIsCompactLayout";
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -78,6 +79,7 @@ export default function Dashboard() {
     reorderFolders,
   } = useFolders();
   const { logs, clearLogs } = useAppLogs();
+  const isCompact = useIsCompactLayout(sidebarCollapsed);
 
   const { isRecording, isTranscribing, handleToggleRecording } =
     useRecordingWorkflow({
@@ -284,6 +286,7 @@ export default function Dashboard() {
               levelFilter={logsLevelFilter}
               sourceFilter={logsSourceFilter}
               onSourceFilterChange={setLogsSourceFilter}
+              isCompact={isCompact}
             />
           ) : (
             <div className="overflow-y-auto h-full">
@@ -296,6 +299,7 @@ export default function Dashboard() {
                       transcriptions={transcriptions}
                       selectedTranscription={selectedTranscription}
                       isSidebarOpen={isSidebarOpen}
+                      isCompact={isCompact}
                       onSelectTranscription={handleSelectTranscription}
                       onCloseDetails={handleCloseDetails}
                       onCopy={handleCopy}

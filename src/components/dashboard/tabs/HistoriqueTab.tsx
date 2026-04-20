@@ -6,6 +6,7 @@ interface HistoriqueTabProps {
   transcriptions: Transcription[];
   selectedTranscription: Transcription | null;
   isSidebarOpen: boolean;
+  isCompact: boolean;
   onSelectTranscription: (transcription: Transcription) => void;
   onCloseDetails: () => void;
   onCopy: (text: string) => void;
@@ -15,18 +16,34 @@ interface HistoriqueTabProps {
 
 /**
  * "Historique" tab: timeline list of transcriptions on the left, detail
- * panel on the right (width-animated).
+ * panel on the right (width-animated). When `isCompact` is true, the
+ * details panel replaces the list instead of sitting next to it.
  */
 export function HistoriqueTab({
   transcriptions,
   selectedTranscription,
   isSidebarOpen,
+  isCompact,
   onSelectTranscription,
   onCloseDetails,
   onCopy,
   onDelete,
   onClearAll,
 }: HistoriqueTabProps) {
+  if (isCompact && isSidebarOpen) {
+    return (
+      <div className="vt-app">
+        <TranscriptionDetails
+          transcription={selectedTranscription}
+          onCopy={onCopy}
+          onClose={onCloseDetails}
+          onDelete={onDelete}
+          compact
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="vt-app flex gap-6 items-start">
       <div className="flex-1 min-w-0">
