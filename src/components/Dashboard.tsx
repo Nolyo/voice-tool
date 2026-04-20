@@ -267,6 +267,9 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="overflow-y-auto h-full">
+              {activeTab === "parametres" ? (
+                <SettingTabs activeSection={activeSettingsSection} />
+              ) : (
               <div className="container mx-auto px-6 py-8">
                 {activeTab === "historique" && (
                   <HistoriqueTab
@@ -281,18 +284,13 @@ export default function Dashboard() {
                   />
                 )}
 
-                {activeTab === "parametres" && (
-                  <Card className="p-6">
-                    <SettingTabs activeSection={activeSettingsSection} />
-                  </Card>
-                )}
-
                 {activeTab === "logs" && (
                   <Card className="p-6">
                     <LogsTab logs={logs} onClearLogs={clearLogs} />
                   </Card>
                 )}
               </div>
+              )}
             </div>
           )}
         </main>

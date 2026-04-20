@@ -1,22 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Mic, MicOff, RefreshCw } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useSettings } from "@/hooks/useSettings";
 import { useAudioDevices } from "@/hooks/useAudioDevices";
-import { SectionCard } from "../common/SectionCard";
-import { Divider } from "../common/Divider";
+import { Callout, Row, SectionHeader, Toggle, VtIcon } from "../vt";
+
+const ACCENT = "oklch(0.72 0.17 220)";
+const BAR_COUNT = 24;
 
 export function AudioSection() {
   const { t } = useTranslation();
@@ -27,8 +18,10 @@ export function AudioSection() {
     error: devicesError,
     refresh,
   } = useAudioDevices();
+
   const [isTesting, setIsTesting] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [bars, setBars] = useState<number[]>(() => Array(BAR_COUNT).fill(0));
 
   useEffect(() => {
     if (!isTesting) return;
@@ -36,25 +29,31 @@ export function AudioSection() {
     let unlisten: (() => void) | null = null;
     let cancelled = false;
 
-    listen<number>("audio-level", (e) => setAudioLevel(e.payload)).then(
-      (fn) => {
-        if (cancelled) {
-          fn();
-        } else {
-          unlisten = fn;
-        }
-      },
-    );
+    listen<number>("audio-level", (e) => setAudioLevel(e.payload)).then((fn) => {
+      if (cancelled) fn();
+      else unlisten = fn;
+    });
 
     return () => {
       cancelled = true;
       unlisten?.();
-      invoke("stop_audio_monitor").catch(() => {
-        // Ignore: the stream may already be stopped.
-      });
+      invoke("stop_audio_monitor").catch(() => {});
       setAudioLevel(0);
     };
   }, [isTesting]);
+
+  // Drive the 24-bar visualizer from the single level reading, shifting left.
+  useEffect(() => {
+    if (!isTesting) {
+      setBars(Array(BAR_COUNT).fill(0));
+      return;
+    }
+    setBars((prev) => {
+      const next = prev.slice(1);
+      next.push(Math.min(1, audioLevel));
+      return next;
+    });
+  }, [audioLevel, isTesting]);
 
   const handleToggleTest = async () => {
     if (isTesting) {
@@ -71,191 +70,225 @@ export function AudioSection() {
     }
   };
 
-  const levelColor =
-    audioLevel > 0.7 ? "#ef4444" : audioLevel > 0.35 ? "#f97316" : "#22c55e";
+  const levelDb = useMemo(() => {
+    if (!isTesting || audioLevel <= 0) return null;
+    return Math.round(audioLevel * 100);
+  }, [audioLevel, isTesting]);
 
   return (
-    <SectionCard
-      id="section-audio"
-      icon={<Mic className="w-3.5 h-3.5 text-blue-500" />}
-      iconBg="bg-blue-500/10"
-      title={t('settings.audio.title')}
-      subtitle={t('settings.audio.subtitle')}
-    >
-      <div className="space-y-5">
-        {/* Microphone */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label
-              htmlFor="microphone"
-              className="text-sm font-medium text-foreground"
-            >
-              {t('settings.audio.inputDevice')}
-            </Label>
-            <Button
-              variant="ghost"
-              size="sm"
+    <div className="vt-fade-up space-y-5">
+      <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
+        <SectionHeader
+          color={ACCENT}
+          icon={<VtIcon.mic />}
+          title={t("settings.audio.title")}
+          description={t("settings.audio.subtitle")}
+          trailing={
+            <button
+              type="button"
               onClick={refresh}
               disabled={devicesLoading}
-              className="h-7 px-2 -mr-1"
+              className="vt-btn"
+              style={{ height: 30 }}
             >
-              <RefreshCw
-                className={`w-3.5 h-3.5 ${devicesLoading ? "animate-spin" : ""}`}
+              <VtIcon.refresh
+                className={devicesLoading ? "animate-spin" : undefined}
               />
-            </Button>
-          </div>
-          <Select
-            value={settings.input_device_index?.toString() ?? "null"}
-            onValueChange={(value) =>
-              updateSetting(
-                "input_device_index",
-                value === "null" ? null : Number.parseInt(value),
-              )
-            }
-            disabled={devicesLoading || !!devicesError}
-          >
-            <SelectTrigger id="microphone" className="h-9 bg-background/50">
-              <SelectValue
-                placeholder={
-                  devicesLoading
-                    ? t('settings.audio.loadingDevices')
-                    : devicesError
-                      ? t('settings.audio.loadError')
-                      : t('settings.audio.selectDevice')
+              {t("common.refresh", { defaultValue: "Actualiser" })}
+            </button>
+          }
+        />
+
+        {/* Device selector */}
+        <Row
+          label={t("settings.audio.inputDevice")}
+          hint={
+            devicesError
+              ? `${t("settings.audio.errorPrefix")} ${devicesError}`
+              : t("settings.audio.selectDevice")
+          }
+        >
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <span
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ color: "var(--vt-fg-3)" }}
+              >
+                <VtIcon.plug />
+              </span>
+              <select
+                className="vt-select"
+                style={{ paddingLeft: 36 }}
+                value={settings.input_device_index?.toString() ?? "null"}
+                onChange={(e) =>
+                  updateSetting(
+                    "input_device_index",
+                    e.target.value === "null" ? null : Number.parseInt(e.target.value),
+                  )
                 }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="null">{t('settings.audio.defaultDevice')}</SelectItem>
-              {devices.map((device) => (
-                <SelectItem key={device.index} value={device.index.toString()}>
-                  {device.name} {device.is_default ? t('settings.audio.defaultSuffix') : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {devicesError && (
-            <p className="text-xs text-destructive">{t('settings.audio.errorPrefix')} {devicesError}</p>
-          )}
-        </div>
-
-        {/* Microphone test */}
-        <div className="space-y-2">
-          <Button
-            variant={isTesting ? "destructive" : "outline"}
-            size="sm"
-            onClick={handleToggleTest}
-            disabled={devicesLoading || !!devicesError}
-            className="w-full h-8 text-xs"
-          >
-            {isTesting ? (
-              <MicOff className="w-3.5 h-3.5 mr-1.5" />
-            ) : (
-              <Mic className="w-3.5 h-3.5 mr-1.5" />
-            )}
-            {isTesting ? t('settings.audio.stopTest') : t('settings.audio.testMic')}
-          </Button>
-          {isTesting && (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {t('settings.audio.inputLevel')}
-                </p>
-                <span className="text-xs font-mono tabular-nums text-muted-foreground">
-                  {Math.round(audioLevel * 100)}%
-                </span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-100"
-                  style={{
-                    width: `${Math.min(audioLevel * 100, 100)}%`,
-                    backgroundColor: levelColor,
-                  }}
-                />
-              </div>
+                disabled={devicesLoading || !!devicesError}
+              >
+                <option value="null">{t("settings.audio.defaultDevice")}</option>
+                {devices.map((device) => (
+                  <option key={device.index} value={device.index.toString()}>
+                    {device.name}
+                    {device.is_default ? ` ${t("settings.audio.defaultSuffix")}` : ""}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
-        </div>
-
-        {/* Silence threshold */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label
-              htmlFor="silence-threshold"
-              className="text-sm font-medium text-foreground"
+            <button
+              type="button"
+              className="vt-btn"
+              onClick={refresh}
+              disabled={devicesLoading}
+              data-tip={t("common.refresh", { defaultValue: "Actualiser" })}
             >
-              {t('settings.audio.silenceThreshold')}
-            </Label>
-            <span className="text-sm font-mono font-semibold text-primary tabular-nums">
-              {(settings.silence_threshold * 100).toFixed(1)}%
+              <VtIcon.refresh
+                className={devicesLoading ? "animate-spin" : undefined}
+              />
+            </button>
+          </div>
+        </Row>
+
+        {/* Mic test */}
+        <Row
+          label={t("settings.audio.testMic")}
+          hint={t("settings.audio.inputLevel")}
+        >
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleToggleTest}
+              disabled={devicesLoading || !!devicesError}
+              className="vt-btn"
+              style={
+                isTesting
+                  ? {
+                      borderColor: "oklch(from var(--vt-danger) l c h / 0.5)",
+                      color: "var(--vt-danger)",
+                      background: "oklch(from var(--vt-danger) l c h / 0.08)",
+                    }
+                  : undefined
+              }
+            >
+              {isTesting ? (
+                <>
+                  <VtIcon.stop /> {t("settings.audio.stopTest")}
+                </>
+              ) : (
+                <>
+                  <VtIcon.play /> {t("settings.audio.testMic")}
+                </>
+              )}
+            </button>
+            <div
+              className="flex-1 h-9 px-3 flex items-center gap-[3px] rounded-lg"
+              style={{ background: "var(--vt-surface)", border: "1px solid var(--vt-border)" }}
+            >
+              {bars.map((v, i) => {
+                const h = Math.max(3, v * 22);
+                const hot = v > 0.6;
+                return (
+                  <div
+                    key={i}
+                    className="vt-meter-bar"
+                    data-on={v > 0.05 ? "true" : "false"}
+                    style={{
+                      height: h,
+                      background:
+                        v < 0.05
+                          ? "var(--vt-border)"
+                          : hot
+                            ? "var(--vt-warn)"
+                            : "var(--vt-accent)",
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <span
+              className="vt-mono text-[11px] w-10 text-right"
+              style={{ color: isTesting ? "var(--vt-accent-2)" : "var(--vt-fg-4)" }}
+            >
+              {levelDb !== null ? `${levelDb}%` : "—"}
             </span>
           </div>
-          <input
-            id="silence-threshold"
-            type="range"
-            min="0.001"
-            max="0.05"
-            step="0.001"
-            value={settings.silence_threshold}
-            onChange={(e) =>
-              updateSetting("silence_threshold", parseFloat(e.target.value))
-            }
-            className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
-          />
-          <p className="text-xs text-muted-foreground">
-            {t('settings.audio.silenceThresholdHelp')}
-          </p>
-        </div>
+        </Row>
 
-        <Divider />
-
-        {/* Audio options */}
-        <div className="space-y-1">
-          <div
-            className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-            onClick={() => updateSetting("enable_sounds", !settings.enable_sounds)}
-          >
-            <Checkbox
-              id="interface-sounds"
-              checked={settings.enable_sounds}
-              onCheckedChange={(checked) =>
-                updateSetting("enable_sounds", checked as boolean)
+        {/* Silence threshold */}
+        <Row
+          label={t("settings.audio.silenceThreshold")}
+          hint={t("settings.audio.silenceThresholdHelp")}
+        >
+          <div className="flex items-center gap-4">
+            <input
+              type="range"
+              min={0.001}
+              max={0.05}
+              step={0.001}
+              value={settings.silence_threshold}
+              onChange={(e) =>
+                updateSetting("silence_threshold", parseFloat(e.target.value))
+              }
+              className="vt-range flex-1"
+              style={
+                {
+                  "--val": `${(settings.silence_threshold / 0.05) * 100}%`,
+                } as React.CSSProperties
               }
             />
-            <Label
-              htmlFor="interface-sounds"
-              className="text-sm text-foreground cursor-pointer flex-1"
+            <div
+              className="flex items-center gap-1 vt-mono text-[12px] px-2.5 h-7 rounded-md"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+                minWidth: 64,
+              }}
             >
-              {t('settings.audio.interfaceSounds')}
-            </Label>
+              <span style={{ color: "var(--vt-fg)" }}>
+                {(settings.silence_threshold * 100).toFixed(1)}
+              </span>
+              <span style={{ color: "var(--vt-fg-4)" }}>%</span>
+            </div>
           </div>
+        </Row>
 
-          <div
-            className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-            onClick={() =>
-              updateSetting(
-                "enable_history_audio_preview",
-                !settings.enable_history_audio_preview,
-              )
-            }
-          >
-            <Checkbox
-              id="show-listen"
-              checked={settings.enable_history_audio_preview}
-              onCheckedChange={(checked) =>
-                updateSetting("enable_history_audio_preview", checked as boolean)
-              }
+        {/* Toggles */}
+        <Row
+          label={t("settings.audio.interfaceSounds")}
+          hint={t("settings.audio.historyAudioPreview")}
+        >
+          <div className="flex flex-col gap-3">
+            <Toggle
+              on={settings.enable_sounds}
+              onClick={() => updateSetting("enable_sounds", !settings.enable_sounds)}
+              label={t("settings.audio.interfaceSounds")}
             />
-            <Label
-              htmlFor="show-listen"
-              className="text-sm text-foreground cursor-pointer flex-1"
-            >
-              {t('settings.audio.historyAudioPreview')}
-            </Label>
+            <Toggle
+              on={settings.enable_history_audio_preview}
+              onClick={() =>
+                updateSetting(
+                  "enable_history_audio_preview",
+                  !settings.enable_history_audio_preview,
+                )
+              }
+              label={t("settings.audio.historyAudioPreview")}
+            />
           </div>
-        </div>
+        </Row>
       </div>
-    </SectionCard>
+
+      <Callout
+        kind="info"
+        icon={<VtIcon.info />}
+        title={t("settings.audio.privacyTitle", { defaultValue: "Confidentialité" })}
+      >
+        {t("settings.audio.privacyBody", {
+          defaultValue:
+            "Les enregistrements ne quittent pas ta machine sauf si tu actives une transcription cloud dans la section IA.",
+        })}
+      </Callout>
+    </div>
   );
 }

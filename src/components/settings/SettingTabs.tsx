@@ -34,7 +34,7 @@ export function SettingTabs({ activeSection }: SettingTabsProps) {
   }
 
   return (
-    <div className="space-y-8 pb-6">
+    <div className="vt-settings px-6 py-6">
       {activeSection === "section-transcription" && <TranscriptionSection />}
       {activeSection === "section-audio" && <AudioSection />}
       {activeSection === "section-texte" && <TextSection />}

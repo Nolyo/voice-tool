@@ -1,101 +1,92 @@
 import { useTranslation } from "react-i18next";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSettings } from "@/hooks/useSettings";
-import { SectionCard } from "../common/SectionCard";
+import { RadioCardList, Row, SectionHeader, Toggle } from "../vt";
+
+const ACCENT = "oklch(0.72 0.15 135)";
+
+type InsertionMode = "cursor" | "clipboard" | "none";
 
 export function TextSection() {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
 
-  return (
-    <SectionCard
-      id="section-texte"
-      icon={<span className="text-xs font-bold text-emerald-500 leading-none">T</span>}
-      iconBg="bg-emerald-500/10"
-      title={t('settings.text.title')}
-      subtitle={t('settings.text.subtitle')}
+  const icon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <div className="space-y-4">
-        <div className="space-y-1">
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t('settings.text.insertionMode')}
-          </Label>
-          <RadioGroup
-            value={settings.insertion_mode}
-            onValueChange={(value) =>
-              updateSetting("insertion_mode", value as "cursor" | "clipboard" | "none")
-            }
-            className="gap-0"
-          >
-            <label
-              htmlFor="mode-cursor"
-              className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-            >
-              <RadioGroupItem value="cursor" id="mode-cursor" className="mt-0.5" />
-              <div className="flex-1">
-                <span className="text-sm font-medium text-foreground leading-relaxed">
-                  {t('settings.text.modeCursor')}
-                </span>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t('settings.text.modeCursorDesc')}
-                </p>
-              </div>
-            </label>
+      <polyline points="4 7 4 4 20 4 20 7" />
+      <line x1="9" y1="20" x2="15" y2="20" />
+      <line x1="12" y1="4" x2="12" y2="20" />
+    </svg>
+  );
 
-            <label
-              htmlFor="mode-clipboard"
-              className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-            >
-              <RadioGroupItem value="clipboard" id="mode-clipboard" className="mt-0.5" />
-              <div className="flex-1">
-                <span className="text-sm font-medium text-foreground leading-relaxed">
-                  {t('settings.text.modeClipboard')}
-                </span>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t('settings.text.modeClipboardDesc')}
-                </p>
-              </div>
-            </label>
+  return (
+    <div className="vt-fade-up space-y-5">
+      <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
+        <SectionHeader
+          color={ACCENT}
+          icon={icon}
+          title={t("settings.text.title")}
+          description={t("settings.text.subtitle")}
+        />
 
-            <label
-              htmlFor="mode-none"
-              className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-            >
-              <RadioGroupItem value="none" id="mode-none" className="mt-0.5" />
-              <div className="flex-1">
-                <span className="text-sm font-medium text-foreground leading-relaxed">
-                  {t('settings.text.modeNone')}
-                </span>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t('settings.text.modeNoneDesc')}
-                </p>
-              </div>
-            </label>
-          </RadioGroup>
-        </div>
-
-        <div
-          className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-          onClick={() => updateSetting("smart_formatting", !settings.smart_formatting)}
+        <Row
+          label={t("settings.text.insertionMode")}
+          hint={t("settings.text.insertionModeHint", {
+            defaultValue: "Choisis la méthode la plus fiable selon l'application cible.",
+          })}
+          align="start"
         >
-          <Checkbox
-            id="smart-formatting"
-            checked={settings.smart_formatting}
-            onCheckedChange={(checked) =>
-              updateSetting("smart_formatting", checked as boolean)
-            }
-            className="mt-0.5"
+          <RadioCardList<InsertionMode>
+            value={settings.insertion_mode}
+            onChange={(v) => updateSetting("insertion_mode", v)}
+            options={[
+              {
+                id: "cursor",
+                title: t("settings.text.modeCursor"),
+                sub: t("settings.text.modeCursorDesc"),
+                badge: t("common.recommended", { defaultValue: "Recommandé" }),
+              },
+              {
+                id: "clipboard",
+                title: t("settings.text.modeClipboard"),
+                sub: t("settings.text.modeClipboardDesc"),
+              },
+              {
+                id: "none",
+                title: t("settings.text.modeNone"),
+                sub: t("settings.text.modeNoneDesc"),
+              },
+            ]}
           />
-          <Label
-            htmlFor="smart-formatting"
-            className="text-sm text-foreground cursor-pointer leading-relaxed flex-1"
-          >
-            {t('settings.text.smartFormatting')}
-          </Label>
-        </div>
+        </Row>
+
+        <Row
+          label={t("settings.text.smartFormatting")}
+          hint={t("settings.text.smartFormattingHint", {
+            defaultValue: "Corrige majuscules, ponctuation et espaces avant insertion.",
+          })}
+        >
+          <Toggle
+            on={settings.smart_formatting}
+            onClick={() =>
+              updateSetting("smart_formatting", !settings.smart_formatting)
+            }
+            label={
+              settings.smart_formatting
+                ? t("common.enabled", { defaultValue: "Activé" })
+                : t("common.disabled", { defaultValue: "Désactivé" })
+            }
+          />
+        </Row>
       </div>
-    </SectionCard>
+    </div>
   );
 }

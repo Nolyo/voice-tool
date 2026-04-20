@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { VtIcon } from "../vt";
 
 const RESET_CONFIRMATION_PHRASE = "EFFACER TOUTES MES DONNÉES";
 
@@ -45,37 +46,104 @@ export function DangerZone() {
     }
   };
 
+  const handleQuit = async () => {
+    try {
+      await invoke("exit_app");
+    } catch (e) {
+      console.error("Failed to exit app:", e);
+    }
+  };
+
   const isPhraseValid = confirmation === RESET_CONFIRMATION_PHRASE;
 
+  const dangerRowStyle = {
+    borderColor: "oklch(from var(--vt-danger) l c h / 0.25)",
+  } as const;
+
   return (
-    <div className="rounded-xl border border-destructive/50 bg-destructive/5 p-4 space-y-3">
-      <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
-          <AlertTriangle className="w-4 h-4 text-destructive" />
+    <div
+      className="vt-card-sectioned"
+      style={{
+        overflow: "hidden",
+        borderColor: "oklch(from var(--vt-danger) l c h / 0.35)",
+      }}
+    >
+      <div
+        className="px-5 py-4 flex items-center gap-3"
+        style={{ borderBottom: "1px solid oklch(from var(--vt-danger) l c h / 0.25)" }}
+      >
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center"
+          style={{
+            background: "oklch(from var(--vt-danger) l c h / 0.15)",
+            color: "var(--vt-danger)",
+          }}
+        >
+          <VtIcon.alert />
         </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-destructive leading-tight">
+        <div>
+          <h3 className="text-[14px] font-semibold" style={{ color: "var(--vt-danger)" }}>
             {t("settings.system.danger.title")}
-          </h4>
-          <p className="text-xs text-muted-foreground mt-1">
+          </h3>
+          <p className="text-[12px]" style={{ color: "var(--vt-fg-3)" }}>
             {t("settings.system.danger.subtitle")}
           </p>
         </div>
       </div>
 
-      <Button
-        variant="destructive"
-        className="w-full h-9 font-medium"
-        onClick={() => setOpen(true)}
+      <div
+        className="vt-row flex items-center justify-between"
+        style={dangerRowStyle}
       >
-        {t("settings.system.danger.resetButton")}
-      </Button>
+        <div>
+          <div className="text-[13px] font-medium">
+            {t("settings.system.danger.resetButton")}
+          </div>
+          <div className="text-[12px]" style={{ color: "var(--vt-fg-3)" }}>
+            {t("settings.system.danger.resetDescription", {
+              defaultValue: "Efface toutes les transcriptions et réinitialise les paramètres.",
+            })}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="vt-btn"
+          style={{
+            color: "var(--vt-danger)",
+            borderColor: "oklch(from var(--vt-danger) l c h / 0.4)",
+          }}
+        >
+          {t("settings.system.danger.resetButton")}
+        </button>
+      </div>
+
+      <div
+        className="vt-row flex items-center justify-between"
+        style={dangerRowStyle}
+      >
+        <div>
+          <div className="text-[13px] font-medium">{t("settings.quitApp")}</div>
+          <div className="text-[12px]" style={{ color: "var(--vt-fg-3)" }}>
+            {t("settings.system.quitDescription", {
+              defaultValue: "Ferme Voice Tool complètement (pas juste la fenêtre).",
+            })}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleQuit}
+          className="vt-btn-primary"
+          style={{ background: "var(--vt-danger)" }}
+        >
+          {t("settings.quitApp")}
+        </button>
+      </div>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="w-5 h-5" />
               {t("settings.system.danger.dialogTitle")}
             </DialogTitle>
             <DialogDescription className="space-y-2 pt-2">
@@ -111,9 +179,7 @@ export function DangerZone() {
               />
             </div>
 
-            {error && (
-              <p className="text-xs text-destructive">{error}</p>
-            )}
+            {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
 
           <DialogFooter>
