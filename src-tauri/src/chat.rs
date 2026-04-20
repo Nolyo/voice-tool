@@ -59,7 +59,7 @@ impl ChatProvider {
     fn default_model(self) -> &'static str {
         match self {
             Self::OpenAI => "gpt-4o-mini",
-            Self::Groq => "llama-3.1-8b-instant",
+            Self::Groq => "llama-3.3-70b-versatile",
         }
     }
 
@@ -200,6 +200,7 @@ pub fn model_pricing_per_million(model: &str) -> Option<(f64, f64)> {
         // OpenAI
         "gpt-4o-mini" => Some((0.150, 0.600)),
         // Groq
+        "llama-3.3-70b-versatile" => Some((0.59, 0.79)),
         "llama-3.1-8b-instant" => Some((0.05, 0.08)),
         _ => None,
     }
