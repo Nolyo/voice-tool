@@ -7,6 +7,8 @@ interface MiniHeaderProps {
   recordingTime: number;
   translateMode: boolean;
   onToggleTranslateMode: () => void;
+  translateDisabled?: boolean;
+  translateDisabledReason?: string;
   postProcessEnabled: boolean;
   onTogglePostProcess: () => void;
   layout: MiniLayout;
@@ -26,6 +28,8 @@ export function MiniHeader({
   recordingTime,
   translateMode,
   onToggleTranslateMode,
+  translateDisabled = false,
+  translateDisabledReason,
   postProcessEnabled,
   onTogglePostProcess,
   layout,
@@ -88,17 +92,29 @@ export function MiniHeader({
       <button
         data-tauri-drag-region="false"
         onClick={onToggleTranslateMode}
+        disabled={translateDisabled}
         aria-pressed={translateMode}
+        aria-disabled={translateDisabled}
         aria-label={
-          translateMode ? t("mini.translateModeOn") : t("mini.translateModeOff")
+          translateDisabled
+            ? translateDisabledReason ?? t("mini.translateModeOff")
+            : translateMode
+              ? t("mini.translateModeOn")
+              : t("mini.translateModeOff")
         }
         className={`inline-flex items-center justify-center p-1.5 rounded flex-shrink-0 transition-colors ${
-          translateMode
-            ? "bg-blue-500/30 text-blue-300 border border-blue-500/50 hover:bg-blue-500/40"
-            : "bg-slate-700/30 text-slate-400 border border-slate-600/40 hover:bg-slate-700/50 hover:text-slate-200"
+          translateDisabled
+            ? "bg-slate-800/40 text-slate-600 border border-slate-700/40 opacity-50 cursor-not-allowed"
+            : translateMode
+              ? "bg-blue-500/30 text-blue-300 border border-blue-500/50 hover:bg-blue-500/40"
+              : "bg-slate-700/30 text-slate-400 border border-slate-600/40 hover:bg-slate-700/50 hover:text-slate-200"
         }`}
         title={
-          translateMode ? t("mini.translateModeOn") : t("mini.translateModeOff")
+          translateDisabled
+            ? translateDisabledReason ?? t("mini.translateModeOff")
+            : translateMode
+              ? t("mini.translateModeOn")
+              : t("mini.translateModeOff")
         }
       >
         <Languages className="h-3.5 w-3.5" aria-hidden="true" />

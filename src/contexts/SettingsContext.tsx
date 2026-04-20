@@ -90,6 +90,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           // Broadcast current translate_mode so the mini window stays in sync
           // on startup (it may have loaded before we wrote defaults).
           try { await emit("translate-mode-changed", merged.settings.translate_mode); } catch {}
+          try { await emit("transcription-provider-changed", merged.settings.transcription_provider); } catch {}
 
           // Sync i18n language with stored setting
           if (merged.settings.ui_language) {
@@ -180,6 +181,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           "theme-changed",
           settingsRef.current.settings.theme,
         );
+        await emit(
+          "transcription-provider-changed",
+          settingsRef.current.settings.transcription_provider,
+        );
       } catch {}
     }).then((fn) => {
       unlisten = fn;
@@ -239,6 +244,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       // Same sync for post_process_enabled toggled from the settings dialog
       if (key === "post_process_enabled") {
         try { await emit("post-process-enabled-changed", value); } catch {}
+      }
+
+      // Notify the mini window when the transcription provider changes so it
+      // can update provider-dependent UI (processing label, translate button).
+      if (key === "transcription_provider") {
+        try { await emit("transcription-provider-changed", value); } catch {}
       }
 
       // Apply theme change live and broadcast to the mini window

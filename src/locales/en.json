@@ -457,6 +457,9 @@
     "postProcessOn": "Post-processing enabled",
     "postProcessOff": "Enable post-processing",
     "sendingAudio": "Sending audio...",
+    "processingLocal": "Processing audio...",
+    "postProcessing": "AI post-processing...",
+    "translateUnsupportedGroq": "Translation unavailable with Groq Whisper",
     "transcriptionSuccess": "Transcription successful",
     "recordingHint": "Recording…",
     "noTranscriptYet": "No transcription yet"

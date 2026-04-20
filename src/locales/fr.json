@@ -457,6 +457,9 @@
     "postProcessOn": "Post-traitement activé",
     "postProcessOff": "Activer le post-traitement",
     "sendingAudio": "Envoi de l'audio...",
+    "processingLocal": "Traitement de l'audio...",
+    "postProcessing": "Post-traitement IA...",
+    "translateUnsupportedGroq": "Traduction indisponible avec Groq Whisper",
     "transcriptionSuccess": "Transcription réussie",
     "recordingHint": "Enregistrement…",
     "noTranscriptYet": "Aucune transcription pour l'instant"

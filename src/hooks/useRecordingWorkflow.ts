@@ -40,6 +40,32 @@ interface PostProcessOutcome {
   cost?: number;
 }
 
+/**
+ * Returns true when post-processing would actually run for the given text and
+ * settings. Extracted so callers can emit a mini-window "post-process-start"
+ * event only when the UI will effectively show a post-process phase.
+ */
+function shouldPostProcess(
+  originalText: string,
+  settings: AppSettings["settings"],
+): boolean {
+  if (!settings.post_process_enabled) return false;
+  if (!originalText.trim()) return false;
+
+  const provider = settings.post_process_provider;
+  const apiKey =
+    provider === "OpenAI" ? settings.openai_api_key : settings.groq_api_key;
+  if (!apiKey.trim()) return false;
+
+  if (
+    settings.post_process_mode === "custom" &&
+    !settings.post_process_custom_prompt.trim()
+  ) {
+    return false;
+  }
+  return true;
+}
+
 async function maybePostProcess(
   originalText: string,
   settings: AppSettings["settings"],
@@ -66,7 +92,6 @@ async function maybePostProcess(
     return { text: originalText };
   }
 
-  const toastId = toast.loading(translate("postProcess.processing"));
   try {
     const processed = await invoke<PostProcessBackendResult>("post_process_text", {
       provider,
@@ -75,7 +100,6 @@ async function maybePostProcess(
       customPrompt: settings.post_process_custom_prompt,
       text: trimmed,
     });
-    toast.dismiss(toastId);
     const result = processed?.text?.trim();
     if (!result || result.length === 0 || result === trimmed) {
       return { text: originalText };
@@ -87,7 +111,6 @@ async function maybePostProcess(
       cost: processed.cost,
     };
   } catch (err) {
-    toast.dismiss(toastId);
     toast.error(
       translate("postProcess.error", {
         error: typeof err === "string" ? err : String(err),
@@ -215,7 +238,9 @@ export function useRecordingWorkflow({
     async (audioData: number[], sampleRate: number) => {
       setIsTranscribing(true);
       try {
-        await emit("transcription-start");
+        await emit("transcription-start", {
+          provider: settings.transcription_provider,
+        });
         const providerApiKey =
           settings.transcription_provider === "Groq"
             ? settings.groq_api_key
@@ -240,6 +265,9 @@ export function useRecordingWorkflow({
 
         console.log("Transcription:", result.text);
 
+        if (shouldPostProcess(result.text, settings)) {
+          await emit("post-process-start");
+        }
         const processed = await maybePostProcess(result.text, settings, tRef.current);
         const finalText = processed.text;
 

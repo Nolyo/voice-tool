@@ -10,8 +10,11 @@ export type WindowStatus =
   | "idle"
   | "recording"
   | "processing"
+  | "post-processing"
   | "success"
   | "error";
+
+export type TranscriptionProvider = "OpenAI" | "Google" | "Local" | "Groq";
 
 export type VisualizerMode = "bars" | "waveform";
 
@@ -45,6 +48,9 @@ export function useMiniWindowState() {
   );
   const [lastTranscript, setLastTranscript] = useState("");
   const [language, setLanguage] = useState<string | undefined>(undefined);
+  const [provider, setProvider] = useState<TranscriptionProvider>(
+    DEFAULT_SETTINGS.settings.transcription_provider,
+  );
 
   // Recording timer
   useEffect(() => {
@@ -94,6 +100,8 @@ export function useMiniWindowState() {
     let unlistenLanguageChangedFn: (() => void) | null = null;
     let unlistenVisualizerModeChangedFn: (() => void) | null = null;
     let unlistenThemeChangedFn: (() => void) | null = null;
+    let unlistenProviderChangedFn: (() => void) | null = null;
+    let unlistenPostProcessStartFn: (() => void) | null = null;
 
     const setupListeners = async () => {
       try {
@@ -117,6 +125,14 @@ export function useMiniWindowState() {
               setShowTranscriptPreview(s.show_transcription_in_mini_window);
             }
             if (s.language) setLanguage(s.language);
+            if (
+              s.transcription_provider === "OpenAI" ||
+              s.transcription_provider === "Google" ||
+              s.transcription_provider === "Local" ||
+              s.transcription_provider === "Groq"
+            ) {
+              setProvider(s.transcription_provider);
+            }
             if (s.theme === "light" || s.theme === "dark") {
               applyTheme(s.theme);
             } else {
@@ -184,10 +200,40 @@ export function useMiniWindowState() {
           },
         );
 
-        unlistenTranscriptionStartFn = await listen(
-          "transcription-start",
+        unlistenTranscriptionStartFn = await listen<
+          { provider?: TranscriptionProvider } | undefined
+        >("transcription-start", async (event) => {
+          const payloadProvider = event.payload?.provider;
+          if (
+            payloadProvider === "OpenAI" ||
+            payloadProvider === "Google" ||
+            payloadProvider === "Local" ||
+            payloadProvider === "Groq"
+          ) {
+            setProvider(payloadProvider);
+          }
+          setStatus("processing");
+        });
+
+        unlistenPostProcessStartFn = await listen(
+          "post-process-start",
           async () => {
-            setStatus("processing");
+            setStatus("post-processing");
+          },
+        );
+
+        unlistenProviderChangedFn = await listen<TranscriptionProvider>(
+          "transcription-provider-changed",
+          (event) => {
+            const next = event.payload;
+            if (
+              next === "OpenAI" ||
+              next === "Google" ||
+              next === "Local" ||
+              next === "Groq"
+            ) {
+              setProvider(next);
+            }
           },
         );
 
@@ -244,6 +290,8 @@ export function useMiniWindowState() {
       if (unlistenLanguageChangedFn) unlistenLanguageChangedFn();
       if (unlistenVisualizerModeChangedFn) unlistenVisualizerModeChangedFn();
       if (unlistenThemeChangedFn) unlistenThemeChangedFn();
+      if (unlistenProviderChangedFn) unlistenProviderChangedFn();
+      if (unlistenPostProcessStartFn) unlistenPostProcessStartFn();
     };
   }, []);
 
@@ -262,5 +310,6 @@ export function useMiniWindowState() {
     showTranscriptPreview,
     lastTranscript,
     language,
+    provider,
   };
 }

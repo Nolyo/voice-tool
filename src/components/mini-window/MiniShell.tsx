@@ -23,7 +23,12 @@ export function MiniShell() {
     showTranscriptPreview,
     lastTranscript,
     language,
+    provider,
   } = useMiniWindowState();
+  const translateDisabled = provider === "Groq";
+  const translateDisabledReason = translateDisabled
+    ? t("mini.translateUnsupportedGroq")
+    : undefined;
   const layout = useMiniWindowSize();
 
   // Transparent background for the frameless window
@@ -50,7 +55,8 @@ export function MiniShell() {
     layout === "extended" &&
     showTranscriptPreview &&
     status !== "error" &&
-    status !== "recording";
+    status !== "recording" &&
+    status !== "post-processing";
 
   // Bars scale with available height: subtract shell padding and preview row if any
   const barMaxHeight = Math.max(
@@ -85,6 +91,8 @@ export function MiniShell() {
               recordingTime={recordingTime}
               translateMode={translateMode}
               onToggleTranslateMode={handleToggleTranslateMode}
+              translateDisabled={translateDisabled}
+              translateDisabledReason={translateDisabledReason}
               postProcessEnabled={postProcessEnabled}
               onTogglePostProcess={handleTogglePostProcess}
               layout={layout}
@@ -93,8 +101,9 @@ export function MiniShell() {
           </div>
         )}
 
-        {/* Status row (processing / success / error) */}
+        {/* Status row (processing / post-processing / success / error) */}
         {(status === "processing" ||
+          status === "post-processing" ||
           status === "success" ||
           status === "error") && (
           <div
@@ -104,7 +113,19 @@ export function MiniShell() {
             {status === "processing" && (
               <div className="flex items-center gap-2">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                <p className="text-xs text-slate-300">{t("mini.sendingAudio")}</p>
+                <p className="text-xs text-slate-300">
+                  {provider === "Local"
+                    ? t("mini.processingLocal")
+                    : t("mini.sendingAudio")}
+                </p>
+              </div>
+            )}
+            {status === "post-processing" && (
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
+                <p className="text-xs text-violet-300">
+                  {t("mini.postProcessing")}
+                </p>
               </div>
             )}
             {status === "error" && (
