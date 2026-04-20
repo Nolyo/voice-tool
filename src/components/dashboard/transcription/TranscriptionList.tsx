@@ -1,12 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, Copy, Trash2, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Search, Copy, Trash2, Sparkles, Download, Filter } from "lucide-react";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
 
 interface TranscriptionListProps {
@@ -18,6 +14,284 @@ interface TranscriptionListProps {
   onClearAll?: () => void;
 }
 
+type FilterId = "all" | "today" | "postprocess";
+
+/* ── Date helpers (FR locale) ──────────────────────────────────────── */
+const DAY_NAMES = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+
+/**
+ * Parse stored "YYYY-MM-DD" + "HH:mm:ss" (FR locale) pair into a Date.
+ * Falls back to `new Date(date + " " + time)` for resilience.
+ */
+function parseAt(t: Transcription): Date {
+  const iso = `${t.date}T${t.time}`;
+  const d = new Date(iso);
+  if (!Number.isNaN(d.getTime())) return d;
+  return new Date(`${t.date} ${t.time}`);
+}
+
+function dayLabel(d: Date): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dd = new Date(d);
+  dd.setHours(0, 0, 0, 0);
+  const diff = Math.round((today.getTime() - dd.getTime()) / 86400000);
+  if (diff === 0) return "Aujourd'hui";
+  if (diff === 1) return "Hier";
+  if (diff < 7 && diff > 0) return DAY_NAMES[dd.getDay()];
+  return `${dd.getDate()} ${MONTHS[dd.getMonth()]}`;
+}
+
+function timeFmt(d: Date): string {
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+function dateShortFmt(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}`;
+}
+
+function durFmt(s?: number): string {
+  if (!s || s <= 0) return "—";
+  if (s < 60) return `${Math.round(s)}s`;
+  const m = Math.floor(s / 60);
+  const r = Math.round(s % 60);
+  return `${m}m ${String(r).padStart(2, "0")}s`;
+}
+
+function wordsOf(text: string): number {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
+
+/* ── Row ────────────────────────────────────────────────────────────── */
+interface RowProps {
+  item: Transcription;
+  at: Date;
+  isSelected: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  onSelect: () => void;
+  onCopy: () => void;
+  onDelete?: () => void;
+}
+
+function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, onDelete }: RowProps) {
+  const { t } = useTranslation();
+  const words = wordsOf(item.text);
+  const postProcess = Boolean(item.originalText);
+
+  return (
+    <div
+      className={
+        "hist-row group" +
+        (isFirst ? " hist-rail-first" : "") +
+        (isLast ? " hist-rail-last" : "")
+      }
+      data-selected={isSelected}
+      data-postprocess={postProcess}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+    >
+      <div className="vt-mono text-[11.5px] hist-time" style={{ color: "var(--vt-fg-3)" }}>
+        {timeFmt(at)}
+      </div>
+      <div className="hist-dot">
+        <span className="hist-dot-circle" />
+      </div>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          {postProcess && (
+            <span
+              className="inline-flex items-center gap-1 px-1.5 h-4 rounded text-[10px] font-medium"
+              style={{
+                background: "oklch(0.72 0.17 295 / 0.16)",
+                color: "oklch(0.72 0.17 295)",
+              }}
+              title={t("history.postProcessedBadge")}
+            >
+              <Sparkles className="w-2.5 h-2.5" aria-hidden />
+              <span>IA</span>
+            </span>
+          )}
+          <span className="text-[11px]" style={{ color: "var(--vt-fg-4)" }}>
+            {item.duration !== undefined && item.duration > 0 && (
+              <>
+                <span className="vt-mono">{durFmt(item.duration)}</span>
+                <span className="mx-1.5">·</span>
+              </>
+            )}
+            <span className="vt-mono">
+              {words} {words === 1 ? "mot" : "mots"}
+            </span>
+            {item.apiCost !== undefined && item.apiCost > 0 && (
+              <>
+                <span className="mx-1.5">·</span>
+                <span className="vt-mono">${item.apiCost.toFixed(4)}</span>
+              </>
+            )}
+          </span>
+        </div>
+        <div className="text-[13px] truncate" style={{ color: "var(--vt-fg)" }}>
+          {item.text.split("\n")[0] || item.text}
+        </div>
+      </div>
+      <div
+        className="flex items-center gap-0.5 transition"
+        style={{ opacity: isSelected ? 1 : undefined }}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCopy();
+          }}
+          className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5"
+          style={{ color: "var(--vt-fg-3)" }}
+          data-tip={t("transcriptionDetails.copy")}
+          aria-label={t("transcriptionDetails.copy")}
+        >
+          <Copy className="w-3.5 h-3.5" />
+        </button>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(t("history.deleteConfirm"))) {
+                onDelete();
+              }
+            }}
+            className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5 hover:text-red-400"
+            style={{ color: "var(--vt-fg-3)" }}
+            data-tip={t("history.deleteAll").replace("Tout effacer", "Supprimer")}
+            aria-label={t("history.deleteConfirm")}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Stats row (top of page) ───────────────────────────────────────── */
+function StatsRow({ transcriptions }: { transcriptions: Transcription[] }) {
+  const stats = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 7);
+
+    let weekCount = 0;
+    let totalDuration = 0;
+    let totalWords = 0;
+    const dailyBuckets = new Array(14).fill(0);
+
+    for (const t of transcriptions) {
+      const at = parseAt(t);
+      const atMid = new Date(at);
+      atMid.setHours(0, 0, 0, 0);
+      const diff = Math.round((now.getTime() - atMid.getTime()) / 86400000);
+
+      if (diff >= 0 && diff < 7) weekCount++;
+      if (diff >= 0 && diff < 14) dailyBuckets[13 - diff]++;
+
+      totalDuration += t.duration ?? 0;
+      totalWords += wordsOf(t.text);
+    }
+
+    const avgDur =
+      transcriptions.length > 0
+        ? Math.round(totalDuration / transcriptions.length)
+        : 0;
+    const wpm =
+      totalDuration > 0 ? Math.round(totalWords / (totalDuration / 60)) : 0;
+
+    return { weekCount, totalDuration, avgDur, wpm, dailyBuckets };
+  }, [transcriptions]);
+
+  const maxBucket = Math.max(1, ...stats.dailyBuckets);
+  const totalMin = Math.floor(stats.totalDuration / 60);
+  const totalSec = Math.round(stats.totalDuration % 60);
+
+  return (
+    <div className="grid grid-cols-4 gap-3">
+      <div className="stat-tile">
+        <div className="lbl">Cette semaine</div>
+        <div className="val">{stats.weekCount}</div>
+        <div className="trend">
+          {stats.weekCount === 0
+            ? "Aucune dictée cette semaine"
+            : `${stats.weekCount} ${stats.weekCount === 1 ? "dictée" : "dictées"} sur 7 jours`}
+        </div>
+      </div>
+      <div className="stat-tile">
+        <div className="lbl">Temps parlé</div>
+        <div className="val">
+          {totalMin}
+          <span
+            className="text-[14px] font-normal vt-mono ml-0.5"
+            style={{ color: "var(--vt-fg-3)" }}
+          >
+            m {String(totalSec).padStart(2, "0")}s
+          </span>
+        </div>
+        <div className="trend">moy. {durFmt(stats.avgDur)} / dictée</div>
+      </div>
+      <div className="stat-tile">
+        <div className="lbl">Mots / min</div>
+        <div className="val">{stats.wpm}</div>
+        <div className="trend">
+          {stats.wpm === 0 ? "—" : "moyenne sur l'historique"}
+        </div>
+      </div>
+      <div className="stat-tile">
+        <div className="lbl">Activité — 14 jours</div>
+        <div className="mt-1.5">
+          <svg
+            width="100%"
+            height="36"
+            viewBox="0 0 140 36"
+            preserveAspectRatio="none"
+          >
+            {stats.dailyBuckets.map((v, i) => {
+              const h = Math.max(3, (v / maxBucket) * 32);
+              const today = i === stats.dailyBuckets.length - 1;
+              return (
+                <rect
+                  key={i}
+                  x={i * 10 + 1}
+                  y={36 - h}
+                  width={8}
+                  height={h}
+                  rx={1.5}
+                  fill={
+                    today
+                      ? "var(--vt-accent)"
+                      : "oklch(from var(--vt-accent) l c h / 0.3)"
+                  }
+                />
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main list (timeline, toolbar, empty state) ────────────────────── */
 export function TranscriptionList({
   transcriptions,
   selectedId,
@@ -27,151 +301,225 @@ export function TranscriptionList({
   onClearAll,
 }: TranscriptionListProps) {
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<FilterId>("all");
 
-  const filteredTranscriptions = useMemo(() => {
-    if (!searchQuery.trim()) return transcriptions;
-    const lowerQuery = searchQuery.toLowerCase();
-    return transcriptions.filter(
-      (t) =>
-        t.text.toLowerCase().includes(lowerQuery) ||
-        t.date.includes(searchQuery) ||
-        t.time.includes(searchQuery)
-    );
-  }, [transcriptions, searchQuery]);
+  const filtered = useMemo(() => {
+    let list = transcriptions;
+
+    if (filter === "postprocess") {
+      list = list.filter((tr) => Boolean(tr.originalText));
+    } else if (filter === "today") {
+      list = list.filter((tr) => dayLabel(parseAt(tr)) === "Aujourd'hui");
+    }
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (tr) =>
+          tr.text.toLowerCase().includes(q) ||
+          (tr.originalText ?? "").toLowerCase().includes(q) ||
+          tr.date.includes(search) ||
+          tr.time.includes(search),
+      );
+    }
+
+    return list;
+  }, [transcriptions, search, filter]);
+
+  const groups = useMemo(() => {
+    const map = new Map<string, { items: Transcription[]; firstAt: Date }>();
+    for (const tr of filtered) {
+      const at = parseAt(tr);
+      const key = dayLabel(at);
+      if (!map.has(key)) {
+        map.set(key, { items: [], firstAt: at });
+      }
+      map.get(key)!.items.push(tr);
+    }
+    return [...map.entries()];
+  }, [filtered]);
 
   return (
-    <Card className="p-6">
-      <div>
-        {/* Search + Clear (sticky) */}
-        <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-3 bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur px-6 pt-6 pb-3 border-b rounded-t-xl">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <div className="relative w-full sm:flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder={t('history.search')}
-                value={searchQuery}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setSearchQuery(e.target.value)
-                }
-                className="pl-10 sm:max-w-none"
-              />
-            </div>
+    <div className="flex flex-col min-w-0">
+      {/* Toolbar */}
+      <div className="flex flex-col gap-4 pb-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[240px] max-w-[520px]">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+              style={{ color: "var(--vt-fg-3)" }}
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("history.search")}
+              className="vt-hist-search"
+            />
+            <kbd className="vt-kbd absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              ⌘K
+            </kbd>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              className="filter-chip"
+              data-on={filter === "all"}
+              onClick={() => setFilter("all")}
+            >
+              Tout
+            </button>
+            <button
+              type="button"
+              className="filter-chip"
+              data-on={filter === "today"}
+              onClick={() => setFilter("today")}
+            >
+              Aujourd'hui
+            </button>
+            <button
+              type="button"
+              className="filter-chip"
+              data-on={filter === "postprocess"}
+              onClick={() => setFilter("postprocess")}
+            >
+              <Sparkles className="w-3 h-3" />
+              Post-traitées
+            </button>
+          </div>
+
+          <div className="ml-auto flex items-center gap-1.5">
+            <button
+              type="button"
+              className="vt-btn vt-btn-sm"
+              data-tip="Filtres avancés (bientôt)"
+              aria-label="Filtres avancés"
+              disabled
+            >
+              <Filter className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              className="vt-btn vt-btn-sm"
+              data-tip="Export (bientôt)"
+              aria-label="Exporter"
+              disabled
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Exporter</span>
+            </button>
             {onClearAll && transcriptions.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="sm:w-auto sm:flex-none w-full sm:min-w-[140px] dark:hover:border-red-800 dark:hover:bg-red-500"
+              <button
+                type="button"
+                className="vt-btn vt-btn-sm vt-btn-danger"
                 onClick={() => {
                   if (
                     confirm(
-                      t('history.deleteAllConfirm', { count: transcriptions.length })
+                      t("history.deleteAllConfirm", {
+                        count: transcriptions.length,
+                      }),
                     )
                   ) {
                     onClearAll();
                   }
                 }}
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {t('history.deleteAll')}
-              </Button>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{t("history.deleteAll")}</span>
+              </button>
             )}
           </div>
         </div>
 
-        {/* Transcriptions */}
-        <div className="space-y-1.5">
-          {filteredTranscriptions.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <p>
-                {searchQuery
-                  ? t('history.emptySearch')
-                  : t('history.empty')}
-              </p>
-              <p className="text-sm mt-2">
-                {t('history.emptySubtitle')}
-              </p>
+        <StatsRow transcriptions={transcriptions} />
+      </div>
+
+      {/* Timeline */}
+      <div className="pb-6">
+        {groups.length === 0 ? (
+          <div className="py-20 text-center">
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+              style={{ background: "oklch(1 0 0 / 0.04)", color: "var(--vt-fg-4)" }}
+            >
+              <Search className="w-5 h-5" />
             </div>
-          ) : (
-            filteredTranscriptions.map((transcription) => (
-              <button
-                key={transcription.id}
-                onClick={() => onSelectTranscription(transcription)}
-                className={`w-full text-left px-3 py-2 rounded-md border transition-all hover:border-primary/50 hover:bg-accent/5 ${
-                  selectedId === transcription.id
-                    ? "border-primary bg-accent/10"
-                    : "border-border"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] font-mono px-1.5 py-0 h-4 leading-none"
-                      >
-                        {transcription.time}
-                      </Badge>
-                      {transcription.originalText && (
-                        <span
-                          className="inline-flex items-center justify-center h-4 w-4 rounded bg-violet-500/15 text-violet-400 border border-violet-500/30 shrink-0"
-                          title={t('history.postProcessedBadge')}
-                          aria-label={t('history.postProcessedBadge')}
-                        >
-                          <Sparkles className="w-2.5 h-2.5" aria-hidden="true" />
-                        </span>
-                      )}
-                      <span className="text-[11px] text-muted-foreground shrink-0">
-                        {transcription.date}
-                      </span>
-                      <p className="text-xs text-foreground truncate leading-snug">
-                        {transcription.text}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <Button
-                      className="h-7 w-7 p-0 dark:hover:text-blue-800"
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        onCopy(transcription.text);
-                      }}
+            <p className="text-[13.5px]" style={{ color: "var(--vt-fg-2)" }}>
+              {search || filter !== "all"
+                ? t("history.emptySearch")
+                : t("history.empty")}
+            </p>
+            <p className="text-[12px] mt-1" style={{ color: "var(--vt-fg-3)" }}>
+              {search || filter !== "all"
+                ? "Essaie d'autres mots-clés ou change de filtre."
+                : t("history.emptySubtitle")}
+            </p>
+          </div>
+        ) : (
+          groups.map(([label, group]) => {
+            const groupWords = group.items.reduce(
+              (a, tr) => a + wordsOf(tr.text),
+              0,
+            );
+            const groupDur = group.items.reduce(
+              (a, tr) => a + (tr.duration ?? 0),
+              0,
+            );
+            return (
+              <div key={label} className="mb-1">
+                <div className="day-label">
+                  <span
+                    className="vt-mono text-[10.5px]"
+                    style={{ color: "var(--vt-fg-4)" }}
+                  >
+                    {dateShortFmt(group.firstAt)}
+                  </span>
+                  <div className="day-label-inner">
+                    <span className="day-chip">{label}</span>
+                    <span className="day-chip-count">{group.items.length}</span>
+                    <span
+                      className="h-px flex-1"
+                      style={{ background: "var(--vt-border)" }}
+                    />
+                    <span
+                      className="text-[10.5px]"
+                      style={{ color: "var(--vt-fg-4)" }}
                     >
-                      <Copy className="w-3.5 h-3.5" />
-                    </Button>
-                    {onDelete && (
-                      <Button
-                        className="h-7 w-7 p-0 dark:hover:text-red-800"
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                          if (confirm(t('history.deleteConfirm'))) {
-                            onDelete(transcription.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
+                      {groupWords} mots
+                      {groupDur > 0 && <> · {durFmt(groupDur)}</>}
+                    </span>
                   </div>
                 </div>
-              </button>
-            ))
-          )}
-        </div>
-
-        {/* Footer count */}
-        {transcriptions.length > 0 && (
-          <div className="mt-3 pt-3 border-t">
-            <span className="text-sm text-muted-foreground">
-              {t('history.count', { count: transcriptions.length })}
-            </span>
-          </div>
+                <div className="px-2">
+                  {group.items.map((item, i) => (
+                    <TimelineRow
+                      key={item.id}
+                      item={item}
+                      at={parseAt(item)}
+                      isSelected={selectedId === item.id}
+                      isFirst={i === 0}
+                      isLast={i === group.items.length - 1}
+                      onSelect={() => onSelectTranscription(item)}
+                      onCopy={() => onCopy(item.text)}
+                      onDelete={onDelete ? () => onDelete(item.id) : undefined}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
-    </Card>
+
+      {transcriptions.length > 0 && (
+        <div
+          className="pt-3 border-t text-[11.5px] vt-mono"
+          style={{ borderColor: "var(--vt-border)", color: "var(--vt-fg-4)" }}
+        >
+          {t("history.count", { count: transcriptions.length })}
+        </div>
+      )}
+    </div>
   );
 }

@@ -13,7 +13,9 @@ import { SettingsSidebarSection } from "@/components/settings/SettingsSidebarSec
 import { type SettingsSectionId } from "@/components/settings/common/SettingsNav";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
+import { type Transcription } from "@/hooks/useTranscriptionHistory";
 import { ProfileSwitcher } from "./ProfileSwitcher";
+import { HistoriqueSidebarSection } from "./HistoriqueSidebarSection";
 
 export const DASHBOARD_NAV_ITEMS = [
   { id: "historique", labelKey: "sidebar.history", icon: History },
@@ -45,6 +47,7 @@ interface DashboardSidebarProps {
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
   activeSettingsSection: SettingsSectionId;
   onSettingsSectionChange: (id: SettingsSectionId) => void;
+  transcriptions: Transcription[];
 }
 
 export function DashboardSidebar({
@@ -68,6 +71,7 @@ export function DashboardSidebar({
   onMoveNote,
   activeSettingsSection,
   onSettingsSectionChange,
+  transcriptions,
 }: DashboardSidebarProps) {
   const { t } = useTranslation();
 
@@ -149,10 +153,17 @@ export function DashboardSidebar({
         />
       )}
 
-      {/* Spacer to push profile to bottom — only when no sub-nav takes the remaining space */}
-      {activeTab !== "parametres" && !(activeTab === "notes" && !collapsed) && (
-        <div className="flex-1" />
+      {/* Historique overview — expanded sidebar only */}
+      {!collapsed && activeTab === "historique" && (
+        <HistoriqueSidebarSection transcriptions={transcriptions} />
       )}
+
+      {/* Spacer to push profile to bottom — only when no sub-nav takes the remaining space */}
+      {activeTab !== "parametres" &&
+        !(activeTab === "notes" && !collapsed) &&
+        !(activeTab === "historique" && !collapsed) && (
+          <div className="flex-1" />
+        )}
 
       {/* Profile switcher — always at the very bottom */}
       <div className="border-t border-border shrink-0 p-2">

@@ -222,6 +222,7 @@ export default function Dashboard() {
         onMoveNote={moveNoteToFolder}
         activeSettingsSection={activeSettingsSection}
         onSettingsSectionChange={setActiveSettingsSection}
+        transcriptions={transcriptions}
       />
 
       {/* Main area */}
