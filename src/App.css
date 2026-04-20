@@ -143,11 +143,19 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(1 0 0 / 15%);
+  background: oklch(0 0 0 / 18%);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0 0 0 / 32%);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 15%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
   background: oklch(1 0 0 / 28%);
 }
 
@@ -409,6 +417,12 @@ body.mini-window-body #root {
   --vt-ok: oklch(0.78 0.14 150);
   --vt-ok-soft: oklch(0.78 0.14 150 / 0.13);
   --vt-danger: oklch(0.7 0.2 25);
+  --vt-hover-soft: oklch(1 0 0 / 0.025);
+  --vt-hover: oklch(1 0 0 / 0.04);
+  --vt-hover-strong: oklch(1 0 0 / 0.08);
+  --vt-inset-highlight: oklch(1 0 0 / 0.04);
+  --vt-tooltip-bg: oklch(0.1 0 0);
+  --vt-tooltip-fg: oklch(0.96 0.005 264);
   color: var(--vt-fg);
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "cv11", "ss01", "ss03";
@@ -417,6 +431,11 @@ body.mini-window-body #root {
 .vt-mono {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-feature-settings: "zero";
+}
+
+/* Theme-aware hover background for buttons and rows inside .vt-app. */
+.vt-app .vt-hover-bg:hover {
+  background: var(--vt-hover);
 }
 
 /* Card styles */
@@ -430,7 +449,7 @@ body.mini-window-body #root {
   border: 1px solid var(--vt-border);
   border-radius: 16px;
   box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.04) inset,
+    0 1px 0 var(--vt-inset-highlight) inset,
     0 10px 30px -12px rgba(0, 0, 0, 0.5),
     0 2px 6px -2px rgba(0, 0, 0, 0.3);
 }
@@ -462,8 +481,8 @@ body.mini-window-body #root {
     to right,
     var(--vt-accent) 0%,
     var(--vt-accent) var(--val, 10%),
-    oklch(1 0 0 / 0.08) var(--val, 10%),
-    oklch(1 0 0 / 0.08) 100%
+    var(--vt-hover-strong) var(--val, 10%),
+    var(--vt-hover-strong) 100%
   );
 }
 .vt-app input[type="range"].vt-range::-webkit-slider-thumb {
@@ -624,8 +643,8 @@ body.mini-window-body #root {
   bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  background: oklch(0.1 0 0);
-  color: var(--vt-fg);
+  background: var(--vt-tooltip-bg);
+  color: var(--vt-tooltip-fg);
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 11px;
@@ -670,7 +689,7 @@ body.mini-window-body #root {
   font-size: 10.5px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: oklch(1 0 0 / 0.05);
+  background: var(--vt-hover);
   border: 1px solid var(--vt-border);
   border-bottom-width: 2px;
   color: var(--vt-fg-2);
@@ -687,7 +706,7 @@ body.mini-window-body #root {
   transition: background 0.12s;
 }
 .vt-app .hist-row:hover {
-  background: oklch(1 0 0 / 0.025);
+  background: var(--vt-hover-soft);
 }
 .vt-app .hist-row[data-selected="true"] {
   background: oklch(from var(--vt-accent) l c h / 0.09);
@@ -767,7 +786,7 @@ body.mini-window-body #root {
   font-family: "JetBrains Mono", monospace;
   padding: 1px 6px;
   border-radius: 999px;
-  background: oklch(1 0 0 / 0.04);
+  background: var(--vt-hover);
   border: 1px solid var(--vt-border);
 }
 
@@ -888,10 +907,10 @@ body.mini-window-body #root {
   transition: background 0.08s;
 }
 .vt-app .log-row:hover {
-  background: oklch(1 0 0 / 0.025);
+  background: var(--vt-hover-soft);
 }
 .vt-app .log-row[data-selected="true"] {
-  background: oklch(1 0 0 / 0.04);
+  background: var(--vt-hover);
 }
 .vt-app .log-row[data-level="error"] {
   border-left-color: oklch(from var(--vt-danger) l c h / 0.5);
@@ -1056,7 +1075,7 @@ body.mini-window-body #root {
   font-size: 10.5px;
   padding: 1px 6px;
   border-radius: 4px;
-  background: oklch(1 0 0 / 0.04);
+  background: var(--vt-hover);
   border: 1px solid var(--vt-border);
   color: var(--vt-fg-3);
 }
@@ -1065,4 +1084,54 @@ body.mini-window-body #root {
   background: oklch(from var(--vt-accent) l c h / 0.15);
   border-color: oklch(from var(--vt-accent) l c h / 0.4);
   color: var(--vt-accent-2);
+}
+
+/* ── Light mode overrides for the vt-app token system ───────────────────
+ * The .vt-app tokens above are defined with dark-mode values (app default).
+ * When the `.dark` class is absent from <html>, override them for light mode.
+ */
+:root:not(.dark) .vt-app {
+  --vt-bg: oklch(0.985 0.003 264);
+  --vt-panel: oklch(0.965 0.005 264);
+  --vt-panel-2: oklch(1 0 0);
+  --vt-surface: oklch(0.965 0.006 264);
+  --vt-surface-hi: oklch(0.935 0.009 264);
+  --vt-border: oklch(0.9 0.008 264);
+  --vt-border-strong: oklch(0.8 0.012 264);
+  --vt-fg: oklch(0.22 0.02 264);
+  --vt-fg-2: oklch(0.38 0.018 264);
+  --vt-fg-3: oklch(0.52 0.015 264);
+  --vt-fg-4: oklch(0.65 0.012 264);
+  --vt-accent: oklch(0.5 0.22 264);
+  --vt-accent-2: oklch(0.4 0.22 264);
+  --vt-accent-soft: oklch(0.5 0.22 264 / 0.12);
+  --vt-warn: oklch(0.58 0.16 75);
+  --vt-warn-soft: oklch(0.58 0.16 75 / 0.12);
+  --vt-ok: oklch(0.52 0.14 150);
+  --vt-ok-soft: oklch(0.52 0.14 150 / 0.12);
+  --vt-danger: oklch(0.55 0.22 25);
+  --vt-info: oklch(0.5 0.18 240);
+  --vt-debug: oklch(0.5 0.02 264);
+  --vt-trace: oklch(0.5 0.2 295);
+  --vt-hover-soft: oklch(0 0 0 / 0.025);
+  --vt-hover: oklch(0 0 0 / 0.045);
+  --vt-hover-strong: oklch(0 0 0 / 0.08);
+  --vt-inset-highlight: oklch(0 0 0 / 0.02);
+  --vt-tooltip-bg: oklch(0.2 0.015 264);
+  --vt-tooltip-fg: oklch(0.97 0 0);
+}
+
+/* Some Historique/Logs components use text colours that are too light for
+ * a white background: darken them for the light palette only. */
+:root:not(.dark) .vt-app .vt-trace {
+  color: oklch(0.5 0.2 295);
+}
+:root:not(.dark) .vt-app .log-row[data-level="error"] .log-msg {
+  color: oklch(0.4 0.18 25);
+}
+:root:not(.dark) .vt-app .log-row[data-level="warn"] .log-msg {
+  color: oklch(0.45 0.14 75);
+}
+:root:not(.dark) .vt-app .lvl-debug {
+  color: var(--vt-fg-2);
 }

@@ -67,34 +67,18 @@ function wordsOf(text: string): number {
   return text.trim() ? text.trim().split(/\s+/).length : 0;
 }
 
-/* ── Waveform (animated bars during playback) ──────────────────────── */
+/* ── Waveform (placeholder bars; progress driven by actual audio) ───── */
 function Waveform({
-  playing,
-  durationSec,
+  progress,
   accent,
 }: {
-  playing: boolean;
-  durationSec: number;
+  progress: number;
   accent: string;
 }) {
   const bars = useMemo(
     () => Array.from({ length: 56 }, () => Math.random() * 0.8 + 0.2),
     [],
   );
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    if (!playing) return;
-    if (durationSec <= 0) return;
-    const id = setInterval(() => setElapsed((x) => (x + 1) % (durationSec + 1)), 1000);
-    return () => clearInterval(id);
-  }, [playing, durationSec]);
-
-  useEffect(() => {
-    if (!playing) setElapsed(0);
-  }, [playing]);
-
-  const progress = durationSec > 0 ? elapsed / durationSec : 0;
 
   return (
     <div className="flex items-end gap-[2px] h-10 overflow-hidden">
@@ -110,6 +94,7 @@ function Waveform({
               background: played
                 ? accent
                 : `oklch(from ${accent} l c h / 0.22)`,
+              transition: "background 120ms linear",
             }}
           />
         );
@@ -132,6 +117,7 @@ export function TranscriptionDetails({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [playbackProgress, setPlaybackProgress] = useState(0);
 
   const stopPlayback = useCallback(() => {
     if (audioRef.current) {
@@ -145,6 +131,7 @@ export function TranscriptionDetails({
     }
     setIsPlaying(false);
     setIsLoading(false);
+    setPlaybackProgress(0);
   }, []);
 
   useEffect(() => {
@@ -191,7 +178,14 @@ export function TranscriptionDetails({
       const audio = new Audio(objectUrl);
       audioRef.current = audio;
 
+      audio.ontimeupdate = () => {
+        const total = audio.duration;
+        if (!Number.isFinite(total) || total <= 0) return;
+        setPlaybackProgress(Math.min(1, audio.currentTime / total));
+      };
+
       audio.onended = () => {
+        setPlaybackProgress(1);
         setIsPlaying(false);
         audioRef.current = null;
         if (objectUrlRef.current) {
@@ -206,6 +200,7 @@ export function TranscriptionDetails({
         stopPlayback();
       };
 
+      setPlaybackProgress(0);
       await audio.play();
       setIsPlaying(true);
     } catch (error: unknown) {
@@ -227,7 +222,7 @@ export function TranscriptionDetails({
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[12px] hover:bg-white/5"
+            className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[12px] vt-hover-bg"
             style={{ color: "var(--vt-fg-3)" }}
             aria-label={t("transcriptionDetails.backToList", {
               defaultValue: "Retour à la liste",
@@ -239,7 +234,7 @@ export function TranscriptionDetails({
         )}
         <div
           className="w-12 h-12 rounded-xl flex items-center justify-center"
-          style={{ background: "oklch(1 0 0 / 0.04)", color: "var(--vt-fg-4)" }}
+          style={{ background: "var(--vt-hover)", color: "var(--vt-fg-4)" }}
         >
           <Mic className="w-5 h-5" />
         </div>
@@ -298,7 +293,7 @@ export function TranscriptionDetails({
             <span
               className="vt-mono text-[10.5px] px-1.5 py-0.5 rounded"
               style={{
-                background: "oklch(1 0 0 / 0.04)",
+                background: "var(--vt-hover)",
                 border: "1px solid var(--vt-border)",
                 color: "var(--vt-fg-3)",
               }}
@@ -350,8 +345,8 @@ export function TranscriptionDetails({
           onClick={onClose}
           className={
             compact
-              ? "inline-flex items-center gap-1.5 px-2 h-7 rounded-md text-[12px] hover:bg-white/5"
-              : "w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5"
+              ? "inline-flex items-center gap-1.5 px-2 h-7 rounded-md text-[12px] vt-hover-bg"
+              : "w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg"
           }
           style={{ color: "var(--vt-fg-3)" }}
           aria-label={
@@ -404,7 +399,7 @@ export function TranscriptionDetails({
             )}
           </button>
           <div className="flex-1 min-w-0">
-            <Waveform playing={isPlaying} durationSec={durationSec} accent="var(--vt-accent)" />
+            <Waveform progress={playbackProgress} accent="var(--vt-accent)" />
           </div>
           <span
             className="vt-mono text-[11px]"

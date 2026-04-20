@@ -156,7 +156,7 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, 
             e.stopPropagation();
             onCopy();
           }}
-          className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5"
+          className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg"
           style={{ color: "var(--vt-fg-3)" }}
           data-tip={t("transcriptionDetails.copy")}
           aria-label={t("transcriptionDetails.copy")}
@@ -172,7 +172,7 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, 
                 onDelete();
               }
             }}
-            className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5 hover:text-red-400"
+            className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg hover:text-red-400"
             style={{ color: "var(--vt-fg-3)" }}
             data-tip={t("history.deleteAll").replace("Tout effacer", "Supprimer")}
             aria-label={t("history.deleteConfirm")}
@@ -441,7 +441,7 @@ export function TranscriptionList({
           <div className="py-20 text-center">
             <div
               className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-              style={{ background: "oklch(1 0 0 / 0.04)", color: "var(--vt-fg-4)" }}
+              style={{ background: "var(--vt-hover)", color: "var(--vt-fg-4)" }}
             >
               <Search className="w-5 h-5" />
             </div>

@@ -502,7 +502,7 @@ export function Kbd({ children }: { children: ReactNode }) {
       style={{
         background: "var(--vt-surface-hi)",
         border: "1px solid var(--vt-border-strong)",
-        boxShadow: "0 1px 0 rgba(0,0,0,.3), inset 0 1px 0 oklch(1 0 0 / 0.05)",
+        boxShadow: "0 1px 0 rgba(0,0,0,.15), inset 0 1px 0 var(--vt-inset-highlight)",
         color: "var(--vt-fg)",
       }}
     >

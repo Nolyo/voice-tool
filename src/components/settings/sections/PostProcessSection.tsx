@@ -107,7 +107,7 @@ export function PostProcessSection() {
 
         {settings.post_process_enabled && (
           <>
-            <div className="vt-row" style={{ background: "oklch(1 0 0 / 0.015)" }}>
+            <div className="vt-row" style={{ background: "var(--vt-hover-soft)" }}>
               <Callout
                 kind="warn"
                 icon={<VtIcon.clock />}
@@ -202,7 +202,7 @@ export function PostProcessSection() {
                     className="flex items-center justify-between px-3 py-1.5 border-b"
                     style={{
                       borderColor: "var(--vt-border)",
-                      background: "oklch(1 0 0 / 0.02)",
+                      background: "var(--vt-hover-soft)",
                     }}
                   >
                     <span

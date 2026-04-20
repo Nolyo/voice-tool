@@ -199,7 +199,7 @@ function LogDetail({
       >
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: "oklch(1 0 0 / 0.04)", color: "var(--vt-fg-4)" }}
+          style={{ background: "var(--vt-hover)", color: "var(--vt-fg-4)" }}
         >
           <Info className="w-4 h-4" />
         </div>
@@ -285,8 +285,8 @@ function LogDetail({
           onClick={onClose}
           className={
             compact
-              ? "inline-flex items-center gap-1.5 px-2 h-7 rounded-md text-[12px] hover:bg-white/5"
-              : "w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5"
+              ? "inline-flex items-center gap-1.5 px-2 h-7 rounded-md text-[12px] vt-hover-bg"
+              : "w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg"
           }
           style={{ color: "var(--vt-fg-3)" }}
           aria-label={
@@ -585,7 +585,7 @@ export function LogsTab({
                   <button
                     type="button"
                     onClick={() => onSourceFilterChange(null)}
-                    className="vt-mono inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md hover:bg-white/5"
+                    className="vt-mono inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md vt-hover-bg"
                     style={{
                       background: "oklch(from var(--vt-accent) l c h / 0.12)",
                       border: "1px solid oklch(from var(--vt-accent) l c h / 0.3)",
@@ -637,7 +637,7 @@ export function LogsTab({
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
                   style={{
-                    background: "oklch(1 0 0 / 0.04)",
+                    background: "var(--vt-hover)",
                     color: "var(--vt-fg-4)",
                   }}
                 >
@@ -661,7 +661,7 @@ export function LogsTab({
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
                   style={{
-                    background: "oklch(1 0 0 / 0.04)",
+                    background: "var(--vt-hover)",
                     color: "var(--vt-fg-4)",
                   }}
                 >
@@ -759,9 +759,9 @@ export function LogsTab({
         <div
           className="fixed bottom-5 left-1/2 -translate-x-1/2 px-3.5 py-2 rounded-lg text-[12.5px] font-medium flex items-center gap-2 vt-fade-up"
           style={{
-            background: "oklch(0.1 0 0)",
+            background: "var(--vt-tooltip-bg)",
             border: "1px solid var(--vt-border)",
-            color: "var(--vt-fg)",
+            color: "var(--vt-tooltip-fg)",
             zIndex: 50,
             boxShadow: "0 10px 40px -10px rgba(0,0,0,.6)",
           }}

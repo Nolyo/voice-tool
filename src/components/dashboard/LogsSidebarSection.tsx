@@ -81,7 +81,7 @@ export function LogsSidebarSection({
               onClick={() => toggle(l.id)}
               className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition hover:bg-foreground/[0.03]"
               style={{
-                background: on ? "oklch(1 0 0 / 0.04)" : "transparent",
+                background: on ? "oklch(from var(--foreground) l c h / 0.06)" : "transparent",
                 opacity: on ? 1 : 0.45,
               }}
               aria-pressed={on}
@@ -138,7 +138,7 @@ export function LogsSidebarSection({
                   }
                   className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition hover:bg-foreground/[0.03]"
                   style={{
-                    background: selected ? "oklch(1 0 0 / 0.04)" : "transparent",
+                    background: selected ? "oklch(from var(--foreground) l c h / 0.06)" : "transparent",
                   }}
                   aria-pressed={selected}
                 >
