@@ -26,12 +26,12 @@ pub(crate) fn hotkeys_conflict(config: &HotkeyConfig) -> Option<String> {
     {
         return Some("Cancel shortcut must be distinct from other shortcuts.".into());
     }
-    if equals(&config.translate_toggle, &config.record)
-        || equals(&config.translate_toggle, &config.ptt)
-        || equals(&config.translate_toggle, &config.open_window)
-        || equals(&config.translate_toggle, &config.cancel)
+    if equals(&config.post_process_toggle, &config.record)
+        || equals(&config.post_process_toggle, &config.ptt)
+        || equals(&config.post_process_toggle, &config.open_window)
+        || equals(&config.post_process_toggle, &config.cancel)
     {
-        return Some("Translate toggle shortcut must be distinct from other shortcuts.".into());
+        return Some("Post-process toggle shortcut must be distinct from other shortcuts.".into());
     }
 
     None
@@ -78,10 +78,10 @@ pub(crate) fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Sto
                 config.cancel = normalize_hotkey_value(Some(value.to_string()));
             }
             if let Some(value) = settings_obj
-                .get("translate_toggle_hotkey")
+                .get("post_process_toggle_hotkey")
                 .and_then(Value::as_str)
             {
-                config.translate_toggle = normalize_hotkey_value(Some(value.to_string()));
+                config.post_process_toggle = normalize_hotkey_value(Some(value.to_string()));
             }
         }
     }
@@ -125,7 +125,7 @@ fn start_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
                 drop(recorder);
                 let _ = app_handle.emit("recording-state", true);
                 register_cancel_shortcut(app_handle);
-                register_translate_toggle_shortcut(app_handle);
+                register_post_process_toggle_shortcut(app_handle);
                 true
             }
             Err(err) => {
@@ -157,7 +157,7 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<Reco
 
     let _ = app_handle.emit("recording-state", false);
     unregister_cancel_shortcut(app_handle);
-    unregister_translate_toggle_shortcut(app_handle);
+    unregister_post_process_toggle_shortcut(app_handle);
 
     match result {
         Some(Ok(recording)) => Some(recording),
@@ -183,7 +183,7 @@ fn cancel_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) {
     let _ = app_handle.emit("recording-state", false);
     let _ = app_handle.emit("recording-cancelled", ());
     unregister_cancel_shortcut(app_handle);
-    unregister_translate_toggle_shortcut(app_handle);
+    unregister_post_process_toggle_shortcut(app_handle);
     hide_mini_window(app_handle);
     tracing::info!("Recording cancelled by user (no transcription)");
 }
@@ -274,14 +274,14 @@ pub(crate) fn unregister_cancel_shortcut<R: Runtime>(app_handle: &AppHandle<R>) 
     });
 }
 
-// --- Translate toggle shortcut dynamic registration ---
-// Only active while a recording is in progress. Flips `translate_mode` in the
-// store and broadcasts `translate-mode-changed` so both windows stay in sync.
+// --- Post-process toggle shortcut dynamic registration ---
+// Only active while a recording is in progress. Flips `post_process_enabled`
+// in the store and broadcasts `post-process-enabled-changed` so both windows
+// stay in sync.
 
-fn toggle_translate_mode<R: Runtime>(app_handle: &AppHandle<R>) {
+fn toggle_post_process_enabled<R: Runtime>(app_handle: &AppHandle<R>) {
     use tauri_plugin_store::StoreBuilder;
 
-    // Inline the store path computation to stay generic over the runtime.
     let profile_id = {
         let state: State<AppState> = app_handle.state();
         state
@@ -295,7 +295,10 @@ fn toggle_translate_mode<R: Runtime>(app_handle: &AppHandle<R>) {
     let store = match StoreBuilder::new(app_handle, store_path).build() {
         Ok(s) => s,
         Err(err) => {
-            tracing::warn!("Failed to open settings store for translate toggle: {}", err);
+            tracing::warn!(
+                "Failed to open settings store for post-process toggle: {}",
+                err
+            );
             return;
         }
     };
@@ -303,7 +306,7 @@ fn toggle_translate_mode<R: Runtime>(app_handle: &AppHandle<R>) {
     let mut data = store.get("settings").unwrap_or_else(|| serde_json::json!({}));
     let current = data
         .get("settings")
-        .and_then(|s| s.get("translate_mode"))
+        .and_then(|s| s.get("post_process_enabled"))
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
     let next = !current;
@@ -313,26 +316,26 @@ fn toggle_translate_mode<R: Runtime>(app_handle: &AppHandle<R>) {
             .entry("settings")
             .or_insert_with(|| serde_json::json!({}));
         if let Some(settings_obj) = settings_value.as_object_mut() {
-            settings_obj.insert("translate_mode".into(), serde_json::json!(next));
+            settings_obj.insert("post_process_enabled".into(), serde_json::json!(next));
         }
     }
     store.set("settings", data);
     if let Err(err) = store.save() {
-        tracing::warn!("Failed to persist translate_mode: {}", err);
+        tracing::warn!("Failed to persist post_process_enabled: {}", err);
         return;
     }
 
-    let _ = app_handle.emit("translate-mode-changed", next);
-    tracing::info!("Translate mode toggled via hotkey: {}", next);
+    let _ = app_handle.emit("post-process-enabled-changed", next);
+    tracing::info!("Post-process enabled toggled via hotkey: {}", next);
 }
 
-pub(crate) fn register_translate_toggle_shortcut<R: Runtime>(app_handle: &AppHandle<R>) {
+pub(crate) fn register_post_process_toggle_shortcut<R: Runtime>(app_handle: &AppHandle<R>) {
     let handle = app_handle.clone();
     std::thread::spawn(move || {
         let state: State<AppState> = handle.state();
         let hotkey_str = {
             let guard = state.inner().hotkeys.lock().unwrap();
-            guard.translate_toggle.clone()
+            guard.post_process_toggle.clone()
         };
 
         let Some(hotkey_str) = hotkey_str else {
@@ -342,7 +345,7 @@ pub(crate) fn register_translate_toggle_shortcut<R: Runtime>(app_handle: &AppHan
         let shortcut = match parse_hotkey_str(&hotkey_str) {
             Ok(s) => s,
             Err(err) => {
-                tracing::warn!("Failed to parse translate toggle shortcut: {}", err);
+                tracing::warn!("Failed to parse post-process toggle shortcut: {}", err);
                 return;
             }
         };
@@ -355,23 +358,23 @@ pub(crate) fn register_translate_toggle_shortcut<R: Runtime>(app_handle: &AppHan
 
         let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
             if event.state == ShortcutState::Pressed && is_recorder_active(app) {
-                toggle_translate_mode(app);
+                toggle_post_process_enabled(app);
             }
         };
 
         if let Err(err) = manager.on_shortcut(shortcut, handler) {
-            tracing::warn!("Failed to register translate toggle shortcut: {}", err);
+            tracing::warn!("Failed to register post-process toggle shortcut: {}", err);
         }
     });
 }
 
-pub(crate) fn unregister_translate_toggle_shortcut<R: Runtime>(app_handle: &AppHandle<R>) {
+pub(crate) fn unregister_post_process_toggle_shortcut<R: Runtime>(app_handle: &AppHandle<R>) {
     let handle = app_handle.clone();
     std::thread::spawn(move || {
         let state: State<AppState> = handle.state();
         let hotkey_str = {
             let guard = state.inner().hotkeys.lock().unwrap();
-            guard.translate_toggle.clone()
+            guard.post_process_toggle.clone()
         };
 
         let Some(hotkey_str) = hotkey_str else {
@@ -382,7 +385,7 @@ pub(crate) fn unregister_translate_toggle_shortcut<R: Runtime>(app_handle: &AppH
             Ok(s) => s,
             Err(err) => {
                 tracing::warn!(
-                    "Failed to parse translate toggle shortcut for unregister: {}",
+                    "Failed to parse post-process toggle shortcut for unregister: {}",
                     err
                 );
                 return;
@@ -396,7 +399,7 @@ pub(crate) fn unregister_translate_toggle_shortcut<R: Runtime>(app_handle: &AppH
         }
 
         if let Err(err) = manager.unregister(shortcut) {
-            tracing::warn!("Failed to unregister translate toggle shortcut: {}", err);
+            tracing::warn!("Failed to unregister post-process toggle shortcut: {}", err);
         }
     });
 }

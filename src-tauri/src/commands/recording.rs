@@ -2,8 +2,8 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::audio::{AudioDeviceInfo, AudioRecorder, RecordingResult};
 use crate::hotkeys::{
-    register_cancel_shortcut, register_translate_toggle_shortcut,
-    unregister_cancel_shortcut, unregister_translate_toggle_shortcut,
+    register_cancel_shortcut, register_post_process_toggle_shortcut,
+    unregister_cancel_shortcut, unregister_post_process_toggle_shortcut,
 };
 use crate::state::AppState;
 
@@ -36,7 +36,7 @@ pub fn start_recording(
 
     if result.is_ok() {
         register_cancel_shortcut(&app_handle);
-        register_translate_toggle_shortcut(&app_handle);
+        register_post_process_toggle_shortcut(&app_handle);
     }
 
     result
@@ -79,7 +79,7 @@ pub fn stop_recording(
 
     let _ = app_handle.emit("recording-state", false);
     unregister_cancel_shortcut(&app_handle);
-    unregister_translate_toggle_shortcut(&app_handle);
+    unregister_post_process_toggle_shortcut(&app_handle);
 
     result
 }

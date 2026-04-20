@@ -57,10 +57,27 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           // Migrate old paste_at_cursor boolean to new insertion_mode enum
           const raw = savedSettings as unknown as Record<string, unknown>;
           const rawSettings = (raw.settings ?? {}) as Record<string, unknown>;
+          let migrated = false;
           if ("paste_at_cursor" in rawSettings && !("insertion_mode" in rawSettings)) {
             merged.settings.insertion_mode = rawSettings.paste_at_cursor ? "cursor" : "none";
             delete (merged.settings as Record<string, unknown>).paste_at_cursor;
-            // Persist migrated settings back to store
+            migrated = true;
+          }
+          // Migrate translate_toggle_hotkey → post_process_toggle_hotkey (the slot
+          // was repurposed to control post-processing instead of translation).
+          if ("translate_toggle_hotkey" in rawSettings) {
+            const oldValue = rawSettings.translate_toggle_hotkey;
+            if (
+              typeof oldValue === "string" &&
+              oldValue.trim() &&
+              !merged.settings.post_process_toggle_hotkey
+            ) {
+              merged.settings.post_process_toggle_hotkey = oldValue;
+            }
+            delete (merged.settings as Record<string, unknown>).translate_toggle_hotkey;
+            migrated = true;
+          }
+          if (migrated) {
             await storeInstance.set("settings", merged);
             await storeInstance.save();
           }

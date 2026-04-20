@@ -56,13 +56,13 @@ export function ShortcutsSection() {
           onChange={(shortcut) => handleHotkeyChange("cancel_hotkey", shortcut)}
         />
         <HotkeyInput
-          id="shortcut-translate-toggle"
-          label={t('settings.shortcuts.translateToggle')}
-          value={settings.translate_toggle_hotkey}
-          defaultValue={DEFAULT_SETTINGS.settings.translate_toggle_hotkey}
-          description={t('settings.shortcuts.translateToggleDesc')}
+          id="shortcut-post-process-toggle"
+          label={t('settings.shortcuts.postProcessToggle')}
+          value={settings.post_process_toggle_hotkey}
+          defaultValue={DEFAULT_SETTINGS.settings.post_process_toggle_hotkey}
+          description={t('settings.shortcuts.postProcessToggleDesc')}
           onChange={(shortcut) =>
-            handleHotkeyChange("translate_toggle_hotkey", shortcut)
+            handleHotkeyChange("post_process_toggle_hotkey", shortcut)
           }
         />
       </div>

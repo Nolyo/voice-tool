@@ -54,7 +54,7 @@ pub fn update_hotkeys(
     ptt_hotkey: Option<String>,
     open_window_hotkey: Option<String>,
     cancel_hotkey: Option<String>,
-    translate_toggle_hotkey: Option<String>,
+    post_process_toggle_hotkey: Option<String>,
 ) -> Result<(), String> {
     let current = state
         .inner()
@@ -76,8 +76,8 @@ pub fn update_hotkeys(
     if let Some(value) = cancel_hotkey {
         next.cancel = normalize_hotkey_value(Some(value));
     }
-    if let Some(value) = translate_toggle_hotkey {
-        next.translate_toggle = normalize_hotkey_value(Some(value));
+    if let Some(value) = post_process_toggle_hotkey {
+        next.post_process_toggle = normalize_hotkey_value(Some(value));
     }
 
     if let Err(err) = apply_hotkeys(&app_handle, &next) {

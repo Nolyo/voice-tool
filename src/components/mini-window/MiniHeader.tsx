@@ -65,24 +65,6 @@ export function MiniHeader({
       )}
       <button
         data-tauri-drag-region="false"
-        onClick={onToggleTranslateMode}
-        aria-pressed={translateMode}
-        aria-label={
-          translateMode ? t("mini.translateModeOn") : t("mini.translateModeOff")
-        }
-        className={`inline-flex items-center justify-center p-1.5 rounded flex-shrink-0 transition-colors ${
-          translateMode
-            ? "bg-blue-500/30 text-blue-300 border border-blue-500/50 hover:bg-blue-500/40"
-            : "bg-slate-700/30 text-slate-400 border border-slate-600/40 hover:bg-slate-700/50 hover:text-slate-200"
-        }`}
-        title={
-          translateMode ? t("mini.translateModeOn") : t("mini.translateModeOff")
-        }
-      >
-        <Languages className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
-      <button
-        data-tauri-drag-region="false"
         onClick={onTogglePostProcess}
         aria-pressed={postProcessEnabled}
         aria-label={
@@ -102,6 +84,24 @@ export function MiniHeader({
         }
       >
         <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+      <button
+        data-tauri-drag-region="false"
+        onClick={onToggleTranslateMode}
+        aria-pressed={translateMode}
+        aria-label={
+          translateMode ? t("mini.translateModeOn") : t("mini.translateModeOff")
+        }
+        className={`inline-flex items-center justify-center p-1.5 rounded flex-shrink-0 transition-colors ${
+          translateMode
+            ? "bg-blue-500/30 text-blue-300 border border-blue-500/50 hover:bg-blue-500/40"
+            : "bg-slate-700/30 text-slate-400 border border-slate-600/40 hover:bg-slate-700/50 hover:text-slate-200"
+        }`}
+        title={
+          translateMode ? t("mini.translateModeOn") : t("mini.translateModeOff")
+        }
+      >
+        <Languages className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </>
   );

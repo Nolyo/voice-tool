@@ -42,8 +42,8 @@ export interface AppSettings {
     record_hotkey: string;
     open_window_hotkey: string;
     cancel_hotkey: string;
-    /** Only active while recording. Empty = disabled. Toggles translate_mode. */
-    translate_toggle_hotkey: string;
+    /** Only active while recording. Empty = disabled. Toggles post_process_enabled. */
+    post_process_toggle_hotkey: string;
     ptt_hotkey: string;
     record_mode: "toggle" | "ptt";
 
@@ -129,7 +129,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     record_hotkey: "Ctrl+F11",
     open_window_hotkey: "Ctrl+Alt+O",
     cancel_hotkey: "Escape",
-    translate_toggle_hotkey: "",
+    post_process_toggle_hotkey: "",
     ptt_hotkey: "Ctrl+F12",
     record_mode: "toggle",
 

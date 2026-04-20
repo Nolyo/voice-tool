@@ -303,8 +303,8 @@
       "showWindowDesc": "Ouvre et met au premier plan la fenêtre principale",
       "cancel": "Annuler l'enregistrement",
       "cancelDesc": "Stoppe l'enregistrement sans transcrire",
-      "translateToggle": "Toggle mode traduction",
-      "translateToggleDesc": "Actif uniquement pendant l'enregistrement. Bascule FR/EN."
+      "postProcessToggle": "Toggle post-traitement",
+      "postProcessToggleDesc": "Actif uniquement pendant l'enregistrement. Active/désactive le post-traitement IA."
     },
     "updater": {
       "title": "Mises à jour",
