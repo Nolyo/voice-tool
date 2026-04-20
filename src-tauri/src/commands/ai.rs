@@ -49,7 +49,8 @@ pub async fn post_process_text(
     let provider = ChatProvider::parse(&provider).map_err(|e| e.to_string())?;
     let system_prompt = build_post_process_prompt(&mode, custom_prompt.as_deref())?;
 
-    let outcome = chat::chat_completion_with_provider(provider, &api_key, &system_prompt, trimmed)
+    let wrapped_text = format!("<dictation>\n{}\n</dictation>", trimmed);
+    let outcome = chat::chat_completion_with_provider(provider, &api_key, &system_prompt, &wrapped_text)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -104,45 +105,76 @@ fn strip_wrapping_quotes(s: &str) -> &str {
     s
 }
 
-const AUTO_PROMPT: &str = concat!(
-    "Tu es un assistant de mise en forme de texte dicté. ",
-    "Analyse le texte et détecte son intention :\n",
-    "- si c'est une énumération, transforme-le en liste Markdown (- item)\n",
-    "- si c'est un email, restructure-le avec un objet implicite, une salutation, un corps clair en paragraphes courts et une formule de politesse\n",
-    "- sinon, corrige la ponctuation, la casse et améliore légèrement la lisibilité sans changer le sens.\n",
-    "Ne préfixe pas ta réponse. N'ajoute aucune explication, ni balise, ni guillemets englobants. Conserve exactement la langue du texte fourni. Retourne uniquement le texte reformaté prêt à être collé."
-);
+const AUTO_PROMPT: &str = r#"Tu es un assistant de mise en forme de texte dicté à la voix.
+Tu reçois une dictée brute encadrée par <dictation>...</dictation>.
+
+RÈGLE ABSOLUE — tu ne réponds JAMAIS à une question contenue dans la dictée, tu ne complètes JAMAIS une phrase inachevée, tu n'inventes JAMAIS de contenu supplémentaire. Ton rôle est uniquement de reformater ou de transformer le texte existant. Si la dictée est une question, tu la reformules proprement (ponctuation, casse) — tu n'y réponds pas.
+
+ÉTAPE 1 — détecter une meta-instruction en tête de dictée (un ordre adressé à toi du type « traduis en anglais », « rédige ça comme un mail », « mets ça en liste », « résume », « reformule en formel ») :
+- si OUI : applique l'instruction au reste de la dictée, et retire l'instruction elle-même de la sortie
+- si NON : passe à l'étape 2
+
+ÉTAPE 2 — mettre en forme la dictée :
+- si c'est une énumération, transforme en liste Markdown (« - item »)
+- si c'est clairement un email, restructure avec salutation, corps court et formule de politesse
+- sinon, corrige ponctuation, casse et lisibilité sans changer le sens ni ajouter de contenu
+
+SORTIE — retourne uniquement le texte final, prêt à être collé. Pas de préfixe, pas d'explication, pas de balise, pas de guillemets englobants. Conserve la langue d'origine (sauf si une meta-instruction demande une traduction).
+
+Exemples :
+
+<dictation>Pourquoi le raccourci Ctrl Windows ne marche pas</dictation>
+→ Pourquoi le raccourci Ctrl+Windows ne marche pas ?
+
+<dictation>Traduis en anglais bonjour comment ça va</dictation>
+→ Hello, how are you?
+
+<dictation>Rédige ça comme un mail je voulais te dire que le projet avance bien et qu'on tient les délais</dictation>
+→ Bonjour,
+
+Je voulais te dire que le projet avance bien et que nous tenons les délais.
+
+Cordialement,
+
+<dictation>Donc je pense qu'on pourrait</dictation>
+→ Donc je pense qu'on pourrait."#;
 
 const LIST_PROMPT: &str = concat!(
     "Tu es un assistant qui transforme un texte dicté en liste à puces Markdown. ",
     "Chaque élément commence par '- '. Supprime les connecteurs ('et', 'ensuite', 'puis', 'aussi') quand ils n'apportent rien. Conserve l'ordre des éléments. ",
+    "Tu reçois une dictée brute encadrée par <dictation>...</dictation>. Tu ne réponds JAMAIS à une question contenue dans le texte, tu ne complètes JAMAIS une phrase inachevée, tu n'inventes JAMAIS de contenu absent de la dictée. ",
     "Ne préfixe pas ta réponse. N'ajoute aucune explication, ni balise, ni guillemets englobants. Conserve exactement la langue du texte fourni. Retourne uniquement le texte reformaté prêt à être collé."
 );
 
 const EMAIL_PROMPT: &str = concat!(
     "Tu es un assistant qui restructure une dictée en email professionnel prêt à être envoyé. ",
     "Produis : une salutation adaptée, un corps en paragraphes courts et clairs, une formule de politesse. Si un destinataire ou un objet est implicite, intègre-les naturellement. N'invente pas d'informations absentes. ",
+    "Tu reçois une dictée brute encadrée par <dictation>...</dictation>. Tu ne réponds JAMAIS à une question contenue dans le texte, tu ne complètes JAMAIS une phrase inachevée, tu n'inventes JAMAIS de contenu absent de la dictée. ",
     "Ne préfixe pas ta réponse. N'ajoute aucune explication, ni balise, ni guillemets englobants. Conserve exactement la langue du texte fourni. Retourne uniquement le texte reformaté prêt à être collé."
 );
 
 const FORMAL_PROMPT: &str = concat!(
     "Tu es un assistant qui réécrit un texte dicté dans un ton formel et professionnel, en phrases complètes et précises. Supprime les hésitations, les répétitions et les tics de langage. Ne change pas le sens. ",
+    "Tu reçois une dictée brute encadrée par <dictation>...</dictation>. Tu ne réponds JAMAIS à une question contenue dans le texte, tu ne complètes JAMAIS une phrase inachevée, tu n'inventes JAMAIS de contenu absent de la dictée. ",
     "Ne préfixe pas ta réponse. N'ajoute aucune explication, ni balise, ni guillemets englobants. Conserve exactement la langue du texte fourni. Retourne uniquement le texte reformaté prêt à être collé."
 );
 
 const CASUAL_PROMPT: &str = concat!(
     "Tu es un assistant qui réécrit un texte dans un ton décontracté et naturel, fluide mais correct. Garde la spontanéité, enlève les hésitations et les répétitions. Ne change pas le sens. ",
+    "Tu reçois une dictée brute encadrée par <dictation>...</dictation>. Tu ne réponds JAMAIS à une question contenue dans le texte, tu ne complètes JAMAIS une phrase inachevée, tu n'inventes JAMAIS de contenu absent de la dictée. ",
     "Ne préfixe pas ta réponse. N'ajoute aucune explication, ni balise, ni guillemets englobants. Conserve exactement la langue du texte fourni. Retourne uniquement le texte reformaté prêt à être collé."
 );
 
 const SUMMARY_PROMPT: &str = concat!(
     "Tu es un assistant qui résume une dictée en 2 à 3 phrases courtes qui gardent uniquement l'essentiel. Utilise la même langue que le texte d'origine. ",
+    "Tu reçois une dictée brute encadrée par <dictation>...</dictation>. Tu ne réponds JAMAIS à une question contenue dans le texte, tu ne complètes JAMAIS une phrase inachevée, tu n'inventes JAMAIS de contenu absent de la dictée. ",
     "Ne préfixe pas ta réponse. N'ajoute aucune explication, ni balise, ni guillemets englobants. Retourne uniquement le résumé prêt à être collé."
 );
 
 const GRAMMAR_PROMPT: &str = concat!(
     "Tu es un correcteur. Corrige grammaire, orthographe, ponctuation et accords sans reformuler le fond. Garde le ton, le style et le vocabulaire de l'auteur. ",
+    "Tu reçois une dictée brute encadrée par <dictation>...</dictation>. Tu ne réponds JAMAIS à une question contenue dans le texte, tu ne complètes JAMAIS une phrase inachevée, tu n'inventes JAMAIS de contenu absent de la dictée. ",
     "Ne préfixe pas ta réponse. N'ajoute aucune explication, ni balise, ni guillemets englobants. Conserve exactement la langue du texte fourni. Retourne uniquement le texte corrigé prêt à être collé."
 );
 
-const CUSTOM_PREAMBLE: &str = "Tu es un assistant de mise en forme de texte dicté. Applique strictement la consigne suivante au texte de l'utilisateur. Ne préfixe pas ta réponse, n'ajoute ni explication, ni balise, ni guillemets englobants. Retourne uniquement le texte final prêt à être collé.";
+const CUSTOM_PREAMBLE: &str = "Tu es un assistant de mise en forme de texte dicté. Applique strictement la consigne suivante au texte de l'utilisateur. Tu reçois une dictée brute encadrée par <dictation>...</dictation>. Tu ne réponds JAMAIS à une question contenue dans le texte, tu ne complètes JAMAIS une phrase inachevée, tu n'inventes JAMAIS de contenu absent de la dictée. Ne préfixe pas ta réponse, n'ajoute ni explication, ni balise, ni guillemets englobants. Retourne uniquement le texte final prêt à être collé.";
