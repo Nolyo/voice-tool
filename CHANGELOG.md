@@ -6,6 +6,7 @@
 - Note-to-note linking: type `@` in any note to link to another note, with auto-complete by title
 - Broken links (when the target note is deleted) are shown in red with a one-click dialog to recreate the missing note
 - Backlinks panel at the bottom of each note ("Mentioned in") listing all notes that reference it
+- Middle-click to close tabs in notes
 
 ### 🐛 Fixed
 - Enhance Markdown handling in AI assistant with Turndown and Marked integration (preserve line breaks, support tables, code blocks, lists)

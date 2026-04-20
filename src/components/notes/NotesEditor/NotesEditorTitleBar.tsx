@@ -109,6 +109,12 @@ export function NotesEditorTitleBar({
                 : "text-foreground/60 hover:text-foreground hover:bg-background/50"
             }`}
             onClick={() => onActivateNote(note.id)}
+            onMouseDown={(e) => {
+              if (e.button === 1) {
+                e.preventDefault();
+                onTabClose(note.id);
+              }
+            }}
           >
             <span className="truncate">
               {note.id === activeNoteId && editorText
