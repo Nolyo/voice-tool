@@ -46,7 +46,8 @@ export function useTranscriptionHistory() {
     apiCost?: number,
     originalText?: string,
     postProcessMode?: string,
-    postProcessCost?: number
+    postProcessCost?: number,
+    duration?: number,
   ): Promise<Transcription> => {
     const now = new Date();
     const newTranscription: Transcription = {
@@ -59,6 +60,7 @@ export function useTranscriptionHistory() {
       }),
       text,
       provider,
+      duration,
       audioPath,
       apiCost,
       originalText,

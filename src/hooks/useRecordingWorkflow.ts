@@ -19,6 +19,7 @@ type AddTranscription = (
   originalText?: string,
   postProcessMode?: string,
   postProcessCost?: number,
+  duration?: number,
 ) => Promise<Transcription>;
 
 interface PostProcessBackendResult {
@@ -170,6 +171,7 @@ export function useRecordingWorkflow({
       originalText?: string,
       postProcessMode?: string,
       postProcessCost?: number,
+      duration?: number,
     ) => {
       const trimmed = text?.trim();
       if (!trimmed) {
@@ -192,6 +194,7 @@ export function useRecordingWorkflow({
         originalText,
         postProcessMode,
         postProcessCost,
+        duration,
       );
       onTranscriptionAdded(newEntry);
       playSuccess();
@@ -294,6 +297,7 @@ export function useRecordingWorkflow({
           processed.originalText,
           processed.mode,
           processed.cost,
+          durationSeconds,
         );
 
         await emit("transcription-success", { text: finalText });

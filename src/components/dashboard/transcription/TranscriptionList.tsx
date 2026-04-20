@@ -195,7 +195,9 @@ function StatsRow({ transcriptions }: { transcriptions: Transcription[] }) {
 
     let weekCount = 0;
     let totalDuration = 0;
-    let totalWords = 0;
+    let measuredDuration = 0;
+    let measuredWords = 0;
+    let measuredCount = 0;
     const dailyBuckets = new Array(14).fill(0);
 
     for (const t of transcriptions) {
@@ -207,16 +209,21 @@ function StatsRow({ transcriptions }: { transcriptions: Transcription[] }) {
       if (diff >= 0 && diff < 7) weekCount++;
       if (diff >= 0 && diff < 14) dailyBuckets[13 - diff]++;
 
-      totalDuration += t.duration ?? 0;
-      totalWords += wordsOf(t.text);
+      const dur = t.duration ?? 0;
+      totalDuration += dur;
+      if (dur > 0) {
+        measuredDuration += dur;
+        measuredWords += wordsOf(t.text);
+        measuredCount++;
+      }
     }
 
     const avgDur =
-      transcriptions.length > 0
-        ? Math.round(totalDuration / transcriptions.length)
-        : 0;
+      measuredCount > 0 ? Math.round(measuredDuration / measuredCount) : 0;
     const wpm =
-      totalDuration > 0 ? Math.round(totalWords / (totalDuration / 60)) : 0;
+      measuredDuration > 0
+        ? Math.round(measuredWords / (measuredDuration / 60))
+        : 0;
 
     return { weekCount, totalDuration, avgDur, wpm, dailyBuckets };
   }, [transcriptions]);
