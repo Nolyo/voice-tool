@@ -84,6 +84,7 @@ pub fn run() {
             notes::update_note,
             notes::delete_note,
             notes::search_notes,
+            notes::get_backlinks,
             notes::toggle_note_favorite,
             notes::move_note_to_folder,
             folders::list_folders,

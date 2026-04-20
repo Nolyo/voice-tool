@@ -438,6 +438,17 @@
       "highlightColor": "Couleur de fond",
       "editLink": "Modifier le lien",
       "addLink": "Ajouter un lien"
+    },
+    "link": {
+      "searchResults": "Résultats pour \"{{query}}\"",
+      "recentNotes": "Notes récentes",
+      "noMatch": "Aucune note ne correspond",
+      "brokenTooltip": "Note supprimée — cliquer pour la recréer",
+      "brokenDialogTitle": "Note supprimée",
+      "brokenDialogDesc": "La note « {{title}} » n'existe plus. Créer une nouvelle note avec ce titre ?",
+      "brokenDialogConfirm": "Créer la note",
+      "mentionedIn_one": "Mentionnée dans ({{count}})",
+      "mentionedIn_other": "Mentionnée dans ({{count}})"
     }
   },
   "mini": {

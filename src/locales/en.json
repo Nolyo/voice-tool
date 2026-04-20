@@ -438,6 +438,17 @@
       "highlightColor": "Highlight color",
       "editLink": "Edit link",
       "addLink": "Add link"
+    },
+    "link": {
+      "searchResults": "Results for \"{{query}}\"",
+      "recentNotes": "Recent notes",
+      "noMatch": "No matching note",
+      "brokenTooltip": "Note deleted — click to recreate it",
+      "brokenDialogTitle": "Note deleted",
+      "brokenDialogDesc": "The note \"{{title}}\" no longer exists. Create a new note with this title?",
+      "brokenDialogConfirm": "Create note",
+      "mentionedIn_one": "Mentioned in ({{count}})",
+      "mentionedIn_other": "Mentioned in ({{count}})"
     }
   },
   "mini": {

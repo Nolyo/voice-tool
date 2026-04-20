@@ -345,6 +345,48 @@ pub fn orphan_notes_in_folder(app_handle: &AppHandle, folder_id: &str) -> Result
     Ok(())
 }
 
+/// Return all notes whose HTML content references `note_id` via a note-link node.
+/// The pattern looked up is literal: `data-note-id="{note_id}"`.
+#[tauri::command]
+pub async fn get_backlinks(
+    app_handle: AppHandle,
+    note_id: String,
+) -> Result<Vec<NoteMeta>, String> {
+    let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
+    let needle = format!("data-note-id=\"{}\"", note_id);
+
+    let mut results: Vec<NoteMeta> = Vec::new();
+
+    let entries = fs::read_dir(&notes_dir).map_err(|e| e.to_string())?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        // Skip the note itself — self-references don't count as backlinks.
+        if path.file_name().and_then(|n| n.to_str()) == Some(note_id.as_str()) {
+            continue;
+        }
+
+        let content_path = path.join("content.html");
+        let html = match fs::read_to_string(&content_path) {
+            Ok(h) => h,
+            Err(_) => continue,
+        };
+
+        if html.contains(&needle) {
+            if let Ok(meta) = read_note_meta(&path) {
+                results.push(meta);
+            }
+        }
+    }
+
+    results.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+
+    Ok(results)
+}
+
 #[tauri::command]
 pub async fn search_notes(
     app_handle: AppHandle,

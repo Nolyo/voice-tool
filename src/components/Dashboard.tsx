@@ -109,6 +109,43 @@ export default function Dashboard() {
     [handleCreateNote],
   );
 
+  // Recreate a note from a broken note-link: create + seed with the linked
+  // title. Does NOT open a tab — the editor flushes the source note first
+  // then calls `handleOpenNote` via the `onOpenNoteInTab` prop.
+  const handleRecreateLinkedNote = useCallback(
+    async (title: string): Promise<string> => {
+      const meta = await createNote(null);
+      const safeTitle = title
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      await updateNote(meta.id, `<h1>${safeTitle}</h1><p></p>`, title || meta.title);
+      return meta.id;
+    },
+    [createNote, updateNote],
+  );
+
+  const handleOpenNoteInTabById = useCallback(
+    (id: string) => {
+      const note = notes.find((n) => n.id === id);
+      if (note) {
+        handleOpenNote(note);
+      } else {
+        // Fallback for freshly-created notes that haven't propagated to the
+        // `notes` array yet — synthesize a minimal meta so the tab opens
+        // immediately; the list will refresh on the next tick.
+        handleOpenNote({
+          id,
+          title: "",
+          createdAt: "",
+          updatedAt: "",
+          favorite: false,
+        });
+      }
+    },
+    [notes, handleOpenNote],
+  );
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
   };
@@ -202,14 +239,17 @@ export default function Dashboard() {
         <main className="flex-1 overflow-hidden">
           {activeTab === "notes" && openNoteIds.length > 0 ? (
             <NotesEditor
+              notes={notes}
               openNotes={notes.filter((n) => openNoteIds.includes(n.id))}
               activeNoteId={activeNoteId}
               folders={folders}
               onActivateNote={setActiveNoteId}
+              onOpenNoteInTab={handleOpenNoteInTabById}
               onCloseNote={handleCloseNoteTab}
               onDeleteNote={handleDeleteNote}
               onUpdateNote={updateNote}
               onCreateNote={() => handleCreateNoteFromSidebar(null)}
+              onRecreateLinkedNote={handleRecreateLinkedNote}
               onCopyContent={handleCopy}
               onMoveNote={moveNoteToFolder}
               onCreateFolder={createFolder}

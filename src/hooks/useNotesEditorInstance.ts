@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -9,12 +9,23 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import { Highlight } from "@tiptap/extension-highlight";
 import { type NoteData, type NoteMeta, deriveTitle } from "@/hooks/useNotes";
+import { NoteLink } from "@/components/notes/NotesEditor/NoteLinkExtension";
+import { buildNoteLinkSuggestion } from "@/components/notes/NotesEditor/NoteLinkSuggestion";
 
 interface UseNotesEditorInstanceOptions {
   openNotes: NoteMeta[];
   activeNoteId: string | null;
   readNote: (id: string) => Promise<NoteData>;
   onUpdateNote: (id: string, content: string, title: string) => void;
+  /**
+   * Returns the *current* notes list + active note id for the @-suggestion
+   * popup. Must stay identity-stable across renders; internally we read from
+   * a ref so it's always fresh without rebuilding the editor.
+   */
+  getNoteLinkRefs: () => { notes: NoteMeta[]; activeNoteId: string | null };
+  /** Bumped every time the active note's content is saved — used by the
+   *  parent to refresh the backlinks panel when the user adds/removes links. */
+  onContentSaved?: () => void;
 }
 
 /**
@@ -32,6 +43,8 @@ export function useNotesEditorInstance({
   activeNoteId,
   readNote,
   onUpdateNote,
+  getNoteLinkRefs,
+  onContentSaved,
 }: UseNotesEditorInstanceOptions) {
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -73,6 +86,10 @@ export function useNotesEditorInstance({
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
+      NoteLink.configure({
+        HTMLAttributes: {},
+        suggestion: buildNoteLinkSuggestion(getNoteLinkRefs),
+      }),
     ],
     editorProps: {
       attributes: {
@@ -134,6 +151,7 @@ export function useNotesEditorInstance({
           const html = editor.getHTML();
           const title = deriveTitle(html);
           onUpdateNote(noteId, html, title);
+          onContentSaved?.();
         }
       }, 500);
     },
@@ -169,12 +187,16 @@ export function useNotesEditorInstance({
     setIsLoadingContent(true);
     readNote(activeNoteId)
       .then((data) => {
-        editor.commands.setContent(data.content);
+        // `emitUpdate: false` is critical: TipTap v3 defaults to emitting an
+        // update event on setContent, which would schedule a debounced save
+        // right after loading — re-writing the just-read content to disk and
+        // potentially clobbering attributes that weren't round-tripped cleanly.
+        editor.commands.setContent(data.content, { emitUpdate: false });
         loadedNoteIdRef.current = activeNoteId;
       })
       .catch((err) => {
         console.error("Failed to load note:", err);
-        editor.commands.setContent("");
+        editor.commands.setContent("", { emitUpdate: false });
       })
       .finally(() => setIsLoadingContent(false));
   }, [activeNoteId, editor, readNote]);
@@ -194,5 +216,22 @@ export function useNotesEditorInstance({
     };
   }, []);
 
-  return { editor, isLoadingContent };
+  // Synchronously cancel any pending debounced save and write the current
+  // editor HTML to disk under the active note id. Needed before swapping the
+  // active note (e.g. recreate-from-broken-link flow) so the pending write
+  // isn't replaced by the new note's content when the timer fires.
+  const flushSave = useCallback(() => {
+    if (!saveTimerRef.current) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = undefined;
+    const noteId = activeNoteIdRef.current;
+    if (noteId && editor) {
+      const html = editor.getHTML();
+      const title = deriveTitle(html);
+      onUpdateNote(noteId, html, title);
+      onContentSaved?.();
+    }
+  }, [editor, onUpdateNote, onContentSaved]);
+
+  return { editor, isLoadingContent, flushSave };
 }

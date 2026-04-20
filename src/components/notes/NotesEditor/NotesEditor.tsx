@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { type NoteData, type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
@@ -9,16 +9,24 @@ import { ConfirmDeleteDialog } from "../ConfirmDeleteDialog";
 import { NotesEditorTitleBar } from "./NotesEditorTitleBar";
 import { NotesEditorContent } from "./NotesEditorContent";
 import { NotesEditorFooter } from "./NotesEditorFooter";
+import { NoteLinkProvider } from "./NoteLinkContext";
+import { BrokenNoteLinkDialog } from "./BrokenNoteLinkDialog";
+import { Backlinks } from "./Backlinks";
 
 interface NotesEditorProps {
+  notes: NoteMeta[];
   openNotes: NoteMeta[];
   activeNoteId: string | null;
   folders: FolderMeta[];
   onActivateNote: (id: string) => void;
+  onOpenNoteInTab: (id: string) => void;
   onCloseNote: (id: string) => void;
   onDeleteNote: (id: string) => void;
   onUpdateNote: (id: string, content: string, title: string) => void;
   onCreateNote: () => void;
+  /** Create a new note seeded with the given title. Does NOT open a tab —
+   *  the editor handles that after flushing the pending save on the source note. */
+  onRecreateLinkedNote: (title: string) => Promise<string>;
   onCopyContent: (text: string) => void;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
   onCreateFolder: (name: string) => Promise<FolderMeta>;
@@ -33,14 +41,17 @@ interface NotesEditorProps {
  * only handles delete confirmation and the "close empty note" policy.
  */
 export function NotesEditor({
+  notes,
   openNotes,
   activeNoteId,
   folders,
   onActivateNote,
+  onOpenNoteInTab,
   onCloseNote,
   onDeleteNote,
   onUpdateNote,
   onCreateNote,
+  onRecreateLinkedNote,
   onCopyContent,
   onMoveNote,
   onCreateFolder,
@@ -48,11 +59,27 @@ export function NotesEditor({
   readNote,
 }: NotesEditorProps) {
   const { t } = useTranslation();
-  const { editor, isLoadingContent } = useNotesEditorInstance({
+
+  // Ref read by the @-suggestion popup — always exposes the latest data
+  // without rebuilding the TipTap editor.
+  const linkRefsRef = useRef({ notes, activeNoteId });
+  linkRefsRef.current = { notes, activeNoteId };
+  const getNoteLinkRefs = useRef(() => linkRefsRef.current).current;
+
+  // Bumped on every debounced save so the backlinks panel re-queries.
+  const [backlinksRefresh, setBacklinksRefresh] = useState(0);
+  const bumpBacklinks = useCallback(
+    () => setBacklinksRefresh((n) => n + 1),
+    [],
+  );
+
+  const { editor, isLoadingContent, flushSave } = useNotesEditorInstance({
     openNotes,
     activeNoteId,
     readNote,
     onUpdateNote,
+    getNoteLinkRefs,
+    onContentSaved: bumpBacklinks,
   });
 
   const ai = useAiAssistant(editor, apiKey);
@@ -60,7 +87,56 @@ export function NotesEditor({
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
+  // Broken-link recreation flow.
+  const [brokenDialog, setBrokenDialog] = useState<{
+    title: string;
+    onResolved: (newId: string) => void;
+  } | null>(null);
+
+  const handleRecreateConfirm = useCallback(async () => {
+    if (!brokenDialog) return;
+    const { title, onResolved } = brokenDialog;
+    setBrokenDialog(null);
+    try {
+      // 1. Create the target note (silent: no tab yet).
+      const newId = await onRecreateLinkedNote(title);
+      // 2. Repoint the broken node in the current editor to the new id.
+      //    This triggers onUpdate → schedules a debounced save for the
+      //    source note.
+      onResolved(newId);
+      // 3. Flush synchronously so the source note is persisted with the
+      //    updated link BEFORE we swap the active note (otherwise the
+      //    pending timer would fire later with the wrong note's content).
+      flushSave();
+      // 4. Open the newly-created note in a tab.
+      onOpenNoteInTab(newId);
+    } catch (err) {
+      console.error("Failed to recreate linked note:", err);
+    }
+  }, [brokenDialog, onRecreateLinkedNote, flushSave, onOpenNoteInTab]);
+
   const hasActiveNote = openNotes.some((n) => n.id === activeNoteId);
+
+  const existingNoteIds = useMemo(
+    () => new Set(notes.map((n) => n.id)),
+    [notes],
+  );
+
+  const linkContextValue = useMemo(
+    () => ({
+      notes,
+      existingNoteIds,
+      activeNoteId,
+      onOpenNote: onActivateNote,
+      onRequestRecreate: (
+        attrs: { id: string; title: string },
+        onResolved: (newId: string) => void,
+      ) => {
+        setBrokenDialog({ title: attrs.title, onResolved });
+      },
+    }),
+    [notes, existingNoteIds, activeNoteId, onActivateNote],
+  );
 
   const isActiveNoteEmpty = (id: string): boolean => {
     if (id !== activeNoteId) return false;
@@ -84,56 +160,75 @@ export function NotesEditor({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card overflow-hidden">
-      <NotesEditorTitleBar
-        openNotes={openNotes}
-        activeNoteId={activeNoteId}
-        folders={folders}
-        editor={editor}
-        onActivateNote={onActivateNote}
-        onTabClose={handleTabClose}
-        onCreateNote={onCreateNote}
-        onMoveNote={onMoveNote}
-        onCreateFolder={onCreateFolder}
-      />
+    <NoteLinkProvider value={linkContextValue}>
+      <div className="flex flex-col h-full bg-card overflow-hidden">
+        <NotesEditorTitleBar
+          openNotes={openNotes}
+          activeNoteId={activeNoteId}
+          folders={folders}
+          editor={editor}
+          onActivateNote={onActivateNote}
+          onTabClose={handleTabClose}
+          onCreateNote={onCreateNote}
+          onMoveNote={onMoveNote}
+          onCreateFolder={onCreateFolder}
+        />
 
-      <NotesEditorContent
-        editor={editor}
-        hasActiveNote={hasActiveNote}
-        isLoadingContent={isLoadingContent}
-        ai={ai}
-        linkEditor={linkEditor}
-      />
-
-      {/* Error banner */}
-      {ai.state === "error" && ai.error && (
-        <div
-          className="px-3 py-1.5 text-xs text-destructive bg-destructive/10 border-t border-destructive/20 cursor-pointer"
-          onClick={ai.dismiss}
-        >
-          {ai.error}
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="flex items-center justify-between px-3 py-2 border-t bg-muted/30 shrink-0">
-        <NotesEditorFooter
+        <NotesEditorContent
           editor={editor}
           hasActiveNote={hasActiveNote}
-          isAiLoading={ai.state === "loading"}
-          onAiAction={ai.processSelection}
-          onCopyContent={onCopyContent}
-          onRequestDelete={() => setConfirmDeleteOpen(true)}
+          isLoadingContent={isLoadingContent}
+          ai={ai}
+          linkEditor={linkEditor}
+        />
+
+        {hasActiveNote && (
+          <Backlinks
+            noteId={activeNoteId}
+            refreshKey={backlinksRefresh}
+            onOpen={onActivateNote}
+          />
+        )}
+
+        {/* Error banner */}
+        {ai.state === "error" && ai.error && (
+          <div
+            className="px-3 py-1.5 text-xs text-destructive bg-destructive/10 border-t border-destructive/20 cursor-pointer"
+            onClick={ai.dismiss}
+          >
+            {ai.error}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-3 py-2 border-t bg-muted/30 shrink-0">
+          <NotesEditorFooter
+            editor={editor}
+            hasActiveNote={hasActiveNote}
+            isAiLoading={ai.state === "loading"}
+            onAiAction={ai.processSelection}
+            onCopyContent={onCopyContent}
+            onRequestDelete={() => setConfirmDeleteOpen(true)}
+          />
+        </div>
+
+        <ConfirmDeleteDialog
+          open={confirmDeleteOpen}
+          title={t('notes.editor.deleteConfirmTitle')}
+          description={t('notes.editor.deleteConfirmDesc')}
+          onOpenChange={setConfirmDeleteOpen}
+          onConfirm={handleConfirmDelete}
+        />
+
+        <BrokenNoteLinkDialog
+          open={brokenDialog !== null}
+          title={brokenDialog?.title ?? ""}
+          onOpenChange={(open) => {
+            if (!open) setBrokenDialog(null);
+          }}
+          onConfirm={handleRecreateConfirm}
         />
       </div>
-
-      <ConfirmDeleteDialog
-        open={confirmDeleteOpen}
-        title={t('notes.editor.deleteConfirmTitle')}
-        description={t('notes.editor.deleteConfirmDesc')}
-        onOpenChange={setConfirmDeleteOpen}
-        onConfirm={handleConfirmDelete}
-      />
-    </div>
+    </NoteLinkProvider>
   );
 }

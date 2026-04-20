@@ -3,6 +3,9 @@
 ### ✨ Added
 - New System of dark / light themes with automatic switching based on system preferences.
 - In parameters, you can now delete your data (recordings, transcriptions, notes) without uninstalling the app.
+- Note-to-note linking: type `@` in any note to link to another note, with auto-complete by title
+- Broken links (when the target note is deleted) are shown in red with a one-click dialog to recreate the missing note
+- Backlinks panel at the bottom of each note ("Mentioned in") listing all notes that reference it
 
 ### 🐛 Fixed
 - Enhance Markdown handling in AI assistant with Turndown and Marked integration (preserve line breaks, support tables, code blocks, lists)

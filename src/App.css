@@ -302,6 +302,62 @@
   height: 0;
 }
 
+/* Note-link chip — inline reference to another note */
+.note-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0 0.4rem;
+  border-radius: 0.3rem;
+  background: oklch(0.95 0.05 240);
+  color: oklch(0.45 0.18 255);
+  font-size: 0.95em;
+  font-weight: 500;
+  line-height: 1.5;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 120ms ease;
+  white-space: nowrap;
+}
+.note-link:hover {
+  background: oklch(0.9 0.08 240);
+}
+.dark .note-link {
+  background: oklch(0.3 0.1 260 / 50%);
+  color: oklch(0.78 0.15 255);
+}
+.dark .note-link:hover {
+  background: oklch(0.35 0.12 260 / 60%);
+}
+
+.note-link--broken {
+  background: oklch(0.94 0.07 25);
+  color: oklch(0.5 0.2 25);
+  text-decoration: line-through;
+}
+.note-link--broken:hover {
+  background: oklch(0.9 0.09 25);
+}
+.dark .note-link--broken {
+  background: oklch(0.3 0.1 25 / 50%);
+  color: oklch(0.78 0.15 25);
+}
+.dark .note-link--broken:hover {
+  background: oklch(0.35 0.12 25 / 60%);
+}
+
+/* Ensure note-link chips inside the editor override the global .tiptap a style */
+.tiptap a.note-link,
+.tiptap span.note-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+.tiptap a.note-link--broken,
+.tiptap span.note-link--broken {
+  text-decoration: line-through;
+}
+
 body.mini-window-body {
   background: transparent !important;
   color: #f9fafb;
