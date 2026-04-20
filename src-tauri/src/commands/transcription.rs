@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tauri::AppHandle;
 
+use crate::audio_trim;
 use crate::transcription::{
     cleanup_old_recordings, save_audio_to_wav, transcribe_with_groq, transcribe_with_openai,
 };
@@ -31,6 +32,7 @@ pub async fn transcribe_audio(
     translate: Option<bool>,
     keep_model_in_memory: Option<bool>,
     groq_model: Option<String>,
+    trim_silence: Option<bool>,
 ) -> Result<TranscriptionResponse, String> {
     let translate = translate.unwrap_or(false);
     tracing::info!(
@@ -40,6 +42,22 @@ pub async fn transcribe_audio(
         provider,
         translate
     );
+
+    let audio_samples = if trim_silence.unwrap_or(true) {
+        let result = audio_trim::trim_silence(&audio_samples, sample_rate);
+        if result.trimmed_start_ms > 0 || result.trimmed_end_ms > 0 {
+            tracing::info!(
+                "Silence trim: -{}ms start, -{}ms end ({} → {} samples)",
+                result.trimmed_start_ms,
+                result.trimmed_end_ms,
+                audio_samples.len(),
+                result.samples.len(),
+            );
+        }
+        result.samples
+    } else {
+        audio_samples
+    };
 
     let wav_path = save_audio_to_wav(&app_handle, &audio_samples, sample_rate)
         .map_err(|e| format!("Failed to save audio: {}", e))?;

@@ -10,6 +10,8 @@ export interface AppSettings {
     enable_history_audio_preview: boolean;
     input_device_index: number | null;
     silence_threshold: number;
+    /** When true, leading and trailing silence are stripped before transcription. */
+    trim_silence: boolean;
 
     // Transcription
     transcription_provider: "OpenAI" | "Google" | "Local" | "Groq";
@@ -97,6 +99,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     enable_history_audio_preview: true,
     input_device_index: null,
     silence_threshold: 0.005, // RMS threshold below which audio is considered silent (0.5%)
+    trim_silence: true,
 
     // Transcription
     transcription_provider: "Local",

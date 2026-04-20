@@ -254,6 +254,18 @@ export function AudioSection() {
           </div>
         </Row>
 
+        {/* Trim silence */}
+        <Row
+          label={t("settings.audio.trimSilence")}
+          hint={t("settings.audio.trimSilenceHelp")}
+        >
+          <Toggle
+            on={settings.trim_silence}
+            onClick={() => updateSetting("trim_silence", !settings.trim_silence)}
+            label={t("settings.audio.trimSilence")}
+          />
+        </Row>
+
         {/* Toggles */}
         <Row
           label={t("settings.audio.interfaceSounds")}

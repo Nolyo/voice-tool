@@ -263,6 +263,7 @@ export function useRecordingWorkflow({
             translate: settings.translate_mode,
             keepModelInMemory: settings.keep_model_in_memory,
             groqModel: settings.groq_model,
+            trimSilence: settings.trim_silence,
           },
         );
 

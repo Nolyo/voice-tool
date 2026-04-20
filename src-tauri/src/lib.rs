@@ -1,4 +1,5 @@
 mod audio;
+mod audio_trim;
 mod chat;
 mod commands;
 mod folders;

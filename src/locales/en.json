@@ -170,6 +170,8 @@
       "errorPrefix": "Error:",
       "silenceThreshold": "Silence detection threshold",
       "silenceThresholdHelp": "Recordings below this threshold will be considered silence",
+      "trimSilence": "Auto-trim silence",
+      "trimSilenceHelp": "Removes leading and trailing silence before transcription",
       "interfaceSounds": "Interface sounds",
       "historyAudioPreview": "Listen button in history",
       "testMic": "Test microphone",
