@@ -344,7 +344,49 @@ export function NotesSidebarSection({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
+  const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingExpandTargetRef = useRef<string | null>(null);
+
+  const AUTO_EXPAND_DELAY_MS = 600;
+
+  const clearExpandTimer = () => {
+    if (expandTimerRef.current) {
+      clearTimeout(expandTimerRef.current);
+      expandTimerRef.current = null;
+    }
+    pendingExpandTargetRef.current = null;
+  };
+
+  const schedulePossibleExpand = (containerId: string | null) => {
+    if (!containerId) {
+      clearExpandTimer();
+      return;
+    }
+    const isCollapsed =
+      containerId === ROOT_CONTAINER_ID
+        ? collapseState.root === true
+        : collapseState.folders[containerId] === true;
+    if (!isCollapsed) {
+      clearExpandTimer();
+      return;
+    }
+    if (pendingExpandTargetRef.current === containerId) return; // already pending
+    clearExpandTimer();
+    pendingExpandTargetRef.current = containerId;
+    expandTimerRef.current = setTimeout(() => {
+      if (pendingExpandTargetRef.current !== containerId) return;
+      if (containerId === ROOT_CONTAINER_ID) {
+        expandRoot();
+      } else {
+        expandFolder(containerId);
+      }
+      expandTimerRef.current = null;
+      pendingExpandTargetRef.current = null;
+    }, AUTO_EXPAND_DELAY_MS);
+  };
+
   const resetDragState = () => {
+    clearExpandTimer();
     setActiveId(null);
     setActiveType(null);
     setOriginContainerId(null);
@@ -389,6 +431,7 @@ export function NotesSidebarSection({
     const overId = over ? String(over.id) : null;
     const nextContainerId = resolveOverContainerId(over);
     setOverContainerId(nextContainerId);
+    schedulePossibleExpand(nextContainerId);
     if (!nextContainerId || !draftContainers) return;
 
     const activeNoteId = activeData.noteId;
@@ -447,6 +490,8 @@ export function NotesSidebarSection({
     toggleRecents,
     toggleRoot,
     toggleFolder: toggleFolderCollapsed,
+    expandFolder,
+    expandRoot,
   } = useSidebarCollapseState();
   const favoritesCollapsed = collapseState.favorites;
   const recentsCollapsed = collapseState.recents;
@@ -486,6 +531,8 @@ export function NotesSidebarSection({
   useEffect(() => {
     return () => clearTimeout(debounceRef.current);
   }, []);
+
+  useEffect(() => () => clearExpandTimer(), []);
 
   const handleNoteContextMenu = (e: React.MouseEvent, note: NoteMeta) => {
     e.preventDefault();
@@ -601,6 +648,7 @@ export function NotesSidebarSection({
     const activeData = active.data.current as NoteDragData | FolderDragData | undefined;
 
     const resetDragState = () => {
+      clearExpandTimer();
       setActiveId(null);
       setActiveType(null);
       setOriginContainerId(null);
