@@ -424,6 +424,18 @@
       "gray": "Gris",
       "none": "Aucun"
     },
+    "slashMenu": {
+      "table": "Tableau",
+      "codeBlock": "Bloc de code",
+      "heading1": "Titre 1",
+      "heading2": "Titre 2",
+      "heading3": "Titre 3",
+      "bulletList": "Liste à puces",
+      "orderedList": "Liste numérotée",
+      "taskList": "Liste à cocher",
+      "noMatch": "Aucune commande",
+      "placeholder": "Filtrer..."
+    },
     "bubbleMenu": {
       "confirm": "Valider",
       "removeLink": "Retirer le lien",

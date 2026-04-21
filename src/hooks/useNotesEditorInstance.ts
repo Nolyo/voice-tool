@@ -18,6 +18,7 @@ import i18n from "@/i18n";
 import { type NoteData, type NoteMeta, deriveTitle } from "@/hooks/useNotes";
 import { NoteLink } from "@/components/notes/NotesEditor/NoteLinkExtension";
 import { buildNoteLinkSuggestion } from "@/components/notes/NotesEditor/NoteLinkSuggestion";
+import { SlashCommand } from "@/components/notes/NotesEditor/SlashCommand/SlashCommandExtension";
 
 const lowlight = createLowlight(common);
 
@@ -161,6 +162,7 @@ export function useNotesEditorInstance({
         HTMLAttributes: {},
         suggestion: buildNoteLinkSuggestion(getNoteLinkRefs),
       }),
+      SlashCommand,
     ],
     editorProps: {
       attributes: {

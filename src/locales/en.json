@@ -424,6 +424,18 @@
       "gray": "Gray",
       "none": "None"
     },
+    "slashMenu": {
+      "table": "Table",
+      "codeBlock": "Code block",
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "bulletList": "Bullet list",
+      "orderedList": "Ordered list",
+      "taskList": "Task list",
+      "noMatch": "No command",
+      "placeholder": "Filter..."
+    },
     "bubbleMenu": {
       "confirm": "Confirm",
       "removeLink": "Remove link",
