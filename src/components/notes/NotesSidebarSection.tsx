@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   closestCenter,
   useDroppable,
@@ -140,6 +141,19 @@ function FolderBodyDroppable({ containerId, children }: FolderBodyDroppableProps
       className="min-h-[8px]"
     >
       {children}
+    </div>
+  );
+}
+
+type DragOverlayNoteCardProps = { note: NoteMeta | null };
+
+function DragOverlayNoteCard({ note }: DragOverlayNoteCardProps) {
+  if (!note) return null;
+  return (
+    <div className="vt-app flex items-center gap-2 px-3 py-1.5 rounded-md bg-background border shadow-lg text-sm max-w-[240px]">
+      <FileText className="w-3.5 h-3.5 shrink-0 opacity-70" />
+      <span className="truncate flex-1">{note.title || "Untitled"}</span>
+      {note.favorite ? <Star className="w-3 h-3 fill-current text-yellow-500" /> : null}
     </div>
   );
 }
@@ -423,8 +437,6 @@ export function NotesSidebarSection({
   const [originContainerId, setOriginContainerId] = useState<string | null>(null);
   const [draftContainers, setDraftContainers] = useState<ContainerMap | null>(null);
   const [overContainerId, setOverContainerId] = useState<string | null>(null);
-  void activeId;
-  void activeType;
   void originContainerId;
   void overContainerId;
   const [searchQuery, setSearchQuery] = useState("");
@@ -922,6 +934,11 @@ export function NotesSidebarSection({
                 </FolderBodyDroppable>
               )}
             </div>
+            <DragOverlay dropAnimation={null}>
+              {activeId && activeType === 'note' ? (
+                <DragOverlayNoteCard note={noteById.get(activeId) ?? null} />
+              ) : null}
+            </DragOverlay>
           </DndContext>
         )}
       </div>
