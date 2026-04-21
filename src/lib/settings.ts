@@ -124,7 +124,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     recordings_keep_last: 25,
     start_minimized_on_boot: true,
     main_window_state: "maximized",
-    main_window_geometry: "800x600+0+0",
+    main_window_geometry: "1000x600+0+0",
     auto_check_updates: true,
     update_channel: "stable",
 
