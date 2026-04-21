@@ -27,7 +27,6 @@ interface NotesEditorProps {
   /** Create a new note seeded with the given title. Does NOT open a tab —
    *  the editor handles that after flushing the pending save on the source note. */
   onRecreateLinkedNote: (title: string) => Promise<string>;
-  onCopyContent: (text: string) => void;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
   onCreateFolder: (name: string) => Promise<FolderMeta>;
   apiKey: string;
@@ -52,7 +51,6 @@ export function NotesEditor({
   onUpdateNote,
   onCreateNote,
   onRecreateLinkedNote,
-  onCopyContent,
   onMoveNote,
   onCreateFolder,
   apiKey,
@@ -211,7 +209,6 @@ export function NotesEditor({
           activeNoteId={activeNoteId}
           isAiLoading={ai.state === "loading"}
           onAiAction={ai.processSelection}
-          onCopyContent={onCopyContent}
           onRequestDelete={() => setConfirmDeleteOpen(true)}
         />
 
