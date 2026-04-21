@@ -55,7 +55,16 @@ type ContainerDroppableData = {
   containerId: string; // folderId or 'root'
 };
 
+type ContainerMap = Record<string, string[]>;
+
 const ROOT_CONTAINER_ID = 'root';
+
+function findContainerOf(containers: ContainerMap, noteId: string): string | null {
+  for (const [containerId, ids] of Object.entries(containers)) {
+    if (ids.includes(noteId)) return containerId;
+  }
+  return null;
+}
 
 interface NotesSidebarSectionProps {
   notes: NoteMeta[];
@@ -321,17 +330,99 @@ export function NotesSidebarSection({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  const handleDragStart = (_event: DragStartEvent) => {
-    // Placeholder — real logic added in Task 8
+  const handleDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current as NoteDragData | FolderDragData | undefined;
+    if (!data) return;
+    setActiveId(String(event.active.id));
+    setActiveType(data.type);
+    if (data.type === 'note') {
+      setOriginContainerId(data.containerId);
+      setDraftContainers({ ...liveContainers });
+    }
   };
 
-  const handleDragOver = (_event: DragOverEvent) => {
-    // Placeholder — real logic added in Task 8
+  const resolveOverContainerId = (
+    over: DragEndEvent['over'] | null,
+  ): string | null => {
+    if (!over) return null;
+    const data = over.data.current as
+      | NoteDragData
+      | ContainerDroppableData
+      | FolderDragData
+      | undefined;
+    if (!data) return null;
+    if (data.type === 'note') return data.containerId;
+    if (data.type === 'container') return data.containerId;
+    return null; // folder-type drop target is not accepted for notes
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    const activeData = active.data.current as NoteDragData | FolderDragData | undefined;
+    if (!activeData || activeData.type !== 'note') {
+      setOverContainerId(null);
+      return;
+    }
+
+    const overId = over ? String(over.id) : null;
+    const nextContainerId = resolveOverContainerId(over);
+    setOverContainerId(nextContainerId);
+    if (!nextContainerId || !draftContainers) return;
+
+    const activeNoteId = activeData.noteId;
+    const currentContainerId = findContainerOf(draftContainers, activeNoteId);
+    if (!currentContainerId) return;
+
+    const overIsNote =
+      over?.data.current &&
+      (over.data.current as { type: string }).type === 'note';
+
+    if (currentContainerId === nextContainerId) {
+      // Same-container reorder during hover — reflect over-position
+      if (!overIsNote || !overId) return;
+      const items = draftContainers[currentContainerId];
+      const activeIndex = items.indexOf(activeNoteId);
+      const overIndex = items.indexOf(overId);
+      if (activeIndex === overIndex || overIndex < 0) return;
+      const nextItems = [...items];
+      nextItems.splice(activeIndex, 1);
+      nextItems.splice(overIndex, 0, activeNoteId);
+      setDraftContainers({ ...draftContainers, [currentContainerId]: nextItems });
+      return;
+    }
+
+    // Cross-container move
+    const fromItems = draftContainers[currentContainerId].filter((id) => id !== activeNoteId);
+    const toItemsOriginal = draftContainers[nextContainerId] ?? [];
+    const insertAt =
+      overIsNote && overId ? toItemsOriginal.indexOf(overId) : toItemsOriginal.length;
+    const toItems = [...toItemsOriginal];
+    toItems.splice(insertAt >= 0 ? insertAt : toItems.length, 0, activeNoteId);
+
+    setDraftContainers({
+      ...draftContainers,
+      [currentContainerId]: fromItems,
+      [nextContainerId]: toItems,
+    });
   };
 
   const handleDragCancel = (_event: DragCancelEvent) => {
-    // Placeholder — real logic added in Task 10
+    setActiveId(null);
+    setActiveType(null);
+    setOriginContainerId(null);
+    setDraftContainers(null);
+    setOverContainerId(null);
   };
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<'note' | 'folder' | null>(null);
+  const [originContainerId, setOriginContainerId] = useState<string | null>(null);
+  const [draftContainers, setDraftContainers] = useState<ContainerMap | null>(null);
+  const [overContainerId, setOverContainerId] = useState<string | null>(null);
+  void activeId;
+  void activeType;
+  void originContainerId;
+  void overContainerId;
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NoteMeta[] | null>(null);
   const {
@@ -461,20 +552,66 @@ export function NotesSidebarSection({
     return { notesByFolder: byFolder, rootNotes: root };
   }, [displayedNotes, folders]);
 
+  const liveContainers: ContainerMap = useMemo(() => {
+    const map: ContainerMap = { [ROOT_CONTAINER_ID]: rootNotes.map((n) => n.id) };
+    for (const folder of folders) {
+      map[folder.id] = (notesByFolder.get(folder.id) ?? []).map((n) => n.id);
+    }
+    return map;
+  }, [rootNotes, folders, notesByFolder]);
+
+  const containersForRender = draftContainers ?? liveContainers;
+
+  const noteById = useMemo(() => {
+    const map = new Map<string, NoteMeta>();
+    for (const n of displayedNotes) map.set(n.id, n);
+    return map;
+  }, [displayedNotes]);
+
+  const notesForFolder = (folderId: string): NoteMeta[] => {
+    const ids = containersForRender[folderId] ?? [];
+    const out: NoteMeta[] = [];
+    for (const id of ids) {
+      const n = noteById.get(id);
+      if (n) out.push(n);
+    }
+    return out;
+  };
+
+  const rootNotesForRender = notesForFolder(ROOT_CONTAINER_ID);
+
   const handleDragEnd = (event: DragEndEvent) => {
+    const resetDragState = () => {
+      setActiveId(null);
+      setActiveType(null);
+      setOriginContainerId(null);
+      setDraftContainers(null);
+      setOverContainerId(null);
+    };
+
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id) {
+      resetDragState();
+      return;
+    }
     const activeData = active.data.current as NoteDragData | FolderDragData | undefined;
-    if (!activeData) return;
+    if (!activeData) {
+      resetDragState();
+      return;
+    }
 
     if (activeData.type === 'folder') {
       const oldIndex = folders.findIndex((f) => f.id === active.id);
       const newIndex = folders.findIndex((f) => f.id === over.id);
-      if (oldIndex < 0 || newIndex < 0) return;
+      if (oldIndex < 0 || newIndex < 0) {
+        resetDragState();
+        return;
+      }
       const next = [...folders];
       const [moved] = next.splice(oldIndex, 1);
       next.splice(newIndex, 0, moved);
       void onReorderFolders(next.map((f) => f.id));
+      resetDragState();
       return;
     }
 
@@ -488,7 +625,10 @@ export function NotesSidebarSection({
             : (notesByFolder.get(activeData.containerId) ?? []);
         const oldIndex = containerNotes.findIndex((n) => n.id === active.id);
         const newIndex = containerNotes.findIndex((n) => n.id === over.id);
-        if (oldIndex < 0 || newIndex < 0) return;
+        if (oldIndex < 0 || newIndex < 0) {
+          resetDragState();
+          return;
+        }
         const next = [...containerNotes];
         const [moved] = next.splice(oldIndex, 1);
         next.splice(newIndex, 0, moved);
@@ -496,6 +636,8 @@ export function NotesSidebarSection({
         void onReorderNotes(folderId, next.map((n) => n.id));
       }
     }
+
+    resetDragState();
   };
 
   const showFavoritesSection = favoriteNotes.length > 0 && !isSearching;
@@ -690,7 +832,7 @@ export function NotesSidebarSection({
                 <FolderSection
                   key={folder.id}
                   folder={folder}
-                  notes={notesByFolder.get(folder.id) ?? []}
+                  notes={notesForFolder(folder.id)}
                   activeNoteId={activeNoteId}
                   collapsed={collapseState.folders[folder.id] ?? false}
                   onToggle={() => toggleFolderCollapsed(folder.id)}
@@ -734,10 +876,10 @@ export function NotesSidebarSection({
               {!rootCollapsed && (rootNotes.length > 0 || folders.length > 0) && (
                 <FolderBodyDroppable containerId={ROOT_CONTAINER_ID}>
                   <SortableContext
-                    items={rootNotes.map((n) => n.id)}
+                    items={rootNotesForRender.map((n) => n.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {rootNotes.map((note) => (
+                    {rootNotesForRender.map((note) => (
                       <SortableNoteItem
                         key={note.id}
                         sortableId={note.id}
