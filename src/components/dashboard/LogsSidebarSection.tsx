@@ -1,6 +1,8 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { AppLog } from "@/hooks/useAppLogs";
 import {
+  UNKNOWN_SOURCE,
   sourceColor,
   sourceOf,
   type LevelFilter,
@@ -42,6 +44,7 @@ export function LogsSidebarSection({
   sourceFilter,
   onSourceFilterChange,
 }: LogsSidebarSectionProps) {
+  const { t } = useTranslation();
   const counts = useMemo(() => {
     const c: Record<LogLevel, number> = {
       error: 0,
@@ -70,7 +73,7 @@ export function LogsSidebarSection({
 
   return (
     <div className="flex-1 overflow-y-auto px-2 pb-3 min-h-0">
-      <SectionTitle>Niveaux</SectionTitle>
+      <SectionTitle>{t("logs.levelsTitle")}</SectionTitle>
       <div className="space-y-1">
         {LEVELS.map((l) => {
           const on = levelFilter[l.id];
@@ -105,7 +108,7 @@ export function LogsSidebarSection({
 
       {sources.length > 0 && (
         <>
-          <SectionTitle>Sources</SectionTitle>
+          <SectionTitle>{t("logs.sourcesTitle")}</SectionTitle>
           <div className="space-y-0.5 max-h-[220px] overflow-y-auto pr-1">
             <button
               type="button"
@@ -122,7 +125,7 @@ export function LogsSidebarSection({
                     : "var(--muted-foreground)",
               }}
             >
-              <span className="text-[12px] flex-1 text-left">Toutes</span>
+              <span className="text-[12px] flex-1 text-left">{t("logs.allSources")}</span>
               <span className="font-mono text-[10.5px] px-1.5 py-0.5 rounded bg-foreground/[0.04] border border-border/60 text-muted-foreground">
                 {logs.length}
               </span>
@@ -149,7 +152,7 @@ export function LogsSidebarSection({
                   <span
                     className={`font-mono text-[11px] flex-1 text-left truncate ${selected ? "text-foreground" : "text-muted-foreground"}`}
                   >
-                    {s.id}
+                    {s.id === UNKNOWN_SOURCE ? t("logs.unknownSource") : s.id}
                   </span>
                   <span className="font-mono text-[10.5px] px-1.5 py-0.5 rounded bg-foreground/[0.04] border border-border/60 text-muted-foreground">
                     {s.count}
@@ -161,10 +164,10 @@ export function LogsSidebarSection({
         </>
       )}
 
-      <SectionTitle>Résumé</SectionTitle>
+      <SectionTitle>{t("logs.summaryTitle")}</SectionTitle>
       <div className="px-2 space-y-1.5">
         <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-foreground/[0.03]">
-          <span className="text-[12px] text-muted-foreground">Total</span>
+          <span className="text-[12px] text-muted-foreground">{t("logs.summaryTotal")}</span>
           <span className="text-[12px] font-medium font-mono">
             {logs.length}
           </span>
@@ -178,7 +181,7 @@ export function LogsSidebarSection({
               className="text-[12px]"
               style={{ color: "oklch(0.7 0.2 25)" }}
             >
-              Erreurs
+              {t("logs.summaryErrors")}
             </span>
             <span
               className="text-[12px] font-medium font-mono"
@@ -197,7 +200,7 @@ export function LogsSidebarSection({
               className="text-[12px]"
               style={{ color: "oklch(0.78 0.14 75)" }}
             >
-              Avertissements
+              {t("logs.summaryWarnings")}
             </span>
             <span
               className="text-[12px] font-medium font-mono"

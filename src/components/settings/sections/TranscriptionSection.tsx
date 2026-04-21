@@ -36,19 +36,19 @@ export function TranscriptionSection() {
     {
       id: "OpenAI" as Provider,
       title: t("settings.transcription.providerOpenai"),
-      sub: "whisper-1 · cloud",
+      sub: t("settings.transcription.providerOpenaiSub"),
       dot: "oklch(0.72 0.17 155)",
     },
     {
       id: "Groq" as Provider,
       title: t("settings.transcription.providerGroq"),
-      sub: "whisper-v3 · rapide",
+      sub: t("settings.transcription.providerGroqSub"),
       dot: "oklch(0.72 0.18 15)",
     },
     {
       id: "Local" as Provider,
       title: t("settings.transcription.providerLocal"),
-      sub: "hors-ligne · CPU/GPU",
+      sub: t("settings.transcription.providerLocalSub"),
       dot: "oklch(0.72 0.15 250)",
     },
   ];
@@ -101,7 +101,8 @@ export function TranscriptionSection() {
           </select>
         </Row>
 
-        {settings.transcription_provider === "OpenAI" && (
+        {(settings.transcription_provider === "OpenAI" ||
+          settings.transcription_provider === "Groq") && (
           <div className="vt-row">
             <Callout
               kind="warn"

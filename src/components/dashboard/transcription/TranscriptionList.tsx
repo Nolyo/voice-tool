@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Copy, Trash2, Sparkles, Download, Filter } from "lucide-react";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
+import { isToday, useDateFormatters } from "@/lib/date-format";
 
 interface TranscriptionListProps {
   transcriptions: Transcription[];
@@ -16,10 +17,6 @@ interface TranscriptionListProps {
 
 type FilterId = "all" | "today" | "postprocess";
 
-/* ── Date helpers (FR locale) ──────────────────────────────────────── */
-const DAY_NAMES = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
-const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
-
 /**
  * Parse stored "YYYY-MM-DD" + "HH:mm:ss" (FR locale) pair into a Date.
  * Falls back to `new Date(date + " " + time)` for resilience.
@@ -29,30 +26,6 @@ function parseAt(t: Transcription): Date {
   const d = new Date(iso);
   if (!Number.isNaN(d.getTime())) return d;
   return new Date(`${t.date} ${t.time}`);
-}
-
-function dayLabel(d: Date): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dd = new Date(d);
-  dd.setHours(0, 0, 0, 0);
-  const diff = Math.round((today.getTime() - dd.getTime()) / 86400000);
-  if (diff === 0) return "Aujourd'hui";
-  if (diff === 1) return "Hier";
-  if (diff < 7 && diff > 0) return DAY_NAMES[dd.getDay()];
-  return `${dd.getDate()} ${MONTHS[dd.getMonth()]}`;
-}
-
-function timeFmt(d: Date): string {
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-function dateShortFmt(d: Date): string {
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  return `${dd}/${mm}`;
 }
 
 function durFmt(s?: number): string {
@@ -81,6 +54,7 @@ interface RowProps {
 
 function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, onDelete }: RowProps) {
   const { t } = useTranslation();
+  const { formatTime } = useDateFormatters();
   const words = wordsOf(item.text);
   const postProcess = Boolean(item.originalText);
   const source = item.apiCost !== undefined && item.apiCost > 0 ? "api" : "local";
@@ -106,7 +80,7 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, 
       }}
     >
       <div className="vt-mono text-[11.5px] hist-time" style={{ color: "var(--vt-fg-3)" }}>
-        {timeFmt(at)}
+        {formatTime(at)}
       </div>
       <div className="hist-dot">
         <span className="hist-dot-circle" />
@@ -134,7 +108,7 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, 
               </>
             )}
             <span className="vt-mono">
-              {words} {words === 1 ? "mot" : "mots"}
+              {t("history.wordsCount", { count: words })}
             </span>
             {item.apiCost !== undefined && item.apiCost > 0 && (
               <>
@@ -176,7 +150,7 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, 
             }}
             className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg hover:text-red-400"
             style={{ color: "var(--vt-fg-3)" }}
-            data-tip={t("history.deleteAll").replace("Tout effacer", "Supprimer")}
+            data-tip={t("history.deleteTooltip")}
             aria-label={t("history.deleteConfirm")}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -189,6 +163,7 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, 
 
 /* ── Stats row (top of page) ───────────────────────────────────────── */
 function StatsRow({ transcriptions }: { transcriptions: Transcription[] }) {
+  const { t } = useTranslation();
   const stats = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -237,16 +212,14 @@ function StatsRow({ transcriptions }: { transcriptions: Transcription[] }) {
   return (
     <div className="grid grid-cols-4 gap-3">
       <div className="stat-tile">
-        <div className="lbl">Cette semaine</div>
+        <div className="lbl">{t("history.statsThisWeek")}</div>
         <div className="val">{stats.weekCount}</div>
         <div className="trend">
-          {stats.weekCount === 0
-            ? "Aucune dictée cette semaine"
-            : `${stats.weekCount} ${stats.weekCount === 1 ? "dictée" : "dictées"} sur 7 jours`}
+          {t("history.statsDictationsWeek", { count: stats.weekCount })}
         </div>
       </div>
       <div className="stat-tile">
-        <div className="lbl">Temps parlé</div>
+        <div className="lbl">{t("history.statsSpokenTime")}</div>
         <div className="val">
           {totalMin}
           <span
@@ -256,17 +229,19 @@ function StatsRow({ transcriptions }: { transcriptions: Transcription[] }) {
             m {String(totalSec).padStart(2, "0")}s
           </span>
         </div>
-        <div className="trend">moy. {durFmt(stats.avgDur)} / dictée</div>
-      </div>
-      <div className="stat-tile">
-        <div className="lbl">Mots / min</div>
-        <div className="val">{stats.wpm}</div>
         <div className="trend">
-          {stats.wpm === 0 ? "—" : "moyenne sur l'historique"}
+          {t("history.statsAverageDuration", { duration: durFmt(stats.avgDur) })}
         </div>
       </div>
       <div className="stat-tile">
-        <div className="lbl">Activité — 14 jours</div>
+        <div className="lbl">{t("history.statsWordsPerMinute")}</div>
+        <div className="val">{stats.wpm}</div>
+        <div className="trend">
+          {stats.wpm === 0 ? "—" : t("history.statsAverageAcrossHistory")}
+        </div>
+      </div>
+      <div className="stat-tile">
+        <div className="lbl">{t("history.statsActivity14d")}</div>
         <div className="mt-1.5">
           <svg
             width="100%"
@@ -310,6 +285,7 @@ export function TranscriptionList({
   onClearAll,
 }: TranscriptionListProps) {
   const { t } = useTranslation();
+  const { dayLabel, formatShortDate } = useDateFormatters();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterId>("all");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -332,7 +308,7 @@ export function TranscriptionList({
     if (filter === "postprocess") {
       list = list.filter((tr) => Boolean(tr.originalText));
     } else if (filter === "today") {
-      list = list.filter((tr) => dayLabel(parseAt(tr)) === "Aujourd'hui");
+      list = list.filter((tr) => isToday(parseAt(tr)));
     }
 
     if (search.trim()) {
@@ -360,7 +336,7 @@ export function TranscriptionList({
       map.get(key)!.items.push(tr);
     }
     return [...map.entries()];
-  }, [filtered]);
+  }, [filtered, dayLabel]);
 
   return (
     <div className="flex flex-col min-w-0">
@@ -391,7 +367,7 @@ export function TranscriptionList({
               data-on={filter === "all"}
               onClick={() => setFilter("all")}
             >
-              Tout
+              {t("history.filterAll")}
             </button>
             <button
               type="button"
@@ -399,7 +375,7 @@ export function TranscriptionList({
               data-on={filter === "today"}
               onClick={() => setFilter("today")}
             >
-              Aujourd'hui
+              {t("common.today")}
             </button>
             <button
               type="button"
@@ -408,7 +384,7 @@ export function TranscriptionList({
               onClick={() => setFilter("postprocess")}
             >
               <Sparkles className="w-3 h-3" />
-              Post-traitées
+              {t("history.filterPostProcessed")}
             </button>
           </div>
 
@@ -416,8 +392,8 @@ export function TranscriptionList({
             <button
               type="button"
               className="vt-btn vt-btn-sm"
-              data-tip="Filtres avancés (bientôt)"
-              aria-label="Filtres avancés"
+              data-tip={t("history.filterAdvancedComingSoon")}
+              aria-label={t("history.filterAdvanced")}
               disabled
             >
               <Filter className="w-3.5 h-3.5" />
@@ -425,12 +401,12 @@ export function TranscriptionList({
             <button
               type="button"
               className="vt-btn vt-btn-sm"
-              data-tip="Export (bientôt)"
-              aria-label="Exporter"
+              data-tip={t("history.exportComingSoon")}
+              aria-label={t("history.exportLabel")}
               disabled
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Exporter</span>
+              <span>{t("history.exportLabel")}</span>
             </button>
             {onClearAll && transcriptions.length > 0 && (
               <button
@@ -475,7 +451,7 @@ export function TranscriptionList({
             </p>
             <p className="text-[12px] mt-1" style={{ color: "var(--vt-fg-3)" }}>
               {search || filter !== "all"
-                ? "Essaie d'autres mots-clés ou change de filtre."
+                ? t("history.emptyNoMatches")
                 : t("history.emptySubtitle")}
             </p>
           </div>
@@ -496,7 +472,7 @@ export function TranscriptionList({
                     className="vt-mono text-[10.5px]"
                     style={{ color: "var(--vt-fg-4)" }}
                   >
-                    {dateShortFmt(group.firstAt)}
+                    {formatShortDate(group.firstAt)}
                   </span>
                   <div className="day-label-inner">
                     <span className="day-chip">{label}</span>
@@ -509,7 +485,7 @@ export function TranscriptionList({
                       className="text-[10.5px]"
                       style={{ color: "var(--vt-fg-4)" }}
                     >
-                      {groupWords} mots
+                      {t("history.wordsCount", { count: groupWords })}
                       {groupDur > 0 && <> · {durFmt(groupDur)}</>}
                     </span>
                   </div>

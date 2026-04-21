@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  AlertTriangle,
-  ArrowLeft,
   Check,
   Copy,
   Download,
@@ -25,7 +23,6 @@ interface LogsTabProps {
   levelFilter: LevelFilter;
   sourceFilter: string | null;
   onSourceFilterChange: (next: string | null) => void;
-  isCompact: boolean;
 }
 
 export type LogLevel = AppLog["level"];
@@ -39,8 +36,9 @@ export const ALL_LEVELS_ON: LevelFilter = {
   trace: true,
 };
 
-/** Display label for logs missing a source (legacy entries or trace paths). */
-export const UNKNOWN_SOURCE = "inconnu";
+/** Internal sentinel for logs missing a source (legacy entries or trace paths).
+ *  Render sites must convert to a localized label via `t("logs.unknownSource")`. */
+export const UNKNOWN_SOURCE = "__unknown__";
 
 export function sourceOf(log: AppLog): string {
   return log.source?.trim() ? log.source : UNKNOWN_SOURCE;
@@ -72,21 +70,6 @@ function fmtTime(d: Date): string {
   const ss = String(d.getSeconds()).padStart(2, "0");
   const ms = String(d.getMilliseconds()).padStart(3, "0");
   return `${hh}:${mm}:${ss}.${ms}`;
-}
-
-function getLevelCssColor(level: LogLevel): string {
-  switch (level) {
-    case "error":
-      return "var(--vt-danger)";
-    case "warn":
-      return "var(--vt-warn)";
-    case "info":
-      return "var(--vt-info)";
-    case "debug":
-      return "var(--vt-debug)";
-    case "trace":
-      return "var(--vt-trace)";
-  }
 }
 
 /* ── Timeline density strip ─────────────────────────────────────── */
@@ -178,185 +161,6 @@ function TimelineStrip({ logs }: { logs: AppLog[] }) {
   );
 }
 
-/* ── Detail panel ──────────────────────────────────────────────── */
-function LogDetail({
-  log,
-  onClose,
-  onCopy,
-  compact = false,
-}: {
-  log: AppLog | null;
-  onClose: () => void;
-  onCopy: (text: string) => void;
-  compact?: boolean;
-}) {
-  const { t } = useTranslation();
-  if (!log) {
-    return (
-      <div
-        className="vt-card-sectioned p-8 text-center flex flex-col items-center gap-3"
-        style={{ minHeight: 320 }}
-      >
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: "var(--vt-hover)", color: "var(--vt-fg-4)" }}
-        >
-          <Info className="w-4 h-4" />
-        </div>
-        <div>
-          <div className="text-[13px] font-medium">
-            Aucune entrée sélectionnée
-          </div>
-          <div
-            className="text-[11.5px] mt-0.5"
-            style={{ color: "var(--vt-fg-3)" }}
-          >
-            Clique sur une ligne pour voir ses détails.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const levelColor = getLevelCssColor(log.level);
-  const at = parseLogDate(log.timestamp);
-
-  return (
-    <div
-      className="vt-card-sectioned vt-fade-up overflow-hidden"
-      key={log.id}
-    >
-      <div
-        className="flex items-start gap-3 px-5 pt-5 pb-4"
-        style={{ borderBottom: "1px solid var(--vt-border)" }}
-      >
-        <div
-          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-          style={{
-            background: `oklch(from ${levelColor} l c h / 0.15)`,
-            color: levelColor,
-            boxShadow: `inset 0 0 0 1px oklch(from ${levelColor} l c h / 0.3)`,
-          }}
-        >
-          {log.level === "error" || log.level === "warn" ? (
-            <AlertTriangle className="w-4 h-4" />
-          ) : (
-            <Info className="w-4 h-4" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className={"lvl-pill lvl-" + log.level}>
-              {log.level.toUpperCase()}
-            </span>
-            <span className="text-[14px] font-semibold tracking-tight">
-              #{log.id.slice(0, 6)}
-            </span>
-          </div>
-          <div
-            className="flex items-center gap-2 mt-1.5 text-[11.5px] flex-wrap"
-            style={{ color: "var(--vt-fg-3)" }}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: sourceColor(sourceOf(log)) }}
-              />
-              <span
-                className="vt-mono"
-                style={{ color: sourceColor(sourceOf(log)) }}
-              >
-                {sourceOf(log)}
-              </span>
-            </span>
-            <span>·</span>
-            <span className="vt-mono">{fmtTime(at)}</span>
-            <span>·</span>
-            <span className="vt-mono">
-              {at.toLocaleDateString("fr-FR", {
-                day: "2-digit",
-                month: "short",
-              })}
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className={
-            compact
-              ? "inline-flex items-center gap-1.5 px-2 h-7 rounded-md text-[12px] vt-hover-bg"
-              : "w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg"
-          }
-          style={{ color: "var(--vt-fg-3)" }}
-          aria-label={
-            compact
-              ? t("transcriptionDetails.backToList", {
-                  defaultValue: "Retour à la liste",
-                })
-              : "Fermer"
-          }
-        >
-          {compact ? (
-            <>
-              <ArrowLeft className="w-3.5 h-3.5" />
-              {t("transcriptionDetails.back", { defaultValue: "Retour" })}
-            </>
-          ) : (
-            <X className="w-3.5 h-3.5" />
-          )}
-        </button>
-      </div>
-
-      <div
-        className="px-5 py-4"
-        style={{ borderBottom: "1px solid var(--vt-border)" }}
-      >
-        <div
-          className="text-[10.5px] uppercase tracking-wider mb-2"
-          style={{ color: "var(--vt-fg-4)" }}
-        >
-          Message
-        </div>
-        <div
-          className="vt-mono text-[12.5px] leading-relaxed p-3 rounded-lg whitespace-pre-wrap"
-          style={{
-            background: "var(--vt-surface)",
-            border: "1px solid var(--vt-border)",
-            color: "var(--vt-fg)",
-          }}
-        >
-          {log.message}
-        </div>
-      </div>
-
-      <div className="px-5 py-3 flex items-center gap-2">
-        <button
-          type="button"
-          className="vt-btn-primary"
-          style={{ height: 30, fontSize: 12 }}
-          onClick={() =>
-            onCopy(
-              `[${fmtTime(at)}] [${log.level.toUpperCase()}] ${log.message}`,
-            )
-          }
-        >
-          <Copy className="w-3.5 h-3.5" />
-          Copier la ligne
-        </button>
-        <button
-          type="button"
-          className="vt-btn vt-btn-sm"
-          onClick={() => invoke("open_app_data_dir")}
-        >
-          <FolderOpen className="w-3.5 h-3.5" />
-          {t("logs.openFolder")}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /* ── Main LogsTab ──────────────────────────────────────────────── */
 export function LogsTab({
   logs,
@@ -364,10 +168,8 @@ export function LogsTab({
   levelFilter,
   sourceFilter,
   onSourceFilterChange,
-  isCompact,
 }: LogsTabProps) {
   const { t } = useTranslation();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [paused, setPaused] = useState(false);
   const [snapshot, setSnapshot] = useState<AppLog[] | null>(null);
@@ -418,11 +220,6 @@ export function LogsTab({
   // Oldest first (rendering order). `logs` arrives newest-first from the hook.
   const displayed = useMemo(() => [...filtered].reverse(), [filtered]);
 
-  const selected = useMemo(
-    () => effectiveLogs.find((l) => l.id === selectedId) ?? null,
-    [effectiveLogs, selectedId],
-  );
-
   // Auto-scroll to the bottom as new logs come in
   useEffect(() => {
     if (!autoScroll || paused) return;
@@ -449,17 +246,11 @@ export function LogsTab({
     );
   };
 
-  const showDetailOnly = isCompact && selected !== null;
-  const showStreamOnly = isCompact && selected === null;
-
   return (
     <div className="vt-app flex flex-col h-full min-h-0 overflow-hidden">
       <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Left: toolbar + timeline + stream */}
-        <div
-          className="flex-1 flex flex-col min-w-0"
-          style={{ display: showDetailOnly ? "none" : undefined }}
-        >
+        {/* Toolbar + timeline + stream */}
+        <div className="flex-1 flex flex-col min-w-0">
           {/* Toolbar */}
           <div
             className="px-6 pt-5 pb-3 flex flex-col gap-3"
@@ -474,7 +265,7 @@ export function LogsTab({
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher dans les messages…"
+                  placeholder={t("logs.searchPlaceholder")}
                   className="vt-hist-search vt-mono"
                   style={{ fontSize: 12.5 }}
                 />
@@ -492,12 +283,12 @@ export function LogsTab({
                   {paused ? (
                     <>
                       <Play className="w-3.5 h-3.5" />
-                      <span>Reprendre</span>
+                      <span>{t("logs.resume")}</span>
                     </>
                   ) : (
                     <>
                       <Pause className="w-3.5 h-3.5" />
-                      <span>Pause</span>
+                      <span>{t("logs.pause")}</span>
                     </>
                   )}
                 </button>
@@ -514,8 +305,8 @@ export function LogsTab({
                   type="button"
                   className="vt-btn vt-btn-sm"
                   disabled
-                  data-tip="Export (bientôt)"
-                  aria-label="Exporter"
+                  data-tip={t("logs.exportComingSoon")}
+                  aria-label={t("logs.export")}
                 >
                   <Download className="w-3.5 h-3.5" />
                 </button>
@@ -532,7 +323,6 @@ export function LogsTab({
                         )
                       ) {
                         onClearLogs();
-                        setSelectedId(null);
                       }
                     }}
                   >
@@ -557,17 +347,20 @@ export function LogsTab({
                 ) : (
                   <span className="dot-live" />
                 )}
-                <span className="vt-mono">{paused ? "Pausé" : "En direct"}</span>
+                <span className="vt-mono">{paused ? t("logs.paused") : t("logs.live")}</span>
               </div>
               <span>·</span>
               <span className="vt-mono">
-                {filtered.length} / {effectiveLogs.length} entrées
+                {t("logs.entriesCount", {
+                  filtered: filtered.length,
+                  total: effectiveLogs.length,
+                })}
               </span>
               {counts.error > 0 && (
                 <>
                   <span>·</span>
                   <span className="vt-mono" style={{ color: "var(--vt-danger)" }}>
-                    {counts.error} erreur{counts.error > 1 ? "s" : ""}
+                    {t("logs.errorCount", { count: counts.error })}
                   </span>
                 </>
               )}
@@ -575,7 +368,7 @@ export function LogsTab({
                 <>
                   <span>·</span>
                   <span className="vt-mono" style={{ color: "var(--vt-warn)" }}>
-                    {counts.warn} avertissement{counts.warn > 1 ? "s" : ""}
+                    {t("logs.warningCount", { count: counts.warn })}
                   </span>
                 </>
               )}
@@ -591,9 +384,14 @@ export function LogsTab({
                       border: "1px solid oklch(from var(--vt-accent) l c h / 0.3)",
                       color: "var(--vt-accent-2)",
                     }}
-                    title="Retirer le filtre de source"
+                    title={t("logs.removeSourceFilter")}
                   >
-                    source = {sourceFilter}
+                    {t("logs.sourceFilterLabel", {
+                      source:
+                        sourceFilter === UNKNOWN_SOURCE
+                          ? t("logs.unknownSource")
+                          : sourceFilter,
+                    })}
                     <X className="w-3 h-3" />
                   </button>
                 </>
@@ -605,7 +403,7 @@ export function LogsTab({
                   className="flex items-center gap-2.5"
                 >
                   <span className="vt-toggle" data-on={showTimeline} />
-                  <span className="vt-mono text-[11px]">chronologie</span>
+                  <span className="vt-mono text-[11px]">{t("logs.timeline")}</span>
                 </button>
                 <button
                   type="button"
@@ -613,7 +411,7 @@ export function LogsTab({
                   className="flex items-center gap-2.5"
                 >
                   <span className="vt-toggle" data-on={autoScroll} />
-                  <span className="vt-mono text-[11px]">auto-scroll</span>
+                  <span className="vt-mono text-[11px]">{t("logs.autoScroll")}</span>
                 </button>
               </div>
             </div>
@@ -671,13 +469,13 @@ export function LogsTab({
                   className="text-[13.5px]"
                   style={{ color: "var(--vt-fg-2)" }}
                 >
-                  Aucune entrée ne correspond
+                  {t("logs.noMatches")}
                 </p>
                 <p
                   className="text-[12px] mt-1"
                   style={{ color: "var(--vt-fg-3)" }}
                 >
-                  Essaie d'autres mots-clés ou active des niveaux.
+                  {t("logs.noMatchesSubtitle")}
                 </p>
               </div>
             ) : (
@@ -685,17 +483,16 @@ export function LogsTab({
                 {displayed.map((l) => {
                   const src = sourceOf(l);
                   const srcColor = sourceColor(src);
+                  const srcLabel =
+                    src === UNKNOWN_SOURCE ? t("logs.unknownSource") : src;
+                  const at = parseLogDate(l.timestamp);
                   return (
                     <div
                       key={l.id}
                       className="log-row"
                       data-level={l.level}
-                      data-selected={selectedId === l.id}
-                      onClick={() => setSelectedId(l.id)}
                     >
-                      <span className="log-time">
-                        {fmtTime(parseLogDate(l.timestamp))}
-                      </span>
+                      <span className="log-time">{fmtTime(at)}</span>
                       <span className="flex items-center">
                         <span className={"lvl-pill lvl-" + l.level}>
                           {l.level.toUpperCase()}
@@ -704,21 +501,33 @@ export function LogsTab({
                       <span className="log-msg">
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() =>
                             onSourceFilterChange(
                               sourceFilter === src ? null : src,
-                            );
-                          }}
+                            )
+                          }
                           className="vt-mono mr-2 font-medium hover:underline"
                           style={{ color: srcColor }}
-                          title={`Filtrer sur ${src}`}
+                          title={t("logs.filterBy", { source: srcLabel })}
                         >
-                          {src}
+                          {srcLabel}
                         </button>
                         <span style={{ color: "var(--vt-fg-4)" }}>›</span>{" "}
                         {renderMessage(l.message)}
                       </span>
+                      <button
+                        type="button"
+                        className="log-row-copy"
+                        onClick={() =>
+                          handleCopy(
+                            `[${fmtTime(at)}] [${l.level.toUpperCase()}] ${l.message}`,
+                          )
+                        }
+                        title={t("logs.copyLine")}
+                        aria-label={t("logs.copyLine")}
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
                     </div>
                   );
                 })}
@@ -728,30 +537,6 @@ export function LogsTab({
           </div>
         </div>
 
-        {/* Right: detail panel */}
-        {!showStreamOnly && (
-          <div
-            className={
-              showDetailOnly
-                ? "flex-1 min-w-0 p-5 overflow-y-auto"
-                : "shrink-0 p-5 overflow-y-auto"
-            }
-            style={{
-              width: showDetailOnly ? undefined : 400,
-              borderLeft: showDetailOnly
-                ? undefined
-                : "1px solid var(--vt-border)",
-              background: "oklch(from var(--vt-bg) calc(l - 0.005) c h)",
-            }}
-          >
-            <LogDetail
-              log={selected}
-              onClose={() => setSelectedId(null)}
-              onCopy={handleCopy}
-              compact={isCompact}
-            />
-          </div>
-        )}
       </div>
 
       {/* Toast */}
@@ -772,7 +557,7 @@ export function LogsTab({
           >
             <Check className="w-2.5 h-2.5" />
           </span>
-          Copié
+          {t("logs.copiedToast")}
         </div>
       )}
     </div>

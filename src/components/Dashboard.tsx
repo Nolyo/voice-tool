@@ -293,7 +293,6 @@ export default function Dashboard() {
               levelFilter={logsLevelFilter}
               sourceFilter={logsSourceFilter}
               onSourceFilterChange={setLogsSourceFilter}
-              isCompact={isCompact}
             />
           ) : (
             <div className="overflow-y-auto h-full">

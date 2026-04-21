@@ -1,51 +1,17 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { Transcription } from "@/hooks/useTranscriptionHistory";
+import { isToday } from "@/lib/date-format";
 
 interface HistoriqueSidebarSectionProps {
   transcriptions: Transcription[];
 }
-
-const DAY_NAMES = [
-  "Dimanche",
-  "Lundi",
-  "Mardi",
-  "Mercredi",
-  "Jeudi",
-  "Vendredi",
-  "Samedi",
-];
-const MONTHS = [
-  "janv.",
-  "févr.",
-  "mars",
-  "avr.",
-  "mai",
-  "juin",
-  "juil.",
-  "août",
-  "sept.",
-  "oct.",
-  "nov.",
-  "déc.",
-];
 
 function parseAt(t: Transcription): Date {
   const iso = `${t.date}T${t.time}`;
   const d = new Date(iso);
   if (!Number.isNaN(d.getTime())) return d;
   return new Date(`${t.date} ${t.time}`);
-}
-
-function dayLabel(d: Date): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dd = new Date(d);
-  dd.setHours(0, 0, 0, 0);
-  const diff = Math.round((today.getTime() - dd.getTime()) / 86400000);
-  if (diff === 0) return "Aujourd'hui";
-  if (diff === 1) return "Hier";
-  if (diff < 7 && diff > 0) return DAY_NAMES[dd.getDay()];
-  return `${dd.getDate()} ${MONTHS[dd.getMonth()]}`;
 }
 
 function wordsOf(text: string): number {
@@ -98,6 +64,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
 export function HistoriqueSidebarSection({
   transcriptions,
 }: HistoriqueSidebarSectionProps) {
+  const { t, i18n } = useTranslation();
   const stats = useMemo(() => {
     let today = 0;
     let words = 0;
@@ -106,13 +73,13 @@ export function HistoriqueSidebarSection({
     firstDay.setDate(firstDay.getDate() - 30);
     firstDay.setHours(0, 0, 0, 0);
 
-    for (const t of transcriptions) {
-      if (dayLabel(parseAt(t)) === "Aujourd'hui") today++;
-      words += wordsOf(t.text);
+    for (const tr of transcriptions) {
+      const at = parseAt(tr);
+      if (isToday(at)) today++;
+      words += wordsOf(tr.text);
 
-      const at = parseAt(t);
       if (at >= firstDay) {
-        cost += (t.apiCost ?? 0) + (t.postProcessCost ?? 0);
+        cost += (tr.apiCost ?? 0) + (tr.postProcessCost ?? 0);
       }
     }
 
@@ -124,39 +91,41 @@ export function HistoriqueSidebarSection({
     };
   }, [transcriptions]);
 
+  const numberLocale = i18n.language === "en" ? "en-US" : "fr-FR";
+
   return (
     <div className="flex-1 overflow-y-auto px-2 pb-3 min-h-0">
-      <SectionTitle>Vue d'ensemble</SectionTitle>
+      <SectionTitle>{t("history.overview")}</SectionTitle>
       <div className="space-y-1.5">
-        <StatRow label="Total" value={String(stats.total)} />
+        <StatRow label={t("history.total")} value={String(stats.total)} />
         <StatRow
-          label="Aujourd'hui"
+          label={t("common.today")}
           value={String(stats.today)}
           accent={stats.today > 0}
         />
         <StatRow
-          label="Mots transcrits"
-          value={stats.words.toLocaleString("fr")}
+          label={t("history.wordsTranscribed")}
+          value={stats.words.toLocaleString(numberLocale)}
         />
         <StatRow
-          label="Coût (30 j)"
-          value={stats.cost > 0 ? `$${stats.cost.toFixed(3)}` : "Gratuit"}
+          label={t("history.cost30d")}
+          value={stats.cost > 0 ? `$${stats.cost.toFixed(3)}` : t("history.free")}
         />
       </div>
 
-      <SectionTitle>Légende</SectionTitle>
+      <SectionTitle>{t("history.legend")}</SectionTitle>
       <div className="px-1 space-y-1.5">
         <LegendDot
           color="oklch(0.72 0.14 205)"
-          label="API (cloud)"
+          label={t("history.legendApiCloud")}
         />
         <LegendDot
           color="oklch(0.74 0.14 150)"
-          label="Local"
+          label={t("history.legendLocal")}
         />
         <LegendDot
           color="oklch(0.72 0.17 295)"
-          label="Post-traitée IA"
+          label={t("history.legendPostProcessed")}
         />
       </div>
     </div>

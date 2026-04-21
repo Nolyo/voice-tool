@@ -18,6 +18,7 @@ import {
 import type { Transcription } from "@/hooks/useTranscriptionHistory";
 import { useSettings } from "@/hooks/useSettings";
 import { invoke } from "@tauri-apps/api/core";
+import { useDateFormatters } from "@/lib/date-format";
 
 interface TranscriptionDetailsProps {
   transcription: Transcription | null;
@@ -27,32 +28,11 @@ interface TranscriptionDetailsProps {
   compact?: boolean;
 }
 
-const DAY_NAMES = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
-const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
-
 function parseAt(t: Transcription): Date {
   const iso = `${t.date}T${t.time}`;
   const d = new Date(iso);
   if (!Number.isNaN(d.getTime())) return d;
   return new Date(`${t.date} ${t.time}`);
-}
-
-function dayLabel(d: Date): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dd = new Date(d);
-  dd.setHours(0, 0, 0, 0);
-  const diff = Math.round((today.getTime() - dd.getTime()) / 86400000);
-  if (diff === 0) return "Aujourd'hui";
-  if (diff === 1) return "Hier";
-  if (diff < 7 && diff > 0) return DAY_NAMES[dd.getDay()];
-  return `${dd.getDate()} ${MONTHS[dd.getMonth()]}`;
-}
-
-function timeFmt(d: Date): string {
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
 }
 
 function durFmt(s?: number): string {
@@ -111,6 +91,7 @@ export function TranscriptionDetails({
   compact = false,
 }: TranscriptionDetailsProps) {
   const { t } = useTranslation();
+  const { dayLabel, formatTime } = useDateFormatters();
   const { settings } = useSettings();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -246,7 +227,7 @@ export function TranscriptionDetails({
             className="text-[12px] mt-1"
             style={{ color: "var(--vt-fg-3)" }}
           >
-            Clique sur un élément de la chronologie pour l'ouvrir.
+            {t("transcriptionDetails.emptyStateSubtitle")}
           </div>
         </div>
       </div>
@@ -288,7 +269,7 @@ export function TranscriptionDetails({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="text-[14.5px] font-semibold tracking-tight">
-              {dayLabel(at)} · {timeFmt(at)}
+              {dayLabel(at)} · {formatTime(at)}
             </h2>
             <span
               className="vt-mono text-[10.5px] px-1.5 py-0.5 rounded"
@@ -354,7 +335,7 @@ export function TranscriptionDetails({
               ? t("transcriptionDetails.backToList", {
                   defaultValue: "Retour à la liste",
                 })
-              : "Fermer"
+              : t("common.close")
           }
         >
           {compact ? (
@@ -420,7 +401,7 @@ export function TranscriptionDetails({
             className="text-[10.5px] uppercase tracking-wider"
             style={{ color: "var(--vt-fg-4)" }}
           >
-            Mots
+            {t("transcriptionDetails.metricWords")}
           </div>
           <div className="text-[16px] font-semibold vt-mono mt-0.5">{words}</div>
         </div>
@@ -429,7 +410,7 @@ export function TranscriptionDetails({
             className="text-[10.5px] uppercase tracking-wider"
             style={{ color: "var(--vt-fg-4)" }}
           >
-            Débit
+            {t("transcriptionDetails.metricRate")}
           </div>
           <div className="text-[16px] font-semibold vt-mono mt-0.5">
             {wpm > 0 ? (
@@ -439,7 +420,7 @@ export function TranscriptionDetails({
                   className="text-[11px] font-normal ml-1"
                   style={{ color: "var(--vt-fg-4)" }}
                 >
-                  mpm
+                  {t("transcriptionDetails.metricRateUnit")}
                 </span>
               </>
             ) : (
@@ -514,7 +495,7 @@ export function TranscriptionDetails({
                 className="text-[10.5px] uppercase tracking-wider mb-1.5"
                 style={{ color: "var(--vt-fg-4)" }}
               >
-                {t("transcriptionDetails.originalHint").replace(":", "")}
+                {t("transcriptionDetails.originalHint")}
               </div>
               <p
                 className="text-[12.5px] leading-relaxed italic"
@@ -545,7 +526,7 @@ export function TranscriptionDetails({
             className="text-[10.5px] vt-mono"
             style={{ color: "var(--vt-fg-4)" }}
           >
-            {words} {words === 1 ? "mot" : "mots"}
+            {t("history.wordsCount", { count: words })}
           </div>
         </div>
         <p
@@ -594,10 +575,10 @@ export function TranscriptionDetails({
           type="button"
           className="vt-btn"
           disabled
-          data-tip="Export (bientôt)"
+          data-tip={t("transcriptionDetails.exportComingSoon")}
         >
           <Download className="w-3.5 h-3.5" />
-          <span>Exporter</span>
+          <span>{t("transcriptionDetails.exportLabel")}</span>
         </button>
         {onDelete && (
           <button
