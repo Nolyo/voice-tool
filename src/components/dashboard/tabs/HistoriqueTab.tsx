@@ -9,7 +9,6 @@ interface HistoriqueTabProps {
   isCompact: boolean;
   onSelectTranscription: (transcription: Transcription) => void;
   onCloseDetails: () => void;
-  onCopy: (text: string) => void;
   onDelete: (id: string) => void;
   onClearAll: () => void;
 }
@@ -26,7 +25,6 @@ export function HistoriqueTab({
   isCompact,
   onSelectTranscription,
   onCloseDetails,
-  onCopy,
   onDelete,
   onClearAll,
 }: HistoriqueTabProps) {
@@ -35,7 +33,6 @@ export function HistoriqueTab({
       <div className="vt-app">
         <TranscriptionDetails
           transcription={selectedTranscription}
-          onCopy={onCopy}
           onClose={onCloseDetails}
           onDelete={onDelete}
           compact
@@ -51,7 +48,6 @@ export function HistoriqueTab({
           transcriptions={transcriptions}
           selectedId={isSidebarOpen ? selectedTranscription?.id : undefined}
           onSelectTranscription={onSelectTranscription}
-          onCopy={onCopy}
           onDelete={onDelete}
           onClearAll={onClearAll}
         />
@@ -64,7 +60,6 @@ export function HistoriqueTab({
         <div className="w-[440px] sticky top-2">
           <TranscriptionDetails
             transcription={selectedTranscription}
-            onCopy={onCopy}
             onClose={onCloseDetails}
             onDelete={onDelete}
           />
