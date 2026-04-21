@@ -50,6 +50,11 @@ interface NotesSidebarSectionProps {
   onReorderFolders: (ids: string[]) => Promise<void>;
   onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
+  onMoveNoteToIndex: (
+    noteId: string,
+    targetFolderId: string | null,
+    noteIdsInNewOrder: string[],
+  ) => Promise<void>;
 }
 
 interface NoteItemProps {
@@ -279,7 +284,9 @@ export function NotesSidebarSection({
   onReorderFolders,
   onReorderNotes,
   onMoveNote,
+  onMoveNoteToIndex,
 }: NotesSidebarSectionProps) {
+  void onMoveNoteToIndex;
   const { t } = useTranslation();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
