@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
 import { Check, Copy, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { AiActionMenu } from "@/components/notes/AiActionMenu";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 /** Wait this long after the last keystroke before showing "Sauvegardée". */
 const SAVE_BADGE_APPEAR_MS = 2000;
@@ -20,7 +20,6 @@ interface NotesEditorFooterProps {
   activeNoteId: string | null;
   isAiLoading: boolean;
   onAiAction: (systemPrompt: string) => void;
-  onCopyContent: (text: string) => void;
   onRequestDelete: () => void;
 }
 
@@ -31,22 +30,14 @@ export function NotesEditorFooter({
   activeNoteId,
   isAiLoading,
   onAiAction,
-  onCopyContent,
   onRequestDelete,
 }: NotesEditorFooterProps) {
   const { t } = useTranslation();
-  const [justCopied, setJustCopied] = useState(false);
+  const { copy, justCopied } = useCopyToClipboard();
   const [wordCount, setWordCount] = useState(0);
   const [showSaveBadge, setShowSaveBadge] = useState(false);
-  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const appearTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => {
-    return () => {
-      clearTimeout(copyResetTimerRef.current);
-    };
-  }, []);
 
   const isEditorInSync =
     loadedNoteId !== null && loadedNoteId === activeNoteId;
@@ -105,23 +96,7 @@ export function NotesEditorFooter({
 
   const handleCopy = async () => {
     if (!editor) return;
-    try {
-      const html = editor.getHTML();
-      const blob = new Blob([html], { type: "text/html" });
-      const textBlob = new Blob([editorText], { type: "text/plain" });
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "text/html": blob,
-          "text/plain": textBlob,
-        }),
-      ]);
-    } catch {
-      onCopyContent(editorText);
-    }
-    setJustCopied(true);
-    toast.success(t("notes.editor.copiedToClipboard"));
-    clearTimeout(copyResetTimerRef.current);
-    copyResetTimerRef.current = setTimeout(() => setJustCopied(false), 1500);
+    await copy(editorText, { html: editor.getHTML() });
   };
 
   return (
