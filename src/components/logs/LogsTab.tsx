@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
@@ -162,6 +162,29 @@ function TimelineStrip({ logs }: { logs: AppLog[] }) {
   );
 }
 
+/* ── LogRowCopyButton (per-row scoped) ──────────────────────────── */
+function LogRowCopyButton({ text }: { text: string }) {
+  const { t } = useTranslation();
+  const { copy, justCopied } = useCopyToClipboard();
+  return (
+    <button
+      type="button"
+      className="log-row-copy"
+      onClick={() => {
+        void copy(text);
+      }}
+      title={justCopied ? t("common.copied") : t("logs.copyLine")}
+      aria-label={justCopied ? t("common.copied") : t("logs.copyLine")}
+    >
+      {justCopied ? (
+        <Check className="w-3 h-3" style={{ color: "var(--vt-ok)" }} />
+      ) : (
+        <Copy className="w-3 h-3" />
+      )}
+    </button>
+  );
+}
+
 /* ── Main LogsTab ──────────────────────────────────────────────── */
 export function LogsTab({
   logs,
@@ -176,7 +199,6 @@ export function LogsTab({
   const [snapshot, setSnapshot] = useState<AppLog[] | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [showTimeline, setShowTimeline] = useState(true);
-  const { copy, justCopied } = useCopyToClipboard();
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -226,13 +248,6 @@ export function LogsTab({
     if (!autoScroll || paused) return;
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [displayed, autoScroll, paused]);
-
-  const handleCopy = useCallback(
-    (text: string) => {
-      void copy(text);
-    },
-    [copy],
-  );
 
   const renderMessage = (msg: string) => {
     const q = search.trim();
@@ -517,26 +532,9 @@ export function LogsTab({
                         <span style={{ color: "var(--vt-fg-4)" }}>›</span>{" "}
                         {renderMessage(l.message)}
                       </span>
-                      <button
-                        type="button"
-                        className="log-row-copy"
-                        onClick={() =>
-                          handleCopy(
-                            `[${fmtTime(at)}] [${l.level.toUpperCase()}] ${l.message}`,
-                          )
-                        }
-                        title={justCopied ? t("common.copied") : t("logs.copyLine")}
-                        aria-label={justCopied ? t("common.copied") : t("logs.copyLine")}
-                      >
-                        {justCopied ? (
-                          <Check
-                            className="w-3 h-3"
-                            style={{ color: "var(--vt-ok)" }}
-                          />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                      </button>
+                      <LogRowCopyButton
+                        text={`[${fmtTime(at)}] [${l.level.toUpperCase()}] ${l.message}`}
+                      />
                     </div>
                   );
                 })}
