@@ -16,6 +16,7 @@ import {
   DndContext,
   PointerSensor,
   closestCenter,
+  useDroppable,
   useSensor,
   useSensors,
   type DragCancelEvent,
@@ -47,6 +48,11 @@ type NoteDragData = {
 type FolderDragData = {
   type: 'folder';
   folderId: string;
+};
+
+type ContainerDroppableData = {
+  type: 'container';
+  containerId: string; // folderId or 'root'
 };
 
 const ROOT_CONTAINER_ID = 'root';
@@ -101,6 +107,29 @@ function SortableNoteItem({ sortableId, containerId, ...props }: SortableNoteIte
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <NoteItem {...props} />
+    </div>
+  );
+}
+
+type FolderBodyDroppableProps = {
+  containerId: string;
+  children: React.ReactNode;
+};
+
+function FolderBodyDroppable({ containerId, children }: FolderBodyDroppableProps) {
+  const data: ContainerDroppableData = { type: 'container', containerId };
+  const { setNodeRef, isOver } = useDroppable({
+    id: `container-${containerId}`,
+    data,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      data-container-id={containerId}
+      data-over={isOver}
+      className="min-h-[8px]"
+    >
+      {children}
     </div>
   );
 }
@@ -242,26 +271,28 @@ function FolderSection({
         </div>
       </div>
       {!collapsed && (
-        <SortableContext
-          items={notes.map((n) => n.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {notes.map((note) => (
-            <SortableNoteItem
-              key={note.id}
-              sortableId={note.id}
-              containerId={folder.id}
-              note={note}
-              isActive={note.id === activeNoteId}
-              indented
-              onOpen={onOpenNote}
-              onToggleFavorite={onToggleFavorite}
-              onRequestDelete={onRequestDeleteNote}
-              onContextMenu={onNoteContextMenu}
-              t={t}
-            />
-          ))}
-        </SortableContext>
+        <FolderBodyDroppable containerId={folder.id}>
+          <SortableContext
+            items={notes.map((n) => n.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {notes.map((note) => (
+              <SortableNoteItem
+                key={note.id}
+                sortableId={note.id}
+                containerId={folder.id}
+                note={note}
+                isActive={note.id === activeNoteId}
+                indented
+                onOpen={onOpenNote}
+                onToggleFavorite={onToggleFavorite}
+                onRequestDelete={onRequestDeleteNote}
+                onContextMenu={onNoteContextMenu}
+                t={t}
+              />
+            ))}
+          </SortableContext>
+        </FolderBodyDroppable>
       )}
     </div>
   );
@@ -448,7 +479,7 @@ export function NotesSidebarSection({
     }
 
     if (activeData.type === 'note') {
-      const overData = over.data.current as NoteDragData | undefined;
+      const overData = over.data.current as NoteDragData | ContainerDroppableData | undefined;
       // Same-container reorder ONLY (cross-container comes in Task 9)
       if (overData?.type === 'note' && overData.containerId === activeData.containerId) {
         const containerNotes =
@@ -676,32 +707,32 @@ export function NotesSidebarSection({
             </SortableContext>
 
             {/* Root / unfiled notes */}
-            {(rootNotes.length > 0 || folders.length === 0) && (
-              <div>
-                {folders.length > 0 && (
-                  <button
-                    className="flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors"
-                    onClick={toggleRoot}
-                  >
-                    {rootCollapsed ? (
-                      <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                    )}
-                    <span className="text-xs text-muted-foreground select-none">
-                      {t('notes.folders.unfiled')}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground/60 select-none">
-                      ({rootNotes.length})
-                    </span>
-                  </button>
-                )}
-                {!rootCollapsed && rootNotes.length === 0 && folders.length === 0 && (
-                  <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                    {t('notes.empty')}
-                  </div>
-                )}
-                {!rootCollapsed && rootNotes.length > 0 && (
+            <div>
+              {folders.length > 0 && (
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors"
+                  onClick={toggleRoot}
+                >
+                  {rootCollapsed ? (
+                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                  )}
+                  <span className="text-xs text-muted-foreground select-none">
+                    {t('notes.folders.unfiled')}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60 select-none">
+                    ({rootNotes.length})
+                  </span>
+                </button>
+              )}
+              {!rootCollapsed && rootNotes.length === 0 && folders.length === 0 && (
+                <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                  {t('notes.empty')}
+                </div>
+              )}
+              {!rootCollapsed && (rootNotes.length > 0 || folders.length > 0) && (
+                <FolderBodyDroppable containerId={ROOT_CONTAINER_ID}>
                   <SortableContext
                     items={rootNotes.map((n) => n.id)}
                     strategy={verticalListSortingStrategy}
@@ -722,9 +753,9 @@ export function NotesSidebarSection({
                       />
                     ))}
                   </SortableContext>
-                )}
-              </div>
-            )}
+                </FolderBodyDroppable>
+              )}
+            </div>
           </DndContext>
         )}
       </div>
