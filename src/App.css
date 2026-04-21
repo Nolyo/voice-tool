@@ -1787,3 +1787,31 @@ body.mini-window-body #root {
   overflow-x: auto;
   margin: 0.75em 0;
 }
+
+/* ===== Notes editor — slash menu ===== */
+
+.vt-slash-menu {
+  font-family: inherit;
+}
+
+.vt-slash-menu button:focus-visible {
+  outline: 2px solid oklch(0.65 0.15 265 / 0.6);
+  outline-offset: 1px;
+}
+
+/* ===== Notes editor — code block wrapper (NodeView) ===== */
+
+.vt-app .ProseMirror .vt-code-block-wrapper {
+  position: relative;
+  margin: 0.75em 0;
+}
+
+.vt-app .ProseMirror .vt-code-block-wrapper > pre {
+  margin: 0;
+}
+
+/* ===== Notes editor — table toolbar ===== */
+
+.vt-app .vt-table-toolbar {
+  font-family: inherit;
+}
