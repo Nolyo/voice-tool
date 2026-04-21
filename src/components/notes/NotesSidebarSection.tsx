@@ -30,6 +30,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FloatingMenu, type FloatingMenuEntry } from "@/components/ui/floating-menu";
@@ -324,11 +325,18 @@ export function NotesSidebarSection({
   onMoveNote,
   onMoveNoteToIndex,
 }: NotesSidebarSectionProps) {
-  void onMoveNoteToIndex;
   const { t } = useTranslation();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
+
+  const resetDragState = () => {
+    setActiveId(null);
+    setActiveType(null);
+    setOriginContainerId(null);
+    setDraftContainers(null);
+    setOverContainerId(null);
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     const data = event.active.data.current as NoteDragData | FolderDragData | undefined;
@@ -407,11 +415,7 @@ export function NotesSidebarSection({
   };
 
   const handleDragCancel = (_event: DragCancelEvent) => {
-    setActiveId(null);
-    setActiveType(null);
-    setOriginContainerId(null);
-    setDraftContainers(null);
-    setOverContainerId(null);
+    resetDragState();
   };
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -580,7 +584,10 @@ export function NotesSidebarSection({
 
   const rootNotesForRender = notesForFolder(ROOT_CONTAINER_ID);
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    const activeData = active.data.current as NoteDragData | FolderDragData | undefined;
+
     const resetDragState = () => {
       setActiveId(null);
       setActiveType(null);
@@ -589,52 +596,69 @@ export function NotesSidebarSection({
       setOverContainerId(null);
     };
 
-    const { active, over } = event;
-    if (!over || active.id === over.id) {
-      resetDragState();
-      return;
-    }
-    const activeData = active.data.current as NoteDragData | FolderDragData | undefined;
     if (!activeData) {
       resetDragState();
       return;
     }
 
+    // Folder reorder (unchanged behavior)
     if (activeData.type === 'folder') {
-      const oldIndex = folders.findIndex((f) => f.id === active.id);
-      const newIndex = folders.findIndex((f) => f.id === over.id);
-      if (oldIndex < 0 || newIndex < 0) {
-        resetDragState();
-        return;
+      if (over && active.id !== over.id) {
+        const oldIndex = folders.findIndex((f) => f.id === active.id);
+        const newIndex = folders.findIndex((f) => f.id === over.id);
+        if (oldIndex >= 0 && newIndex >= 0) {
+          const next = [...folders];
+          const [moved] = next.splice(oldIndex, 1);
+          next.splice(newIndex, 0, moved);
+          void onReorderFolders(next.map((f) => f.id));
+        }
       }
-      const next = [...folders];
-      const [moved] = next.splice(oldIndex, 1);
-      next.splice(newIndex, 0, moved);
-      void onReorderFolders(next.map((f) => f.id));
       resetDragState();
       return;
     }
 
-    if (activeData.type === 'note') {
-      const overData = over.data.current as NoteDragData | ContainerDroppableData | undefined;
-      // Same-container reorder ONLY (cross-container comes in Task 9)
-      if (overData?.type === 'note' && overData.containerId === activeData.containerId) {
-        const containerNotes =
-          activeData.containerId === ROOT_CONTAINER_ID
-            ? rootNotes
-            : (notesByFolder.get(activeData.containerId) ?? []);
-        const oldIndex = containerNotes.findIndex((n) => n.id === active.id);
-        const newIndex = containerNotes.findIndex((n) => n.id === over.id);
-        if (oldIndex < 0 || newIndex < 0) {
+    // Note drop
+    if (activeData.type === 'note' && draftContainers && originContainerId) {
+      const noteId = activeData.noteId;
+      const finalContainerId = findContainerOf(draftContainers, noteId);
+      if (!finalContainerId) {
+        resetDragState();
+        return;
+      }
+
+      const finalIds = draftContainers[finalContainerId];
+      const originIds = liveContainers[originContainerId] ?? [];
+
+      // No-op detection: note stayed in origin AND order unchanged
+      if (finalContainerId === originContainerId) {
+        const unchanged =
+          finalIds.length === originIds.length &&
+          finalIds.every((id, i) => id === originIds[i]);
+        if (unchanged) {
           resetDragState();
           return;
         }
-        const next = [...containerNotes];
-        const [moved] = next.splice(oldIndex, 1);
-        next.splice(newIndex, 0, moved);
-        const folderId = activeData.containerId === ROOT_CONTAINER_ID ? null : activeData.containerId;
-        void onReorderNotes(folderId, next.map((n) => n.id));
+        const folderId = finalContainerId === ROOT_CONTAINER_ID ? null : finalContainerId;
+        try {
+          await onReorderNotes(folderId, finalIds);
+        } catch (error) {
+          console.error('Reorder failed:', error);
+          toast.error(t('notes.errors.moveFailed'));
+        }
+        resetDragState();
+        return;
       }
+
+      // Cross-container move
+      const targetFolderId = finalContainerId === ROOT_CONTAINER_ID ? null : finalContainerId;
+      try {
+        await onMoveNoteToIndex(noteId, targetFolderId, finalIds);
+      } catch (error) {
+        console.error('Cross-container move failed:', error);
+        toast.error(t('notes.errors.moveFailed'));
+      }
+      resetDragState();
+      return;
     }
 
     resetDragState();
