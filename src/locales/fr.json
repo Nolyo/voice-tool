@@ -436,6 +436,16 @@
       "noMatch": "Aucune commande",
       "placeholder": "Filtrer..."
     },
+    "table": {
+      "addRowAbove": "Ajouter une ligne au-dessus",
+      "addRowBelow": "Ajouter une ligne en dessous",
+      "addColumnLeft": "Ajouter une colonne à gauche",
+      "addColumnRight": "Ajouter une colonne à droite",
+      "deleteRow": "Supprimer la ligne",
+      "deleteColumn": "Supprimer la colonne",
+      "toggleHeader": "Basculer l'en-tête",
+      "deleteTable": "Supprimer le tableau"
+    },
     "bubbleMenu": {
       "confirm": "Valider",
       "removeLink": "Retirer le lien",

@@ -7,6 +7,7 @@ import type { useLinkEditor } from "@/hooks/useLinkEditor";
 import type { NoteMeta } from "@/hooks/useNotes";
 import type { FolderMeta } from "@/hooks/useFolders";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
+import { TableFloatingToolbar } from "./TableFloatingToolbar";
 import { NotesEditorAiPreview } from "./NotesEditorAiPreview";
 import { NotesEditorHeader } from "./NotesEditorHeader";
 
@@ -82,6 +83,7 @@ export function NotesEditorContent({
       ) : (
         <>
           {editor && <EditorBubbleMenu editor={editor} linkEditor={linkEditor} />}
+          {editor && <TableFloatingToolbar editor={editor} />}
           <EditorContent
             editor={editor}
             className="[&_.tiptap_img]:max-w-full [&_.tiptap_img]:h-auto [&_.tiptap_img]:rounded-md [&_.tiptap_img]:my-2 [&_.tiptap_a]:cursor-text"

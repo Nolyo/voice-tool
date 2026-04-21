@@ -436,6 +436,16 @@
       "noMatch": "No command",
       "placeholder": "Filter..."
     },
+    "table": {
+      "addRowAbove": "Add row above",
+      "addRowBelow": "Add row below",
+      "addColumnLeft": "Add column left",
+      "addColumnRight": "Add column right",
+      "deleteRow": "Delete row",
+      "deleteColumn": "Delete column",
+      "toggleHeader": "Toggle header",
+      "deleteTable": "Delete table"
+    },
     "bubbleMenu": {
       "confirm": "Confirm",
       "removeLink": "Remove link",
