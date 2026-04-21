@@ -3,6 +3,10 @@ import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { createLowlight, common } from "lowlight";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableCell } from "@tiptap/extension-table-cell";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
@@ -107,6 +111,13 @@ export function useNotesEditorInstance({
           class: "vt-code-block",
         },
       }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: { class: "vt-table" },
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Image.configure({
         inline: true,
         allowBase64: true,
