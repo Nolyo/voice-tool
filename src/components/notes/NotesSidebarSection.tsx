@@ -419,7 +419,8 @@ export function NotesSidebarSection({
     if (!data) return null;
     if (data.type === 'note') return data.containerId;
     if (data.type === 'container') return data.containerId;
-    return null; // folder-type drop target is not accepted for notes
+    if (data.type === 'folder') return data.folderId;
+    return null;
   };
 
   const handleDragOver = (event: DragOverEvent) => {
