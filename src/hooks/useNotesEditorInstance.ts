@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { createLowlight, common } from "lowlight";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
@@ -12,6 +14,8 @@ import i18n from "@/i18n";
 import { type NoteData, type NoteMeta, deriveTitle } from "@/hooks/useNotes";
 import { NoteLink } from "@/components/notes/NotesEditor/NoteLinkExtension";
 import { buildNoteLinkSuggestion } from "@/components/notes/NotesEditor/NoteLinkSuggestion";
+
+const lowlight = createLowlight(common);
 
 /** Layout the editor falls back to when a note has no persisted content.
  *  Surfaces a visible "title slot" so new users grasp the first-line-is-title
@@ -84,6 +88,7 @@ export function useNotesEditorInstance({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
+        codeBlock: false,
         // Link is bundled in StarterKit v3; keep openOnClick: false so our
         // existing Ctrl+clic handler (see handleDOMEvents.click) remains the
         // only place that opens links externally via Tauri plugin-opener.
@@ -93,6 +98,13 @@ export function useNotesEditorInstance({
           HTMLAttributes: {
             rel: "noopener noreferrer nofollow",
           },
+        },
+      }),
+      CodeBlockLowlight.configure({
+        lowlight,
+        defaultLanguage: "plaintext",
+        HTMLAttributes: {
+          class: "vt-code-block",
         },
       }),
       Image.configure({

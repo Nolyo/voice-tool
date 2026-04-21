@@ -1668,3 +1668,71 @@ body.mini-window-body #root {
 :root:not(.dark) .vt-app .lvl-debug {
   color: var(--vt-fg-2);
 }
+
+/* ===== Notes editor — code blocks (lowlight) ===== */
+
+.vt-app .ProseMirror pre.vt-code-block,
+.vt-app .ProseMirror pre {
+  background: var(--vt-panel-2, #1e1e24);
+  color: var(--vt-fg, #e5e5ea);
+  border: 1px solid var(--vt-border, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  line-height: 1.6;
+  margin: 0.75em 0;
+}
+
+.vt-app .ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* highlight.js token colors — OKLCH tuned for dark design system */
+.vt-app .ProseMirror pre .hljs-keyword,
+.vt-app .ProseMirror pre .hljs-selector-tag,
+.vt-app .ProseMirror pre .hljs-literal,
+.vt-app .ProseMirror pre .hljs-doctag,
+.vt-app .ProseMirror pre .hljs-tag .hljs-name {
+  color: oklch(0.72 0.18 290);
+}
+.vt-app .ProseMirror pre .hljs-string,
+.vt-app .ProseMirror pre .hljs-regexp,
+.vt-app .ProseMirror pre .hljs-addition,
+.vt-app .ProseMirror pre .hljs-attribute,
+.vt-app .ProseMirror pre .hljs-meta .hljs-string {
+  color: oklch(0.78 0.14 140);
+}
+.vt-app .ProseMirror pre .hljs-comment,
+.vt-app .ProseMirror pre .hljs-quote {
+  color: oklch(0.55 0.02 260);
+  font-style: italic;
+}
+.vt-app .ProseMirror pre .hljs-number,
+.vt-app .ProseMirror pre .hljs-symbol,
+.vt-app .ProseMirror pre .hljs-bullet,
+.vt-app .ProseMirror pre .hljs-link {
+  color: oklch(0.78 0.16 60);
+}
+.vt-app .ProseMirror pre .hljs-function .hljs-title,
+.vt-app .ProseMirror pre .hljs-title.function_,
+.vt-app .ProseMirror pre .hljs-built_in,
+.vt-app .ProseMirror pre .hljs-builtin-name {
+  color: oklch(0.80 0.14 200);
+}
+.vt-app .ProseMirror pre .hljs-variable,
+.vt-app .ProseMirror pre .hljs-template-variable,
+.vt-app .ProseMirror pre .hljs-attr {
+  color: oklch(0.82 0.12 30);
+}
+.vt-app .ProseMirror pre .hljs-title,
+.vt-app .ProseMirror pre .hljs-class .hljs-title,
+.vt-app .ProseMirror pre .hljs-type {
+  color: oklch(0.82 0.14 80);
+}
+.vt-app .ProseMirror pre .hljs-emphasis { font-style: italic; }
+.vt-app .ProseMirror pre .hljs-strong { font-weight: 700; }
