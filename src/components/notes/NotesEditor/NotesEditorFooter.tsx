@@ -5,6 +5,11 @@ import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { AiActionMenu } from "@/components/notes/AiActionMenu";
 
+/** Wait this long after the last keystroke before showing "Sauvegardée". */
+const SAVE_BADGE_APPEAR_MS = 2000;
+/** Then leave the badge on screen this long before fading it back out. */
+const SAVE_BADGE_VISIBLE_MS = 2000;
+
 interface NotesEditorFooterProps {
   editor: Editor | null;
   hasActiveNote: boolean;
@@ -32,7 +37,10 @@ export function NotesEditorFooter({
   const { t } = useTranslation();
   const [justCopied, setJustCopied] = useState(false);
   const [wordCount, setWordCount] = useState(0);
+  const [showSaveBadge, setShowSaveBadge] = useState(false);
   const copyResetTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const appearTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     return () => {
@@ -61,6 +69,38 @@ export function NotesEditorFooter({
     };
   }, [editor, isEditorInSync]);
 
+  // Transient "Sauvegardée" badge: reveal it after a meaningful idle window
+  // (so it confirms "you paused, your work is on disk"), then fade it out.
+  // A keystroke during the visible window hides it immediately — the user
+  // is back in flow and shouldn't see a lingering status pill.
+  useEffect(() => {
+    if (!editor || !isEditorInSync) {
+      clearTimeout(appearTimerRef.current);
+      clearTimeout(hideTimerRef.current);
+      setShowSaveBadge(false);
+      return;
+    }
+    const handleUpdate = () => {
+      clearTimeout(appearTimerRef.current);
+      clearTimeout(hideTimerRef.current);
+      setShowSaveBadge(false);
+      appearTimerRef.current = setTimeout(() => {
+        setShowSaveBadge(true);
+        hideTimerRef.current = setTimeout(
+          () => setShowSaveBadge(false),
+          SAVE_BADGE_VISIBLE_MS,
+        );
+      }, SAVE_BADGE_APPEAR_MS);
+    };
+    editor.on("update", handleUpdate);
+    return () => {
+      editor.off("update", handleUpdate);
+      clearTimeout(appearTimerRef.current);
+      clearTimeout(hideTimerRef.current);
+      setShowSaveBadge(false);
+    };
+  }, [editor, isEditorInSync]);
+
   const editorText = editor?.getText() ?? "";
 
   const handleCopy = async () => {
@@ -86,19 +126,19 @@ export function NotesEditorFooter({
 
   return (
     <div className="notes-footer">
-      <span className="inline-flex items-center gap-1.5">
-        <kbd className="vt-kbd">Ctrl + F12</kbd>
-        <span>{t("notes.footer.dictateInline", { defaultValue: "pour dicter dans la note" })}</span>
-      </span>
-
       {hasActiveNote && (
         <>
-          <span className="footer-dot" aria-hidden />
-          <span className="footer-save">
-            <span className="save-led" />
-            <span>{t("notes.footer.saved", { defaultValue: "Sauvegardée" })}</span>
-          </span>
-          <span className="footer-dot" aria-hidden />
+          {showSaveBadge && (
+            <>
+              <span className="footer-save footer-save-transient">
+                <span className="save-led" />
+                <span>
+                  {t("notes.footer.saved", { defaultValue: "Sauvegardée" })}
+                </span>
+              </span>
+              <span className="footer-dot" aria-hidden />
+            </>
+          )}
           <span className="vt-mono">
             {t("notes.footer.wordCount", {
               count: wordCount,

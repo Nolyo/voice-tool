@@ -1506,6 +1506,16 @@ body.mini-window-body #root {
   background: var(--vt-warn);
   box-shadow: 0 0 6px oklch(from var(--vt-warn) l c h / 0.5);
 }
+@keyframes vtSaveBadgeIn {
+  0% { opacity: 0; transform: translateY(2px); }
+  100% { opacity: 1; transform: none; }
+}
+.vt-app .notes-footer .footer-save-transient {
+  animation: vtSaveBadgeIn 0.22s ease-out both;
+}
+.vt-app .notes-footer .footer-save-transient + .footer-dot {
+  animation: vtSaveBadgeIn 0.22s ease-out both;
+}
 .vt-app .notes-footer-actions {
   display: flex;
   align-items: center;
