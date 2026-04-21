@@ -83,7 +83,46 @@ export function UpdaterSection() {
 
         {/* Status / check */}
         <div className="vt-row">
-          {hasUpdate ? (
+          {disabled ? (
+            <div
+              className="rounded-xl p-4 flex items-center gap-4"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+              }}
+            >
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                style={{
+                  background: "var(--vt-surface-hi)",
+                  color: "var(--vt-fg-3)",
+                }}
+              >
+                <VtIcon.alert />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[14px] font-semibold">
+                    {t("updater.unavailableTitle")}
+                  </span>
+                  {currentVersion && (
+                    <span
+                      className="vt-mono text-[11px] px-1.5 py-0.5 rounded"
+                      style={{
+                        background: "var(--vt-surface-hi)",
+                        color: "var(--vt-fg-3)",
+                      }}
+                    >
+                      v{currentVersion}
+                    </span>
+                  )}
+                </div>
+                <div className="text-[12px]" style={{ color: "var(--vt-fg-3)" }}>
+                  {t("updater.unavailableDesc")}
+                </div>
+              </div>
+            </div>
+          ) : hasUpdate ? (
             <div
               className="rounded-xl p-4 flex items-center gap-4"
               style={{
@@ -186,7 +225,7 @@ export function UpdaterSection() {
               <button
                 type="button"
                 onClick={checkForUpdates}
-                disabled={isChecking || isDownloading || disabled}
+                disabled={isChecking || isDownloading}
                 className="vt-btn"
               >
                 {isChecking ? (
@@ -312,16 +351,6 @@ export function UpdaterSection() {
           />
         </Row>
       </div>
-
-      {disabled && (
-        <Callout
-          kind="warn"
-          icon={<VtIcon.alert />}
-          title={t("updater.unavailableTitle")}
-        >
-          {t("updater.unavailableDesc")}
-        </Callout>
-      )}
 
       {error && (
         <Callout

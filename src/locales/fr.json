@@ -329,8 +329,8 @@
     "installedVersion": "Version installée",
     "checking": "Vérification...",
     "checkUpdates": "Vérifier les mises à jour",
-    "unavailableTitle": "Mises à jour automatiques indisponibles",
-    "unavailableDesc": "Non disponible en mode développement ou portable. Téléchargez manuellement depuis GitHub.",
+    "unavailableTitle": "Mises à jour indisponibles",
+    "unavailableDesc": "Les mises à jour automatiques ne sont pas disponibles en mode développement.",
     "upToDate": "Vous êtes à jour ! Vous utilisez déjà la dernière version de Voice Tool.",
     "newVersionTitle": "Nouvelle version disponible",
     "publishedOn": "Publiée le",
@@ -559,7 +559,7 @@
     "apiKeyNotConfigured": "Clé API OpenAI non configurée. Configurez-la dans les paramètres.",
     "aiProcessError": "Erreur lors du traitement.",
     "hotkeyEmpty": "Le raccourci ne peut pas être vide.",
-    "updaterUnavailable": "Mise à jour non disponible en mode développement ou portable"
+    "updaterUnavailable": "Mise à jour non disponible en mode développement"
   },
   "defaults": {
     "snippetTrigger1": "mon adresse mail",
