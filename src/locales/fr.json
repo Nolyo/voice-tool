@@ -468,6 +468,9 @@
       "moveToRoot": "Aucun dossier (racine)",
       "namePrompt": "Nom du dossier"
     },
+    "errors": {
+      "moveFailed": "Échec du déplacement de la note"
+    },
     "editor": {
       "noNote": "Aucune note ouverte",
       "processing": "Traitement en cours...",
