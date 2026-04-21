@@ -746,14 +746,20 @@ body.mini-window-body #root {
   background: var(--vt-surface);
   border: 1.5px solid var(--vt-border-strong);
 }
-.vt-app .hist-row[data-selected="true"] .hist-dot-circle {
-  background: var(--vt-accent);
-  border-color: var(--vt-accent);
-  box-shadow: 0 0 0 3px oklch(from var(--vt-accent) l c h / 0.2);
+.vt-app .hist-row[data-source="api"] .hist-dot-circle {
+  background: oklch(0.72 0.14 205);
+  border-color: oklch(0.72 0.14 205);
+}
+.vt-app .hist-row[data-source="local"] .hist-dot-circle {
+  background: oklch(0.74 0.14 150);
+  border-color: oklch(0.74 0.14 150);
 }
 .vt-app .hist-row[data-postprocess="true"] .hist-dot-circle {
   background: oklch(0.72 0.17 295);
   border-color: oklch(0.72 0.17 295);
+}
+.vt-app .hist-row[data-selected="true"] .hist-dot-circle {
+  box-shadow: 0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25);
 }
 
 .vt-app .day-label {
@@ -1399,12 +1405,19 @@ body.mini-window-body #root {
   border-top: 1px solid var(--vt-border);
   margin: 22px 0;
 }
-.vt-app .tiptap p.is-editor-empty:first-child::before {
+/* Per-node placeholders (Tiptap Placeholder extension with
+ * `showOnlyCurrent: false`). The seeded H1+P both need hints. */
+.vt-app .tiptap .is-empty::before,
+.vt-app .tiptap .is-editor-empty::before {
   content: attr(data-placeholder);
   color: var(--vt-fg-4);
   float: left;
   height: 0;
   pointer-events: none;
+}
+.vt-app .tiptap h1.is-empty::before {
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 /* Task list (checklist) */

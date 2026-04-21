@@ -124,7 +124,11 @@ export function NotesEditor({
       notes,
       existingNoteIds,
       activeNoteId,
-      onOpenNote: onActivateNote,
+      // Clicking a [[mention]] must open the target as a tab if it isn't
+      // already open, then activate it. `onActivateNote` only flips the
+      // active id without touching the tab list, which left the editor on
+      // the empty-state placeholder. `onOpenNoteInTab` does both.
+      onOpenNote: onOpenNoteInTab,
       onRequestRecreate: (
         attrs: { id: string; title: string },
         onResolved: (newId: string) => void,
@@ -132,7 +136,7 @@ export function NotesEditor({
         setBrokenDialog({ title: attrs.title, onResolved });
       },
     }),
-    [notes, existingNoteIds, activeNoteId, onActivateNote],
+    [notes, existingNoteIds, activeNoteId, onOpenNoteInTab],
   );
 
   const isActiveNoteEmpty = (id: string): boolean => {

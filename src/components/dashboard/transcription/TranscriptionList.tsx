@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Copy, Trash2, Sparkles, Download, Filter } from "lucide-react";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
@@ -83,6 +83,7 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, 
   const { t } = useTranslation();
   const words = wordsOf(item.text);
   const postProcess = Boolean(item.originalText);
+  const source = item.apiCost !== undefined && item.apiCost > 0 ? "api" : "local";
 
   return (
     <div
@@ -93,6 +94,7 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, 
       }
       data-selected={isSelected}
       data-postprocess={postProcess}
+      data-source={source}
       onClick={onSelect}
       role="button"
       tabIndex={0}
@@ -310,6 +312,19 @@ export function TranscriptionList({
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterId>("all");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const filtered = useMemo(() => {
     let list = transcriptions;
@@ -358,13 +373,14 @@ export function TranscriptionList({
               style={{ color: "var(--vt-fg-3)" }}
             />
             <input
+              ref={searchInputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("history.search")}
               className="vt-hist-search"
             />
             <kbd className="vt-kbd absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-              ⌘K
+              Ctrl K
             </kbd>
           </div>
 

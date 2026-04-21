@@ -8,9 +8,26 @@ import TaskItem from "@tiptap/extension-task-item";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import { Highlight } from "@tiptap/extension-highlight";
+import i18n from "@/i18n";
 import { type NoteData, type NoteMeta, deriveTitle } from "@/hooks/useNotes";
 import { NoteLink } from "@/components/notes/NotesEditor/NoteLinkExtension";
 import { buildNoteLinkSuggestion } from "@/components/notes/NotesEditor/NoteLinkSuggestion";
+
+/** Layout the editor falls back to when a note has no persisted content.
+ *  Surfaces a visible "title slot" so new users grasp the first-line-is-title
+ *  convention without reading docs. Empty H1 + empty P produce no text nodes,
+ *  so `editor.getText()` still returns `""` and the "delete-on-close-empty"
+ *  policy in NotesEditor keeps working unchanged. */
+const EMPTY_NOTE_SEED = "<h1></h1><p></p>";
+
+/** Content strings that should be treated as "empty" and replaced by the
+ *  seed. Covers the backend's literal empty file, whitespace, and the
+ *  single-paragraph shape TipTap serialises for an empty doc. */
+function isBlankContent(raw: string): boolean {
+  if (!raw) return true;
+  const stripped = raw.replace(/\s+/g, "");
+  return stripped === "" || stripped === "<p></p>";
+}
 
 interface UseNotesEditorInstanceOptions {
   openNotes: NoteMeta[];
@@ -83,7 +100,32 @@ export function useNotesEditorInstance({
         allowBase64: true,
       }),
       Placeholder.configure({
-        placeholder: "Commencez à écrire...",
+        // Show placeholders on every empty node (not just the focused one)
+        // so the seeded <h1> and <p> both display hints before the user
+        // touches the doc.
+        showOnlyCurrent: false,
+        placeholder: ({ node, editor, pos }) => {
+          const { doc } = editor.state;
+          // Node at position 0 is the first child of the doc.
+          if (pos === 0 && node.type.name === "heading" && node.attrs.level === 1) {
+            return i18n.t("notes.editor.titlePlaceholder", {
+              defaultValue: "Titre de la note",
+            });
+          }
+          // The slot directly after an opening H1 gets the body hint.
+          const first = doc.firstChild;
+          if (
+            first &&
+            first.type.name === "heading" &&
+            pos === first.nodeSize &&
+            node.type.name === "paragraph"
+          ) {
+            return i18n.t("notes.editor.bodyPlaceholder", {
+              defaultValue: "Commencez à écrire…",
+            });
+          }
+          return "";
+        },
       }),
       TaskList,
       TaskItem.configure({
@@ -196,11 +238,23 @@ export function useNotesEditorInstance({
     setLoadedNoteId(null);
     readNote(activeNoteId)
       .then((data) => {
+        // Swap empty/blank content for a title+body scaffold so new users
+        // discover the "first line = title" convention visually. The seed
+        // contains no text nodes, so `getText()` stays empty and the
+        // auto-delete-on-close-empty policy is untouched.
+        const blank = isBlankContent(data.content);
+        const content = blank ? EMPTY_NOTE_SEED : data.content;
         // `emitUpdate: false` is critical: TipTap v3 defaults to emitting an
         // update event on setContent, which would schedule a debounced save
         // right after loading — re-writing the just-read content to disk and
         // potentially clobbering attributes that weren't round-tripped cleanly.
-        editor.commands.setContent(data.content, { emitUpdate: false });
+        editor.commands.setContent(content, { emitUpdate: false });
+        // Drop the caret inside the empty H1 so the user can start typing
+        // a title immediately. `focus()` emits selectionUpdate, not update,
+        // so it doesn't trigger a save.
+        if (blank) {
+          editor.commands.focus("start");
+        }
         loadedNoteIdRef.current = activeNoteId;
         setLoadedNoteId(activeNoteId);
       })

@@ -15,7 +15,12 @@
   },
   "header": {
     "title": "Voice Tool",
-    "subtitle": "Intelligent voice transcription",
+    "subtitle": {
+      "historique": "Dictations history",
+      "notes": "Notes & organized dictations",
+      "parametres": "Application settings",
+      "logs": "Events log"
+    },
     "newVersion": "New version available"
   },
   "postProcess": {

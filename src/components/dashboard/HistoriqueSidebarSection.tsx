@@ -90,21 +90,10 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   );
 }
 
-function ShortcutRow({ label, keys }: { label: string; keys: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-[11.5px] text-muted-foreground">{label}</span>
-      <kbd className="font-mono text-[10.5px] px-1.5 py-0.5 rounded bg-foreground/5 border border-border/60 text-muted-foreground">
-        {keys}
-      </kbd>
-    </div>
-  );
-}
-
 /**
- * Sub-content for the Historique tab: live overview stats, timeline legend,
- * and keyboard shortcut hints. Rendered below the main nav when the
- * Historique tab is active and the sidebar is expanded.
+ * Sub-content for the Historique tab: live overview stats and timeline
+ * legend. Rendered below the main nav when the Historique tab is active
+ * and the sidebar is expanded.
  */
 export function HistoriqueSidebarSection({
   transcriptions,
@@ -158,24 +147,17 @@ export function HistoriqueSidebarSection({
       <SectionTitle>Légende</SectionTitle>
       <div className="px-1 space-y-1.5">
         <LegendDot
-          color="oklch(0.34 0.03 264)"
-          label="Dictée simple"
+          color="oklch(0.72 0.14 205)"
+          label="API (cloud)"
+        />
+        <LegendDot
+          color="oklch(0.74 0.14 150)"
+          label="Local"
         />
         <LegendDot
           color="oklch(0.72 0.17 295)"
           label="Post-traitée IA"
         />
-        <LegendDot
-          color="var(--primary)"
-          label="Sélectionnée"
-        />
-      </div>
-
-      <SectionTitle>Raccourcis</SectionTitle>
-      <div className="px-1 space-y-1.5">
-        <ShortcutRow label="Rechercher" keys="⌘K" />
-        <ShortcutRow label="Copier" keys="⌘C" />
-        <ShortcutRow label="Supprimer" keys="⌫" />
       </div>
     </div>
   );

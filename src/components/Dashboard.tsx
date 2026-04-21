@@ -246,6 +246,7 @@ export default function Dashboard() {
           onToggleRecording={handleToggleRecording}
           updateAvailable={updateAvailable}
           onUpdateClick={() => setShowUpdateModal(true)}
+          activeTab={activeTab}
         />
 
         <SelectedModelMissingBanner
@@ -259,7 +260,13 @@ export default function Dashboard() {
           {activeTab === "notes" && openNoteIds.length > 0 ? (
             <NotesEditor
               notes={notes}
-              openNotes={notes.filter((n) => openNoteIds.includes(n.id))}
+              // Preserve open-order (FIFO) for the tab strip — new tabs land
+              // on the right, as the workflow intends. `notes.filter(...)`
+              // would instead use the `notes` array order (most-recently-
+              // updated first), which made new tabs jump to the left.
+              openNotes={openNoteIds
+                .map((id) => notes.find((n) => n.id === id))
+                .filter((n): n is NoteMeta => n !== undefined)}
               activeNoteId={activeNoteId}
               folders={folders}
               onActivateNote={setActiveNoteId}

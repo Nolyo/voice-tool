@@ -2,11 +2,20 @@
 
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Mic, Download } from "lucide-react"
+import {
+  Mic,
+  Download,
+  FileText,
+  History,
+  ScrollText,
+  Settings2,
+  type LucideIcon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AudioVisualizer } from "./AudioVisualizer"
 import { useSettings } from "@/hooks/useSettings"
+import type { DashboardTabId } from "@/components/dashboard/DashboardSidebar"
 
 interface DashboardHeaderProps {
   isRecording: boolean;
@@ -14,7 +23,15 @@ interface DashboardHeaderProps {
   onToggleRecording: () => void;
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
+  activeTab: DashboardTabId;
 }
+
+const TAB_ICONS: Record<DashboardTabId, LucideIcon> = {
+  historique: History,
+  notes: FileText,
+  parametres: Settings2,
+  logs: ScrollText,
+};
 
 export function DashboardHeader({
   isRecording,
@@ -22,6 +39,7 @@ export function DashboardHeader({
   onToggleRecording,
   updateAvailable,
   onUpdateClick,
+  activeTab,
 }: DashboardHeaderProps) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -53,17 +71,19 @@ export function DashboardHeader({
       ? t('recording.recording')
       : t('recording.clickToStart');
 
+  const TabIcon = TAB_ICONS[activeTab];
+
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-      <div className="container mx-auto px-6 py-3">
+      <div className="px-5 py-3">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 flex-shrink-0">
-              <Mic className="w-5 h-5 text-primary" />
+              <TabIcon className="w-5 h-5 text-primary" />
             </div>
             <div className="min-w-0">
               <h1 className="text-xl font-semibold text-foreground truncate">{t('header.title')}</h1>
-              <p className="text-xs text-muted-foreground truncate">{t('header.subtitle')}</p>
+              <p className="text-xs text-muted-foreground truncate">{t(`header.subtitle.${activeTab}`)}</p>
             </div>
           </div>
 

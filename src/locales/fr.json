@@ -15,7 +15,12 @@
   },
   "header": {
     "title": "Voice Tool",
-    "subtitle": "Transcription vocale intelligente",
+    "subtitle": {
+      "historique": "Historique des dictées",
+      "notes": "Notes & dictées organisées",
+      "parametres": "Configuration de l'application",
+      "logs": "Journal des événements"
+    },
     "newVersion": "Nouvelle version disponible"
   },
   "postProcess": {
