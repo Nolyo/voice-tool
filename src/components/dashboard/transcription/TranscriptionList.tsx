@@ -2,15 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, Copy, Trash2, Sparkles, Download, Filter } from "lucide-react";
+import { Search, Check, Copy, Trash2, Sparkles, Download, Filter } from "lucide-react";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
 import { isToday, useDateFormatters } from "@/lib/date-format";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 interface TranscriptionListProps {
   transcriptions: Transcription[];
   selectedId?: string;
   onSelectTranscription: (transcription: Transcription) => void;
-  onCopy: (text: string) => void;
   onDelete?: (id: string) => void;
   onClearAll?: () => void;
 }
@@ -48,12 +48,12 @@ interface RowProps {
   isFirst: boolean;
   isLast: boolean;
   onSelect: () => void;
-  onCopy: () => void;
   onDelete?: () => void;
 }
 
-function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, onDelete }: RowProps) {
+function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onDelete }: RowProps) {
   const { t } = useTranslation();
+  const { copy, justCopied } = useCopyToClipboard();
   const { formatTime } = useDateFormatters();
   const words = wordsOf(item.text);
   const postProcess = Boolean(item.originalText);
@@ -142,14 +142,18 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, 
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onCopy();
+            copy(item.text);
           }}
           className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg"
-          style={{ color: "var(--vt-fg-3)" }}
-          data-tip={t("transcriptionDetails.copy")}
-          aria-label={t("transcriptionDetails.copy")}
+          style={{ color: justCopied ? "var(--vt-ok)" : "var(--vt-fg-3)" }}
+          data-tip={justCopied ? t("common.copied") : t("transcriptionDetails.copy")}
+          aria-label={justCopied ? t("common.copied") : t("transcriptionDetails.copy")}
         >
-          <Copy className="w-3.5 h-3.5" />
+          {justCopied ? (
+            <Check className="w-3.5 h-3.5" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
         </button>
         {onDelete && (
           <button
@@ -292,7 +296,6 @@ export function TranscriptionList({
   transcriptions,
   selectedId,
   onSelectTranscription,
-  onCopy,
   onDelete,
   onClearAll,
 }: TranscriptionListProps) {
@@ -512,7 +515,6 @@ export function TranscriptionList({
                       isFirst={i === 0}
                       isLast={i === group.items.length - 1}
                       onSelect={() => onSelectTranscription(item)}
-                      onCopy={() => onCopy(item.text)}
                       onDelete={onDelete ? () => onDelete(item.id) : undefined}
                     />
                   ))}
