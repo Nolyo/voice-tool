@@ -5,6 +5,7 @@
     "delete": "Supprimer",
     "copy": "Copier",
     "copied": "Copié",
+    "copyFailed": "Impossible de copier",
     "close": "Fermer",
     "loading": "Chargement...",
     "error": "Erreur",
