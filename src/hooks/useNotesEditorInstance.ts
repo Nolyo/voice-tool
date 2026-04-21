@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useEditor } from "@tiptap/react";
+import { useEditor, ReactNodeViewRenderer } from "@tiptap/react";
+import { CodeBlockLanguageSelect } from "@/components/notes/NotesEditor/CodeBlockLanguageSelect";
 import StarterKit from "@tiptap/starter-kit";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { createLowlight, common } from "lowlight";
@@ -105,7 +106,11 @@ export function useNotesEditorInstance({
           },
         },
       }),
-      CodeBlockLowlight.configure({
+      CodeBlockLowlight.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(CodeBlockLanguageSelect);
+        },
+      }).configure({
         lowlight,
         defaultLanguage: "plaintext",
         HTMLAttributes: {

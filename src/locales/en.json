@@ -446,6 +446,10 @@
       "toggleHeader": "Toggle header",
       "deleteTable": "Delete table"
     },
+    "codeBlock": {
+      "selectLanguage": "Select language",
+      "searchLanguage": "Search..."
+    },
     "bubbleMenu": {
       "confirm": "Confirm",
       "removeLink": "Remove link",

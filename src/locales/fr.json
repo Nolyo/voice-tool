@@ -446,6 +446,10 @@
       "toggleHeader": "Basculer l'en-tête",
       "deleteTable": "Supprimer le tableau"
     },
+    "codeBlock": {
+      "selectLanguage": "Choisir le langage",
+      "searchLanguage": "Rechercher..."
+    },
     "bubbleMenu": {
       "confirm": "Valider",
       "removeLink": "Retirer le lien",
