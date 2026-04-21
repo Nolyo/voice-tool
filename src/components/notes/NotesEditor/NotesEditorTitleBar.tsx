@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { FloatingMenu, type FloatingMenuEntry } from "@/components/ui/floating-menu";
+import { FolderNameDialog } from "@/components/notes/FolderNameDialog";
 import { type NoteMeta, deriveTitle } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
 
@@ -46,6 +47,7 @@ export function NotesEditorTitleBar({
   const editorText = editor?.getText() ?? "";
   const isEditorInSync = loadedNoteId !== null && loadedNoteId === activeNoteId;
   const [badgeMenu, setBadgeMenu] = useState<{ x: number; y: number } | null>(null);
+  const [createFolderForNoteId, setCreateFolderForNoteId] = useState<string | null>(null);
   const badgeButtonRef = useRef<HTMLButtonElement>(null);
 
   const activeNote = openNotes.find((n) => n.id === activeNoteId) ?? null;
@@ -102,11 +104,7 @@ export function NotesEditorTitleBar({
             </span>
           ),
           onClick: () => {
-            const name = window.prompt(t("notes.folders.namePrompt"));
-            if (!name || !name.trim()) return;
-            void onCreateFolder(name.trim()).then((folder) =>
-              onMoveNote(activeNote.id, folder.id),
-            );
+            setCreateFolderForNoteId(activeNote.id);
           },
         });
         return items;
@@ -196,6 +194,17 @@ export function NotesEditorTitleBar({
           items={badgeMenuItems}
         />
       )}
+
+      <FolderNameDialog
+        open={createFolderForNoteId !== null}
+        mode="create"
+        onOpenChange={(open) => { if (!open) setCreateFolderForNoteId(null); }}
+        onSubmit={(name) => {
+          const noteId = createFolderForNoteId;
+          if (!noteId) return;
+          void onCreateFolder(name).then((folder) => onMoveNote(noteId, folder.id));
+        }}
+      />
     </div>
   );
 }

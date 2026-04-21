@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FloatingMenu, type FloatingMenuEntry } from "@/components/ui/floating-menu";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
+import { FolderNameDialog } from "./FolderNameDialog";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
 import { useSidebarCollapseState } from "@/hooks/useSidebarCollapseState";
@@ -314,6 +315,11 @@ export function NotesSidebarSection({
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; note: NoteMeta } | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<NoteMeta | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<FolderMeta | null>(null);
+  type FolderDialogState =
+    | { mode: "create" }
+    | { mode: "rename"; id: string; currentName: string }
+    | { mode: "createAndMove"; noteId: string };
+  const [folderDialog, setFolderDialog] = useState<FolderDialogState | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleSearch = useCallback(
@@ -347,23 +353,27 @@ export function NotesSidebarSection({
     setContextMenu({ x: e.clientX, y: e.clientY, note });
   };
 
-  const handleCreateFolder = async () => {
-    const name = window.prompt(t('notes.folders.namePrompt'));
-    if (!name || !name.trim()) return;
-    try {
-      await onCreateFolder(name.trim());
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-    }
+  const handleCreateFolder = () => {
+    setFolderDialog({ mode: "create" });
   };
 
-  const handleRenameFolder = async (id: string, currentName: string) => {
-    const name = window.prompt(t('notes.folders.namePrompt'), currentName);
-    if (!name || !name.trim() || name.trim() === currentName) return;
+  const handleRenameFolder = (id: string, currentName: string) => {
+    setFolderDialog({ mode: "rename", id, currentName });
+  };
+
+  const handleFolderDialogSubmit = async (name: string) => {
+    if (!folderDialog) return;
     try {
-      await onRenameFolder(id, name.trim());
+      if (folderDialog.mode === "create") {
+        await onCreateFolder(name);
+      } else if (folderDialog.mode === "rename") {
+        await onRenameFolder(folderDialog.id, name);
+      } else if (folderDialog.mode === "createAndMove") {
+        const folder = await onCreateFolder(name);
+        await onMoveNote(folderDialog.noteId, folder.id);
+      }
     } catch (error) {
-      console.error('Failed to rename folder:', error);
+      console.error('Folder action failed:', error);
     }
   };
 
@@ -461,9 +471,7 @@ export function NotesSidebarSection({
         </span>
       ),
       onClick: () => {
-        const name = window.prompt(t('notes.folders.namePrompt'));
-        if (!name || !name.trim()) return;
-        void onCreateFolder(name.trim()).then((folder) => onMoveNote(note.id, folder.id));
+        setFolderDialog({ mode: "createAndMove", noteId: note.id });
       },
     });
     return items;
@@ -726,6 +734,14 @@ export function NotesSidebarSection({
         description={t('notes.folders.deleteConfirmDesc')}
         onOpenChange={(open) => { if (!open) setFolderToDelete(null); }}
         onConfirm={confirmDeleteFolder}
+      />
+
+      <FolderNameDialog
+        open={folderDialog !== null}
+        mode={folderDialog?.mode === "rename" ? "rename" : "create"}
+        initialValue={folderDialog?.mode === "rename" ? folderDialog.currentName : ""}
+        onOpenChange={(open) => { if (!open) setFolderDialog(null); }}
+        onSubmit={handleFolderDialogSubmit}
       />
     </div>
   );
