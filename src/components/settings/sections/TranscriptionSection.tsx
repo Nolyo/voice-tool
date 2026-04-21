@@ -10,6 +10,7 @@ import {
   Segmented,
   VtIcon,
 } from "../vt";
+import { PostProcessSection } from "./PostProcessSection";
 
 const ACCENT = "oklch(0.68 0.18 265)";
 
@@ -294,6 +295,8 @@ export function TranscriptionSection() {
           </div>
         </Row>
       </div>
+
+      <PostProcessSection />
     </div>
   );
 }

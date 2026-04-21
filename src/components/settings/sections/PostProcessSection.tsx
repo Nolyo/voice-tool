@@ -55,7 +55,7 @@ export function PostProcessSection() {
     }));
 
   return (
-    <div className="vt-fade-up space-y-5">
+    <>
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
           color={ACCENT}
@@ -243,6 +243,6 @@ export function PostProcessSection() {
           })}
         </Callout>
       )}
-    </div>
+    </>
   );
 }

@@ -107,8 +107,6 @@
       "audioSubtitle": "Enregistrement et sons",
       "text": "Texte",
       "textSubtitle": "Formatage et insertion",
-      "postProcess": "Post Process",
-      "postProcessSubtitle": "Reformatage IA après dictée",
       "vocabulary": "Vocabulaire",
       "vocabularySubtitle": "Snippets et mots",
       "system": "Système",
