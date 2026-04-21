@@ -212,6 +212,7 @@ interface FolderSectionProps {
   onRename: (id: string, currentName: string) => void;
   onRequestDelete: (folder: FolderMeta) => void;
   onCreateNoteIn: (folderId: string) => void;
+  isDropActive: boolean;
   t: (key: string) => string;
 }
 
@@ -228,6 +229,7 @@ function FolderSection({
   onRename,
   onRequestDelete,
   onCreateNoteIn,
+  isDropActive,
   t,
 }: FolderSectionProps) {
   const data: FolderDragData = { type: 'folder', folderId: folder.id };
@@ -241,7 +243,7 @@ function FolderSection({
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       <div
-        className="group flex items-center gap-1.5 px-3 py-1 hover:bg-accent/30 transition-colors"
+        className={`group flex items-center gap-1.5 px-3 py-1 hover:bg-accent/30 transition-colors${isDropActive ? ' vt-folder-header--drop-active' : ''}`}
         {...listeners}
       >
         <button
@@ -480,8 +482,6 @@ export function NotesSidebarSection({
   const [originContainerId, setOriginContainerId] = useState<string | null>(null);
   const [draftContainers, setDraftContainers] = useState<ContainerMap | null>(null);
   const [overContainerId, setOverContainerId] = useState<string | null>(null);
-  void originContainerId;
-  void overContainerId;
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NoteMeta[] | null>(null);
   const {
@@ -927,6 +927,11 @@ export function NotesSidebarSection({
                   onRename={handleRenameFolder}
                   onRequestDelete={setFolderToDelete}
                   onCreateNoteIn={(id) => onCreateNote(id)}
+                  isDropActive={
+                    activeType === 'note' &&
+                    overContainerId === folder.id &&
+                    originContainerId !== folder.id
+                  }
                   t={t}
                 />
               ))}
@@ -936,7 +941,13 @@ export function NotesSidebarSection({
             <div>
               {folders.length > 0 && (
                 <button
-                  className="flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors"
+                  className={`flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors${
+                    activeType === 'note' &&
+                    overContainerId === ROOT_CONTAINER_ID &&
+                    originContainerId !== ROOT_CONTAINER_ID
+                      ? ' vt-folder-header--drop-active'
+                      : ''
+                  }`}
                   onClick={toggleRoot}
                 >
                   {rootCollapsed ? (
