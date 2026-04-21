@@ -116,7 +116,10 @@ export function NotesEditorTitleBar({
   return (
     <div className="notes-tabbar flex items-stretch select-none shrink-0">
       {/* Tabs row (scrollable) */}
-      <div className="flex items-stretch overflow-x-auto flex-1 min-w-0">
+      <div
+        className="flex items-stretch overflow-x-auto flex-1 min-w-0"
+        style={{ overflowY: "hidden" }}
+      >
         {openNotes.map((note) => {
           const isActive = note.id === activeNoteId;
           // Only trust the editor's derived title for the active tab when the
