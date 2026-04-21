@@ -157,10 +157,6 @@ export default function Dashboard() {
     [notes, handleOpenNote],
   );
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
   const handleDelete = async (id: string) => {
     if (selectedTranscription?.id === id) {
       setSelectedTranscription(null);
@@ -276,7 +272,6 @@ export default function Dashboard() {
               onUpdateNote={updateNote}
               onCreateNote={() => handleCreateNoteFromSidebar(null)}
               onRecreateLinkedNote={handleRecreateLinkedNote}
-              onCopyContent={handleCopy}
               onMoveNote={moveNoteToFolder}
               onCreateFolder={createFolder}
               apiKey={settings.openai_api_key}
@@ -308,7 +303,6 @@ export default function Dashboard() {
                       isCompact={isCompact}
                       onSelectTranscription={handleSelectTranscription}
                       onCloseDetails={handleCloseDetails}
-                      onCopy={handleCopy}
                       onDelete={handleDelete}
                       onClearAll={handleClearAll}
                     />
