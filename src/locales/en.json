@@ -91,7 +91,6 @@
     "legend": "Legend",
     "legendApiCloud": "API (cloud)",
     "legendLocal": "Local",
-    "legendPostProcessed": "AI post-processed",
     "filterTodayLabel": "Today",
     "filterPostProcessed": "Post-processed",
     "filterAdvanced": "Advanced filters",

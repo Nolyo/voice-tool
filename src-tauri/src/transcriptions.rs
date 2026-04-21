@@ -22,6 +22,10 @@ pub struct Transcription {
     pub audio_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_cost: Option<f64>,
+    /// Vendor used for transcription ("OpenAI", "Groq", "Local", "Google").
+    /// Absent on records created before this field existed.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub transcription_provider: Option<String>,
     /// Raw Whisper output before post-process. Present only when post-process
     /// actually modified the transcription, so old records remain unaffected.
     #[serde(skip_serializing_if = "Option::is_none", default)]

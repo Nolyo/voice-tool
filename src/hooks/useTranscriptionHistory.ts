@@ -11,6 +11,8 @@ export interface Transcription {
   isStreaming?: boolean;
   audioPath?: string;
   apiCost?: number;
+  /** Vendor used for transcription ("OpenAI", "Groq", "Local", "Google"). Absent on legacy records. */
+  transcriptionProvider?: string;
   /** Raw Whisper output before post-process. Set only when post-process modified the text. */
   originalText?: string;
   /** Mode applied by the post-process step ("auto", "list", "email", ...). */
@@ -48,6 +50,7 @@ export function useTranscriptionHistory() {
     postProcessMode?: string,
     postProcessCost?: number,
     duration?: number,
+    transcriptionProvider?: string,
   ): Promise<Transcription> => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -67,6 +70,7 @@ export function useTranscriptionHistory() {
       duration,
       audioPath,
       apiCost,
+      transcriptionProvider,
       originalText,
       postProcessMode,
       postProcessCost,

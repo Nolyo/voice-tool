@@ -762,10 +762,6 @@ body.mini-window-body #root {
   background: oklch(0.74 0.14 150);
   border-color: oklch(0.74 0.14 150);
 }
-.vt-app .hist-row[data-postprocess="true"] .hist-dot-circle {
-  background: oklch(0.72 0.17 295);
-  border-color: oklch(0.72 0.17 295);
-}
 .vt-app .hist-row[data-selected="true"] .hist-dot-circle {
   box-shadow: 0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25);
 }

@@ -123,10 +123,6 @@ export function HistoriqueSidebarSection({
           color="oklch(0.74 0.14 150)"
           label={t("history.legendLocal")}
         />
-        <LegendDot
-          color="oklch(0.72 0.17 295)"
-          label={t("history.legendPostProcessed")}
-        />
       </div>
     </div>
   );

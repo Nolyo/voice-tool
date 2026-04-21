@@ -87,6 +87,18 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onCopy, 
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
+          {source === "api" && item.transcriptionProvider && (
+            <span
+              className="inline-flex items-center px-1.5 h-4 rounded text-[10px] font-medium"
+              style={{
+                background: "oklch(0.72 0.14 205 / 0.16)",
+                color: "oklch(0.72 0.14 205)",
+              }}
+              title={t("history.legendApiCloud")}
+            >
+              {item.transcriptionProvider}
+            </span>
+          )}
           {postProcess && (
             <span
               className="inline-flex items-center gap-1 px-1.5 h-4 rounded text-[10px] font-medium"
