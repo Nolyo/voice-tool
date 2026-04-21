@@ -174,7 +174,7 @@ function LogRowCopyButton({ text }: { text: string }) {
         void copy(text);
       }}
       title={justCopied ? t("common.copied") : t("logs.copyLine")}
-      aria-label={justCopied ? t("common.copied") : t("logs.copyLine")}
+      aria-label={t("logs.copyLine")}
     >
       {justCopied ? (
         <Check className="w-3 h-3" style={{ color: "var(--vt-ok)" }} />

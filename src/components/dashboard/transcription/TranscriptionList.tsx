@@ -147,7 +147,7 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onDelete
           className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg"
           style={{ color: justCopied ? "var(--vt-ok)" : "var(--vt-fg-3)" }}
           data-tip={justCopied ? t("common.copied") : t("transcriptionDetails.copy")}
-          aria-label={justCopied ? t("common.copied") : t("transcriptionDetails.copy")}
+          aria-label={t("transcriptionDetails.copy")}
         >
           {justCopied ? (
             <Check className="w-3.5 h-3.5" />

@@ -142,7 +142,7 @@ export function NotesEditorFooter({
               ) : (
                 <Copy className="w-3 h-3" />
               )}
-              <span>{justCopied ? t("notes.editor.copied") : t("common.copy")}</span>
+              <span>{justCopied ? t("common.copied") : t("common.copy")}</span>
             </button>
             <button
               type="button"

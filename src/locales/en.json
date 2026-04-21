@@ -473,7 +473,6 @@
       "noNote": "No note open",
       "processing": "Processing...",
       "dictateHint": "Ctrl + F12 to dictate",
-      "copied": "Copied",
       "deleteNote": "Delete note",
       "deleteConfirmTitle": "Delete this note?",
       "deleteConfirmDesc": "This action is permanent. The note will be deleted from disk.",
