@@ -433,6 +433,14 @@ body.mini-window-body #root {
   font-feature-settings: "zero";
 }
 
+/* Geist — used for the notes sidebar tree (folders + note titles). Slightly
+   narrower and crisper than Inter at small sizes, better suited for dense
+   tree listings. */
+.vt-notes-tree {
+  font-family: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+}
+
 /* Theme-aware hover background for buttons and rows inside .vt-app. */
 .vt-app .vt-hover-bg:hover {
   background: var(--vt-hover);

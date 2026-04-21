@@ -470,7 +470,7 @@ export function NotesSidebarSection({
   };
 
   return (
-    <div className="flex flex-col border-t border-border overflow-hidden flex-1 min-h-0">
+    <div className="vt-notes-tree flex flex-col border-t border-border overflow-hidden flex-1 min-h-0">
       {/* Search input + new-note button + new-folder button */}
       <div className="flex items-center gap-1 px-2 py-2 shrink-0">
         <Input

@@ -1,6 +1,7 @@
 import {
   FileText,
   History,
+  Mic,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -96,14 +97,19 @@ export function DashboardSidebar({
         collapsed ? "w-[52px]" : "w-[260px]"
       }`}
     >
-      {/* Header: title (expanded only) + collapse/expand button (always in the same corner) */}
+      {/* Header: logo + title (expanded only) + collapse/expand button */}
       <div
         className={`flex items-center border-b border-border h-[61px] shrink-0 ${
           collapsed ? "justify-center px-2" : "px-3 gap-2"
         }`}
       >
         {!collapsed && (
-          <span className="font-semibold text-sm truncate flex-1">{t('header.title')}</span>
+          <>
+            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 flex-shrink-0">
+              <Mic className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="font-semibold text-sm truncate flex-1">{t('header.title')}</span>
+          </>
         )}
         <Button
           variant="ghost"

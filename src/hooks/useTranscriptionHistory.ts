@@ -50,9 +50,13 @@ export function useTranscriptionHistory() {
     duration?: number,
   ): Promise<Transcription> => {
     const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
     const newTranscription: Transcription = {
       id: crypto.randomUUID(),
-      date: now.toISOString().split('T')[0],
+      // Local-date components (not toISOString) so the day matches the
+      // `time` field, which is already local. Using UTC here caused
+      // post-midnight entries in UTC+2 to land on the previous day.
+      date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
       time: now.toLocaleTimeString('fr-FR', {
         hour: '2-digit',
         minute: '2-digit',
