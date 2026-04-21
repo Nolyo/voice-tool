@@ -1,7 +1,13 @@
 import { createRoot, type Root } from "react-dom/client";
 import { createElement } from "react";
 import { Extension } from "@tiptap/core";
+import { PluginKey } from "@tiptap/pm/state";
 import Suggestion, { type SuggestionOptions, type SuggestionProps } from "@tiptap/suggestion";
+
+/** Distinct PluginKey so this coexists with NoteLink's `@` suggestion —
+ *  otherwise ProseMirror rejects the second `suggestion$` plugin with
+ *  "Adding different instances of a keyed plugin". */
+const SLASH_SUGGESTION_PLUGIN_KEY = new PluginKey("slashSuggestion");
 import i18n from "@/i18n";
 import {
   SLASH_COMMAND_ITEMS,
@@ -118,6 +124,7 @@ export const SlashCommand = Extension.create({
     return [
       Suggestion({
         editor: this.editor,
+        pluginKey: SLASH_SUGGESTION_PLUGIN_KEY,
         ...buildSlashSuggestion(),
       }),
     ];
