@@ -47,6 +47,12 @@ export function useNotesEditorInstance({
   onContentSaved,
 }: UseNotesEditorInstanceOptions) {
   const [isLoadingContent, setIsLoadingContent] = useState(false);
+  // `loadedNoteId` is exposed to renderers so they can gate any UI that
+  // derives from the editor's current document (live tab title, word count)
+  // until TipTap has actually ingested the active note's content. Without
+  // this, clicking a tab shows the previous note's title/word-count for one
+  // paint because `activeNoteId` flips before `readNote()` resolves.
+  const [loadedNoteId, setLoadedNoteId] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const activeNoteIdRef = useRef(activeNoteId);
   const loadedNoteIdRef = useRef<string | null>(null);
@@ -185,6 +191,9 @@ export function useNotesEditorInstance({
     if (loadedNoteIdRef.current === activeNoteId) return;
 
     setIsLoadingContent(true);
+    // Clear the loaded flag so consumers don't trust the editor's document
+    // while it still holds the previous note's content.
+    setLoadedNoteId(null);
     readNote(activeNoteId)
       .then((data) => {
         // `emitUpdate: false` is critical: TipTap v3 defaults to emitting an
@@ -193,6 +202,7 @@ export function useNotesEditorInstance({
         // potentially clobbering attributes that weren't round-tripped cleanly.
         editor.commands.setContent(data.content, { emitUpdate: false });
         loadedNoteIdRef.current = activeNoteId;
+        setLoadedNoteId(activeNoteId);
       })
       .catch((err) => {
         console.error("Failed to load note:", err);
@@ -206,6 +216,7 @@ export function useNotesEditorInstance({
     const openIds = new Set(openNotes.map((n) => n.id));
     if (loadedNoteIdRef.current && !openIds.has(loadedNoteIdRef.current)) {
       loadedNoteIdRef.current = null;
+      setLoadedNoteId(null);
     }
   }, [openNotes]);
 
@@ -233,5 +244,5 @@ export function useNotesEditorInstance({
     }
   }, [editor, onUpdateNote, onContentSaved]);
 
-  return { editor, isLoadingContent, flushSave };
+  return { editor, isLoadingContent, loadedNoteId, flushSave };
 }

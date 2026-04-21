@@ -73,7 +73,7 @@ export function NotesEditor({
     [],
   );
 
-  const { editor, isLoadingContent, flushSave } = useNotesEditorInstance({
+  const { editor, isLoadingContent, loadedNoteId, flushSave } = useNotesEditorInstance({
     openNotes,
     activeNoteId,
     readNote,
@@ -98,17 +98,9 @@ export function NotesEditor({
     const { title, onResolved } = brokenDialog;
     setBrokenDialog(null);
     try {
-      // 1. Create the target note (silent: no tab yet).
       const newId = await onRecreateLinkedNote(title);
-      // 2. Repoint the broken node in the current editor to the new id.
-      //    This triggers onUpdate → schedules a debounced save for the
-      //    source note.
       onResolved(newId);
-      // 3. Flush synchronously so the source note is persisted with the
-      //    updated link BEFORE we swap the active note (otherwise the
-      //    pending timer would fire later with the wrong note's content).
       flushSave();
-      // 4. Open the newly-created note in a tab.
       onOpenNoteInTab(newId);
     } catch (err) {
       console.error("Failed to recreate linked note:", err);
@@ -116,6 +108,11 @@ export function NotesEditor({
   }, [brokenDialog, onRecreateLinkedNote, flushSave, onOpenNoteInTab]);
 
   const hasActiveNote = openNotes.some((n) => n.id === activeNoteId);
+  const activeNote =
+    openNotes.find((n) => n.id === activeNoteId) ?? null;
+  const activeFolder = activeNote?.folderId
+    ? folders.find((f) => f.id === activeNote.folderId) ?? null
+    : null;
 
   const existingNoteIds = useMemo(
     () => new Set(notes.map((n) => n.id)),
@@ -161,10 +158,14 @@ export function NotesEditor({
 
   return (
     <NoteLinkProvider value={linkContextValue}>
-      <div className="flex flex-col h-full bg-card overflow-hidden">
+      <div
+        className="vt-app notes-shell flex flex-col h-full overflow-hidden"
+        style={{ background: "var(--vt-bg)" }}
+      >
         <NotesEditorTitleBar
           openNotes={openNotes}
           activeNoteId={activeNoteId}
+          loadedNoteId={loadedNoteId}
           folders={folders}
           editor={editor}
           onActivateNote={onActivateNote}
@@ -178,6 +179,9 @@ export function NotesEditor({
           editor={editor}
           hasActiveNote={hasActiveNote}
           isLoadingContent={isLoadingContent}
+          loadedNoteId={loadedNoteId}
+          activeNote={activeNote}
+          activeFolder={activeFolder}
           ai={ai}
           linkEditor={linkEditor}
         />
@@ -190,32 +194,27 @@ export function NotesEditor({
           />
         )}
 
-        {/* Error banner */}
         {ai.state === "error" && ai.error && (
-          <div
-            className="px-3 py-1.5 text-xs text-destructive bg-destructive/10 border-t border-destructive/20 cursor-pointer"
-            onClick={ai.dismiss}
-          >
+          <div className="notes-error-banner" onClick={ai.dismiss}>
             {ai.error}
           </div>
         )}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t bg-muted/30 shrink-0">
-          <NotesEditorFooter
-            editor={editor}
-            hasActiveNote={hasActiveNote}
-            isAiLoading={ai.state === "loading"}
-            onAiAction={ai.processSelection}
-            onCopyContent={onCopyContent}
-            onRequestDelete={() => setConfirmDeleteOpen(true)}
-          />
-        </div>
+        <NotesEditorFooter
+          editor={editor}
+          hasActiveNote={hasActiveNote}
+          loadedNoteId={loadedNoteId}
+          activeNoteId={activeNoteId}
+          isAiLoading={ai.state === "loading"}
+          onAiAction={ai.processSelection}
+          onCopyContent={onCopyContent}
+          onRequestDelete={() => setConfirmDeleteOpen(true)}
+        />
 
         <ConfirmDeleteDialog
           open={confirmDeleteOpen}
-          title={t('notes.editor.deleteConfirmTitle')}
-          description={t('notes.editor.deleteConfirmDesc')}
+          title={t("notes.editor.deleteConfirmTitle")}
+          description={t("notes.editor.deleteConfirmDesc")}
           onOpenChange={setConfirmDeleteOpen}
           onConfirm={handleConfirmDelete}
         />

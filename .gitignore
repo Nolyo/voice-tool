@@ -32,6 +32,8 @@ artifacts/
 # Auto Claude data directory
 .auto-claude/
 
+.design-handoff/
+
 # Auto Claude generated files
 .auto-claude-security.json
 .auto-claude-status

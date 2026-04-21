@@ -1121,6 +1121,508 @@ body.mini-window-body #root {
   --vt-tooltip-fg: oklch(0.97 0 0);
 }
 
+/* ── Notes editor design ────────────────────────────────────────────────
+ * Scoped styles for the notes editor screen — tabs, header, toolbar,
+ * prose content, footer. Matches the visual system from Settings/Historique/Logs.
+ */
+
+.vt-app .notes-shell {
+  background: var(--vt-bg);
+}
+
+/* Title bar (tabs row) */
+.vt-app .notes-tabbar {
+  background: var(--vt-panel);
+  border-bottom: 1px solid var(--vt-border);
+  height: 36px;
+}
+
+.vt-app .notes-tab {
+  height: 36px;
+  padding: 0 10px 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-right: 1px solid var(--vt-border);
+  position: relative;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--vt-fg-3);
+  max-width: 220px;
+  min-width: 110px;
+  transition: color 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+.vt-app .notes-tab:hover {
+  color: var(--vt-fg-2);
+  background: var(--vt-hover-soft);
+}
+.vt-app .notes-tab[data-active="true"] {
+  color: var(--vt-fg);
+  background: var(--vt-bg);
+}
+.vt-app .notes-tab[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--vt-accent);
+}
+.vt-app .notes-tab .notes-tab-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vt-app .notes-tab .notes-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  flex: none;
+}
+.vt-app .notes-tab[data-dirty="true"] .notes-tab-dot {
+  background: var(--vt-accent);
+  box-shadow: 0 0 6px oklch(from var(--vt-accent) l c h / 0.6);
+}
+.vt-app .notes-tab-icon {
+  color: var(--vt-fg-4);
+  flex: none;
+}
+.vt-app .notes-tab[data-active="true"] .notes-tab-icon {
+  color: var(--vt-accent-2);
+}
+.vt-app .notes-tab-close {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vt-fg-4);
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+  flex: none;
+}
+.vt-app .notes-tab:hover .notes-tab-close,
+.vt-app .notes-tab[data-active="true"] .notes-tab-close {
+  opacity: 1;
+}
+.vt-app .notes-tab-close:hover {
+  background: var(--vt-hover-strong);
+  color: var(--vt-fg);
+}
+
+.vt-app .notes-tab-new {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vt-fg-3);
+  border-right: 1px solid var(--vt-border);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+.vt-app .notes-tab-new:hover {
+  color: var(--vt-fg);
+  background: var(--vt-hover-soft);
+}
+
+/* Folder badge (right side of tabbar) */
+.vt-app .notes-folder-badge {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--vt-border);
+  background: var(--vt-surface);
+  color: var(--vt-fg-2);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, border-color 0.15s;
+  max-width: 180px;
+}
+.vt-app .notes-folder-badge:hover {
+  background: var(--vt-surface-hi);
+  border-color: var(--vt-border-strong);
+  color: var(--vt-fg);
+}
+.vt-app .notes-folder-badge .notes-folder-badge-icon {
+  color: var(--vt-fg-4);
+  flex: none;
+}
+
+/* Document header (breadcrumb + meta + divider) */
+.vt-app .note-doc-header {
+  padding: 22px 40px 14px;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+}
+.vt-app .note-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--vt-fg-3);
+  margin-bottom: 10px;
+}
+.vt-app .note-breadcrumb-icon {
+  color: var(--vt-fg-4);
+}
+.vt-app .note-breadcrumb-sep {
+  color: var(--vt-fg-4);
+  font-weight: 500;
+}
+.vt-app .note-breadcrumb-current {
+  color: var(--vt-fg-2);
+}
+.vt-app .note-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--vt-fg-4);
+  flex-wrap: wrap;
+}
+.vt-app .note-meta .dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--vt-fg-4);
+  opacity: 0.7;
+}
+.vt-app .note-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.vt-app .note-meta-item .vt-mono {
+  font-size: 11px;
+}
+.vt-app .note-doc-divider {
+  height: 1px;
+  background: var(--vt-border);
+  max-width: 860px;
+  margin: 6px auto 0;
+}
+
+/* Prose (TipTap) adjustments under .vt-app */
+.vt-app .tiptap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 16px 40px 48px;
+  font-size: 14.5px;
+  line-height: 1.72;
+  color: var(--vt-fg);
+}
+.vt-app .tiptap p {
+  margin: 0 0 14px;
+}
+.vt-app .tiptap h1 {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 4px 0 16px;
+  color: var(--vt-fg);
+}
+.vt-app .tiptap h2 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 28px 0 10px;
+  color: var(--vt-fg);
+}
+.vt-app .tiptap h3 {
+  font-size: 15.5px;
+  font-weight: 600;
+  margin: 22px 0 8px;
+  color: var(--vt-fg);
+}
+.vt-app .tiptap ul,
+.vt-app .tiptap ol {
+  padding-left: 1.25rem;
+  margin: 6px 0 14px;
+}
+.vt-app .tiptap li {
+  margin: 2px 0;
+}
+.vt-app .tiptap li p {
+  margin: 0;
+}
+.vt-app .tiptap blockquote {
+  margin: 12px 0;
+  padding: 2px 14px;
+  border-left: 3px solid var(--vt-accent);
+  color: var(--vt-fg-2);
+  font-style: italic;
+}
+.vt-app .tiptap code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--vt-hover);
+  border: 1px solid var(--vt-border);
+  color: var(--vt-fg-2);
+}
+.vt-app .tiptap pre {
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 14px 0;
+  overflow-x: auto;
+}
+.vt-app .tiptap pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--vt-fg-2);
+}
+.vt-app .tiptap a {
+  color: var(--vt-accent-2);
+  text-decoration: underline;
+  text-decoration-color: oklch(from var(--vt-accent) l c h / 0.4);
+  text-underline-offset: 2px;
+}
+.vt-app .tiptap hr {
+  border: 0;
+  border-top: 1px solid var(--vt-border);
+  margin: 22px 0;
+}
+.vt-app .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--vt-fg-4);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Task list (checklist) */
+.vt-app .tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 14px;
+}
+.vt-app .tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0;
+  padding: 2px 0;
+}
+.vt-app .tiptap ul[data-type="taskList"] li > label {
+  flex: none;
+  margin-top: 4px;
+  user-select: none;
+}
+.vt-app .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--vt-border-strong);
+  background: var(--vt-surface);
+  transition: all 0.15s;
+  cursor: pointer;
+  position: relative;
+  display: block;
+}
+.vt-app .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:hover {
+  border-color: var(--vt-accent);
+}
+.vt-app .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  background: var(--vt-accent);
+  border-color: var(--vt-accent);
+}
+.vt-app .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.vt-app .tiptap ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+.vt-app .tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--vt-fg-4);
+  text-decoration: line-through;
+  text-decoration-color: oklch(from var(--vt-fg-4) l c h / 0.6);
+}
+.vt-app .tiptap ul[data-type="taskList"] li > div > p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Footer */
+.vt-app .notes-footer {
+  height: 30px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--vt-border);
+  font-size: 11px;
+  color: var(--vt-fg-4);
+  background: var(--vt-panel);
+  flex-shrink: 0;
+}
+.vt-app .notes-footer .footer-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--vt-fg-4);
+  opacity: 0.7;
+}
+.vt-app .notes-footer .footer-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vt-app .notes-footer .footer-save .save-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vt-ok);
+  box-shadow: 0 0 6px oklch(from var(--vt-ok) l c h / 0.5);
+}
+.vt-app .notes-footer .footer-save[data-state="dirty"] .save-led {
+  background: var(--vt-warn);
+  box-shadow: 0 0 6px oklch(from var(--vt-warn) l c h / 0.5);
+}
+.vt-app .notes-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.vt-app .notes-footer-actions .footer-action {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--vt-fg-3);
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.vt-app .notes-footer-actions .footer-action:hover:not(:disabled) {
+  background: var(--vt-hover);
+  color: var(--vt-fg);
+}
+.vt-app .notes-footer-actions .footer-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.vt-app .notes-footer-actions .footer-action.is-danger:hover {
+  background: oklch(from var(--vt-danger) l c h / 0.12);
+  color: var(--vt-danger);
+}
+
+/* Backlinks panel */
+.vt-app .notes-backlinks {
+  border-top: 1px solid var(--vt-border);
+  background: var(--vt-panel);
+  padding: 10px 20px;
+  flex-shrink: 0;
+}
+.vt-app .notes-backlinks-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--vt-fg-4);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.vt-app .notes-backlinks-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vt-app .notes-backlink-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--vt-fg-2);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  max-width: 220px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.vt-app .notes-backlink-chip:hover {
+  background: var(--vt-surface-hi);
+  border-color: var(--vt-border-strong);
+  color: var(--vt-fg);
+}
+.vt-app .notes-backlink-chip span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty state */
+.vt-app .notes-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--vt-fg-3);
+  font-size: 13px;
+  gap: 8px;
+  padding: 40px;
+}
+.vt-app .notes-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vt-hover);
+  border: 1px solid var(--vt-border);
+  color: var(--vt-fg-4);
+}
+
+/* AI error banner */
+.vt-app .notes-error-banner {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--vt-danger);
+  background: oklch(from var(--vt-danger) l c h / 0.08);
+  border-top: 1px solid oklch(from var(--vt-danger) l c h / 0.2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* Some Historique/Logs components use text colours that are too light for
  * a white background: darken them for the light palette only. */
 :root:not(.dark) .vt-app .vt-trace {
