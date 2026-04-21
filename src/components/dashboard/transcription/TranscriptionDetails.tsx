@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Mic,
+  Check,
   Copy,
   Play,
   Pause,
@@ -19,10 +20,10 @@ import type { Transcription } from "@/hooks/useTranscriptionHistory";
 import { useSettings } from "@/hooks/useSettings";
 import { invoke } from "@tauri-apps/api/core";
 import { useDateFormatters } from "@/lib/date-format";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 interface TranscriptionDetailsProps {
   transcription: Transcription | null;
-  onCopy: (text: string) => void;
   onClose: () => void;
   onDelete?: (id: string) => void;
   compact?: boolean;
@@ -85,12 +86,12 @@ function Waveform({
 
 export function TranscriptionDetails({
   transcription,
-  onCopy,
   onClose,
   onDelete,
   compact = false,
 }: TranscriptionDetailsProps) {
   const { t } = useTranslation();
+  const { copy, justCopied } = useCopyToClipboard();
   const { dayLabel, formatTime } = useDateFormatters();
   const { settings } = useSettings();
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -566,10 +567,17 @@ export function TranscriptionDetails({
         <button
           type="button"
           className="vt-btn-primary"
-          onClick={() => onCopy(transcription.text)}
+          onClick={() => copy(transcription.text)}
         >
-          <Copy className="w-3.5 h-3.5" />
-          {t("transcriptionDetails.copy")}
+          {justCopied ? (
+            <Check
+              className="w-3.5 h-3.5"
+              style={{ color: "var(--vt-ok)" }}
+            />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+          {justCopied ? t("common.copied") : t("transcriptionDetails.copy")}
         </button>
         <button
           type="button"
