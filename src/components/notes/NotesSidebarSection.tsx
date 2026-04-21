@@ -18,7 +18,10 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  type DragCancelEvent,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -34,6 +37,19 @@ import { FolderNameDialog } from "./FolderNameDialog";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
 import { useSidebarCollapseState } from "@/hooks/useSidebarCollapseState";
+
+type NoteDragData = {
+  type: 'note';
+  noteId: string;
+  containerId: string; // folderId or 'root'
+};
+
+type FolderDragData = {
+  type: 'folder';
+  folderId: string;
+};
+
+const ROOT_CONTAINER_ID = 'root';
 
 interface NotesSidebarSectionProps {
   notes: NoteMeta[];
@@ -70,15 +86,17 @@ interface NoteItemProps {
 
 interface SortableNoteItemProps extends NoteItemProps {
   sortableId: string;
+  containerId: string;
 }
 
-function SortableNoteItem({ sortableId, ...props }: SortableNoteItemProps) {
+function SortableNoteItem({ sortableId, containerId, ...props }: SortableNoteItemProps) {
+  const data: NoteDragData = { type: 'note', noteId: sortableId, containerId };
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: sortableId });
+    useSortable({ id: sortableId, data });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
   };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
@@ -141,7 +159,6 @@ interface FolderSectionProps {
   onRename: (id: string, currentName: string) => void;
   onRequestDelete: (folder: FolderMeta) => void;
   onCreateNoteIn: (folderId: string) => void;
-  onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
   t: (key: string) => string;
 }
 
@@ -158,29 +175,15 @@ function FolderSection({
   onRename,
   onRequestDelete,
   onCreateNoteIn,
-  onReorderNotes,
   t,
 }: FolderSectionProps) {
+  const data: FolderDragData = { type: 'folder', folderId: folder.id };
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: folder.id });
+    useSortable({ id: folder.id, data });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-  };
-  const noteSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  );
-  const handleNoteDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = notes.findIndex((n) => n.id === active.id);
-    const newIndex = notes.findIndex((n) => n.id === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-    const next = [...notes];
-    const [moved] = next.splice(oldIndex, 1);
-    next.splice(newIndex, 0, moved);
-    void onReorderNotes(folder.id, next.map((n) => n.id));
   };
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
@@ -239,31 +242,26 @@ function FolderSection({
         </div>
       </div>
       {!collapsed && (
-        <DndContext
-          sensors={noteSensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleNoteDragEnd}
+        <SortableContext
+          items={notes.map((n) => n.id)}
+          strategy={verticalListSortingStrategy}
         >
-          <SortableContext
-            items={notes.map((n) => n.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {notes.map((note) => (
-              <SortableNoteItem
-                key={note.id}
-                sortableId={note.id}
-                note={note}
-                isActive={note.id === activeNoteId}
-                indented
-                onOpen={onOpenNote}
-                onToggleFavorite={onToggleFavorite}
-                onRequestDelete={onRequestDeleteNote}
-                onContextMenu={onNoteContextMenu}
-                t={t}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+          {notes.map((note) => (
+            <SortableNoteItem
+              key={note.id}
+              sortableId={note.id}
+              containerId={folder.id}
+              note={note}
+              isActive={note.id === activeNoteId}
+              indented
+              onOpen={onOpenNote}
+              onToggleFavorite={onToggleFavorite}
+              onRequestDelete={onRequestDeleteNote}
+              onContextMenu={onNoteContextMenu}
+              t={t}
+            />
+          ))}
+        </SortableContext>
       )}
     </div>
   );
@@ -292,20 +290,16 @@ export function NotesSidebarSection({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  const rootNoteSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  );
+  const handleDragStart = (_event: DragStartEvent) => {
+    // Placeholder — real logic added in Task 8
+  };
 
-  const handleFolderDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = folders.findIndex((f) => f.id === active.id);
-    const newIndex = folders.findIndex((f) => f.id === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-    const next = [...folders];
-    const [moved] = next.splice(oldIndex, 1);
-    next.splice(newIndex, 0, moved);
-    void onReorderFolders(next.map((f) => f.id));
+  const handleDragOver = (_event: DragOverEvent) => {
+    // Placeholder — real logic added in Task 8
+  };
+
+  const handleDragCancel = (_event: DragCancelEvent) => {
+    // Placeholder — real logic added in Task 10
   };
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NoteMeta[] | null>(null);
@@ -436,6 +430,43 @@ export function NotesSidebarSection({
     return { notesByFolder: byFolder, rootNotes: root };
   }, [displayedNotes, folders]);
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const activeData = active.data.current as NoteDragData | FolderDragData | undefined;
+    if (!activeData) return;
+
+    if (activeData.type === 'folder') {
+      const oldIndex = folders.findIndex((f) => f.id === active.id);
+      const newIndex = folders.findIndex((f) => f.id === over.id);
+      if (oldIndex < 0 || newIndex < 0) return;
+      const next = [...folders];
+      const [moved] = next.splice(oldIndex, 1);
+      next.splice(newIndex, 0, moved);
+      void onReorderFolders(next.map((f) => f.id));
+      return;
+    }
+
+    if (activeData.type === 'note') {
+      const overData = over.data.current as NoteDragData | undefined;
+      // Same-container reorder ONLY (cross-container comes in Task 9)
+      if (overData?.type === 'note' && overData.containerId === activeData.containerId) {
+        const containerNotes =
+          activeData.containerId === ROOT_CONTAINER_ID
+            ? rootNotes
+            : (notesByFolder.get(activeData.containerId) ?? []);
+        const oldIndex = containerNotes.findIndex((n) => n.id === active.id);
+        const newIndex = containerNotes.findIndex((n) => n.id === over.id);
+        if (oldIndex < 0 || newIndex < 0) return;
+        const next = [...containerNotes];
+        const [moved] = next.splice(oldIndex, 1);
+        next.splice(newIndex, 0, moved);
+        const folderId = activeData.containerId === ROOT_CONTAINER_ID ? null : activeData.containerId;
+        void onReorderNotes(folderId, next.map((n) => n.id));
+      }
+    }
+  };
+
   const showFavoritesSection = favoriteNotes.length > 0 && !isSearching;
   const showRecentsSection = recentNotes.length > 0 && !isSearching;
 
@@ -537,7 +568,14 @@ export function NotesSidebarSection({
             ))
           )
         ) : (
-          <>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
             {/* Favorites section */}
             {showFavoritesSection && (
               <div>
@@ -613,36 +651,29 @@ export function NotesSidebarSection({
             )}
 
             {/* Folders (drag-reorderable) */}
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleFolderDragEnd}
+            <SortableContext
+              items={folders.map((f) => f.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <SortableContext
-                items={folders.map((f) => f.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {folders.map((folder) => (
-                  <FolderSection
-                    key={folder.id}
-                    folder={folder}
-                    notes={notesByFolder.get(folder.id) ?? []}
-                    activeNoteId={activeNoteId}
-                    collapsed={collapseState.folders[folder.id] ?? false}
-                    onToggle={() => toggleFolderCollapsed(folder.id)}
-                    onOpenNote={onOpenNote}
-                    onToggleFavorite={onToggleFavorite}
-                    onRequestDeleteNote={setNoteToDelete}
-                    onNoteContextMenu={handleNoteContextMenu}
-                    onRename={handleRenameFolder}
-                    onRequestDelete={setFolderToDelete}
-                    onCreateNoteIn={(id) => onCreateNote(id)}
-                    onReorderNotes={onReorderNotes}
-                    t={t}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
+              {folders.map((folder) => (
+                <FolderSection
+                  key={folder.id}
+                  folder={folder}
+                  notes={notesByFolder.get(folder.id) ?? []}
+                  activeNoteId={activeNoteId}
+                  collapsed={collapseState.folders[folder.id] ?? false}
+                  onToggle={() => toggleFolderCollapsed(folder.id)}
+                  onOpenNote={onOpenNote}
+                  onToggleFavorite={onToggleFavorite}
+                  onRequestDeleteNote={setNoteToDelete}
+                  onNoteContextMenu={handleNoteContextMenu}
+                  onRename={handleRenameFolder}
+                  onRequestDelete={setFolderToDelete}
+                  onCreateNoteIn={(id) => onCreateNote(id)}
+                  t={t}
+                />
+              ))}
+            </SortableContext>
 
             {/* Root / unfiled notes */}
             {(rootNotes.length > 0 || folders.length === 0) && (
@@ -671,45 +702,30 @@ export function NotesSidebarSection({
                   </div>
                 )}
                 {!rootCollapsed && rootNotes.length > 0 && (
-                  <DndContext
-                    sensors={rootNoteSensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={(event) => {
-                      const { active, over } = event;
-                      if (!over || active.id === over.id) return;
-                      const oldIndex = rootNotes.findIndex((n) => n.id === active.id);
-                      const newIndex = rootNotes.findIndex((n) => n.id === over.id);
-                      if (oldIndex < 0 || newIndex < 0) return;
-                      const next = [...rootNotes];
-                      const [moved] = next.splice(oldIndex, 1);
-                      next.splice(newIndex, 0, moved);
-                      void onReorderNotes(null, next.map((n) => n.id));
-                    }}
+                  <SortableContext
+                    items={rootNotes.map((n) => n.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    <SortableContext
-                      items={rootNotes.map((n) => n.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {rootNotes.map((note) => (
-                        <SortableNoteItem
-                          key={note.id}
-                          sortableId={note.id}
-                          note={note}
-                          isActive={note.id === activeNoteId}
-                          indented={folders.length > 0}
-                          onOpen={onOpenNote}
-                          onToggleFavorite={onToggleFavorite}
-                          onRequestDelete={setNoteToDelete}
-                          onContextMenu={handleNoteContextMenu}
-                          t={t}
-                        />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
+                    {rootNotes.map((note) => (
+                      <SortableNoteItem
+                        key={note.id}
+                        sortableId={note.id}
+                        containerId={ROOT_CONTAINER_ID}
+                        note={note}
+                        isActive={note.id === activeNoteId}
+                        indented={folders.length > 0}
+                        onOpen={onOpenNote}
+                        onToggleFavorite={onToggleFavorite}
+                        onRequestDelete={setNoteToDelete}
+                        onContextMenu={handleNoteContextMenu}
+                        t={t}
+                      />
+                    ))}
+                  </SortableContext>
                 )}
               </div>
             )}
-          </>
+          </DndContext>
         )}
       </div>
 
