@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { AppLog } from "@/hooks/useAppLogs";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 interface LogsTabProps {
   logs: AppLog[];
@@ -174,8 +175,8 @@ export function LogsTab({
   const [paused, setPaused] = useState(false);
   const [snapshot, setSnapshot] = useState<AppLog[] | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
-  const [copied, setCopied] = useState(false);
   const [showTimeline, setShowTimeline] = useState(true);
+  const { copy, justCopied } = useCopyToClipboard();
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -226,11 +227,12 @@ export function LogsTab({
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [displayed, autoScroll, paused]);
 
-  const handleCopy = useCallback((text: string) => {
-    navigator.clipboard?.writeText(text).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
-  }, []);
+  const handleCopy = useCallback(
+    (text: string) => {
+      void copy(text);
+    },
+    [copy],
+  );
 
   const renderMessage = (msg: string) => {
     const q = search.trim();
@@ -523,10 +525,17 @@ export function LogsTab({
                             `[${fmtTime(at)}] [${l.level.toUpperCase()}] ${l.message}`,
                           )
                         }
-                        title={t("logs.copyLine")}
-                        aria-label={t("logs.copyLine")}
+                        title={justCopied ? t("common.copied") : t("logs.copyLine")}
+                        aria-label={justCopied ? t("common.copied") : t("logs.copyLine")}
                       >
-                        <Copy className="w-3 h-3" />
+                        {justCopied ? (
+                          <Check
+                            className="w-3 h-3"
+                            style={{ color: "var(--vt-ok)" }}
+                          />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
                       </button>
                     </div>
                   );
@@ -539,27 +548,6 @@ export function LogsTab({
 
       </div>
 
-      {/* Toast */}
-      {copied && (
-        <div
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 px-3.5 py-2 rounded-lg text-[12.5px] font-medium flex items-center gap-2 vt-fade-up"
-          style={{
-            background: "var(--vt-tooltip-bg)",
-            border: "1px solid var(--vt-border)",
-            color: "var(--vt-tooltip-fg)",
-            zIndex: 50,
-            boxShadow: "0 10px 40px -10px rgba(0,0,0,.6)",
-          }}
-        >
-          <span
-            className="w-4 h-4 rounded-full flex items-center justify-center"
-            style={{ background: "var(--vt-ok-soft)", color: "var(--vt-ok)" }}
-          >
-            <Check className="w-2.5 h-2.5" />
-          </span>
-          {t("logs.copiedToast")}
-        </div>
-      )}
     </div>
   );
 }
