@@ -472,7 +472,6 @@
     "editor": {
       "noNote": "No note open",
       "processing": "Processing...",
-      "copiedToClipboard": "Copied to clipboard",
       "dictateHint": "Ctrl + F12 to dictate",
       "copied": "Copied",
       "deleteNote": "Delete note",
@@ -615,7 +614,6 @@
     "noMatches": "No entries match",
     "noMatchesSubtitle": "Try other keywords or enable levels.",
     "filterBy": "Filter by {{source}}",
-    "copiedToast": "Copied",
     "unknownSource": "unknown",
     "levelsTitle": "Levels",
     "sourcesTitle": "Sources",
