@@ -428,6 +428,13 @@ body.mini-window-body #root {
   font-feature-settings: "cv11", "ss01", "ss03";
 }
 
+.vt-app .vt-folder-header--drop-active {
+  background-color: var(--vt-accent-soft);
+  outline: 1px solid var(--vt-accent);
+  outline-offset: -1px;
+  border-radius: 6px;
+}
+
 .vt-mono {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-feature-settings: "zero";

@@ -51,6 +51,11 @@ interface DashboardSidebarProps {
   onReorderFolders: (ids: string[]) => Promise<void>;
   onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
+  onMoveNoteToIndex: (
+    noteId: string,
+    targetFolderId: string | null,
+    noteIdsInNewOrder: string[],
+  ) => Promise<void>;
   activeSettingsSection: SettingsSectionId;
   onSettingsSectionChange: (id: SettingsSectionId) => void;
   transcriptions: Transcription[];
@@ -80,6 +85,7 @@ export function DashboardSidebar({
   onReorderFolders,
   onReorderNotes,
   onMoveNote,
+  onMoveNoteToIndex,
   activeSettingsSection,
   onSettingsSectionChange,
   transcriptions,
@@ -162,6 +168,7 @@ export function DashboardSidebar({
           onReorderFolders={onReorderFolders}
           onReorderNotes={onReorderNotes}
           onMoveNote={onMoveNote}
+          onMoveNoteToIndex={onMoveNoteToIndex}
         />
       )}
 

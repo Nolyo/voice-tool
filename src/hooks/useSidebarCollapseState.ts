@@ -99,11 +99,30 @@ export function useSidebarCollapseState() {
     }));
   }, []);
 
+  const expandFolder = useCallback((folderId: string) => {
+    setState((prev) => {
+      if (prev.folders[folderId] !== true) return prev; // already expanded
+      return {
+        ...prev,
+        folders: { ...prev.folders, [folderId]: false },
+      };
+    });
+  }, []);
+
+  const expandRoot = useCallback(() => {
+    setState((prev) => {
+      if (prev.root !== true) return prev; // already expanded
+      return { ...prev, root: false };
+    });
+  }, []);
+
   return {
     state,
     toggleFavorites,
     toggleRecents,
     toggleRoot,
     toggleFolder,
+    expandFolder,
+    expandRoot,
   };
 }

@@ -469,6 +469,9 @@
       "moveToRoot": "No folder (root)",
       "namePrompt": "Folder name"
     },
+    "errors": {
+      "moveFailed": "Failed to move the note"
+    },
     "editor": {
       "noNote": "No note open",
       "processing": "Processing...",

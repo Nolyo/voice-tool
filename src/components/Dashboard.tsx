@@ -69,6 +69,7 @@ export default function Dashboard() {
     searchNotes,
     toggleFavorite,
     moveNoteToFolder,
+    moveNoteToFolderAtIndex,
     reorderNotesInFolder,
   } = useNotes();
   const {
@@ -224,6 +225,7 @@ export default function Dashboard() {
         onReorderFolders={reorderFolders}
         onReorderNotes={reorderNotesInFolder}
         onMoveNote={moveNoteToFolder}
+        onMoveNoteToIndex={moveNoteToFolderAtIndex}
         activeSettingsSection={activeSettingsSection}
         onSettingsSectionChange={setActiveSettingsSection}
         transcriptions={transcriptions}
