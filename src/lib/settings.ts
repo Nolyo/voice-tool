@@ -34,6 +34,7 @@ export interface AppSettings {
 
     // System
     recordings_keep_last: number;
+    history_keep_last: number;
     start_minimized_on_boot: boolean;
     main_window_state: string;
     main_window_geometry: string;
@@ -121,7 +122,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     insertion_mode: "cursor",
 
     // System
-    recordings_keep_last: 25,
+    recordings_keep_last: 50,
+    history_keep_last: 500,
     start_minimized_on_boot: true,
     main_window_state: "maximized",
     main_window_geometry: "1000x600+0+0",

@@ -58,7 +58,7 @@ export default function Dashboard() {
     addTranscription,
     deleteTranscription,
     clearHistory,
-  } = useTranscriptionHistory();
+  } = useTranscriptionHistory(settings.history_keep_last);
   const {
     notes,
     isLoading: notesLoading,

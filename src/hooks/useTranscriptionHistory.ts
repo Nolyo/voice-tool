@@ -21,7 +21,7 @@ export interface Transcription {
   postProcessCost?: number;
 }
 
-export function useTranscriptionHistory() {
+export function useTranscriptionHistory(historyKeepLast?: number) {
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -76,8 +76,17 @@ export function useTranscriptionHistory() {
       postProcessCost,
     };
 
-    await invoke('save_transcription', { transcription: newTranscription });
-    setTranscriptions(prev => [newTranscription, ...prev]);
+    await invoke('save_transcription', {
+      transcription: newTranscription,
+      historyKeepLast: historyKeepLast ?? null,
+    });
+    setTranscriptions(prev => {
+      const next = [newTranscription, ...prev];
+      if (typeof historyKeepLast === 'number' && next.length > historyKeepLast) {
+        return next.slice(0, historyKeepLast);
+      }
+      return next;
+    });
 
     return newTranscription;
   };

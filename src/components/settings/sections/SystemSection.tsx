@@ -17,6 +17,9 @@ export function SystemSection() {
     useAutostart();
 
   const keep = settings.recordings_keep_last;
+  const historyKeep = settings.history_keep_last;
+  const RECORDINGS_MAX = 500;
+  const HISTORY_MAX = 2000;
 
   const systemIcon = (
     <svg
@@ -145,11 +148,16 @@ export function SystemSection() {
             </button>
             <input
               type="number"
+              min={0}
+              max={RECORDINGS_MAX}
               value={keep}
               onChange={(e) =>
                 updateSetting(
                   "recordings_keep_last",
-                  Math.max(0, Number.parseInt(e.target.value) || 0),
+                  Math.min(
+                    RECORDINGS_MAX,
+                    Math.max(0, Number.parseInt(e.target.value) || 0),
+                  ),
                 )
               }
               className="vt-mono w-20 h-9 rounded-md text-center text-[13px]"
@@ -161,7 +169,75 @@ export function SystemSection() {
             />
             <button
               type="button"
-              onClick={() => updateSetting("recordings_keep_last", keep + 1)}
+              onClick={() =>
+                updateSetting(
+                  "recordings_keep_last",
+                  Math.min(RECORDINGS_MAX, keep + 1),
+                )
+              }
+              className="w-9 h-9 rounded-md flex items-center justify-center"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+                color: "var(--vt-fg-2)",
+              }}
+            >
+              <VtIcon.plus />
+            </button>
+          </div>
+        </Row>
+
+        <Row
+          label={t("settings.system.historyKeep")}
+          hint={t("settings.system.historyKeepHelp")}
+        >
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                updateSetting(
+                  "history_keep_last",
+                  Math.max(0, historyKeep - 10),
+                )
+              }
+              className="w-9 h-9 rounded-md flex items-center justify-center"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+                color: "var(--vt-fg-2)",
+              }}
+            >
+              <VtIcon.minus />
+            </button>
+            <input
+              type="number"
+              min={0}
+              max={HISTORY_MAX}
+              value={historyKeep}
+              onChange={(e) =>
+                updateSetting(
+                  "history_keep_last",
+                  Math.min(
+                    HISTORY_MAX,
+                    Math.max(0, Number.parseInt(e.target.value) || 0),
+                  ),
+                )
+              }
+              className="vt-mono w-20 h-9 rounded-md text-center text-[13px]"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+                color: "var(--vt-fg)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                updateSetting(
+                  "history_keep_last",
+                  Math.min(HISTORY_MAX, historyKeep + 10),
+                )
+              }
               className="w-9 h-9 rounded-md flex items-center justify-center"
               style={{
                 background: "var(--vt-surface)",
