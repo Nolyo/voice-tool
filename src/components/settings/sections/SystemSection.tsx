@@ -1,14 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
 import { useAutostart } from "@/hooks/useAutostart";
-import { changeLanguage } from "@/i18n";
-import { Row, SectionHeader, Segmented, Toggle, VtIcon } from "../vt";
+import { RadioCardList, Row, SectionHeader, Toggle, VtIcon } from "../vt";
 import { DangerZone } from "./DangerZone";
 
 const ACCENT = "oklch(0.72 0.16 75)";
 
-type ThemeId = "dark" | "light";
-type LangId = "fr" | "en";
+type InsertionMode = "cursor" | "clipboard" | "none";
 
 export function SystemSection() {
   const { t } = useTranslation();
@@ -47,47 +45,6 @@ export function SystemSection() {
           title={t("settings.system.title")}
           description={t("settings.system.subtitle")}
         />
-
-        <Row
-          label={t("settings.system.language")}
-          hint={t("settings.system.languageDesc")}
-        >
-          <select
-            className="vt-select"
-            value={settings.ui_language}
-            onChange={async (e) => {
-              const v = e.target.value as LangId;
-              await updateSetting("ui_language", v);
-              changeLanguage(v);
-            }}
-            style={{ maxWidth: 240 }}
-          >
-            <option value="fr">Français</option>
-            <option value="en">English</option>
-          </select>
-        </Row>
-
-        <Row
-          label={t("settings.system.theme")}
-          hint={t("settings.system.themeDesc")}
-        >
-          <Segmented<ThemeId>
-            value={settings.theme}
-            onChange={(v) => updateSetting("theme", v)}
-            options={[
-              {
-                id: "dark",
-                label: t("settings.system.themeDark"),
-                icon: <VtIcon.dark />,
-              },
-              {
-                id: "light",
-                label: t("settings.system.themeLight"),
-                icon: <VtIcon.light />,
-              },
-            ]}
-          />
-        </Row>
 
         <Row
           label={t("settings.system.startWithWindows")}
@@ -248,6 +205,35 @@ export function SystemSection() {
               <VtIcon.plus />
             </button>
           </div>
+        </Row>
+
+        <Row
+          label={t("settings.system.insertionMode")}
+          hint={t("settings.system.insertionModeHint")}
+          align="start"
+        >
+          <RadioCardList<InsertionMode>
+            value={settings.insertion_mode}
+            onChange={(v) => updateSetting("insertion_mode", v)}
+            options={[
+              {
+                id: "cursor",
+                title: t("settings.system.modeCursor"),
+                sub: t("settings.system.modeCursorDesc"),
+                badge: t("common.recommended", { defaultValue: "Recommandé" }),
+              },
+              {
+                id: "clipboard",
+                title: t("settings.system.modeClipboard"),
+                sub: t("settings.system.modeClipboardDesc"),
+              },
+              {
+                id: "none",
+                title: t("settings.system.modeNone"),
+                sub: t("settings.system.modeNoneDesc"),
+              },
+            ]}
+          />
         </Row>
       </div>
 

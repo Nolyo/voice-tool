@@ -298,7 +298,7 @@ export function AudioSection() {
       >
         {t("settings.audio.privacyBody", {
           defaultValue:
-            "Les enregistrements ne quittent pas ta machine sauf si tu actives une transcription cloud dans la section IA.",
+            "Les enregistrements ne quittent pas ta machine sauf si tu actives une transcription cloud dans la section Transcription.",
         })}
       </Callout>
     </div>

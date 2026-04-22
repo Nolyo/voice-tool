@@ -2,20 +2,25 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettings } from "@/hooks/useSettings";
+import { changeLanguage } from "@/i18n";
 import {
   PickerCardGrid,
   Row,
   SectionHeader,
+  Segmented,
   Toggle,
   VtIcon,
 } from "../vt";
 
-const ACCENT = "oklch(0.72 0.17 175)";
+const ACCENT_APPEARANCE = "oklch(0.72 0.16 320)";
+const ACCENT_MINI = "oklch(0.72 0.17 175)";
 const BAR_COUNT = 16;
 
 type VisualizerMode = "bars" | "waveform";
+type ThemeId = "dark" | "light";
+type LangId = "fr" | "en";
 
-export function MiniWindowSection() {
+export function AppearanceSection() {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const [bars, setBars] = useState<number[]>(() =>
@@ -31,7 +36,26 @@ export function MiniWindowSection() {
     return () => clearInterval(id);
   }, []);
 
-  const sectionIcon = (
+  const appearanceIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="13.5" cy="6.5" r="0.5" fill="currentColor" />
+      <circle cx="17.5" cy="10.5" r="0.5" fill="currentColor" />
+      <circle cx="8.5" cy="7.5" r="0.5" fill="currentColor" />
+      <circle cx="6.5" cy="12.5" r="0.5" fill="currentColor" />
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01a1.492 1.492 0 0 1 1.01-2.49H16c3.31 0 6-2.69 6-6 0-5.52-4.48-10-10-10z" />
+    </svg>
+  );
+
+  const miniWindowIcon = (
     <svg
       width="16"
       height="16"
@@ -52,10 +76,62 @@ export function MiniWindowSection() {
 
   return (
     <div className="vt-fade-up space-y-5">
+      {/* Interface : thème + langue UI */}
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
-          color={ACCENT}
-          icon={sectionIcon}
+          color={ACCENT_APPEARANCE}
+          icon={appearanceIcon}
+          title={t("settings.appearance.title")}
+          description={t("settings.appearance.subtitle")}
+        />
+
+        <Row
+          label={t("settings.system.language")}
+          hint={t("settings.system.languageDesc")}
+        >
+          <select
+            className="vt-select"
+            value={settings.ui_language}
+            onChange={async (e) => {
+              const v = e.target.value as LangId;
+              await updateSetting("ui_language", v);
+              changeLanguage(v);
+            }}
+            style={{ maxWidth: 240 }}
+          >
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+          </select>
+        </Row>
+
+        <Row
+          label={t("settings.system.theme")}
+          hint={t("settings.system.themeDesc")}
+        >
+          <Segmented<ThemeId>
+            value={settings.theme}
+            onChange={(v) => updateSetting("theme", v)}
+            options={[
+              {
+                id: "dark",
+                label: t("settings.system.themeDark"),
+                icon: <VtIcon.dark />,
+              },
+              {
+                id: "light",
+                label: t("settings.system.themeLight"),
+                icon: <VtIcon.light />,
+              },
+            ]}
+          />
+        </Row>
+      </div>
+
+      {/* Mini fenêtre */}
+      <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
+        <SectionHeader
+          color={ACCENT_MINI}
+          icon={miniWindowIcon}
           title={t("settings.miniWindow.title")}
           description={t("settings.miniWindow.subtitle")}
         />

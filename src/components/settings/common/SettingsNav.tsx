@@ -1,6 +1,15 @@
 import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { AudioWaveform, BookOpen, Keyboard, Mic, RefreshCw, Settings } from "lucide-react";
+import {
+  BookOpen,
+  Keyboard,
+  Mic,
+  Palette,
+  RefreshCw,
+  Settings,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
 
 export interface NavItemDef {
   id: string;
@@ -12,21 +21,28 @@ export interface NavItemDef {
 
 export type SettingsSectionId =
   | "section-transcription"
+  | "section-post-process"
   | "section-audio"
-  | "section-texte"
   | "section-vocabulaire"
-  | "section-systeme"
-  | "section-mini-window"
+  | "section-apparence"
   | "section-raccourcis"
+  | "section-systeme"
   | "section-mises-a-jour";
 
 export const NAV_ITEM_DEFS: NavItemDef[] = [
   {
     id: "section-transcription",
-    icon: <Settings className="w-3.5 h-3.5 text-violet-500" />,
+    icon: <Sparkles className="w-3.5 h-3.5 text-violet-500" />,
     iconBg: "bg-violet-500/10",
-    titleKey: "settings.nav.ai",
-    subtitleKey: "settings.nav.aiSubtitle",
+    titleKey: "settings.nav.transcription",
+    subtitleKey: "settings.nav.transcriptionSubtitle",
+  },
+  {
+    id: "section-post-process",
+    icon: <Wand2 className="w-3.5 h-3.5 text-pink-500" />,
+    iconBg: "bg-pink-500/10",
+    titleKey: "settings.nav.postProcess",
+    subtitleKey: "settings.nav.postProcessSubtitle",
   },
   {
     id: "section-audio",
@@ -36,13 +52,6 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     subtitleKey: "settings.nav.audioSubtitle",
   },
   {
-    id: "section-texte",
-    icon: <span className="text-xs font-bold text-emerald-500 leading-none">T</span>,
-    iconBg: "bg-emerald-500/10",
-    titleKey: "settings.nav.text",
-    subtitleKey: "settings.nav.textSubtitle",
-  },
-  {
     id: "section-vocabulaire",
     icon: <BookOpen className="w-3.5 h-3.5 text-cyan-500" />,
     iconBg: "bg-cyan-500/10",
@@ -50,18 +59,11 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     subtitleKey: "settings.nav.vocabularySubtitle",
   },
   {
-    id: "section-systeme",
-    icon: <Settings className="w-3.5 h-3.5 text-orange-500" />,
-    iconBg: "bg-orange-500/10",
-    titleKey: "settings.nav.system",
-    subtitleKey: "settings.nav.systemSubtitle",
-  },
-  {
-    id: "section-mini-window",
-    icon: <AudioWaveform className="w-3.5 h-3.5 text-fuchsia-500" />,
+    id: "section-apparence",
+    icon: <Palette className="w-3.5 h-3.5 text-fuchsia-500" />,
     iconBg: "bg-fuchsia-500/10",
-    titleKey: "settings.nav.miniWindow",
-    subtitleKey: "settings.nav.miniWindowSubtitle",
+    titleKey: "settings.nav.appearance",
+    subtitleKey: "settings.nav.appearanceSubtitle",
   },
   {
     id: "section-raccourcis",
@@ -69,6 +71,13 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     iconBg: "bg-rose-500/10",
     titleKey: "settings.nav.shortcuts",
     subtitleKey: "settings.nav.shortcutsSubtitle",
+  },
+  {
+    id: "section-systeme",
+    icon: <Settings className="w-3.5 h-3.5 text-orange-500" />,
+    iconBg: "bg-orange-500/10",
+    titleKey: "settings.nav.system",
+    subtitleKey: "settings.nav.systemSubtitle",
   },
   {
     id: "section-mises-a-jour",

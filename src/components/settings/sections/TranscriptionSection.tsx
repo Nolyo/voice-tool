@@ -8,9 +8,9 @@ import {
   Row,
   SectionHeader,
   Segmented,
+  Toggle,
   VtIcon,
 } from "../vt";
-import { PostProcessSection } from "./PostProcessSection";
 
 const ACCENT = "oklch(0.68 0.18 265)";
 
@@ -295,9 +295,24 @@ export function TranscriptionSection() {
             </div>
           </div>
         </Row>
-      </div>
 
-      <PostProcessSection />
+        <Row
+          label={t("settings.transcription.smartFormatting")}
+          hint={t("settings.transcription.smartFormattingHint")}
+        >
+          <Toggle
+            on={settings.smart_formatting}
+            onClick={() =>
+              updateSetting("smart_formatting", !settings.smart_formatting)
+            }
+            label={
+              settings.smart_formatting
+                ? t("common.enabled", { defaultValue: "Activé" })
+                : t("common.disabled", { defaultValue: "Désactivé" })
+            }
+          />
+        </Row>
+      </div>
     </div>
   );
 }
