@@ -323,6 +323,14 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
   - See [docs/UPDATER_SETUP.md](docs/UPDATER_SETUP.md) for complete setup guide
 - Auto-updater is disabled in development mode and for portable installations (not in Program Files or AppData)
 
+## V3 Documentation
+
+- `docs/v3/` — sous-épiques v3 (comptes, sync, billing)
+- `docs/v3/runbooks/` — rotations, backups, incidents (cf. `docs/v3/runbooks/README.md`)
+- `docs/v3/compliance/` — registre GDPR, base légale
+- `docs/v3/ops/` — bootstrap infra (Supabase, Cloudflare Pages) et checklist 2FA
+- `docs/superpowers/plans/` — plans d'implémentation (dont `2026-04-24-v3-sub-epic-00-security-foundations.md`)
+
 ## Commit and Push
 
 - Use conventional commits: - Format: `<type>: <message>`
