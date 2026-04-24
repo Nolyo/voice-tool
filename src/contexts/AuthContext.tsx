@@ -146,7 +146,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function handleAuthDeepLink(payload: DeepLinkPayload) {
     const { type, access_token, refresh_token, code } = payload.params;
     try {
-      if ((type === "magiclink" || type === "signup") && access_token && refresh_token) {
+      if (code) {
+        // PKCE flow (flowType: "pkce" in supabase client). Covers magic link,
+        // signup, recovery, and OAuth — all come back with `?code=...`.
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+        if (data.session?.refresh_token) {
+          const res = await invoke<{ available: boolean }>("store_refresh_token", {
+            token: data.session.refresh_token,
+          });
+          setKeyringAvailable(res.available);
+        }
+        if (type === "recovery") {
+          setAuthModalOpen(true);
+          window.dispatchEvent(new CustomEvent("auth:recovery-mode"));
+        }
+      } else if (access_token && refresh_token) {
+        // Legacy implicit flow (hash fragment). Kept for safety/compat.
         const { data, error } = await supabase.auth.setSession({
           access_token,
           refresh_token,
@@ -158,21 +174,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           setKeyringAvailable(res.available);
         }
-      } else if (type === "oauth" && code) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) throw error;
-        if (data.session?.refresh_token) {
-          const res = await invoke<{ available: boolean }>("store_refresh_token", {
-            token: data.session.refresh_token,
-          });
-          setKeyringAvailable(res.available);
+        if (type === "recovery") {
+          setAuthModalOpen(true);
+          window.dispatchEvent(new CustomEvent("auth:recovery-mode"));
         }
-      } else if (type === "recovery" && access_token && refresh_token) {
-        // Set session so the reset-password view can call auth.updateUser.
-        await supabase.auth.setSession({ access_token, refresh_token });
-        // Open the modal onto the "reset-password-confirm" view via window event.
-        setAuthModalOpen(true);
-        window.dispatchEvent(new CustomEvent("auth:recovery-mode"));
       }
     } catch (e) {
       console.error("deep link exchange failed", e);
