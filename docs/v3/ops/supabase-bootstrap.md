@@ -42,6 +42,32 @@ Créer le projet Supabase de production v3 avec les paramètres figés par ADR 0
 - Date de création : 2026-04-24
 - Plan : Free (upgrade Pro planifié avant mise en prod réelle — cf. ADR 0007 pour PITR + DPA obligatoires en prod)
 
+## Config auth v3.0 (appliquée 2026-04-24)
+
+### URL Configuration
+- Site URL : `https://voice-tool-auth-callback.pages.dev`
+- Redirect URLs : `https://voice-tool-auth-callback.pages.dev/**`, `voice-tool://auth/callback`
+
+### Sessions (plan Free)
+- Detect and revoke potentially compromised refresh tokens : ON (rotation rolling)
+- Refresh token reuse interval : 10 s
+- Time-box user sessions / Inactivity timeout : `never` (Pro only — à régler à l'upgrade pour coller à l'ADR 0007 = 60 jours)
+
+### Email provider
+- Confirm email : ON (obligatoire avant login E/P)
+- Secure email change / Secure password change : ON si disponibles
+- Magic link / OTP expiration : 900 s (15 min)
+
+### MFA
+- TOTP : ON
+- Phone / SMS : OFF (SIM-swap, ADR 0007)
+- Max enrolled factors per user : 10
+
+### OAuth providers
+- Google : enabled. Client ID : `560560444964-t4uh4qkvc926mmu96j4c9krudbns1q6o.apps.googleusercontent.com` — Google Cloud project `voice-tool-v3`, OAuth client "Voice Tool Supabase", mode Testing, scopes `openid email profile`. Client Secret stocké dans le gestionnaire de mdp perso uniquement.
+- Callback URL autorisée côté Google : `https://prmznlqsvzrfxckuxfhq.supabase.co/auth/v1/callback`
+- Autres providers (GitHub, Apple, …) : désactivés v3.0.
+
 ## Identifiants secrets — où ils vivent
 
 | Secret | Stockage | Usage |
