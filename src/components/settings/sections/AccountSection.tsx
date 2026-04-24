@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useSync } from "@/hooks/useSync";
 import { useProfiles } from "@/contexts/ProfilesContext";
-import { supabase } from "@/lib/supabase";
 import { downloadAccountExport } from "@/lib/sync/export";
 import { SyncActivationModal } from "./SyncActivationModal";
 import { SyncedDataOverview } from "./SyncedDataOverview";
@@ -15,19 +14,9 @@ export function AccountSection() {
   const sync = useSync();
   const { profiles, activeProfileId } = useProfiles();
   const activeProfile = profiles.find((p) => p.id === activeProfileId);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [activationOpen, setActivationOpen] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
-
-  async function handleDelete() {
-    if (!user) return;
-    setDeleting(true);
-    const { error } = await supabase.rpc("request_account_deletion");
-    setDeleting(false);
-    if (!error) await signOut();
-  }
 
   async function onExport() {
     setExportBusy(true);
@@ -59,36 +48,6 @@ export function AccountSection() {
       >
         {t("auth.logout.label")}
       </button>
-
-      <div className="pt-4 border-t">
-        <p className="text-xs text-muted-foreground mb-2">
-          {t("auth.account.deleteAccountWarning")}
-        </p>
-        {!confirmOpen ? (
-          <button
-            onClick={() => setConfirmOpen(true)}
-            className="px-3 py-2 rounded-md bg-destructive text-destructive-foreground text-sm hover:opacity-90"
-          >
-            {t("auth.account.deleteAccount")}
-          </button>
-        ) : (
-          <div className="flex gap-2">
-            <button
-              onClick={handleDelete}
-              className="px-3 py-2 rounded-md bg-destructive text-destructive-foreground text-sm hover:opacity-90 disabled:opacity-50"
-              disabled={deleting}
-            >
-              {t("auth.logout.confirm")}
-            </button>
-            <button
-              onClick={() => setConfirmOpen(false)}
-              className="px-3 py-2 rounded-md border border-input text-sm hover:bg-muted"
-            >
-              {t("auth.modal.close")}
-            </button>
-          </div>
-        )}
-      </div>
 
       <div className="pt-6 border-t space-y-4">
         <header>
