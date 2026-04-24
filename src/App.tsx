@@ -2,6 +2,7 @@ import "./App.css";
 import Dashboard from "./components/Dashboard";
 import { ProfilesProvider } from "./contexts/ProfilesContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
+import { SyncProvider } from "./contexts/SyncContext";
 import { UpdaterProvider } from "./contexts/UpdaterContext";
 import { Toaster } from "sonner";
 import { useSettings } from "./hooks/useSettings";
@@ -20,9 +21,11 @@ function App() {
   return (
     <ProfilesProvider>
       <SettingsProvider>
-        <UpdaterProvider>
-          <AppShell />
-        </UpdaterProvider>
+        <SyncProvider>
+          <UpdaterProvider>
+            <AppShell />
+          </UpdaterProvider>
+        </SyncProvider>
       </SettingsProvider>
     </ProfilesProvider>
   );
