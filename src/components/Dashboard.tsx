@@ -19,6 +19,7 @@ import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./common/UpdateModal";
 import { OnboardingWizard } from "./OnboardingWizard";
 import { AuthModal } from "./auth/AuthModal";
+import { AccountCTA } from "./auth/AccountCTA";
 import { SelectedModelMissingBanner } from "./SelectedModelMissingBanner";
 import { useSettings } from "@/hooks/useSettings";
 import { useOnboardingCheck } from "@/hooks/useOnboardingCheck";
@@ -299,16 +300,19 @@ export default function Dashboard() {
               ) : (
                 <div className="container mx-auto px-6 py-8">
                   {activeTab === "historique" && (
-                    <HistoriqueTab
-                      transcriptions={transcriptions}
-                      selectedTranscription={selectedTranscription}
-                      isSidebarOpen={isSidebarOpen}
-                      isCompact={isCompact}
-                      onSelectTranscription={handleSelectTranscription}
-                      onCloseDetails={handleCloseDetails}
-                      onDelete={handleDelete}
-                      onClearAll={handleClearAll}
-                    />
+                    <>
+                      <AccountCTA />
+                      <HistoriqueTab
+                        transcriptions={transcriptions}
+                        selectedTranscription={selectedTranscription}
+                        isSidebarOpen={isSidebarOpen}
+                        isCompact={isCompact}
+                        onSelectTranscription={handleSelectTranscription}
+                        onCloseDetails={handleCloseDetails}
+                        onDelete={handleDelete}
+                        onClearAll={handleClearAll}
+                      />
+                    </>
                   )}
                 </div>
               )}

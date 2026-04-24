@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           setKeyringAvailable(res.available);
         }
+        upsertDevice(data.session.user.id);
       } catch (e) {
         console.error("session restore failed", e);
         setStatus("signed-out");
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_IN" && next) {
         setStatus("signed-in");
         setAuthModalOpen(false);
+        upsertDevice(next.user.id).catch(() => {});
       }
     });
     return () => sub.subscription.unsubscribe();
@@ -120,6 +122,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       p.then((unlisten) => unlisten());
     };
   }, []);
+
+  async function upsertDevice(userId: string) {
+    try {
+      const fp = await invoke<string>("get_or_create_device_id");
+      const osName = typeof navigator !== "undefined" ? navigator.platform || "Unknown" : "Unknown";
+      // TODO(v3.1): include app_version via a Tauri command when exposed.
+      const { error } = await supabase.from("user_devices").upsert(
+        {
+          user_id: userId,
+          device_fingerprint: fp,
+          os_name: osName,
+          last_seen_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,device_fingerprint" },
+      );
+      if (error) console.warn("upsert user_devices failed", error.message);
+    } catch (e) {
+      console.warn("device upsert skipped", e);
+    }
+  }
 
   async function handleAuthDeepLink(payload: DeepLinkPayload) {
     const { type, access_token, refresh_token, code } = payload.params;
