@@ -28,12 +28,18 @@ pub fn run() {
     let log_layer = logging::init_logging();
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // ─── NEW: route deep-link args to auth handler ────────────────────────────
+            if let Some(url) = args.iter().find(|a| a.starts_with("voice-tool://")) {
+                auth::emit_deep_link_event(app, url);
+            }
+            // ─── Preserve existing behavior (bring window forward) ────────────────────
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -121,6 +127,18 @@ pub fn run() {
             auth::generate_oauth_state,
         ])
         .setup(move |app| {
+            // ─── Deep-link: subscribe to live on_open_url events ──────────────────────
+            use tauri_plugin_deep_link::DeepLinkExt;
+            let handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                for url in event.urls() {
+                    let s = url.as_str();
+                    if s.starts_with("voice-tool://") {
+                        auth::emit_deep_link_event(&handle, s);
+                    }
+                }
+            });
+
             // Enable logging to frontend
             log_layer.set_app_handle(app.handle().clone());
 

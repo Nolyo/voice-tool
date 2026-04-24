@@ -1,6 +1,7 @@
 use keyring::Entry;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, Runtime, State};
+use std::collections::HashMap;
+use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use tracing::{info, warn};
 
 use crate::state::AppState;
@@ -70,7 +71,6 @@ fn delete_keyring(account: &str) -> Result<(), String> {
 /// Removes `nonce` from the pending list if present and returns `true`.
 /// Returns `false` if the nonce was not found (already consumed or never issued).
 /// NOT exposed as a Tauri command — called from Rust's deep-link handler only.
-#[allow(dead_code)]
 pub fn consume_nonce_from_state<R: Runtime>(app: &AppHandle<R>, nonce: &str) -> bool {
     let state = app.state::<AppState>();
     let mut auth = state.auth.lock().unwrap();
@@ -82,6 +82,94 @@ pub fn consume_nonce_from_state<R: Runtime>(app: &AppHandle<R>, nonce: &str) -> 
         warn!("OAuth nonce not found or already consumed");
         false
     }
+}
+
+// ── Deep-link validation ──────────────────────────────────────────────────────
+
+/// Payload emitted to the frontend on "auth-deep-link-received".
+#[derive(Serialize, Clone)]
+pub struct DeepLinkPayload {
+    pub url: String,
+    pub params: HashMap<String, String>,
+    pub valid: bool,
+    pub reason: Option<String>,
+}
+
+const WHITELIST_TYPES: &[&str] = &["magiclink", "oauth", "signup", "recovery", "email_change"];
+
+/// Entry point called from lib.rs deep-link handlers.
+/// NEVER logs the token — only the validity flag + reason.
+pub fn emit_deep_link_event<R: Runtime>(app: &AppHandle<R>, url: &str) {
+    let payload = parse_and_validate_deep_link(url, app);
+    info!(valid = payload.valid, reason = ?payload.reason, "deep link received");
+    if let Err(e) = app.emit("auth-deep-link-received", &payload) {
+        warn!("failed to emit auth-deep-link-received: {}", e);
+    }
+}
+
+/// Parse URL, run pure-shape validation, THEN validate OAuth nonce with app state.
+fn parse_and_validate_deep_link<R: Runtime>(url: &str, app: &AppHandle<R>) -> DeepLinkPayload {
+    match validate_url_shape(url) {
+        Err(reason) => invalid(url, reason),
+        Ok(params) => {
+            // OAuth only: also validate and consume the state nonce.
+            if params.get("type").map(|s| s.as_str()) == Some("oauth") {
+                match params.get("state") {
+                    None => return invalid(url, "missing state for oauth"),
+                    Some(nonce) => {
+                        if !consume_nonce_from_state(app, nonce) {
+                            return invalid(url, "unknown or replayed state nonce");
+                        }
+                    }
+                }
+            }
+            DeepLinkPayload {
+                url: url.to_string(),
+                params,
+                valid: true,
+                reason: None,
+            }
+        }
+    }
+}
+
+/// Pure function — no app state needed, fully testable.
+/// Validates scheme, host, path, type whitelist, and JWT field shapes.
+fn validate_url_shape(url: &str) -> Result<HashMap<String, String>, &'static str> {
+    let parsed = url::Url::parse(url).map_err(|_| "malformed url")?;
+    if parsed.scheme() != "voice-tool" {
+        return Err("wrong scheme");
+    }
+    if parsed.host_str() != Some("auth") || parsed.path() != "/callback" {
+        return Err("wrong host/path");
+    }
+    let params: HashMap<String, String> = parsed.query_pairs().into_owned().collect();
+    let type_val = params.get("type").ok_or("missing type")?;
+    if !WHITELIST_TYPES.contains(&type_val.as_str()) {
+        return Err("type not whitelisted");
+    }
+    // Shape-check only: fields that should be JWTs (3 dot-separated parts).
+    for field in &["access_token", "refresh_token", "token"] {
+        if let Some(v) = params.get(*field) {
+            if !looks_like_jwt(v) {
+                return Err("jwt field has wrong shape");
+            }
+        }
+    }
+    Ok(params)
+}
+
+fn invalid(url: &str, reason: &'static str) -> DeepLinkPayload {
+    DeepLinkPayload {
+        url: url.to_string(),
+        params: HashMap::new(),
+        valid: false,
+        reason: Some(reason.to_string()),
+    }
+}
+
+fn looks_like_jwt(s: &str) -> bool {
+    s.split('.').count() == 3 && s.len() > 20
 }
 
 // ── Tauri commands ────────────────────────────────────────────────────────────
@@ -235,5 +323,65 @@ mod tests {
         // Second lookup returns nothing.
         let pos2 = auth.pending_oauth_states.iter().position(|n| n == &nonce);
         assert!(pos2.is_none(), "nonce should be absent after consumption");
+    }
+
+    #[test]
+    fn looks_like_jwt_accepts_real_shape() {
+        assert!(looks_like_jwt("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhYmMifQ.signature1234"));
+        assert!(!looks_like_jwt("no-dots"));
+        assert!(!looks_like_jwt("only.two"));
+        assert!(!looks_like_jwt("short.x.x"));
+    }
+
+    #[test]
+    fn validate_url_shape_rejects_wrong_scheme() {
+        assert_eq!(validate_url_shape("https://auth/callback?type=magiclink"), Err("wrong scheme"));
+    }
+
+    #[test]
+    fn validate_url_shape_rejects_wrong_host() {
+        assert_eq!(validate_url_shape("voice-tool://wrong/callback?type=magiclink"), Err("wrong host/path"));
+    }
+
+    #[test]
+    fn validate_url_shape_rejects_wrong_path() {
+        assert_eq!(validate_url_shape("voice-tool://auth/other?type=magiclink"), Err("wrong host/path"));
+    }
+
+    #[test]
+    fn validate_url_shape_rejects_missing_type() {
+        assert_eq!(validate_url_shape("voice-tool://auth/callback"), Err("missing type"));
+    }
+
+    #[test]
+    fn validate_url_shape_rejects_unknown_type() {
+        assert_eq!(validate_url_shape("voice-tool://auth/callback?type=hacker"), Err("type not whitelisted"));
+    }
+
+    #[test]
+    fn validate_url_shape_rejects_malformed_jwt() {
+        assert_eq!(
+            validate_url_shape("voice-tool://auth/callback?type=magiclink&access_token=not-a-jwt"),
+            Err("jwt field has wrong shape")
+        );
+    }
+
+    #[test]
+    fn validate_url_shape_accepts_valid_magiclink() {
+        let result = validate_url_shape(
+            "voice-tool://auth/callback?type=magiclink&access_token=eyJh.eyJh.signature1234&refresh_token=eyJh.eyJh.signature5678"
+        );
+        assert!(result.is_ok());
+        let params = result.unwrap();
+        assert_eq!(params.get("type").map(|s| s.as_str()), Some("magiclink"));
+    }
+
+    #[test]
+    fn validate_url_shape_accepts_valid_oauth_with_state() {
+        // OAuth state validation happens later via consume_nonce_from_state, not here.
+        let result = validate_url_shape(
+            "voice-tool://auth/callback?type=oauth&code=abc123&state=nonce-uuid"
+        );
+        assert!(result.is_ok());
     }
 }

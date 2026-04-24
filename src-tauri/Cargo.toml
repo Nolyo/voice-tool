@@ -66,6 +66,7 @@ tauri-plugin-fs = "2"
 
 # Keyboard simulation
 enigo = "0.2"
+tauri-plugin-deep-link = "2.4.7"
 
 # Windows-specific APIs (show window without activation)
 [target.'cfg(target_os = "windows")'.dependencies]
