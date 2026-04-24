@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useSync } from "@/hooks/useSync";
 import { supabase } from "@/lib/supabase";
+import { downloadAccountExport } from "@/lib/sync/export";
 import { SyncActivationModal } from "./SyncActivationModal";
 import { SyncedDataOverview } from "./SyncedDataOverview";
 import { LocalBackupsList } from "./LocalBackupsList";
@@ -14,6 +15,8 @@ export function AccountSection() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [activationOpen, setActivationOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
 
   async function handleDelete() {
     if (!user) return;
@@ -21,6 +24,19 @@ export function AccountSection() {
     const { error } = await supabase.rpc("request_account_deletion");
     setDeleting(false);
     if (!error) await signOut();
+  }
+
+  async function onExport() {
+    setExportBusy(true);
+    setExportMsg(null);
+    try {
+      const path = await downloadAccountExport();
+      setExportMsg(t("sync.export.saved", { path }));
+    } catch (e: unknown) {
+      setExportMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExportBusy(false);
+    }
   }
 
   return (
@@ -109,6 +125,20 @@ export function AccountSection() {
         )}
 
         <LocalBackupsList />
+
+        <div>
+          <button
+            type="button"
+            onClick={onExport}
+            disabled={exportBusy}
+            className="px-3 py-2 rounded-md border border-input text-sm hover:bg-muted disabled:opacity-50"
+          >
+            {exportBusy ? t("sync.export.exporting") : t("sync.export.button")}
+          </button>
+          {exportMsg && (
+            <p className="mt-1 text-xs text-muted-foreground">{exportMsg}</p>
+          )}
+        </div>
       </div>
 
       <SyncActivationModal

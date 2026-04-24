@@ -872,6 +872,11 @@
       "syncing": "Syncing…",
       "offline": "Offline — {{count}} change(s) pending",
       "error": "Sync error (click to retry)"
+    },
+    "export": {
+      "button": "Export my data (JSON)",
+      "exporting": "Exporting…",
+      "saved": "Export saved: {{path}}"
     }
   }
 }
