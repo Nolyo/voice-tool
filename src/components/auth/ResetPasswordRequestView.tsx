@@ -1,16 +1,56 @@
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { supabase, AUTH_CALLBACK_URL } from "@/lib/supabase";
 import type { AuthView } from "./AuthModal";
 
-interface Props {
-  onNavigate: (v: AuthView) => void;
-}
+export function ResetPasswordRequestView({ onNavigate }: { onNavigate: (v: AuthView) => void }) {
+  const { t } = useTranslation();
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
 
-export function ResetPasswordRequestView({ onNavigate }: Props) {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    await supabase.auth.resetPasswordForEmail(email, { redirectTo: AUTH_CALLBACK_URL });
+    setLoading(false);
+    // Anti-enumeration: always show generic success.
+    setInfo(t("auth.passwordReset.success"));
+  }
+
   return (
-    <div className="space-y-2">
-      <p className="text-sm">TODO: ResetPasswordRequestView (Task 17)</p>
-      <button onClick={() => onNavigate("login")} className="text-xs underline">
-        Back to login
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <header>
+        <h2 className="text-lg font-semibold">{t("auth.passwordReset.requestTitle")}</h2>
+        <p className="text-sm text-muted-foreground">{t("auth.passwordReset.requestSubtitle")}</p>
+      </header>
+
+      <input
+        type="email"
+        required
+        autoFocus
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
+        aria-label={t("auth.login.magicLinkLabel")}
+      />
+      <button
+        type="submit"
+        className="w-full px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50"
+        disabled={loading}
+      >
+        {t("auth.passwordReset.submit")}
       </button>
-    </div>
+
+      {info && <p role="status" className="text-sm text-emerald-600">{info}</p>}
+
+      <button
+        type="button"
+        onClick={() => onNavigate("login")}
+        className="w-full text-xs underline"
+      >
+        {t("auth.signup.backToLogin")}
+      </button>
+    </form>
   );
 }
