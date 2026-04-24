@@ -1,5 +1,5 @@
 begin;
-select plan(2);
+select plan(3);
 
 insert into auth.users (id, email, aud, role) values
   ('11111111-1111-1111-1111-111111111111', 'a@test.local', 'authenticated', 'authenticated');
@@ -17,6 +17,22 @@ select ok(
   public.compute_user_sync_size('11111111-1111-1111-1111-111111111111') > 0,
   'compute_user_sync_size retourne > 0 pour user avec data'
 );
+
+-- Prouve que la taille intègre bien la contribution de chaque table : ajouter un mot dico doit strictement augmenter la taille.
+do $$
+declare
+  before bigint;
+  after bigint;
+begin
+  before := public.compute_user_sync_size('11111111-1111-1111-1111-111111111111');
+  insert into public.user_dictionary_words (user_id, word) values
+    ('11111111-1111-1111-1111-111111111111', 'extrabig_word_for_test');
+  after := public.compute_user_sync_size('11111111-1111-1111-1111-111111111111');
+  if after <= before then
+    raise exception 'size did not grow: before=% after=%', before, after;
+  end if;
+end $$;
+select pass('compute_user_sync_size intègre la contribution dico');
 
 -- Test que user B ne peut pas compute la size de user A
 insert into auth.users (id, email, aud, role) values

@@ -27,18 +27,15 @@ select results_eq(
   'User B ne voit PAS le row de A'
 );
 
-select throws_ok(
+select lives_ok(
   $$ update public.user_settings set data = '{"ui":{"theme":"light"}}'::jsonb where user_id = '11111111-1111-1111-1111-111111111111' $$,
-  null,
-  null,
-  'User B ne peut pas UPDATE le row de A (RLS filtre)'
+  'User B UPDATE de A ne lève pas (RLS filtre en silence)'
 );
--- NB: update sur 0 rows réussit silencieusement à cause de RLS — on teste via re-select côté A
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
 
 select results_eq(
-  $$ select data->>'ui' from public.user_settings where user_id = '11111111-1111-1111-1111-111111111111' $$,
-  $$ values ('{"theme": "dark"}') $$,
+  $$ select data->'ui'->>'theme' from public.user_settings where user_id = '11111111-1111-1111-1111-111111111111' $$,
+  $$ values ('dark') $$,
   'Le row de A est inchangé après tentative UPDATE de B'
 );
 

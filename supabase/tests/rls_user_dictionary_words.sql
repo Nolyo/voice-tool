@@ -1,5 +1,5 @@
 begin;
-select plan(4);
+select plan(5);
 
 insert into auth.users (id, email, aud, role) values
   ('11111111-1111-1111-1111-111111111111', 'a@test.local', 'authenticated', 'authenticated'),
@@ -31,8 +31,11 @@ select throws_ok(
   'User B ne peut pas injecter un mot avec user_id de A'
 );
 
--- delete réussit silencieusement sur 0 rows via RLS : on teste via re-select côté A
-delete from public.user_dictionary_words where user_id = '11111111-1111-1111-1111-111111111111';
+-- delete réussit silencieusement sur 0 rows via RLS
+select lives_ok(
+  $$ delete from public.user_dictionary_words where user_id = '11111111-1111-1111-1111-111111111111' $$,
+  'User B DELETE de A ne lève pas (RLS filtre en silence)'
+);
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
 select results_eq(
   $$ select count(*)::int from public.user_dictionary_words where user_id = '11111111-1111-1111-1111-111111111111' and deleted_at is null $$,

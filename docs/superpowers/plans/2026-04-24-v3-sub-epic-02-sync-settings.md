@@ -586,18 +586,15 @@ select results_eq(
   'User B ne voit PAS le row de A'
 );
 
-select throws_ok(
+select lives_ok(
   $$ update public.user_settings set data = '{"ui":{"theme":"light"}}'::jsonb where user_id = '11111111-1111-1111-1111-111111111111' $$,
-  null,
-  null,
-  'User B ne peut pas UPDATE le row de A (RLS filtre)'
+  'User B UPDATE de A ne lève pas (RLS filtre en silence)'
 );
--- NB: update sur 0 rows réussit silencieusement à cause de RLS — on teste via re-select côté A
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
 
 select results_eq(
-  $$ select data->>'ui' from public.user_settings where user_id = '11111111-1111-1111-1111-111111111111' $$,
-  $$ values ('{"theme": "dark"}') $$,
+  $$ select data->'ui'->>'theme' from public.user_settings where user_id = '11111111-1111-1111-1111-111111111111' $$,
+  $$ values ('dark') $$,
   'Le row de A est inchangé après tentative UPDATE de B'
 );
 
@@ -624,7 +621,7 @@ rollback;
 
 ```sql
 begin;
-select plan(4);
+select plan(5);
 
 insert into auth.users (id, email, aud, role) values
   ('11111111-1111-1111-1111-111111111111', 'a@test.local', 'authenticated', 'authenticated'),
@@ -656,8 +653,11 @@ select throws_ok(
   'User B ne peut pas injecter un mot avec user_id de A'
 );
 
--- delete réussit silencieusement sur 0 rows via RLS : on teste via re-select côté A
-delete from public.user_dictionary_words where user_id = '11111111-1111-1111-1111-111111111111';
+-- delete réussit silencieusement sur 0 rows via RLS
+select lives_ok(
+  $$ delete from public.user_dictionary_words where user_id = '11111111-1111-1111-1111-111111111111' $$,
+  'User B DELETE de A ne lève pas (RLS filtre en silence)'
+);
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
 select results_eq(
   $$ select count(*)::int from public.user_dictionary_words where user_id = '11111111-1111-1111-1111-111111111111' and deleted_at is null $$,
@@ -676,7 +676,7 @@ rollback;
 
 ```sql
 begin;
-select plan(4);
+select plan(5);
 
 insert into auth.users (id, email, aud, role) values
   ('11111111-1111-1111-1111-111111111111', 'a@test.local', 'authenticated', 'authenticated'),
@@ -707,7 +707,10 @@ select throws_ok(
   'User B ne peut pas créer un snippet sous le user_id de A'
 );
 
-update public.user_snippets set content = 'pwned' where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+select lives_ok(
+  $$ update public.user_snippets set content = 'pwned' where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' $$,
+  'User B UPDATE de A ne lève pas (RLS filtre en silence)'
+);
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
 select results_eq(
   $$ select content from public.user_snippets where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' $$,
@@ -726,7 +729,7 @@ rollback;
 
 ```sql
 begin;
-select plan(2);
+select plan(3);
 
 insert into auth.users (id, email, aud, role) values
   ('11111111-1111-1111-1111-111111111111', 'a@test.local', 'authenticated', 'authenticated');
@@ -744,6 +747,22 @@ select ok(
   public.compute_user_sync_size('11111111-1111-1111-1111-111111111111') > 0,
   'compute_user_sync_size retourne > 0 pour user avec data'
 );
+
+-- Prouve que la taille intègre bien la contribution de chaque table : ajouter un mot dico doit strictement augmenter la taille.
+do $$
+declare
+  before bigint;
+  after bigint;
+begin
+  before := public.compute_user_sync_size('11111111-1111-1111-1111-111111111111');
+  insert into public.user_dictionary_words (user_id, word) values
+    ('11111111-1111-1111-1111-111111111111', 'extrabig_word_for_test');
+  after := public.compute_user_sync_size('11111111-1111-1111-1111-111111111111');
+  if after <= before then
+    raise exception 'size did not grow: before=% after=%', before, after;
+  end if;
+end $$;
+select pass('compute_user_sync_size intègre la contribution dico');
 
 -- Test que user B ne peut pas compute la size de user A
 insert into auth.users (id, email, aud, role) values

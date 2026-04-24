@@ -1,5 +1,5 @@
 begin;
-select plan(4);
+select plan(5);
 
 insert into auth.users (id, email, aud, role) values
   ('11111111-1111-1111-1111-111111111111', 'a@test.local', 'authenticated', 'authenticated'),
@@ -30,7 +30,10 @@ select throws_ok(
   'User B ne peut pas créer un snippet sous le user_id de A'
 );
 
-update public.user_snippets set content = 'pwned' where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+select lives_ok(
+  $$ update public.user_snippets set content = 'pwned' where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' $$,
+  'User B UPDATE de A ne lève pas (RLS filtre en silence)'
+);
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
 select results_eq(
   $$ select content from public.user_snippets where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' $$,
