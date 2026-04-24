@@ -63,24 +63,13 @@ export function LoginView({ onNavigate }: Props) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (loginError) {
       setError(t("auth.errors.invalidCredentials"));
       return;
     }
-    if (data.session) {
-      // MFA: if the user has TOTP enrolled, Supabase flags aal2 as the next assurance level.
-      const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (mfaData && mfaData.nextLevel === "aal2" && mfaData.currentLevel !== "aal2") {
-        const { data: factors } = await supabase.auth.mfa.listFactors();
-        const totp = factors?.totp?.[0];
-        if (totp) {
-          const evt = new CustomEvent("auth:mfa-required", { detail: { factorId: totp.id } });
-          window.dispatchEvent(evt);
-        }
-      }
-    }
+    // MFA enforcement happens centrally via AuthContext.onAuthStateChange (SIGNED_IN).
   }
 
   return (

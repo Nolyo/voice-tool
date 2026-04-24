@@ -26,6 +26,7 @@
 ## Follow-ups ouverts (reportés)
 
 - **SMTP custom (Resend ou Postmark)** — Supabase Free limite à ~30 emails/h sur le projet + ~3-4 `/recover` par email/h. Observé en dev (2026-04-24) : hit 429 après quelques enchaînements magic link + reset password. **Bloquant avant ouverture publique** ; permet aussi les templates FR/EN custom.
+- **Recovery codes consumption non branché** (découvert 2026-04-24) — La table `recovery_codes` et les RPCs `store_recovery_codes` / `consume_recovery_code` existent et fonctionnent (après fix migration `20260501000600_fix_recovery_codes_pgcrypto.sql`). Mais `TwoFactorChallengeView.tsx` n'appelle que `supabase.auth.mfa.challengeAndVerify` qui n'accepte que les TOTP 6-chiffres. La branche `isRecovery` du composant est unreachable. **Conséquence : un utilisateur qui perd son device d'authentification est lock-out malgré ses recovery codes**. Bloquant avant ouverture publique. Solution : détecter input non-6-chiffres → appeler `consume_recovery_code` RPC → si succès, élever la session à AAL2 (probablement via une Edge Function qui crée une session aal2 côté serveur, ou via un challenge custom — à investiguer avec l'API Supabase).
 - **Edge Function** "send-new-device-email" (sub-épique 02)
 - **Edge Function** "purge-account-deletions" cron 30j (sub-épique 02)
 - **Edge Function** rate-limit bridge (quand on consommera `check_rate_limit` depuis des endpoints custom)

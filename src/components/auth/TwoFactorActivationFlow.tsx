@@ -24,8 +24,24 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
 
   useEffect(() => {
     (async () => {
+      // Clean up any unverified TOTP factors from previous abandoned/failed attempts,
+      // otherwise they accumulate server-side (and would block enroll once Supabase's
+      // per-user factor limit is reached). data.all includes unverified factors;
+      // data.totp is filtered to verified only.
+      const { data: existing } = await supabase.auth.mfa.listFactors();
+      const stale = (existing?.all ?? []).filter(
+        (f) => f.factor_type === "totp" && f.status === "unverified",
+      );
+      await Promise.all(
+        stale.map((f) =>
+          supabase.auth.mfa.unenroll({ factorId: f.id }).catch((e) =>
+            console.warn("[2FA] stale factor cleanup failed", e),
+          ),
+        ),
+      );
       const { data, error: enrollError } = await supabase.auth.mfa.enroll({ factorType: "totp" });
       if (enrollError || !data) {
+        console.error("[2FA] enroll failed:", enrollError);
         setError(t("auth.errors.generic"));
         return;
       }
@@ -49,16 +65,33 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
       setError(t("auth.errors.invalidCredentials"));
       return;
     }
-    // Generate 10 recovery codes client-side (8 alphanumeric chars each).
+    // Factor is verified server-side at this point. Recovery codes MUST persist atomically;
+    // otherwise rollback the factor (else user ends up with 2FA on but no recovery → lock-out risk).
     const codes = Array.from({ length: 10 }, () => genCode(8));
-    const { error: rpcErr } = await supabase.rpc("store_recovery_codes", { codes });
-    setLoading(false);
-    if (rpcErr) {
+    const stored = await tryStoreRecoveryCodes(codes);
+    if (!stored) {
+      const { error: rollbackErr } = await supabase.auth.mfa.unenroll({ factorId });
+      if (rollbackErr) console.error("[2FA] rollback unenroll failed:", rollbackErr);
+      setLoading(false);
       setError(t("auth.errors.generic"));
       return;
     }
+    setLoading(false);
     setRecoveryCodes(codes);
     setStep("recovery");
+  }
+
+  async function tryStoreRecoveryCodes(codes: string[]): Promise<boolean> {
+    // 3 attempts with short backoff to absorb transient RPC/network errors.
+    let lastErr: unknown = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const { error } = await supabase.rpc("store_recovery_codes", { codes });
+      if (!error) return true;
+      lastErr = error;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 250 * attempt));
+    }
+    console.error("[2FA] store_recovery_codes failed after 3 attempts:", lastErr);
+    return false;
   }
 
   function genCode(len: number): string {

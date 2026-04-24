@@ -821,6 +821,7 @@
     },
     "cta": {
       "header": "Se connecter",
+      "headerMfa": "Compléter la 2FA",
       "dashboardCard": "Sync tes réglages entre machines"
     },
     "errors": {

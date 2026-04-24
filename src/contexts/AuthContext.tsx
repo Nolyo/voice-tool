@@ -25,6 +25,8 @@ interface AuthContextValue {
   /** Signals an MFA challenge is pending (set by login flows). */
   mfaChallenge: { factorId: string } | null;
   setMfaChallenge: (c: { factorId: string } | null) => void;
+  /** Re-evaluates AAL and prompts MFA if needed. Called after recovery flows complete. */
+  reevaluateMfa: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -38,6 +40,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthModalOpen, setAuthModalOpen] = useState(false);
   const [mfaChallenge, setMfaChallenge] = useState<{ factorId: string } | null>(null);
   const restoredRef = useRef(false);
+  // True while a recovery deep-link is being processed: defer MFA enforcement
+  // so the user can set a new password before being challenged.
+  const deferMfaRef = useRef(false);
+
+  /**
+   * Returns "mfa-required" if the current session has a verified TOTP factor
+   * but isn't elevated to aal2 yet. Side-effect: sets mfaChallenge accordingly.
+   */
+  async function evaluateMfa(): Promise<"signed-in" | "mfa-required"> {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (!aal || aal.nextLevel !== "aal2" || aal.currentLevel === "aal2") {
+      setMfaChallenge(null);
+      return "signed-in";
+    }
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const totp = factors?.totp?.[0];
+    if (!totp) {
+      setMfaChallenge(null);
+      return "signed-in";
+    }
+    setMfaChallenge({ factorId: totp.id });
+    return "mfa-required";
+  }
+
+  async function reevaluateMfa() {
+    const next = await evaluateMfa();
+    setStatus(next);
+    if (next === "mfa-required") setAuthModalOpen(true);
+    else setAuthModalOpen(false);
+  }
 
   // --- Session restore on boot ---
   useEffect(() => {
@@ -59,7 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setSession(data.session);
         setUser(data.session.user);
-        setStatus("signed-in");
+        const next = await evaluateMfa();
+        setStatus(next);
+        if (next === "mfa-required") setAuthModalOpen(true);
         // Rotate: Supabase returned a fresh refresh token, persist it.
         if (data.session.refresh_token) {
           const res = await invoke<{ available: boolean }>("store_refresh_token", {
@@ -87,25 +121,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setKeyringAvailable(res.available);
       }
       if (event === "SIGNED_OUT") {
+        setMfaChallenge(null);
         setStatus("signed-out");
       }
       if (event === "SIGNED_IN" && next) {
-        setStatus("signed-in");
-        setAuthModalOpen(false);
         upsertDevice(next.user.id).catch(() => {});
+        if (deferMfaRef.current) {
+          // Recovery in progress — let ResetPasswordConfirmView complete first;
+          // it will call reevaluateMfa() on success.
+          deferMfaRef.current = false;
+          setStatus("signed-in");
+          return;
+        }
+        const status = await evaluateMfa();
+        setStatus(status);
+        if (status === "signed-in") setAuthModalOpen(false);
+        else setAuthModalOpen(true);
       }
     });
     return () => sub.subscription.unsubscribe();
-  }, []);
-
-  // --- MFA challenge listener (dispatched from LoginView) ---
-  useEffect(() => {
-    const onMfa = (ev: Event) => {
-      const detail = (ev as CustomEvent).detail as { factorId: string };
-      setMfaChallenge(detail);
-    };
-    window.addEventListener("auth:mfa-required", onMfa);
-    return () => window.removeEventListener("auth:mfa-required", onMfa);
   }, []);
 
   // --- Deep link listener (emitted from Rust) ---
@@ -145,6 +179,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function handleAuthDeepLink(payload: DeepLinkPayload) {
     const { type, access_token, refresh_token, code } = payload.params;
+    // For recovery, defer MFA enforcement: the user must reach the
+    // password-confirm view before being challenged. ResetPasswordConfirmView
+    // calls reevaluateMfa() once the new password is saved.
+    if (type === "recovery") deferMfaRef.current = true;
     try {
       if (code) {
         // PKCE flow (flowType: "pkce" in supabase client). Covers magic link,
@@ -207,6 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       closeAuthModal: () => setAuthModalOpen(false),
       mfaChallenge,
       setMfaChallenge,
+      reevaluateMfa,
       signOut,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

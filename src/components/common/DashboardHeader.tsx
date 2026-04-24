@@ -147,14 +147,14 @@ export function DashboardHeader({
               </Button>
             )}
 
-            {status === "signed-out" && (
+            {(status === "signed-out" || status === "mfa-required") && (
               <Button
                 variant="default"
                 size="sm"
                 onClick={openAuthModal}
                 className="text-sm px-3 py-1.5"
               >
-                {t("auth.cta.header")}
+                {t(status === "mfa-required" ? "auth.cta.headerMfa" : "auth.cta.header")}
               </Button>
             )}
           </div>

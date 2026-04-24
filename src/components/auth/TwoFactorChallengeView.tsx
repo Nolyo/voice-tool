@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export function TwoFactorChallengeView() {
   const { t } = useTranslation();
-  const { mfaChallenge, setMfaChallenge } = useAuth();
+  const { mfaChallenge, reevaluateMfa } = useAuth();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +26,8 @@ export function TwoFactorChallengeView() {
       setError(t("auth.errors.invalidCredentials"));
       return;
     }
-    setMfaChallenge(null);
+    // Session is now elevated to aal2; sync status + close the modal.
+    await reevaluateMfa();
     if (isRecovery) {
       // Fire a notification email reminder — handled by Supabase trigger (Task 20) later.
       console.info("recovery code consumed");

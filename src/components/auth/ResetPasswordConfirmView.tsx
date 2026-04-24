@@ -2,10 +2,12 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import { isPwnedPassword } from "@/lib/pwned-passwords";
+import { useAuth } from "@/hooks/useAuth";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 
 export function ResetPasswordConfirmView({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
+  const { reevaluateMfa } = useAuth();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
@@ -35,6 +37,8 @@ export function ResetPasswordConfirmView({ onDone }: { onDone: () => void }) {
       return;
     }
     setInfo(t("auth.passwordReset.confirmSuccess"));
+    // Now that password is set, enforce MFA if user has it enabled.
+    await reevaluateMfa();
     setTimeout(onDone, 1500);
   }
 

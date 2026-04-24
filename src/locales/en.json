@@ -821,6 +821,7 @@
     },
     "cta": {
       "header": "Sign in",
+      "headerMfa": "Complete 2FA",
       "dashboardCard": "Sync your settings across machines"
     },
     "errors": {
