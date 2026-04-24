@@ -154,11 +154,26 @@ Les ADRs associés sont **figés** une fois acceptés. Les révisions d'ADR se f
 
 ---
 
-## Livrables de cette session
+## Livrables
 
-1. ✅ Ce document — threat model complet et figé
-2. ✅ `SECURITY.md` à la racine du repo — politique publique de divulgation responsable
+### Spec (session 2026-04-22)
+
+1. ✅ `00-threat-model.md` — threat model complet et figé
+2. ✅ `SECURITY.md` à la racine — politique publique de divulgation
 3. ✅ `decisions/0006-threat-model.md` — ADR figeant les choix structurants
+
+### Implémentation (plan 2026-04-24)
+
+4. ✅ `ops/accounts-checklist.md` + exécution 2FA tous comptes ops
+5. ✅ `.github/workflows/security-audit.yml` — pnpm + cargo audit bloquants
+6. ✅ `.github/workflows/secret-scan.yml` + script `scan-secrets-in-bundles.mjs`
+7. ✅ `ops/supabase-bootstrap.md` + projet Supabase Pro EU créé
+8. ✅ `ops/cloudflare-pages-bootstrap.md` + projet placeholder créé
+9. ✅ `runbooks/secrets-rotation.md`
+10. ✅ `runbooks/backup-restore-test.md` + premier test exécuté
+11. ✅ `runbooks/incident-response.md` (GDPR 72h)
+12. ✅ `compliance/registre-traitements.md`
+13. ✅ `compliance/base-legale.md`
 
 ---
 
