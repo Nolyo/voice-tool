@@ -32,3 +32,18 @@ jobs:
 
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level high
+
+  cargo-audit:
+    name: cargo audit (HIGH/CRITICAL gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit
+
+      - name: Run cargo audit
+        working-directory: src-tauri
+        run: cargo audit --deny warnings
