@@ -730,5 +730,104 @@
   },
   "dashboard": {
     "emptyNotes": "Select a note or create one from the sidebar"
+  },
+  "auth": {
+    "modal": {
+      "title": "Sign in",
+      "close": "Close"
+    },
+    "login": {
+      "title": "Sign in to Voice Tool",
+      "subtitle": "Sync your settings and notes across machines.",
+      "magicLinkLabel": "Email",
+      "magicLinkPlaceholder": "you@example.com",
+      "magicLinkSubmit": "Send sign-in link",
+      "magicLinkSuccess": "If this account exists, a link has been sent.",
+      "oauthGoogle": "Continue with Google",
+      "emailPasswordToggle": "Use a password",
+      "switchToSignup": "Create an account",
+      "forgotPassword": "Forgot password?"
+    },
+    "signup": {
+      "title": "Create an account",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "passwordHint": "Minimum 10 characters, no forced complexity rules.",
+      "passwordPwned": "This password is among the most compromised on the internet. Choose another.",
+      "passwordTooShort": "Minimum 10 characters.",
+      "strengthWeak": "Weak",
+      "strengthMedium": "Medium",
+      "strengthStrong": "Strong",
+      "submit": "Create my account",
+      "success": "If this account didn't exist, a confirmation email has just been sent.",
+      "backToLogin": "I already have an account"
+    },
+    "passwordReset": {
+      "requestTitle": "Reset your password",
+      "requestSubtitle": "Enter the email associated with your account. We'll send you a link valid for 15 minutes.",
+      "submit": "Send link",
+      "success": "If an account exists for this email, a reset link has been sent.",
+      "confirmTitle": "Choose a new password",
+      "confirmSubtitle": "All your sessions will be invalidated after the change.",
+      "confirmSubmit": "Save",
+      "confirmSuccess": "Password updated. You are now signed in on this device."
+    },
+    "twoFactor": {
+      "challenge": {
+        "title": "Two-step verification",
+        "subtitle": "Enter the code from your authenticator app, or a recovery code.",
+        "placeholder": "6-digit code or recovery code",
+        "submit": "Verify"
+      },
+      "activation": {
+        "stepScan": "1. Scan this QR code",
+        "stepScanFallback": "Or copy this key into your TOTP app:",
+        "stepValidate": "2. Enter the current code to confirm",
+        "codePlaceholder": "6-digit code",
+        "stepRecovery": "3. Save your recovery codes",
+        "recoveryWarning": "These 10 codes will let you recover your account if you lose your phone. They will only be shown once.",
+        "copyAll": "Copy all codes",
+        "download": "Download .txt",
+        "ackCheckbox": "I have saved my recovery codes.",
+        "finish": "Finish",
+        "cancel": "Cancel"
+      }
+    },
+    "logout": {
+      "label": "Sign out",
+      "confirmTitle": "Sign out?",
+      "confirmBody": "Your synced notes will remain available when you sign back in.",
+      "confirm": "Yes, sign me out"
+    },
+    "account": {
+      "sectionTitle": "Account",
+      "sectionSubtitle": "Email, sign-out and deletion",
+      "email": "Email",
+      "deleteAccount": "Delete my account",
+      "deleteAccountWarning": "This action is irreversible. All synced data will be deleted within 30 days."
+    },
+    "security": {
+      "sectionTitle": "Security",
+      "sectionSubtitle": "2FA and connected devices",
+      "twoFactorEnabled": "2FA enabled",
+      "twoFactorDisabled": "2FA disabled",
+      "enable2fa": "Enable two-factor authentication",
+      "disable2fa": "Disable 2FA",
+      "regenerateCodes": "Regenerate recovery codes",
+      "devicesTitle": "Connected devices",
+      "thisDevice": "This device",
+      "disconnectDevice": "Disconnect",
+      "keyringUnavailable": "Your system keyring is unavailable. The session will not persist at next launch."
+    },
+    "cta": {
+      "header": "Sign in",
+      "dashboardCard": "Sync your settings across machines"
+    },
+    "errors": {
+      "network": "Network error — please try again.",
+      "invalidCredentials": "Incorrect email or password.",
+      "linkExpired": "Invalid or expired link. Request a new one.",
+      "generic": "An error occurred. Try again."
+    }
   }
 }

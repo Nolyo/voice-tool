@@ -730,5 +730,104 @@
   },
   "dashboard": {
     "emptyNotes": "Sélectionnez une note ou créez-en une depuis la barre latérale"
+  },
+  "auth": {
+    "modal": {
+      "title": "Connexion",
+      "close": "Fermer"
+    },
+    "login": {
+      "title": "Connecte-toi à Voice Tool",
+      "subtitle": "Synchronise tes réglages et notes entre tes machines.",
+      "magicLinkLabel": "Email",
+      "magicLinkPlaceholder": "toi@exemple.com",
+      "magicLinkSubmit": "Recevoir un lien de connexion",
+      "magicLinkSuccess": "Si ce compte existe, un lien vient d'être envoyé.",
+      "oauthGoogle": "Continuer avec Google",
+      "emailPasswordToggle": "Utiliser un mot de passe",
+      "switchToSignup": "Créer un compte",
+      "forgotPassword": "Mot de passe oublié ?"
+    },
+    "signup": {
+      "title": "Créer un compte",
+      "emailLabel": "Email",
+      "passwordLabel": "Mot de passe",
+      "passwordHint": "10 caractères minimum, aucune règle de complexité forcée.",
+      "passwordPwned": "Ce mot de passe fait partie des plus compromis sur internet. Choisis-en un autre.",
+      "passwordTooShort": "Minimum 10 caractères.",
+      "strengthWeak": "Faible",
+      "strengthMedium": "Moyen",
+      "strengthStrong": "Fort",
+      "submit": "Créer mon compte",
+      "success": "Si ce compte n'existait pas, un email vient d'être envoyé pour confirmer.",
+      "backToLogin": "J'ai déjà un compte"
+    },
+    "passwordReset": {
+      "requestTitle": "Réinitialiser ton mot de passe",
+      "requestSubtitle": "Saisis l'email associé à ton compte. Nous t'enverrons un lien valable 15 minutes.",
+      "submit": "Envoyer le lien",
+      "success": "Si un compte existe pour cet email, un lien de réinitialisation vient d'être envoyé.",
+      "confirmTitle": "Choisis un nouveau mot de passe",
+      "confirmSubtitle": "Toutes tes sessions seront invalidées après le changement.",
+      "confirmSubmit": "Enregistrer",
+      "confirmSuccess": "Mot de passe mis à jour. Tu es maintenant reconnecté sur cet appareil."
+    },
+    "twoFactor": {
+      "challenge": {
+        "title": "Vérification en deux étapes",
+        "subtitle": "Entre le code de ton application d'authentification, ou un code de récupération.",
+        "placeholder": "Code à 6 chiffres ou code de récupération",
+        "submit": "Valider"
+      },
+      "activation": {
+        "stepScan": "1. Scanne ce QR code",
+        "stepScanFallback": "Ou recopie cette clé dans ton app TOTP :",
+        "stepValidate": "2. Entre le code actuel pour confirmer",
+        "codePlaceholder": "Code à 6 chiffres",
+        "stepRecovery": "3. Sauvegarde tes codes de récupération",
+        "recoveryWarning": "Ces 10 codes te permettront de récupérer ton compte si tu perds ton téléphone. Ils ne seront affichés qu'une fois.",
+        "copyAll": "Copier tous les codes",
+        "download": "Télécharger .txt",
+        "ackCheckbox": "J'ai sauvegardé mes codes de récupération.",
+        "finish": "Terminer",
+        "cancel": "Annuler"
+      }
+    },
+    "logout": {
+      "label": "Se déconnecter",
+      "confirmTitle": "Se déconnecter ?",
+      "confirmBody": "Tes notes synchronisées resteront disponibles en te reconnectant.",
+      "confirm": "Oui, me déconnecter"
+    },
+    "account": {
+      "sectionTitle": "Compte",
+      "sectionSubtitle": "Email, déconnexion et suppression",
+      "email": "Email",
+      "deleteAccount": "Supprimer mon compte",
+      "deleteAccountWarning": "Cette action est irréversible. Toutes les données synchronisées seront supprimées sous 30 jours."
+    },
+    "security": {
+      "sectionTitle": "Sécurité",
+      "sectionSubtitle": "2FA et appareils connectés",
+      "twoFactorEnabled": "2FA activé",
+      "twoFactorDisabled": "2FA désactivé",
+      "enable2fa": "Activer l'authentification à deux facteurs",
+      "disable2fa": "Désactiver 2FA",
+      "regenerateCodes": "Régénérer les codes de récupération",
+      "devicesTitle": "Appareils connectés",
+      "thisDevice": "Cet appareil",
+      "disconnectDevice": "Déconnecter",
+      "keyringUnavailable": "Le trousseau de ton système n'est pas disponible. La session ne sera pas conservée au prochain lancement."
+    },
+    "cta": {
+      "header": "Se connecter",
+      "dashboardCard": "Sync tes réglages entre machines"
+    },
+    "errors": {
+      "network": "Erreur réseau — réessaie.",
+      "invalidCredentials": "Email ou mot de passe incorrect.",
+      "linkExpired": "Lien invalide ou expiré. Demande-en un nouveau.",
+      "generic": "Une erreur est survenue. Réessaie."
+    }
   }
 }
