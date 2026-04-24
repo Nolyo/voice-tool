@@ -1,5 +1,6 @@
 mod audio;
 mod audio_trim;
+mod auth;
 mod chat;
 mod commands;
 mod folders;
@@ -112,7 +113,12 @@ pub fn run() {
             commands::profiles::rename_profile,
             commands::profiles::delete_profile,
             commands::profiles::switch_profile,
-            commands::reset::reset_app_data
+            commands::reset::reset_app_data,
+            auth::store_refresh_token,
+            auth::get_refresh_token,
+            auth::clear_refresh_token,
+            auth::get_or_create_device_id,
+            auth::generate_oauth_state,
         ])
         .setup(move |app| {
             // Enable logging to frontend
