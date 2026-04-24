@@ -6,6 +6,15 @@ import { useTranslation } from "react-i18next";
 import type { AppSettings } from "@/lib/settings";
 import type { Transcription } from "@/hooks/useTranscriptionHistory";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import {
+  loadSnippets,
+  migrateLegacySnippetsOnce,
+} from "@/lib/sync/snippets-store";
+import {
+  loadDictionary,
+  migrateLegacyDictionaryOnce,
+} from "@/lib/sync/dictionary-store";
+import type { LocalSnippet } from "@/lib/sync/types";
 import type {
   RecordingResult,
   TranscriptionInvokeResult,
@@ -163,6 +172,64 @@ export function useRecordingWorkflow({
     settings.enable_sounds,
   );
 
+  // Vocabulary (snippets + dictionary) sourced from the sync stores — VocabularySection
+  // migrated away from settings.snippets / settings.dictionary in Task 18 (v3 sub-epic 02).
+  // We keep a fresh snapshot here so snippet matching + Whisper dictionary hints see
+  // edits made in the Settings UI.
+  const [syncSnippets, setSyncSnippets] = useState<LocalSnippet[]>([]);
+  const [syncDictionary, setSyncDictionary] = useState<string[]>([]);
+  const syncSnippetsRef = useRef<LocalSnippet[]>([]);
+  const syncDictionaryRef = useRef<string[]>([]);
+  useEffect(() => {
+    syncSnippetsRef.current = syncSnippets;
+  }, [syncSnippets]);
+  useEffect(() => {
+    syncDictionaryRef.current = syncDictionary;
+  }, [syncDictionary]);
+
+  const refreshVocab = useCallback(async () => {
+    const [snips, dict] = await Promise.all([loadSnippets(), loadDictionary()]);
+    setSyncSnippets(snips.filter((s) => s.deleted_at === null));
+    setSyncDictionary(dict.words);
+  }, []);
+
+  // Legacy migration + initial load. The migrations are idempotent (they no-op after
+  // the first successful run), so running them from here is safe even before the user
+  // enables sync — and it's what keeps users who never enable sync from losing their
+  // snippets/dictionary once VocabularySection stopped reading the legacy fields.
+  const legacySnippets = settings.snippets;
+  const legacyDictionary = settings.dictionary;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await migrateLegacySnippetsOnce(legacySnippets ?? []);
+        await migrateLegacyDictionaryOnce(legacyDictionary ?? []);
+        if (!cancelled) await refreshVocab();
+      } catch (e) {
+        console.warn("[recording vocab migration failed]", e);
+        if (cancelled) return;
+        // Fallback: expose legacy data directly so the feature keeps working even
+        // if the Tauri Store is momentarily unavailable.
+        setSyncSnippets(
+          (legacySnippets ?? []).map((p, i) => ({
+            id: `legacy-${i}`,
+            label: p.trigger,
+            content: p.replacement,
+            shortcut: p.trigger,
+            created_at: "1970-01-01T00:00:00Z",
+            updated_at: "1970-01-01T00:00:00Z",
+            deleted_at: null,
+          })),
+        );
+        setSyncDictionary(legacyDictionary ?? []);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshVocab, legacySnippets, legacyDictionary]);
+
   const handleTranscriptionFinal = useCallback(
     async (
       text: string,
@@ -181,11 +248,12 @@ export function useRecordingWorkflow({
       }
 
       let finalText = trimmed;
-      const snippetMatch = settings.snippets?.find(
-        (s) => s.trigger.trim().toLowerCase() === trimmed.toLowerCase(),
-      );
+      const snippetMatch = syncSnippetsRef.current.find((s) => {
+        const trigger = (s.shortcut ?? s.label ?? "").trim().toLowerCase();
+        return trigger.length > 0 && trigger === trimmed.toLowerCase();
+      });
       if (snippetMatch) {
-        finalText = snippetMatch.replacement;
+        finalText = snippetMatch.content;
       }
 
       const newEntry = await addTranscription(
@@ -236,7 +304,6 @@ export function useRecordingWorkflow({
       onTranscriptionAdded,
       playSuccess,
       settings.insertion_mode,
-      settings.snippets,
     ],
   );
 
@@ -244,6 +311,14 @@ export function useRecordingWorkflow({
     async (audioData: number[], sampleRate: number) => {
       setIsTranscribing(true);
       try {
+        // Refresh vocab before transcription so edits made in the Settings UI
+        // (snippets / dictionary) are reflected in this run's Whisper hint and
+        // post-transcription snippet match.
+        try {
+          await refreshVocab();
+        } catch (e) {
+          console.warn("[recording vocab refresh failed]", e);
+        }
         await emit("transcription-start", {
           provider: settings.transcription_provider,
         });
@@ -261,7 +336,7 @@ export function useRecordingWorkflow({
             keepLast: settings.recordings_keep_last,
             provider: settings.transcription_provider,
             localModelSize: settings.local_model_size,
-            dictionary: (settings.dictionary ?? []).join(", "),
+            dictionary: syncDictionaryRef.current.join(", "),
             initialPrompt: settings.whisper_initial_prompt ?? "",
             translate: settings.translate_mode,
             keepModelInMemory: settings.keep_model_in_memory,
@@ -316,7 +391,7 @@ export function useRecordingWorkflow({
         setIsTranscribing(false);
       }
     },
-    [settings, handleTranscriptionFinal],
+    [settings, handleTranscriptionFinal, refreshVocab],
   );
 
   // Ref trampoline so the long-lived audio-captured listener always reaches
