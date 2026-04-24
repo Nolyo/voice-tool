@@ -76,7 +76,7 @@ async function setMeta(key: string, value: unknown): Promise<void> {
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, subscribeToChanges } = useSettings();
   const [enabled, setEnabled] = useState(false);
   const [status, setStatus] = useState<SyncStatus>("disabled");
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
@@ -362,6 +362,16 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     if (auth.status !== "signed-in") return;
     void pullAndApply().then(() => flushQueue());
   }, [auth.status, enabled, pullAndApply, flushQueue]);
+
+  // Subscribe to settings changes when sync is on so edits anywhere in the UI
+  // hit `notifySettingsChanged` and trigger the debounced push.
+  useEffect(() => {
+    if (!enabled) return;
+    const unsub = subscribeToChanges((prev, next) => {
+      notifySettingsChanged(prev, next);
+    });
+    return unsub;
+  }, [enabled, subscribeToChanges, notifySettingsChanged]);
 
   // Lifecycle : focus window après idle ≥ 5 min → incremental pull
   useEffect(() => {

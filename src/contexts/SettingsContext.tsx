@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Store } from "@tauri-apps/plugin-store";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
@@ -19,6 +19,11 @@ async function getStore(): Promise<Store> {
   return store;
 }
 
+export type SettingsChangeObserver = (
+  prev: AppSettings["settings"],
+  next: AppSettings["settings"]
+) => void;
+
 interface SettingsContextType {
   settings: AppSettings["settings"];
   isLoaded: boolean;
@@ -28,6 +33,7 @@ interface SettingsContextType {
   ) => Promise<void>;
   updateSettings: (updates: Partial<AppSettings["settings"]>) => Promise<void>;
   resetSettings: () => Promise<void>;
+  subscribeToChanges: (observer: SettingsChangeObserver) => () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -43,6 +49,33 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
+
+  // Observers notified whenever the settings blob changes. Used by SyncProvider
+  // to detect syncable-key edits and schedule a debounced push.
+  const observersRef = useRef<Set<SettingsChangeObserver>>(new Set());
+
+  const subscribeToChanges = useCallback(
+    (observer: SettingsChangeObserver) => {
+      observersRef.current.add(observer);
+      return () => {
+        observersRef.current.delete(observer);
+      };
+    },
+    []
+  );
+
+  const fireObservers = useCallback(
+    (prev: AppSettings["settings"], next: AppSettings["settings"]) => {
+      observersRef.current.forEach((obs) => {
+        try {
+          obs(prev, next);
+        } catch (e) {
+          console.warn("[settings observer]", e);
+        }
+      });
+    },
+    []
+  );
 
   // Load settings on mount
   useEffect(() => {
@@ -213,7 +246,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         },
       };
 
+      const prevForObservers = base.settings;
       setSettings(newSettings);
+      fireObservers(prevForObservers, newSettings.settings);
 
       // Sync i18n language when ui_language changes
       if (key === "ui_language" && typeof value === "string") {
@@ -283,7 +318,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         },
       };
 
+      const prevForObservers = base.settings;
       setSettings(newSettings);
+      fireObservers(prevForObservers, newSettings.settings);
       await storeInstance.set("settings", newSettings);
       await storeInstance.save();
     } catch (error) {
@@ -300,7 +337,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       created: new Date().toISOString().replace("T", " ").substring(0, 19),
     };
 
+    const prevForObservers = settingsRef.current.settings;
     setSettings(newSettings);
+    fireObservers(prevForObservers, newSettings.settings);
 
     try {
       const storeInstance = await getStore();
@@ -317,6 +356,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     updateSetting,
     updateSettings,
     resetSettings,
+    subscribeToChanges,
   };
 
   return (
