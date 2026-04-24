@@ -9,6 +9,9 @@ import { SystemSection } from "./sections/SystemSection";
 import { AppearanceSection } from "./sections/AppearanceSection";
 import { ShortcutsSection } from "./sections/ShortcutsSection";
 import { UpdaterSection } from "./sections/UpdaterSection";
+import { AccountSection } from "./sections/AccountSection";
+import { SecuritySection } from "./sections/SecuritySection";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SettingTabsProps {
   activeSection: SettingsSectionId;
@@ -23,6 +26,7 @@ interface SettingTabsProps {
 export function SettingTabs({ activeSection }: SettingTabsProps) {
   const { t } = useTranslation();
   const { isLoaded } = useSettings();
+  const { status } = useAuth();
 
   if (!isLoaded) {
     return (
@@ -42,6 +46,8 @@ export function SettingTabs({ activeSection }: SettingTabsProps) {
       {activeSection === "section-raccourcis" && <ShortcutsSection />}
       {activeSection === "section-systeme" && <SystemSection />}
       {activeSection === "section-mises-a-jour" && <UpdaterSection />}
+      {activeSection === "section-compte" && status === "signed-in" && <AccountSection />}
+      {activeSection === "section-securite" && status === "signed-in" && <SecuritySection />}
     </div>
   );
 }

@@ -7,9 +7,12 @@ import {
   Palette,
   RefreshCw,
   Settings,
+  ShieldCheck,
   Sparkles,
+  User,
   Wand2,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface NavItemDef {
   id: string;
@@ -27,7 +30,11 @@ export type SettingsSectionId =
   | "section-apparence"
   | "section-raccourcis"
   | "section-systeme"
-  | "section-mises-a-jour";
+  | "section-mises-a-jour"
+  | "section-compte"
+  | "section-securite";
+
+const AUTH_ONLY_IDS = new Set<SettingsSectionId>(["section-compte", "section-securite"]);
 
 export const NAV_ITEM_DEFS: NavItemDef[] = [
   {
@@ -86,10 +93,32 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     titleKey: "settings.nav.updates",
     subtitleKey: "settings.nav.updatesSubtitle",
   },
+  {
+    id: "section-compte",
+    icon: <User className="w-3.5 h-3.5 text-emerald-500" />,
+    iconBg: "bg-emerald-500/10",
+    titleKey: "auth.account.sectionTitle",
+    subtitleKey: "auth.account.sectionSubtitle",
+  },
+  {
+    id: "section-securite",
+    icon: <ShieldCheck className="w-3.5 h-3.5 text-red-500" />,
+    iconBg: "bg-red-500/10",
+    titleKey: "auth.security.sectionTitle",
+    subtitleKey: "auth.security.sectionSubtitle",
+  },
 ];
 
 // Keep backward compat alias
 export const NAV_ITEMS = NAV_ITEM_DEFS;
+
+/** Returns only the nav items appropriate for the current auth status. */
+export function useNavItems(): NavItemDef[] {
+  const { status } = useAuth();
+  return NAV_ITEM_DEFS.filter((item) =>
+    AUTH_ONLY_IDS.has(item.id as SettingsSectionId) ? status === "signed-in" : true,
+  );
+}
 
 interface SettingsNavProps {
   activeId: string;
@@ -98,6 +127,7 @@ interface SettingsNavProps {
 
 export function SettingsNav({ activeId, scrollContainer }: SettingsNavProps) {
   const { t } = useTranslation();
+  const items = useNavItems();
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -109,7 +139,7 @@ export function SettingsNav({ activeId, scrollContainer }: SettingsNavProps) {
 
   return (
     <nav className="w-48 shrink-0 sticky top-0 self-start space-y-0.5 pt-0.5">
-      {NAV_ITEM_DEFS.map((item) => (
+      {items.map((item) => (
         <button
           key={item.id}
           type="button"
