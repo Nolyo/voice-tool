@@ -69,7 +69,9 @@
 - `src/lib/sync/mapping.ts` — AppSettings ↔ cloud shape
 - `src/lib/sync/queue.ts` — queue persistante FIFO avec retry
 - `src/lib/sync/queue.test.ts` — tests Vitest
-- `src/lib/sync/client.ts` — wrapper supabase-js (pull direct + push via Edge)
+- `src/lib/sync/schemas.ts` — Zod schemas partagés client/Edge pour valider les payloads cloud (I4 + I5)
+- `src/lib/sync/client.ts` — wrapper supabase-js (pull direct + push via Edge), avec safeParse runtime
+- `src/lib/sync/client.test.ts` — tests Vitest des fences runtime sur pull/push
 - `src/lib/sync/backups.ts` — backup local + restore + rotation FIFO 10
 - `src/lib/sync/merge.ts` — logique LWW settings + merge dico + merge snippets
 - `src/lib/sync/merge.test.ts` — tests Vitest conflict resolution
@@ -2537,9 +2539,82 @@ git commit -m "feat(v3-sync): sync-push Edge Function with Zod validation + quot
 ## Task 15: Client sync TS (pull + push via Edge)
 
 **Files:**
+- Create: `src/lib/sync/schemas.ts`
 - Create: `src/lib/sync/client.ts`
+- Create: `src/lib/sync/client.test.ts`
 
-- [ ] **Step 1: Écrire `src/lib/sync/client.ts`**
+> Hardening note (I4 + I5): cloud rows from `pullAll` and the Edge response from `pushOperations` are validated at runtime with Zod. Malformed rows are dropped (counted in `PullResult.invalid`), malformed push responses return `{ ok: false, error: "malformed edge response" }`. `PullResult` therefore exposes a new `invalid: { settings, dictionary, snippets }` field consumed by callers in Task 16+.
+
+- [ ] **Step 0: Écrire `src/lib/sync/schemas.ts`** (extracts the schemas shared with `supabase/functions/sync-push/schema.ts` so the client can `safeParse` cloud payloads)
+
+```typescript
+import { z } from "zod";
+
+// Matches the Edge Function schema — keep in sync with supabase/functions/sync-push/schema.ts
+export const CloudSettingsDataSchema = z.object({
+  ui: z.object({
+    theme: z.enum(["light", "dark"]),
+    language: z.enum(["fr", "en"]),
+  }),
+  hotkeys: z.object({
+    toggle: z.string().max(100),
+    push_to_talk: z.string().max(100),
+    open_window: z.string().max(100),
+  }),
+  features: z.object({
+    auto_paste: z.enum(["cursor", "clipboard", "none"]),
+    sound_effects: z.boolean(),
+  }),
+  transcription: z.object({
+    provider: z.enum(["OpenAI", "Google", "Local", "Groq"]),
+    local_model: z.string().max(50),
+  }),
+});
+
+export const CloudUserSettingsRowSchema = z.object({
+  user_id: z.string().uuid(),
+  data: CloudSettingsDataSchema,
+  schema_version: z.number().int(),
+  updated_at: z.string(),
+  updated_by_device: z.string().nullable(),
+});
+
+export const CloudDictionaryWordRowSchema = z.object({
+  user_id: z.string().uuid(),
+  word: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  deleted_at: z.string().nullable(),
+});
+
+export const CloudSnippetRowSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  label: z.string(),
+  content: z.string(),
+  shortcut: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  deleted_at: z.string().nullable(),
+});
+
+export const PushResponseSchema = z.object({
+  ok: z.boolean(),
+  server_time: z.string().optional(),
+  current_bytes: z.number().optional(),
+  results: z.array(
+    z.object({
+      index: z.number(),
+      ok: z.boolean(),
+      error: z.string().optional(),
+    })
+  ),
+  error: z.string().optional(),
+  quota_bytes: z.number().optional(),
+});
+```
+
+- [ ] **Step 1: Écrire `src/lib/sync/client.ts`** — `PullResult` gains an `invalid` field; both `pullAll` and `pushOperations` `safeParse` payloads at the trust boundary.
 
 ```typescript
 import { supabase } from "@/lib/supabase";
@@ -2550,11 +2625,22 @@ import type {
   CloudSnippetRow,
   SyncOperation,
 } from "./types";
+import {
+  CloudUserSettingsRowSchema,
+  CloudDictionaryWordRowSchema,
+  CloudSnippetRowSchema,
+  PushResponseSchema,
+} from "./schemas";
 
 export interface PullResult {
   settings: CloudUserSettingsRow | null;
   dictionary: CloudDictionaryWordRow[];
   snippets: CloudSnippetRow[];
+  invalid: {
+    settings: boolean;
+    dictionary: number;
+    snippets: number;
+  };
 }
 
 /** Pull FULL ou INCREMENTAL (since = ISO timestamp, null = full). */
@@ -2582,10 +2668,48 @@ export async function pullAll(since: string | null): Promise<PullResult> {
   if (dictRes.error) throw dictRes.error;
   if (snipRes.error) throw snipRes.error;
 
+  // Runtime validation — drop invalid rows, count them for visibility
+  let settings: CloudUserSettingsRow | null = null;
+  let invalidSettings = false;
+  if (settingsRes.data) {
+    const parsed = CloudUserSettingsRowSchema.safeParse(settingsRes.data);
+    if (parsed.success) {
+      settings = parsed.data as CloudUserSettingsRow;
+    } else {
+      invalidSettings = true;
+      console.warn("[sync pullAll] malformed user_settings row dropped", parsed.error.flatten());
+    }
+  }
+
+  let invalidDict = 0;
+  const dictionary: CloudDictionaryWordRow[] = [];
+  for (const row of dictRes.data ?? []) {
+    const parsed = CloudDictionaryWordRowSchema.safeParse(row);
+    if (parsed.success) {
+      dictionary.push(parsed.data as CloudDictionaryWordRow);
+    } else {
+      invalidDict++;
+      console.warn("[sync pullAll] malformed user_dictionary_words row dropped", row, parsed.error.flatten());
+    }
+  }
+
+  let invalidSnip = 0;
+  const snippets: CloudSnippetRow[] = [];
+  for (const row of snipRes.data ?? []) {
+    const parsed = CloudSnippetRowSchema.safeParse(row);
+    if (parsed.success) {
+      snippets.push(parsed.data as CloudSnippetRow);
+    } else {
+      invalidSnip++;
+      console.warn("[sync pullAll] malformed user_snippets row dropped", row, parsed.error.flatten());
+    }
+  }
+
   return {
-    settings: (settingsRes.data as CloudUserSettingsRow | null) ?? null,
-    dictionary: (dictRes.data ?? []) as CloudDictionaryWordRow[],
-    snippets: (snipRes.data ?? []) as CloudSnippetRow[],
+    settings,
+    dictionary,
+    snippets,
+    invalid: { settings: invalidSettings, dictionary: invalidDict, snippets: invalidSnip },
   };
 }
 
@@ -2602,18 +2726,22 @@ export async function pushOperations(
   operations: SyncOperation[],
   deviceId: string
 ): Promise<PushResponse> {
-  const { data, error } = await supabase.functions.invoke<PushResponse>("sync-push", {
+  const { data, error } = await supabase.functions.invoke("sync-push", {
     body: { operations, device_id: deviceId },
   });
   if (error) {
-    // Le Functions client throw sur status >= 400, capturer proprement :
     return {
       ok: false,
       error: error.message,
       results: [],
     };
   }
-  return data ?? { ok: false, error: "empty response", results: [] };
+  const parsed = PushResponseSchema.safeParse(data);
+  if (!parsed.success) {
+    console.warn("[sync pushOperations] malformed edge response", data, parsed.error.flatten());
+    return { ok: false, error: "malformed edge response", results: [] };
+  }
+  return parsed.data;
 }
 
 /** Envoie uniquement le blob settings (upsert). Retourne l'erreur éventuelle. */
@@ -2622,17 +2750,20 @@ export async function pushSettings(data: CloudSettingsData, deviceId: string) {
 }
 ```
 
-- [ ] **Step 2: Vérifier build**
+- [ ] **Step 2: Écrire `src/lib/sync/client.test.ts`** — mocks `@/lib/supabase` and verifies the schema fences hold (drops invalid rows on pull, returns `malformed edge response` on push).
+
+- [ ] **Step 3: Vérifier tests + build**
 
 ```bash
+pnpm test
 pnpm build
 ```
 Expected: OK.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/lib/sync/client.ts
+git add src/lib/sync/schemas.ts src/lib/sync/client.ts src/lib/sync/client.test.ts
 git commit -m "feat(v3-sync): sync client wrapping supabase-js pull + edge push"
 ```
 

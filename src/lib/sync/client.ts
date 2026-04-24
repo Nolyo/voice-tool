@@ -6,11 +6,22 @@ import type {
   CloudSnippetRow,
   SyncOperation,
 } from "./types";
+import {
+  CloudUserSettingsRowSchema,
+  CloudDictionaryWordRowSchema,
+  CloudSnippetRowSchema,
+  PushResponseSchema,
+} from "./schemas";
 
 export interface PullResult {
   settings: CloudUserSettingsRow | null;
   dictionary: CloudDictionaryWordRow[];
   snippets: CloudSnippetRow[];
+  invalid: {
+    settings: boolean;
+    dictionary: number;
+    snippets: number;
+  };
 }
 
 /** Pull FULL ou INCREMENTAL (since = ISO timestamp, null = full). */
@@ -38,10 +49,63 @@ export async function pullAll(since: string | null): Promise<PullResult> {
   if (dictRes.error) throw dictRes.error;
   if (snipRes.error) throw snipRes.error;
 
+  // Runtime validation — drop invalid rows, count them for visibility
+  let settings: CloudUserSettingsRow | null = null;
+  let invalidSettings = false;
+  if (settingsRes.data) {
+    const parsed = CloudUserSettingsRowSchema.safeParse(settingsRes.data);
+    if (parsed.success) {
+      settings = parsed.data as CloudUserSettingsRow;
+    } else {
+      invalidSettings = true;
+      console.warn(
+        "[sync pullAll] malformed user_settings row dropped",
+        parsed.error.flatten()
+      );
+    }
+  }
+
+  let invalidDict = 0;
+  const dictionary: CloudDictionaryWordRow[] = [];
+  for (const row of dictRes.data ?? []) {
+    const parsed = CloudDictionaryWordRowSchema.safeParse(row);
+    if (parsed.success) {
+      dictionary.push(parsed.data as CloudDictionaryWordRow);
+    } else {
+      invalidDict++;
+      console.warn(
+        "[sync pullAll] malformed user_dictionary_words row dropped",
+        row,
+        parsed.error.flatten()
+      );
+    }
+  }
+
+  let invalidSnip = 0;
+  const snippets: CloudSnippetRow[] = [];
+  for (const row of snipRes.data ?? []) {
+    const parsed = CloudSnippetRowSchema.safeParse(row);
+    if (parsed.success) {
+      snippets.push(parsed.data as CloudSnippetRow);
+    } else {
+      invalidSnip++;
+      console.warn(
+        "[sync pullAll] malformed user_snippets row dropped",
+        row,
+        parsed.error.flatten()
+      );
+    }
+  }
+
   return {
-    settings: (settingsRes.data as CloudUserSettingsRow | null) ?? null,
-    dictionary: (dictRes.data ?? []) as CloudDictionaryWordRow[],
-    snippets: (snipRes.data ?? []) as CloudSnippetRow[],
+    settings,
+    dictionary,
+    snippets,
+    invalid: {
+      settings: invalidSettings,
+      dictionary: invalidDict,
+      snippets: invalidSnip,
+    },
   };
 }
 
@@ -58,7 +122,7 @@ export async function pushOperations(
   operations: SyncOperation[],
   deviceId: string
 ): Promise<PushResponse> {
-  const { data, error } = await supabase.functions.invoke<PushResponse>("sync-push", {
+  const { data, error } = await supabase.functions.invoke("sync-push", {
     body: { operations, device_id: deviceId },
   });
   if (error) {
@@ -69,7 +133,16 @@ export async function pushOperations(
       results: [],
     };
   }
-  return data ?? { ok: false, error: "empty response", results: [] };
+  const parsed = PushResponseSchema.safeParse(data);
+  if (!parsed.success) {
+    console.warn(
+      "[sync pushOperations] malformed edge response",
+      data,
+      parsed.error.flatten()
+    );
+    return { ok: false, error: "malformed edge response", results: [] };
+  }
+  return parsed.data;
 }
 
 /** Envoie uniquement le blob settings (upsert). Retourne l'erreur éventuelle. */
