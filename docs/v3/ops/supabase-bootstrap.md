@@ -33,13 +33,14 @@ Créer le projet Supabase de production v3 avec les paramètres figés par ADR 0
 8. Noter l'URL du projet et l'`anon key` **publique** dans `docs/v3/ops/supabase-bootstrap.md` (section "Identifiants non-secrets" ci-dessous)
 9. **Ne jamais commiter** le `service_role key` ni le DB password
 
-## Identifiants non-secrets (à remplir après création)
+## Identifiants non-secrets
 
-- Project ref : `<à remplir>`
-- Project URL : `https://<ref>.supabase.co`
-- Anon (public) key : `<à remplir — JWT public, OK à committer>`
-- Région : `<à remplir>`
-- Date de création : `<à remplir>`
+- Project ref : `prmznlqsvzrfxckuxfhq`
+- Project URL : `https://prmznlqsvzrfxckuxfhq.supabase.co`
+- Publishable key : `sb_publishable_F29xyZYw8BVpgpIC3rxQvA_iAob8N6z` (nouveau format Supabase 2025, remplace l'ancien `anon` JWT)
+- Région : `West EU (Ireland) — eu-west-1`
+- Date de création : 2026-04-24
+- Plan : Free (upgrade Pro planifié avant mise en prod réelle — cf. ADR 0007 pour PITR + DPA obligatoires en prod)
 
 ## Identifiants secrets — où ils vivent
 
@@ -73,4 +74,4 @@ Sur le plan Pro, le DPA est automatiquement inclus et accessible depuis `Setting
 
 | Date | Opérateur | Notes |
 |---|---|---|
-| <à remplir> | nolyo | Bootstrap initial |
+| 2026-04-24 | nolyo | Bootstrap initial en plan Free (EU West Ireland). Upgrade Pro prévu avant mise en prod réelle. |
