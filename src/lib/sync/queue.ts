@@ -1,10 +1,12 @@
 import { Store } from "@tauri-apps/plugin-store";
 import type { SyncOperation, SyncQueueEntry } from "./types";
+import { createMutex } from "./_mutex";
 
 const STORE_FILE = "sync-queue.json";
 const KEY_QUEUE = "queue";
 
 let storePromise: Promise<Awaited<ReturnType<typeof Store.load>>> | null = null;
+const withLock = createMutex();
 
 function getStore() {
   if (!storePromise) {
@@ -30,17 +32,19 @@ async function saveQueue(q: SyncQueueEntry[]): Promise<void> {
 }
 
 export async function enqueue(op: SyncOperation): Promise<SyncQueueEntry> {
-  const q = await loadQueue();
-  const entry: SyncQueueEntry = {
-    id: crypto.randomUUID(),
-    operation: op,
-    enqueued_at: new Date().toISOString(),
-    retry_count: 0,
-    last_error: null,
-  };
-  q.push(entry);
-  await saveQueue(q);
-  return entry;
+  return withLock(async () => {
+    const q = await loadQueue();
+    const entry: SyncQueueEntry = {
+      id: crypto.randomUUID(),
+      operation: op,
+      enqueued_at: new Date().toISOString(),
+      retry_count: 0,
+      last_error: null,
+    };
+    q.push(entry);
+    await saveQueue(q);
+    return entry;
+  });
 }
 
 export async function peekAll(): Promise<SyncQueueEntry[]> {
@@ -53,19 +57,23 @@ export async function peekHead(): Promise<SyncQueueEntry | null> {
 }
 
 export async function dequeue(): Promise<SyncQueueEntry | null> {
-  const q = await loadQueue();
-  if (q.length === 0) return null;
-  const head = q.shift()!;
-  await saveQueue(q);
-  return head;
+  return withLock(async () => {
+    const q = await loadQueue();
+    if (q.length === 0) return null;
+    const head = q.shift()!;
+    await saveQueue(q);
+    return head;
+  });
 }
 
 export async function markRetry(id: string, error: string): Promise<void> {
-  const q = await loadQueue();
-  const idx = q.findIndex((e) => e.id === id);
-  if (idx < 0) return;
-  q[idx] = { ...q[idx], retry_count: q[idx].retry_count + 1, last_error: error };
-  await saveQueue(q);
+  return withLock(async () => {
+    const q = await loadQueue();
+    const idx = q.findIndex((e) => e.id === id);
+    if (idx < 0) return;
+    q[idx] = { ...q[idx], retry_count: q[idx].retry_count + 1, last_error: error };
+    await saveQueue(q);
+  });
 }
 
 export async function size(): Promise<number> {
@@ -74,7 +82,9 @@ export async function size(): Promise<number> {
 }
 
 export async function clear(): Promise<void> {
-  await saveQueue([]);
+  return withLock(async () => {
+    await saveQueue([]);
+  });
 }
 
 /** Retourne le délai d'attente avant prochain retry en ms selon retry_count.

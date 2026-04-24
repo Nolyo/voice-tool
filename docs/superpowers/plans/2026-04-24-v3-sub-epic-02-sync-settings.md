@@ -1248,6 +1248,18 @@ Expected: FAIL avec "Cannot find module './mapping'".
 import type { AppSettings } from "@/lib/settings";
 import type { CloudSettingsData } from "./types";
 
+const VALID_LOCAL_MODEL_SIZES: ReadonlySet<string> = new Set([
+  "tiny",
+  "base",
+  "small",
+  "medium",
+  "large-v1",
+  "large-v2",
+  "large-v3",
+  "large-v3-turbo",
+  "large-v3-turbo-q5_0",
+]);
+
 export function extractCloudSettings(s: AppSettings["settings"]): CloudSettingsData {
   return {
     ui: {
@@ -1274,6 +1286,12 @@ export function applyCloudSettings(
   local: AppSettings["settings"],
   cloud: CloudSettingsData
 ): AppSettings["settings"] {
+  // Validation runtime : si le cloud envoie un modèle inconnu (ancien client,
+  // valeur custom), on conserve la valeur locale au lieu d'un cast unsafe.
+  const local_model_size = VALID_LOCAL_MODEL_SIZES.has(cloud.transcription.local_model)
+    ? (cloud.transcription.local_model as AppSettings["settings"]["local_model_size"])
+    : local.local_model_size;
+
   return {
     ...local,
     theme: cloud.ui.theme,
@@ -1284,7 +1302,7 @@ export function applyCloudSettings(
     insertion_mode: cloud.features.auto_paste,
     enable_sounds: cloud.features.sound_effects,
     transcription_provider: cloud.transcription.provider,
-    local_model_size: cloud.transcription.local_model as AppSettings["settings"]["local_model_size"],
+    local_model_size,
   };
 }
 
@@ -1299,12 +1317,40 @@ export function syncableSettingsChanged(
 }
 ```
 
+- [ ] **Step 3b: Ajouter 2 tests dans `mapping.test.ts` pour la validation `local_model_size`**
+
+```typescript
+  it("applyCloudSettings falls back to local when cloud local_model is unknown", () => {
+    const local = { ...DEFAULT_SETTINGS.settings, local_model_size: "medium" as const };
+    const cloud = {
+      ui: { theme: "light" as const, language: "en" as const },
+      hotkeys: { toggle: "x", push_to_talk: "y", open_window: "z" },
+      features: { auto_paste: "cursor" as const, sound_effects: true },
+      transcription: { provider: "Local" as const, local_model: "ggml-tiny.bin" },
+    };
+    const merged = applyCloudSettings(local, cloud);
+    expect(merged.local_model_size).toBe("medium"); // fallback
+  });
+
+  it("applyCloudSettings accepts known local_model values", () => {
+    const local = { ...DEFAULT_SETTINGS.settings };
+    const cloud = {
+      ui: { theme: "light" as const, language: "en" as const },
+      hotkeys: { toggle: "x", push_to_talk: "y", open_window: "z" },
+      features: { auto_paste: "cursor" as const, sound_effects: true },
+      transcription: { provider: "Local" as const, local_model: "large-v3-turbo" },
+    };
+    const merged = applyCloudSettings(local, cloud);
+    expect(merged.local_model_size).toBe("large-v3-turbo");
+  });
+```
+
 - [ ] **Step 4: Relancer — doit passer**
 
 ```bash
 pnpm test
 ```
-Expected: 3 tests passent.
+Expected: 5 tests passent (3 originaux + 2 validation).
 
 - [ ] **Step 5: Commit**
 
@@ -1322,6 +1368,28 @@ git commit -m "feat(v3-sync): mapping between AppSettings and cloud shape"
 - Create: `src/lib/sync/snippets-store.test.ts`
 
 > **Note migration** : les snippets legacy vivent dans `settings.snippets: {trigger, replacement}[]`. On ne les supprime **pas** du settings blob immédiatement — on ajoute un nouveau store. Une migration one-shot au premier accès du nouveau store importe les anciens en tant que rows `{id, label=trigger, content=replacement, shortcut=trigger}` et vide `settings.snippets` ensuite. Cf. Task 10 (wire up).
+
+- [ ] **Step 0: Créer le mutex partagé `src/lib/sync/_mutex.ts`** (utilisé aussi par Tasks 10 et 11)
+
+```typescript
+// src/lib/sync/_mutex.ts
+// Promise-chain mutex. Returns a function that serializes all operations
+// against the same chain. Each mutator awaits the previous one to finish.
+// NB: if a mutator rejects, the chain continues (we swallow in the chain
+// but re-throw to the caller) so one failure doesn't block later work.
+export function createMutex(): <T>(fn: () => Promise<T>) => Promise<T> {
+  let tail: Promise<unknown> = Promise.resolve();
+  return <T>(fn: () => Promise<T>): Promise<T> => {
+    const run = tail.then(fn, fn);
+    tail = run.catch(() => {
+      /* swallow to keep chain alive; caller already saw the rejection */
+    });
+    return run as Promise<T>;
+  };
+}
+```
+
+> **Pourquoi** : tous les mutators des stores (snippets, dictionnaire, queue) suivent un pattern read-modify-write avec deux `await` séparés. Entre la lecture et l'écriture, l'event loop yield → deux appels concurrents s'écrasent l'un l'autre. Le mutex sérialise les mutators par module (chaque store a son propre `withLock`).
 
 - [ ] **Step 1: Écrire le test**
 
@@ -1412,17 +1480,19 @@ pnpm test snippets-store
 ```
 Expected: FAIL (module absent).
 
-- [ ] **Step 3: Écrire `src/lib/sync/snippets-store.ts`**
+- [ ] **Step 3: Écrire `src/lib/sync/snippets-store.ts`** (mutators wrappés dans `withLock` pour sérialiser les read-modify-write concurrents)
 
 ```typescript
 import { Store } from "@tauri-apps/plugin-store";
 import type { LocalSnippet } from "./types";
+import { createMutex } from "./_mutex";
 
 const STORE_FILE = "sync-snippets.json";
 const KEY_SNIPPETS = "snippets";
 const KEY_MIGRATED = "legacy_migrated";
 
 let storePromise: Promise<Awaited<ReturnType<typeof Store.load>>> | null = null;
+const withLock = createMutex();
 
 function getStore() {
   if (!storePromise) {
@@ -1436,20 +1506,22 @@ export function __resetForTests() {
 }
 
 function newUuid(): string {
-  // crypto.randomUUID dispo en Node 18+ et navigateurs récents
   return crypto.randomUUID();
 }
 
 export async function loadSnippets(): Promise<LocalSnippet[]> {
+  // Lecture pure : pas de lock (sinon deadlock car les mutators l'appellent en interne).
   const store = await getStore();
   const data = (await store.get<LocalSnippet[]>(KEY_SNIPPETS)) ?? [];
   return data;
 }
 
 export async function saveSnippets(list: LocalSnippet[]): Promise<void> {
-  const store = await getStore();
-  await store.set(KEY_SNIPPETS, list);
-  await store.save();
+  return withLock(async () => {
+    const store = await getStore();
+    await store.set(KEY_SNIPPETS, list);
+    await store.save();
+  });
 }
 
 export interface UpsertSnippetInput {
@@ -1460,60 +1532,73 @@ export interface UpsertSnippetInput {
 }
 
 export async function upsertSnippet(input: UpsertSnippetInput): Promise<LocalSnippet> {
-  const all = await loadSnippets();
-  const now = new Date().toISOString();
-  const existingIdx = input.id ? all.findIndex((s) => s.id === input.id) : -1;
+  return withLock(async () => {
+    const all = await loadSnippets();
+    const now = new Date().toISOString();
+    const existingIdx = input.id ? all.findIndex((s) => s.id === input.id) : -1;
 
-  let result: LocalSnippet;
-  if (existingIdx >= 0) {
-    result = {
-      ...all[existingIdx],
-      label: input.label,
-      content: input.content,
-      shortcut: input.shortcut,
-      updated_at: now,
-      deleted_at: null,
-    };
-    all[existingIdx] = result;
-  } else {
-    result = {
-      id: input.id ?? newUuid(),
-      label: input.label,
-      content: input.content,
-      shortcut: input.shortcut,
-      created_at: now,
-      updated_at: now,
-      deleted_at: null,
-    };
-    all.push(result);
-  }
-  await saveSnippets(all);
-  return result;
+    let result: LocalSnippet;
+    if (existingIdx >= 0) {
+      result = {
+        ...all[existingIdx],
+        label: input.label,
+        content: input.content,
+        shortcut: input.shortcut,
+        updated_at: now,
+        deleted_at: null,
+      };
+      all[existingIdx] = result;
+    } else {
+      result = {
+        id: input.id ?? newUuid(),
+        label: input.label,
+        content: input.content,
+        shortcut: input.shortcut,
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+      };
+      all.push(result);
+    }
+    // Inline le save (déjà sous lock — appeler saveSnippets ferait un deadlock chain).
+    const store = await getStore();
+    await store.set(KEY_SNIPPETS, all);
+    await store.save();
+    return result;
+  });
 }
 
 export async function softDeleteSnippet(id: string): Promise<void> {
-  const all = await loadSnippets();
-  const idx = all.findIndex((s) => s.id === id);
-  if (idx < 0) return;
-  const now = new Date().toISOString();
-  all[idx] = { ...all[idx], deleted_at: now, updated_at: now };
-  await saveSnippets(all);
+  return withLock(async () => {
+    const all = await loadSnippets();
+    const idx = all.findIndex((s) => s.id === id);
+    if (idx < 0) return;
+    const now = new Date().toISOString();
+    all[idx] = { ...all[idx], deleted_at: now, updated_at: now };
+    const store = await getStore();
+    await store.set(KEY_SNIPPETS, all);
+    await store.save();
+  });
 }
 
 /** Applique un push depuis le cloud (réception d'un snippet merged LWW). */
 export async function applyRemoteSnippet(remote: LocalSnippet): Promise<void> {
-  const all = await loadSnippets();
-  const idx = all.findIndex((s) => s.id === remote.id);
-  if (idx < 0) {
-    all.push(remote);
-  } else {
-    const localUpdated = new Date(all[idx].updated_at).getTime();
-    const remoteUpdated = new Date(remote.updated_at).getTime();
-    if (remoteUpdated >= localUpdated) {
-      all[idx] = remote;
+  return withLock(async () => {
+    const all = await loadSnippets();
+    const idx = all.findIndex((s) => s.id === remote.id);
+    if (idx < 0) {
+      all.push(remote);
+    } else {
+      const localUpdated = new Date(all[idx].updated_at).getTime();
+      const remoteUpdated = new Date(remote.updated_at).getTime();
+      if (remoteUpdated >= localUpdated) {
+        all[idx] = remote;
+      }
     }
-  }
-  await saveSnippets(all);
+    const store = await getStore();
+    await store.set(KEY_SNIPPETS, all);
+    await store.save();
+  });
 }
 
 /** Import one-shot des snippets legacy `{trigger, replacement}`.
@@ -1521,15 +1606,29 @@ export async function applyRemoteSnippet(remote: LocalSnippet): Promise<void> {
 export async function migrateLegacySnippetsOnce(
   legacy: Array<{ trigger: string; replacement: string }>
 ): Promise<boolean> {
-  const store = await getStore();
-  const already = await store.get<boolean>(KEY_MIGRATED);
-  if (already) return false;
-  for (const { trigger, replacement } of legacy) {
-    await upsertSnippet({ label: trigger, content: replacement, shortcut: trigger });
-  }
-  await store.set(KEY_MIGRATED, true);
-  await store.save();
-  return true;
+  return withLock(async () => {
+    const store = await getStore();
+    const already = await store.get<boolean>(KEY_MIGRATED);
+    if (already) return false;
+    // Inline la logique d'upsert pour rester dans le même lock scope.
+    const all = await loadSnippets();
+    for (const { trigger, replacement } of legacy) {
+      const now = new Date().toISOString();
+      all.push({
+        id: newUuid(),
+        label: trigger,
+        content: replacement,
+        shortcut: trigger,
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+      });
+    }
+    await store.set(KEY_SNIPPETS, all);
+    await store.set(KEY_MIGRATED, true);
+    await store.save();
+    return true;
+  });
 }
 ```
 
@@ -1648,17 +1747,32 @@ describe("dictionary-store", () => {
 });
 ```
 
-- [ ] **Step 2: Écrire `src/lib/sync/dictionary-store.ts`**
+- [ ] **Step 1b: Ajouter un test de concurrence dans `dictionary-store.test.ts`**
+
+```typescript
+  it("concurrent addWord calls are not lost (mutex)", async () => {
+    const words = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    await Promise.all(words.map((w) => addWord(w)));
+    const d = await loadDictionary();
+    expect(d.words.sort()).toEqual([...words].sort());
+  });
+```
+
+> Ce test échoue **sans mutex** (read-modify-write race entre les 8 promesses concurrentes : certains writes se font sur un état stale et écrasent les autres) et passe avec.
+
+- [ ] **Step 2: Écrire `src/lib/sync/dictionary-store.ts`** (mutators wrappés dans `withLock`)
 
 ```typescript
 import { Store } from "@tauri-apps/plugin-store";
 import type { LocalDictionary } from "./types";
+import { createMutex } from "./_mutex";
 
 const STORE_FILE = "sync-dictionary.json";
 const KEY_DATA = "dictionary";
 const KEY_MIGRATED = "legacy_migrated";
 
 let storePromise: Promise<Awaited<ReturnType<typeof Store.load>>> | null = null;
+const withLock = createMutex();
 
 function getStore() {
   if (!storePromise) {
@@ -1672,6 +1786,7 @@ export function __resetForTests() {
 }
 
 export async function loadDictionary(): Promise<LocalDictionary> {
+  // Lecture pure : pas de lock.
   const store = await getStore();
   const data = await store.get<LocalDictionary>(KEY_DATA);
   if (!data) return { words: [], tombstones: [], updated_at: new Date(0).toISOString() };
@@ -1685,36 +1800,42 @@ async function saveDictionary(d: LocalDictionary): Promise<void> {
 }
 
 export async function addWord(word: string): Promise<void> {
-  const w = word.trim();
-  if (!w) return;
-  const d = await loadDictionary();
-  if (d.words.includes(w)) return;
-  d.words = [...d.words, w];
-  d.tombstones = d.tombstones.filter((t) => t !== w);
-  d.updated_at = new Date().toISOString();
-  await saveDictionary(d);
+  return withLock(async () => {
+    const w = word.trim();
+    if (!w) return;
+    const d = await loadDictionary();
+    if (d.words.includes(w)) return;
+    d.words = [...d.words, w];
+    d.tombstones = d.tombstones.filter((t) => t !== w);
+    d.updated_at = new Date().toISOString();
+    await saveDictionary(d);
+  });
 }
 
 export async function removeWord(word: string): Promise<void> {
-  const w = word.trim();
-  if (!w) return;
-  const d = await loadDictionary();
-  const hadIt = d.words.includes(w);
-  d.words = d.words.filter((x) => x !== w);
-  if (hadIt && !d.tombstones.includes(w)) {
-    d.tombstones = [...d.tombstones, w];
-  }
-  d.updated_at = new Date().toISOString();
-  await saveDictionary(d);
+  return withLock(async () => {
+    const w = word.trim();
+    if (!w) return;
+    const d = await loadDictionary();
+    const hadIt = d.words.includes(w);
+    d.words = d.words.filter((x) => x !== w);
+    if (hadIt && !d.tombstones.includes(w)) {
+      d.tombstones = [...d.tombstones, w];
+    }
+    d.updated_at = new Date().toISOString();
+    await saveDictionary(d);
+  });
 }
 
 /** Vide et retourne la liste des tombstones à pousser au cloud. */
 export async function drainTombstones(): Promise<string[]> {
-  const d = await loadDictionary();
-  const tombs = d.tombstones;
-  d.tombstones = [];
-  await saveDictionary(d);
-  return tombs;
+  return withLock(async () => {
+    const d = await loadDictionary();
+    const tombs = d.tombstones;
+    d.tombstones = [];
+    await saveDictionary(d);
+    return tombs;
+  });
 }
 
 export interface RemoteWordEvent {
@@ -1724,29 +1845,33 @@ export interface RemoteWordEvent {
 }
 
 export async function applyRemoteWord(ev: RemoteWordEvent): Promise<void> {
-  const d = await loadDictionary();
-  if (ev.deleted) {
-    d.words = d.words.filter((w) => w !== ev.word);
-    d.tombstones = d.tombstones.filter((w) => w !== ev.word);
-  } else {
-    if (!d.words.includes(ev.word)) d.words = [...d.words, ev.word];
-    d.tombstones = d.tombstones.filter((w) => w !== ev.word);
-  }
-  await saveDictionary(d);
+  return withLock(async () => {
+    const d = await loadDictionary();
+    if (ev.deleted) {
+      d.words = d.words.filter((w) => w !== ev.word);
+      d.tombstones = d.tombstones.filter((w) => w !== ev.word);
+    } else {
+      if (!d.words.includes(ev.word)) d.words = [...d.words, ev.word];
+      d.tombstones = d.tombstones.filter((w) => w !== ev.word);
+    }
+    await saveDictionary(d);
+  });
 }
 
 export async function migrateLegacyDictionaryOnce(legacy: string[]): Promise<boolean> {
-  const store = await getStore();
-  const already = await store.get<boolean>(KEY_MIGRATED);
-  if (already) return false;
-  const d = await loadDictionary();
-  const merged = Array.from(new Set([...d.words, ...legacy.map((w) => w.trim()).filter(Boolean)]));
-  d.words = merged;
-  d.updated_at = new Date().toISOString();
-  await saveDictionary(d);
-  await store.set(KEY_MIGRATED, true);
-  await store.save();
-  return true;
+  return withLock(async () => {
+    const store = await getStore();
+    const already = await store.get<boolean>(KEY_MIGRATED);
+    if (already) return false;
+    const d = await loadDictionary();
+    const merged = Array.from(new Set([...d.words, ...legacy.map((w) => w.trim()).filter(Boolean)]));
+    d.words = merged;
+    d.updated_at = new Date().toISOString();
+    await saveDictionary(d);
+    await store.set(KEY_MIGRATED, true);
+    await store.save();
+    return true;
+  });
 }
 ```
 
@@ -1755,7 +1880,7 @@ export async function migrateLegacyDictionaryOnce(legacy: string[]): Promise<boo
 ```bash
 pnpm test dictionary-store
 ```
-Expected: 7 tests passent.
+Expected: 8 tests passent (7 originaux + 1 concurrence).
 
 - [ ] **Step 4: Commit**
 
@@ -1842,16 +1967,18 @@ describe("sync queue", () => {
 });
 ```
 
-- [ ] **Step 2: Écrire `src/lib/sync/queue.ts`**
+- [ ] **Step 2: Écrire `src/lib/sync/queue.ts`** (mutators wrappés dans `withLock`, lectures pures non lockées)
 
 ```typescript
 import { Store } from "@tauri-apps/plugin-store";
 import type { SyncOperation, SyncQueueEntry } from "./types";
+import { createMutex } from "./_mutex";
 
 const STORE_FILE = "sync-queue.json";
 const KEY_QUEUE = "queue";
 
 let storePromise: Promise<Awaited<ReturnType<typeof Store.load>>> | null = null;
+const withLock = createMutex();
 
 function getStore() {
   if (!storePromise) {
@@ -1877,17 +2004,19 @@ async function saveQueue(q: SyncQueueEntry[]): Promise<void> {
 }
 
 export async function enqueue(op: SyncOperation): Promise<SyncQueueEntry> {
-  const q = await loadQueue();
-  const entry: SyncQueueEntry = {
-    id: crypto.randomUUID(),
-    operation: op,
-    enqueued_at: new Date().toISOString(),
-    retry_count: 0,
-    last_error: null,
-  };
-  q.push(entry);
-  await saveQueue(q);
-  return entry;
+  return withLock(async () => {
+    const q = await loadQueue();
+    const entry: SyncQueueEntry = {
+      id: crypto.randomUUID(),
+      operation: op,
+      enqueued_at: new Date().toISOString(),
+      retry_count: 0,
+      last_error: null,
+    };
+    q.push(entry);
+    await saveQueue(q);
+    return entry;
+  });
 }
 
 export async function peekAll(): Promise<SyncQueueEntry[]> {
@@ -1900,19 +2029,23 @@ export async function peekHead(): Promise<SyncQueueEntry | null> {
 }
 
 export async function dequeue(): Promise<SyncQueueEntry | null> {
-  const q = await loadQueue();
-  if (q.length === 0) return null;
-  const head = q.shift()!;
-  await saveQueue(q);
-  return head;
+  return withLock(async () => {
+    const q = await loadQueue();
+    if (q.length === 0) return null;
+    const head = q.shift()!;
+    await saveQueue(q);
+    return head;
+  });
 }
 
 export async function markRetry(id: string, error: string): Promise<void> {
-  const q = await loadQueue();
-  const idx = q.findIndex((e) => e.id === id);
-  if (idx < 0) return;
-  q[idx] = { ...q[idx], retry_count: q[idx].retry_count + 1, last_error: error };
-  await saveQueue(q);
+  return withLock(async () => {
+    const q = await loadQueue();
+    const idx = q.findIndex((e) => e.id === id);
+    if (idx < 0) return;
+    q[idx] = { ...q[idx], retry_count: q[idx].retry_count + 1, last_error: error };
+    await saveQueue(q);
+  });
 }
 
 export async function size(): Promise<number> {
@@ -1921,7 +2054,9 @@ export async function size(): Promise<number> {
 }
 
 export async function clear(): Promise<void> {
-  await saveQueue([]);
+  return withLock(async () => {
+    await saveQueue([]);
+  });
 }
 
 /** Retourne le délai d'attente avant prochain retry en ms selon retry_count.
@@ -2016,22 +2151,48 @@ export async function deleteLocalBackup(filename: string): Promise<void> {
   await invoke("delete_local_backup", { filename });
 }
 
-/** Restaure : écrase chaque Tauri Store par la version du backup. */
-export async function restoreLocalBackup(filename: string): Promise<void> {
+/** Restaure : écrase chaque Tauri Store par la version du backup.
+ *
+ * Stratégie pour limiter les casses en cas d'échec partiel :
+ *  1. On set d'abord toutes les clés du backup (si crash après set / avant delete,
+ *     on a un superset stale plutôt qu'un store vidé).
+ *  2. On supprime ensuite uniquement les clés locales absentes du backup.
+ *  3. Un try/catch par store pour qu'un store en erreur ne bloque pas les autres.
+ */
+export async function restoreLocalBackup(
+  filename: string
+): Promise<{ restored: string[]; failed: Array<{ file: string; error: string }> }> {
   const payload = await readLocalBackup(filename);
+  const restored: string[] = [];
+  const failed: Array<{ file: string; error: string }> = [];
+
   for (const [file, content] of Object.entries(payload.tauri_stores)) {
     if (!content || typeof content !== "object") continue;
-    const store = await Store.load(file);
-    // Clear + rewrite atomic best-effort
-    const currentKeys = await store.keys();
-    for (const k of currentKeys) {
-      await store.delete(k);
+    try {
+      const store = await Store.load(file);
+      const backupKeys = new Set(Object.keys(content as Record<string, unknown>));
+
+      // 1) Set all backup keys first (safe if save fails mid-loop: local is a superset, not a subset)
+      for (const [k, v] of Object.entries(content as Record<string, unknown>)) {
+        await store.set(k, v);
+      }
+
+      // 2) Remove local keys that weren't in the backup
+      const currentKeys = await store.keys();
+      for (const k of currentKeys) {
+        if (!backupKeys.has(k)) {
+          await store.delete(k);
+        }
+      }
+
+      await store.save();
+      restored.push(file);
+    } catch (e) {
+      failed.push({ file, error: e instanceof Error ? e.message : String(e) });
     }
-    for (const [k, v] of Object.entries(content as Record<string, unknown>)) {
-      await store.set(k, v);
-    }
-    await store.save();
   }
+
+  return { restored, failed };
 }
 ```
 

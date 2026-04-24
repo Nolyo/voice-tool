@@ -1,6 +1,18 @@
 import type { AppSettings } from "@/lib/settings";
 import type { CloudSettingsData } from "./types";
 
+const VALID_LOCAL_MODEL_SIZES: ReadonlySet<string> = new Set([
+  "tiny",
+  "base",
+  "small",
+  "medium",
+  "large-v1",
+  "large-v2",
+  "large-v3",
+  "large-v3-turbo",
+  "large-v3-turbo-q5_0",
+]);
+
 export function extractCloudSettings(s: AppSettings["settings"]): CloudSettingsData {
   return {
     ui: {
@@ -27,6 +39,10 @@ export function applyCloudSettings(
   local: AppSettings["settings"],
   cloud: CloudSettingsData
 ): AppSettings["settings"] {
+  const local_model_size = VALID_LOCAL_MODEL_SIZES.has(cloud.transcription.local_model)
+    ? (cloud.transcription.local_model as AppSettings["settings"]["local_model_size"])
+    : local.local_model_size;
+
   return {
     ...local,
     theme: cloud.ui.theme,
@@ -37,7 +53,7 @@ export function applyCloudSettings(
     insertion_mode: cloud.features.auto_paste,
     enable_sounds: cloud.features.sound_effects,
     transcription_provider: cloud.transcription.provider,
-    local_model_size: cloud.transcription.local_model as AppSettings["settings"]["local_model_size"],
+    local_model_size,
   };
 }
 

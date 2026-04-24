@@ -58,20 +58,46 @@ export async function deleteLocalBackup(filename: string): Promise<void> {
   await invoke("delete_local_backup", { filename });
 }
 
-/** Restaure : écrase chaque Tauri Store par la version du backup. */
-export async function restoreLocalBackup(filename: string): Promise<void> {
+/** Restaure : écrase chaque Tauri Store par la version du backup.
+ *
+ * Stratégie pour limiter les casses en cas d'échec partiel :
+ *  1. On set d'abord toutes les clés du backup (si crash après set / avant delete,
+ *     on a un superset stale plutôt qu'un store vidé).
+ *  2. On supprime ensuite uniquement les clés locales absentes du backup.
+ *  3. Un try/catch par store pour qu'un store en erreur ne bloque pas les autres.
+ */
+export async function restoreLocalBackup(
+  filename: string
+): Promise<{ restored: string[]; failed: Array<{ file: string; error: string }> }> {
   const payload = await readLocalBackup(filename);
+  const restored: string[] = [];
+  const failed: Array<{ file: string; error: string }> = [];
+
   for (const [file, content] of Object.entries(payload.tauri_stores)) {
     if (!content || typeof content !== "object") continue;
-    const store = await Store.load(file);
-    // Clear + rewrite atomic best-effort
-    const currentKeys = await store.keys();
-    for (const k of currentKeys) {
-      await store.delete(k);
+    try {
+      const store = await Store.load(file);
+      const backupKeys = new Set(Object.keys(content as Record<string, unknown>));
+
+      // 1) Set all backup keys first (safe if save fails mid-loop: local is a superset, not a subset)
+      for (const [k, v] of Object.entries(content as Record<string, unknown>)) {
+        await store.set(k, v);
+      }
+
+      // 2) Remove local keys that weren't in the backup
+      const currentKeys = await store.keys();
+      for (const k of currentKeys) {
+        if (!backupKeys.has(k)) {
+          await store.delete(k);
+        }
+      }
+
+      await store.save();
+      restored.push(file);
+    } catch (e) {
+      failed.push({ file, error: e instanceof Error ? e.message : String(e) });
     }
-    for (const [k, v] of Object.entries(content as Record<string, unknown>)) {
-      await store.set(k, v);
-    }
-    await store.save();
   }
+
+  return { restored, failed };
 }

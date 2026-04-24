@@ -84,4 +84,11 @@ describe("dictionary-store", () => {
     const d2 = await loadDictionary();
     expect(d2.words).not.toContain("x");
   });
+
+  it("concurrent addWord calls are not lost (mutex)", async () => {
+    const words = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    await Promise.all(words.map((w) => addWord(w)));
+    const d = await loadDictionary();
+    expect(d.words.sort()).toEqual([...words].sort());
+  });
 });

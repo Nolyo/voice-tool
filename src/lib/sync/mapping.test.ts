@@ -55,4 +55,28 @@ describe("mapping AppSettings ↔ Cloud", () => {
     expect(merged.theme).toBe("light");
     expect(merged.transcription_provider).toBe("Groq");
   });
+
+  it("applyCloudSettings falls back to local when cloud local_model is unknown", () => {
+    const local = { ...DEFAULT_SETTINGS.settings, local_model_size: "medium" as const };
+    const cloud = {
+      ui: { theme: "light" as const, language: "en" as const },
+      hotkeys: { toggle: "x", push_to_talk: "y", open_window: "z" },
+      features: { auto_paste: "cursor" as const, sound_effects: true },
+      transcription: { provider: "Local" as const, local_model: "ggml-tiny.bin" },
+    };
+    const merged = applyCloudSettings(local, cloud);
+    expect(merged.local_model_size).toBe("medium"); // fallback
+  });
+
+  it("applyCloudSettings accepts known local_model values", () => {
+    const local = { ...DEFAULT_SETTINGS.settings };
+    const cloud = {
+      ui: { theme: "light" as const, language: "en" as const },
+      hotkeys: { toggle: "x", push_to_talk: "y", open_window: "z" },
+      features: { auto_paste: "cursor" as const, sound_effects: true },
+      transcription: { provider: "Local" as const, local_model: "large-v3-turbo" },
+    };
+    const merged = applyCloudSettings(local, cloud);
+    expect(merged.local_model_size).toBe("large-v3-turbo");
+  });
 });
