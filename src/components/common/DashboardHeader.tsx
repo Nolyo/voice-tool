@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AudioVisualizer } from "./AudioVisualizer"
 import { useSettings } from "@/hooks/useSettings"
+import { useAuth } from "@/hooks/useAuth"
 import type { DashboardTabId } from "@/components/dashboard/DashboardSidebar"
 
 interface DashboardHeaderProps {
@@ -43,6 +44,7 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const { t } = useTranslation();
   const { settings } = useSettings();
+  const { status, openAuthModal } = useAuth();
   const [duration, setDuration] = useState(0);
 
   useEffect(() => {
@@ -142,6 +144,17 @@ export function DashboardHeader({
                 <Badge variant="secondary" className="ml-1 bg-white/20 text-white border-0">
                   {t('common.new')}
                 </Badge>
+              </Button>
+            )}
+
+            {status === "signed-out" && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={openAuthModal}
+                className="text-sm px-3 py-1.5"
+              >
+                {t("auth.cta.header")}
               </Button>
             )}
           </div>

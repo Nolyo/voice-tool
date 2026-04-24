@@ -18,6 +18,7 @@ import {
 import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./common/UpdateModal";
 import { OnboardingWizard } from "./OnboardingWizard";
+import { AuthModal } from "./auth/AuthModal";
 import { SelectedModelMissingBanner } from "./SelectedModelMissingBanner";
 import { useSettings } from "@/hooks/useSettings";
 import { useOnboardingCheck } from "@/hooks/useOnboardingCheck";
@@ -323,6 +324,8 @@ export default function Dashboard() {
       />
 
       {showOnboarding && <OnboardingWizard onComplete={recheckOnboarding} />}
+
+      <AuthModal />
     </div>
   );
 }
