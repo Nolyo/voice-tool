@@ -877,6 +877,16 @@
       "button": "Export my data (JSON)",
       "exporting": "Exporting…",
       "saved": "Export saved: {{path}}"
+    },
+    "delete_account": {
+      "title": "Delete my account",
+      "description": "Permanently deletes your account and all synced data (GDPR). Effective within 30 days. Your local data (API keys, local history) is not affected.",
+      "start": "Delete my account",
+      "confirm_word": "DELETE",
+      "confirm_prompt": "Type {{word}} to confirm.",
+      "confirm": "Confirm deletion",
+      "deleting": "Deleting…",
+      "submitted": "Your deletion request is registered. You've been signed out. Your data will be purged within 30 days."
     }
   }
 }

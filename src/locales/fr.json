@@ -877,6 +877,16 @@
       "button": "Exporter mes données (JSON)",
       "exporting": "Export en cours…",
       "saved": "Export sauvegardé : {{path}}"
+    },
+    "delete_account": {
+      "title": "Supprimer mon compte",
+      "description": "Supprime définitivement ton compte et toutes les données synchronisées (GDPR). Effectif sous 30 jours. Tes données locales (clés API, historique local) ne sont pas touchées.",
+      "start": "Supprimer mon compte",
+      "confirm_word": "SUPPRIMER",
+      "confirm_prompt": "Tape {{word}} pour confirmer.",
+      "confirm": "Confirmer la suppression",
+      "deleting": "Suppression en cours…",
+      "submitted": "Ta demande de suppression est enregistrée. Tu as été déconnecté. Tes données seront purgées sous 30 jours."
     }
   }
 }
