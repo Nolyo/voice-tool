@@ -830,5 +830,48 @@
       "linkExpired": "Lien invalide ou expiré. Demande-en un nouveau.",
       "generic": "Une erreur est survenue. Réessaie."
     }
+  },
+  "sync": {
+    "section_title": "Synchronisation cloud",
+    "toggle_label": "Activer la synchronisation",
+    "toggle_desc": "Retrouve ton setup (préférences, dictionnaire, snippets) sur tous tes devices.",
+    "enable": "Activer",
+    "disable": "Désactiver",
+    "sync_now": "Synchroniser maintenant",
+    "activation": {
+      "title": "Activer la synchronisation",
+      "no_local_data": "Ton setup est presque vide. La synchronisation va juste récupérer ton état cloud s'il existe, ou démarrer un nouveau profil vide côté cloud.",
+      "has_local_data": "Tu as déjà configuré Voice Tool sur ce device. Que veux-tu faire ?",
+      "choice_upload": "Uploader mon setup actuel (recommandé)",
+      "choice_upload_desc": "Tes snippets, hotkeys, dictionnaire seront envoyés au cloud et disponibles sur tes autres devices.",
+      "choice_fresh": "Partir d'un setup neuf",
+      "choice_fresh_desc": "Ton setup local sera remplacé par l'état cloud existant. Un backup est conservé localement.",
+      "api_keys_notice": "⚠️ Tes clés API (OpenAI, Groq, Google) ne sont jamais synchronisées. Tu les re-saisiras sur tes autres devices.",
+      "backup_notice": "ℹ️ Un backup local de ton état actuel est créé automatiquement dans tous les cas.",
+      "activate": "Activer",
+      "activating": "Activation…"
+    },
+    "overview": {
+      "title": "Ce qui est synchronisé",
+      "scalars": "Thème, langue, hotkeys, préférences audio, provider + modèle de transcription",
+      "snippets": "{{count}} snippet(s)",
+      "dictionary": "{{count}} mot(s) dans le dictionnaire",
+      "not_synced_disclaimer": "Les clés API, les positions de fenêtres, les modèles téléchargés restent locaux."
+    },
+    "backups": {
+      "title": "Backups locaux",
+      "empty": "Aucun backup pour l'instant.",
+      "restore": "Restaurer",
+      "confirm_restore": "Cela écrase ton état local actuel par le backup. Continuer ?",
+      "confirm_delete": "Supprimer ce backup ?",
+      "restore_ok": "Backup restauré.",
+      "restore_partial": "Backup partiellement restauré. Stores échoués : {{failed}}"
+    },
+    "status": {
+      "idle": "Tout est à jour",
+      "syncing": "Synchronisation…",
+      "offline": "Hors ligne — {{count}} modif(s) en attente",
+      "error": "Erreur de sync (clique pour réessayer)"
+    }
   }
 }

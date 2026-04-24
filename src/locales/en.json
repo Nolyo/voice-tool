@@ -830,5 +830,48 @@
       "linkExpired": "Invalid or expired link. Request a new one.",
       "generic": "An error occurred. Try again."
     }
+  },
+  "sync": {
+    "section_title": "Cloud sync",
+    "toggle_label": "Enable sync",
+    "toggle_desc": "Your preferences, dictionary and snippets follow you on every device.",
+    "enable": "Enable",
+    "disable": "Disable",
+    "sync_now": "Sync now",
+    "activation": {
+      "title": "Enable sync",
+      "no_local_data": "Your local setup is nearly empty. Sync will pull your existing cloud state, or start fresh if none exists.",
+      "has_local_data": "You already set up Voice Tool on this device. What do you want to do?",
+      "choice_upload": "Upload my current setup (recommended)",
+      "choice_upload_desc": "Your snippets, hotkeys and dictionary will be sent to the cloud and available on your other devices.",
+      "choice_fresh": "Start from a fresh setup",
+      "choice_fresh_desc": "Your local setup will be replaced by the existing cloud state. A local backup is kept anyway.",
+      "api_keys_notice": "⚠️ Your API keys (OpenAI, Groq, Google) are never synchronized. You'll re-enter them on your other devices.",
+      "backup_notice": "ℹ️ A local backup of your current state is always created before any change.",
+      "activate": "Activate",
+      "activating": "Activating…"
+    },
+    "overview": {
+      "title": "What's synchronized",
+      "scalars": "Theme, language, hotkeys, audio preferences, transcription provider + model",
+      "snippets": "{{count}} snippet(s)",
+      "dictionary": "{{count}} word(s) in dictionary",
+      "not_synced_disclaimer": "API keys, window positions, downloaded models stay local."
+    },
+    "backups": {
+      "title": "Local backups",
+      "empty": "No backup yet.",
+      "restore": "Restore",
+      "confirm_restore": "This will overwrite your current local state with the backup. Continue?",
+      "confirm_delete": "Delete this backup?",
+      "restore_ok": "Backup restored.",
+      "restore_partial": "Backup partially restored. Failed stores: {{failed}}"
+    },
+    "status": {
+      "idle": "All synced",
+      "syncing": "Syncing…",
+      "offline": "Offline — {{count}} change(s) pending",
+      "error": "Sync error (click to retry)"
+    }
   }
 }
