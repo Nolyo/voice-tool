@@ -10,6 +10,7 @@ mod logs;
 mod notes;
 mod profiles;
 mod state;
+mod sync;
 mod transcription;
 mod transcription_local;
 mod transcriptions;
@@ -125,6 +126,11 @@ pub fn run() {
             auth::clear_refresh_token,
             auth::get_or_create_device_id,
             auth::generate_oauth_state,
+            sync::write_local_backup,
+            sync::list_local_backups,
+            sync::read_local_backup,
+            sync::delete_local_backup,
+            sync::save_export_to_download,
         ])
         .setup(move |app| {
             // ─── Deep-link: subscribe to live on_open_url events ──────────────────────
