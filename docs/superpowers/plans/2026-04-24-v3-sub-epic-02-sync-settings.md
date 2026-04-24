@@ -929,7 +929,7 @@ pub async fn read_local_backup(app: AppHandle, filename: String) -> Result<Strin
     if !filename.starts_with(BACKUP_FILE_PREFIX) || !filename.ends_with(".json") {
         return Err("invalid backup filename".into());
     }
-    if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') || filename.contains('\0') {
         return Err("invalid backup filename".into());
     }
     let dir = backups_dir(&app)?;
@@ -942,7 +942,7 @@ pub async fn delete_local_backup(app: AppHandle, filename: String) -> Result<(),
     if !filename.starts_with(BACKUP_FILE_PREFIX) || !filename.ends_with(".json") {
         return Err("invalid backup filename".into());
     }
-    if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') || filename.contains('\0') {
         return Err("invalid backup filename".into());
     }
     let dir = backups_dir(&app)?;
@@ -958,8 +958,18 @@ pub async fn save_export_to_download(
     suggested_filename: String,
 ) -> Result<String, String> {
     // Sanity check filename
-    if suggested_filename.contains("..") || suggested_filename.contains('/') || suggested_filename.contains('\\') {
+    if suggested_filename.is_empty() {
+        return Err("empty filename".into());
+    }
+    if suggested_filename.contains("..")
+        || suggested_filename.contains('/')
+        || suggested_filename.contains('\\')
+        || suggested_filename.contains('\0')
+    {
         return Err("invalid filename".into());
+    }
+    if !suggested_filename.ends_with(".json") {
+        return Err("filename must end with .json".into());
     }
     let downloads = app
         .path()
