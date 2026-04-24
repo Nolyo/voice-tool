@@ -24,7 +24,7 @@ Ce dossier est l'**epic story** de la v3 de Voice Tool. Il se construit progress
 | Sous-épique | Statut spec | Statut impl | Cible |
 |---|---|---|---|
 | 00 — Threat model & fondations | ✅ Figé 2026-04-22 | 🚧 En cours (plan 2026-04-24) | Bloquant v3.0 |
-| 01 — Auth | ✅ Figé 2026-04-22 | 📝 À planifier | v3.0 |
+| 01 — Auth | ✅ Figé 2026-04-22 | ✅ Livré 2026-04-24 | v3.0 |
 | 02 — Sync settings | ✅ Figé 2026-04-22 | 📝 À planifier | v3.0 |
 | 03 — Sync notes | 📝 Stub | — | v3.1 |
 | 04 — Billing | 📝 Stub (POC fait) | — | v3.2 |

@@ -364,16 +364,16 @@ Décisions reportées au sprint v3.0, pas au niveau spec :
 
 ---
 
-## Livrables dev (découpage PRs prévu, indicatif)
+## Livrables — état (sous-épique clos 2026-04-24)
 
-1. **Supabase schema + RLS** — tables `user_devices`, `rate_limit_log`, policies, tests cross-tenant automatisés
-2. **Backend Rust** — module `auth.rs` + commandes Tauri : login, logout, refresh silent, gestion keyring, handler deep link, validation state/type
-3. **Frontend** — écrans : login (3 méthodes), signup E/P, reset password, 2FA activation, 2FA challenge, settings Compte, settings Sécurité
-4. **Page callback** `auth.<domaine-final>` — HTML/CSS/JS minimal + config Cloudflare Pages + `_headers` pour CSP + déploiement CI
-5. **Deep link** — enregistrement scheme (`tauri.conf.json`) + handler + tests E2E sur Windows/macOS/Linux
-6. **Email templates** — confirmation, magic link, reset password, nouveau device connecté (FR + EN, i18n)
-7. **Tests E2E** — flows 1 à 8 via Playwright + Tauri test driver
-8. **Documentation utilisateur** — privacy policy, mentions légales (sous-épique 00 must-have GDPR)
+1. ✅ Supabase schema + RLS — 5 migrations appliquées (user_devices, rate_limit_log, recovery_codes, new_device_trigger, account_deletion)
+2. ✅ Backend Rust — `src-tauri/src/auth.rs` + commandes keyring + deep link handler + 11 tests
+3. ✅ Frontend — 5 écrans auth + 2 onglets settings, i18n FR/EN complet
+4. ✅ Page callback — déployée Cloudflare Pages avec CSP stricte
+5. ✅ Deep link — scheme enregistré via `tauri-plugin-deep-link`
+6. ⏳ Email templates — defaults Supabase (anglais) v3.0 ; FR différé v3.x
+7. ⏳ Tests E2E — checklist manuelle `docs/v3/01-auth-e2e-checklist.md` (pas de Playwright en v3.0)
+8. ⏳ Privacy policy / mentions légales publiques — sous-épique 06
 
 ---
 

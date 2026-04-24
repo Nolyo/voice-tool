@@ -331,6 +331,19 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - `docs/v3/ops/` — bootstrap infra (Supabase, Cloudflare Pages) et checklist 2FA
 - `docs/superpowers/plans/` — plans d'implémentation (dont `2026-04-24-v3-sub-epic-00-security-foundations.md`)
 
+### V3 Auth (livré sous-épique 01)
+
+- Backend auth : `src-tauri/src/auth.rs` (keyring + oauth nonce + deep link parsing + 11 tests unitaires)
+- Deep link scheme : `voice-tool://auth/callback?type=<magiclink|oauth|signup|recovery|email_change>&...`
+- Frontend client Supabase : `src/lib/supabase.ts` (env vars `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` dans `.env.local` gitignored)
+- État global : `src/contexts/AuthContext.tsx` + `src/hooks/useAuth.ts`
+- Écrans auth : `src/components/auth/*` (AuthModal, Login, Signup, Reset×2, 2FA Challenge, 2FA Activation, RecoveryCodesPanel, AccountCTA, PasswordStrengthMeter)
+- Settings tabs : `src/components/settings/sections/AccountSection.tsx` + `SecuritySection.tsx` + `DevicesList.tsx` (visibles uniquement signed-in)
+- Pwned passwords : `src/lib/pwned-passwords.ts` + liste embarquée top-10k SHA-256 (9999 entrées)
+- Migrations Supabase : `supabase/migrations/20260501*` (user_devices, rate_limit_log, recovery_codes, new_device_trigger, account_deletion)
+- Page callback : repo séparé `voice-tool-auth-callback` déployé sur Cloudflare Pages (`voice-tool-auth-callback.pages.dev`)
+- Supabase CLI : `pnpm exec supabase <cmd>` (dev dep du projet)
+
 ## Commit and Push
 
 - Use conventional commits: - Format: `<type>: <message>`
