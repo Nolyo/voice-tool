@@ -887,6 +887,7 @@
       "confirm": "Confirmer la suppression",
       "deleting": "Suppression en cours…",
       "submitted": "Ta demande de suppression est enregistrée. Tu as été déconnecté. Tes données seront purgées sous 30 jours."
-    }
+    },
+    "multi_profile_warning": "La synchronisation couvre uniquement ton profil actif (« {{name}} »). Tes autres profils restent locaux à ce device."
   }
 }

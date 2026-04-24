@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useSync } from "@/hooks/useSync";
+import { useProfiles } from "@/contexts/ProfilesContext";
 import { supabase } from "@/lib/supabase";
 import { downloadAccountExport } from "@/lib/sync/export";
 import { SyncActivationModal } from "./SyncActivationModal";
@@ -12,6 +13,8 @@ export function AccountSection() {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const sync = useSync();
+  const { profiles, activeProfileId } = useProfiles();
+  const activeProfile = profiles.find((p) => p.id === activeProfileId);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [activationOpen, setActivationOpen] = useState(false);
@@ -110,6 +113,14 @@ export function AccountSection() {
             {sync.enabled ? t("sync.disable") : t("sync.enable")}
           </button>
         </div>
+
+        {profiles.length > 1 && sync.enabled && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+            {t("sync.multi_profile_warning", {
+              name: activeProfile?.name ?? activeProfileId,
+            })}
+          </div>
+        )}
 
         {sync.enabled && (
           <>

@@ -887,6 +887,7 @@
       "confirm": "Confirm deletion",
       "deleting": "Deleting…",
       "submitted": "Your deletion request is registered. You've been signed out. Your data will be purged within 30 days."
-    }
+    },
+    "multi_profile_warning": "Sync covers only your active profile (\"{{name}}\"). Your other profiles stay local to this device."
   }
 }
