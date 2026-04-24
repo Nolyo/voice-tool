@@ -25,10 +25,11 @@
 
 ## Follow-ups ouverts (reportés)
 
+- **SMTP custom (Resend ou Postmark)** — Supabase Free limite à ~30 emails/h sur le projet + ~3-4 `/recover` par email/h. Observé en dev (2026-04-24) : hit 429 après quelques enchaînements magic link + reset password. **Bloquant avant ouverture publique** ; permet aussi les templates FR/EN custom.
 - **Edge Function** "send-new-device-email" (sub-épique 02)
 - **Edge Function** "purge-account-deletions" cron 30j (sub-épique 02)
 - **Edge Function** rate-limit bridge (quand on consommera `check_rate_limit` depuis des endpoints custom)
-- **Email templates FR/EN** custom via SMTP Resend (v3.x)
+- **Email templates FR/EN** custom via SMTP Resend (v3.x — dépend du SMTP custom ci-dessus)
 - **Tests RLS cross-tenant** pgtap (sub-épique 02)
 - **Upgrade plan Pro** + config Sessions (Time-box 60j, Inactivity 60j) avant mise en prod publique
 - **Documentation utilisateur** (privacy policy, conditions d'utilisation) — sub-épique 06
