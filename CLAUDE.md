@@ -344,6 +344,21 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - Page callback : repo séparé `voice-tool-auth-callback` déployé sur Cloudflare Pages (`voice-tool-auth-callback.pages.dev`)
 - Supabase CLI : `pnpm exec supabase <cmd>` (dev dep du projet)
 
+### V3 Sync settings (livré sous-épique 02)
+
+- Backend Rust : `src-tauri/src/sync.rs` (commandes filesystem backups + export download)
+- Sync engine TS : `src/lib/sync/` (types, mapping, _mutex, queue, backups, merge, client, stores snippets/dictionary, schemas Zod)
+- Context : `src/contexts/SyncContext.tsx` + hook `src/hooks/useSync.ts`
+- Stores locaux : `sync-snippets.json` + `sync-dictionary.json` + `sync-queue.json` + `sync-meta.json` (Tauri Store plugin)
+- Edge Functions : `supabase/functions/sync-push/`, `supabase/functions/account-export/` (déploiement distant encore à autoriser)
+- Tables Supabase : `user_settings`, `user_dictionary_words`, `user_snippets` (migrations `20260525*`)
+- Clés settings syncées : 9 scalaires (theme, ui_language, record_hotkey, ptt_hotkey, open_window_hotkey, insertion_mode, enable_sounds, transcription_provider, local_model_size)
+- Non syncé : clés API (ADR 0003), settings hardware-dépendants, notes, historique transcriptions, autres profils
+- Tests : pgtap RLS cross-tenant (`supabase/tests/`) + Vitest unitaires (queue/merge/mapping/stores/client) = 37 tests
+- Supabase CLI : `pnpm exec supabase functions deploy sync-push` / `account-export`
+- Checklist E2E : `docs/v3/02-sync-settings-e2e-checklist.md`
+- ADR de clôture : `docs/v3/decisions/0010-sub-epic-02-closure.md`
+
 ## Commit and Push
 
 - Use conventional commits: - Format: `<type>: <message>`

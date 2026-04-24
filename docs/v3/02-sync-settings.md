@@ -1,6 +1,6 @@
 # 02 — Sync settings (étendu v3.0)
 
-> **Statut**: ✅ Figé le 2026-04-22.
+> **Statut**: ✅ Livré le 2026-04-24. Voir [ADR 0010](decisions/0010-sub-epic-02-closure.md) pour les ajustements vs spec initiale.
 > **Cible**: v3.0 (bloquant).
 > **Dépendances**: [`00-threat-model.md`](00-threat-model.md), [`01-auth.md`](01-auth.md), ADRs 0002, 0003, 0007.
 
