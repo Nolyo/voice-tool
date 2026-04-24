@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { useSync } from "@/hooks/useSync";
 import { supabase } from "@/lib/supabase";
+import { SyncActivationModal } from "./SyncActivationModal";
+import { SyncedDataOverview } from "./SyncedDataOverview";
+import { LocalBackupsList } from "./LocalBackupsList";
 
 export function AccountSection() {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
+  const sync = useSync();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [activationOpen, setActivationOpen] = useState(false);
 
   async function handleDelete() {
     if (!user) return;
@@ -64,6 +70,51 @@ export function AccountSection() {
           </div>
         )}
       </div>
+
+      <div className="pt-6 border-t space-y-4">
+        <header>
+          <h3 className="text-base font-semibold">{t("sync.section_title")}</h3>
+        </header>
+
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-medium">{t("sync.toggle_label")}</div>
+            <div className="text-xs text-muted-foreground">
+              {t("sync.toggle_desc")}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (sync.enabled) void sync.disableSync();
+              else setActivationOpen(true);
+            }}
+            className="shrink-0 px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+          >
+            {sync.enabled ? t("sync.disable") : t("sync.enable")}
+          </button>
+        </div>
+
+        {sync.enabled && (
+          <>
+            <SyncedDataOverview />
+            <button
+              type="button"
+              onClick={() => void sync.syncNow()}
+              className="px-3 py-2 rounded-md border border-input text-sm hover:bg-muted"
+            >
+              {t("sync.sync_now")}
+            </button>
+          </>
+        )}
+
+        <LocalBackupsList />
+      </div>
+
+      <SyncActivationModal
+        open={activationOpen}
+        onClose={() => setActivationOpen(false)}
+      />
     </section>
   );
 }
