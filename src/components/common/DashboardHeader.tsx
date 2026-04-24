@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AudioVisualizer } from "./AudioVisualizer"
+import { SyncStatusIndicator } from "@/components/SyncStatusIndicator"
 import { useSettings } from "@/hooks/useSettings"
 import { useAuth } from "@/hooks/useAuth"
 import type { DashboardTabId } from "@/components/dashboard/DashboardSidebar"
@@ -131,6 +132,8 @@ export function DashboardHeader({
                 )}
               </div>
             </div>
+
+            <SyncStatusIndicator />
 
             {updateAvailable && (
               <Button
