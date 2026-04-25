@@ -2,15 +2,13 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
-import { LoginView } from "./LoginView";
-import { SignupView } from "./SignupView";
+import { SignInPanel } from "./SignInPanel";
 import { ResetPasswordRequestView } from "./ResetPasswordRequestView";
 import { ResetPasswordConfirmView } from "./ResetPasswordConfirmView";
 import { TwoFactorChallengeView } from "./TwoFactorChallengeView";
 
 export type AuthView =
-  | "login"
-  | "signup"
+  | "signin"
   | "reset-request"
   | "reset-confirm"
   | "2fa-challenge";
@@ -18,7 +16,7 @@ export type AuthView =
 export function AuthModal() {
   const { t } = useTranslation();
   const { isAuthModalOpen, closeAuthModal, mfaChallenge } = useAuth();
-  const [view, setView] = useState<AuthView>("login");
+  const [view, setView] = useState<AuthView>("signin");
 
   // MFA challenge intercepts any other view.
   useEffect(() => {
@@ -32,23 +30,42 @@ export function AuthModal() {
     return () => window.removeEventListener("auth:recovery-mode", onRecovery);
   }, []);
 
-  // When the modal opens fresh (not from MFA nor recovery), default to login.
+  // When the modal opens fresh (not from MFA nor recovery), default to sign-in.
   useEffect(() => {
     if (isAuthModalOpen && !mfaChallenge && view !== "reset-confirm") {
-      setView("login");
+      setView("signin");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthModalOpen]);
 
   return (
-    <Dialog open={isAuthModalOpen} onOpenChange={(open) => { if (!open) closeAuthModal(); }}>
-      <DialogContent className="vt-app sm:max-w-md">
+    <Dialog
+      open={isAuthModalOpen}
+      onOpenChange={(open) => {
+        if (!open) closeAuthModal();
+      }}
+    >
+      <DialogContent
+        className="vt-app sm:max-w-[420px] p-0 gap-0 border-[var(--vt-border-strong)] overflow-hidden"
+        style={{ background: "oklch(0.13 0.015 264)" }}
+      >
         <DialogTitle className="sr-only">{t("auth.modal.title")}</DialogTitle>
-        {view === "login" && <LoginView onNavigate={setView} />}
-        {view === "signup" && <SignupView onNavigate={setView} />}
-        {view === "reset-request" && <ResetPasswordRequestView onNavigate={setView} />}
-        {view === "reset-confirm" && <ResetPasswordConfirmView onDone={closeAuthModal} />}
-        {view === "2fa-challenge" && <TwoFactorChallengeView />}
+        {view === "signin" && <SignInPanel onNavigate={setView} />}
+        {view === "reset-request" && (
+          <div className="p-5">
+            <ResetPasswordRequestView onNavigate={setView} />
+          </div>
+        )}
+        {view === "reset-confirm" && (
+          <div className="p-5">
+            <ResetPasswordConfirmView onDone={closeAuthModal} />
+          </div>
+        )}
+        {view === "2fa-challenge" && (
+          <div className="p-5">
+            <TwoFactorChallengeView />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -58,6 +58,7 @@ interface DashboardSidebarProps {
   ) => Promise<void>;
   activeSettingsSection: SettingsSectionId;
   onSettingsSectionChange: (id: SettingsSectionId) => void;
+  onOpenAccountPage?: () => void;
   transcriptions: Transcription[];
   logs: AppLog[];
   levelFilter: LevelFilter;
@@ -88,6 +89,7 @@ export function DashboardSidebar({
   onMoveNoteToIndex,
   activeSettingsSection,
   onSettingsSectionChange,
+  onOpenAccountPage,
   transcriptions,
   logs,
   levelFilter,
@@ -207,7 +209,10 @@ export function DashboardSidebar({
 
       {/* Profile switcher — always at the very bottom */}
       <div className="border-t border-border shrink-0 p-2">
-        <ProfileSwitcher collapsed={collapsed} />
+        <ProfileSwitcher
+          collapsed={collapsed}
+          onOpenAccountPage={onOpenAccountPage}
+        />
       </div>
     </aside>
   );

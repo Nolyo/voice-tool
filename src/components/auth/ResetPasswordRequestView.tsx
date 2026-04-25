@@ -46,7 +46,7 @@ export function ResetPasswordRequestView({ onNavigate }: { onNavigate: (v: AuthV
 
       <button
         type="button"
-        onClick={() => onNavigate("login")}
+        onClick={() => onNavigate("signin")}
         className="w-full text-xs underline"
       >
         {t("auth.signup.backToLogin")}

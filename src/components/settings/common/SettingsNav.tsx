@@ -7,9 +7,8 @@ import {
   Palette,
   RefreshCw,
   Settings,
-  ShieldCheck,
   Sparkles,
-  User,
+  UserCircle2,
   Wand2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,10 +30,9 @@ export type SettingsSectionId =
   | "section-raccourcis"
   | "section-systeme"
   | "section-mises-a-jour"
-  | "section-compte"
-  | "section-securite";
+  | "section-compte";
 
-const AUTH_ONLY_IDS = new Set<SettingsSectionId>(["section-compte", "section-securite"]);
+const AUTH_ONLY_IDS = new Set<SettingsSectionId>([]);
 
 export const NAV_ITEM_DEFS: NavItemDef[] = [
   {
@@ -95,17 +93,10 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
   },
   {
     id: "section-compte",
-    icon: <User className="w-3.5 h-3.5 text-emerald-500" />,
-    iconBg: "bg-emerald-500/10",
+    icon: <UserCircle2 className="w-3.5 h-3.5 text-cyan-400" />,
+    iconBg: "bg-cyan-500/10",
     titleKey: "auth.account.sectionTitle",
     subtitleKey: "auth.account.sectionSubtitle",
-  },
-  {
-    id: "section-securite",
-    icon: <ShieldCheck className="w-3.5 h-3.5 text-red-500" />,
-    iconBg: "bg-red-500/10",
-    titleKey: "auth.security.sectionTitle",
-    subtitleKey: "auth.security.sectionSubtitle",
   },
 ];
 
