@@ -1,7 +1,7 @@
 # Registre des traitements — Voice Tool v3
 
 > Art. 30 GDPR. **Doc interne** (pas destinée au public — la privacy policy publique est le sous-épique 06).
-> Dernière mise à jour : 2026-04-24
+> Dernière mise à jour : 2026-04-25
 
 ## Responsable du traitement
 
@@ -21,7 +21,7 @@
 | Catégories de données | Email, hash password (bcrypt), timestamp signup, timestamp dernière activité, device_id, recovery codes (si 2FA activé) |
 | Destinataires | Supabase (sous-traitant, DPA signé) |
 | Transferts hors UE | Aucun (région EU Supabase) |
-| Durée de conservation | Durée du compte + 30 jours après demande de suppression (purge effective via "Delete account") |
+| Durée de conservation | Durée du compte + 30 jours après demande de suppression (purge effective via "Delete account" — voir T07) |
 | Mesures techniques | RLS, TLS, 2FA optionnel, hash bcrypt, rate limiting, logs sans PII |
 
 ### T02 — Synchronisation settings étendus (Y3)
@@ -58,6 +58,20 @@
 | Durée de conservation | 30 jours |
 | Mesures techniques | Linter de logs à prévoir (sous-épique 01) |
 
+### T07 — Purge automatique des comptes supprimés
+
+| Champ | Valeur |
+|---|---|
+| Finalité | Honorer le droit à l'effacement (art. 17 GDPR) — supprimer définitivement les données utilisateur 30 jours après la demande |
+| Base légale | Obligation légale (art. 6.1.c GDPR) + exécution du contrat (finalisation de la résiliation) |
+| Catégories de personnes | Utilisateurs ayant demandé la suppression de leur compte |
+| Catégories de données | Toutes les données liées au `user_id` : settings, snippets, dictionnaire, devices, recovery codes, sessions, row `auth.users` |
+| Mécanisme | `pg_cron` quotidien (03:00 UTC) → Edge Function `purge-account-deletions` → `auth.admin.deleteUser(uid)` (cascade FK sur toutes les tables user). Filet de sécurité : annulation possible jusqu'à J+30 par l'utilisateur authentifié AAL2 |
+| Destinataires | Supabase (traitement interne, pas de transfert tiers) |
+| Transferts hors UE | Aucun |
+| Durée de conservation | Tombstone `account_deletion_requests` : supprimée en même temps que l'utilisateur. Logs Edge Function : 30 jours (T05) |
+| Mesures techniques | AAL2 requis pour déclencher/annuler, `signOut({ scope: 'global' })` à la demande, purge locale des caches cloud (sync stores + backups), cascade FK garantie par les contraintes DB |
+
 ### T06 — Notifications email (nouveaux devices, reset password)
 
 | Champ | Valeur |
@@ -93,3 +107,4 @@
 | Date | Modification |
 |---|---|
 | 2026-04-24 | Création du registre (sous-épique v3-00) |
+| 2026-04-25 | Ajout T07 — purge automatique 30 jours via pg_cron + Edge Function (sous-épique account-deletion) |
