@@ -21,7 +21,7 @@
 | Path | Responsibility |
 |---|---|
 | `supabase/migrations/20260501000510_account_deletion_v2.sql` | Tighten `request_account_deletion` (AAL2) + new `cancel_account_deletion` RPC |
-| `supabase/migrations/20260425000200_account_deletion_cron.sql` | `pg_cron` daily job calling the Edge Function via `net.http_post` |
+| `supabase/migrations/20260501000520_account_deletion_cron.sql` | `pg_cron` daily job calling the Edge Function via `net.http_post` |
 | `supabase/tests/account_deletion.sql` | pgtap tests for both RPCs (auth, AAL2 enforcement, RLS) |
 | `supabase/functions/purge-account-deletions/index.ts` | Edge Function: select tombstones >30d via DELETE-RETURNING, call `admin.deleteUser` per uid |
 | `supabase/functions/purge-account-deletions/test.ts` | Deno tests with mocked admin client |
@@ -400,7 +400,7 @@ git commit -m "feat: edge function purge-account-deletions"
 ### Task 4: SQL migration — schedule the cron
 
 **Files:**
-- Create: `supabase/migrations/20260425000200_account_deletion_cron.sql`
+- Create: `supabase/migrations/20260501000520_account_deletion_cron.sql`
 
 - [ ] **Step 1: Write the migration**
 
@@ -434,7 +434,7 @@ Expected: migration applies. Note: locally, `pg_cron` may not be enabled — the
 - [ ] **Step 3: Commit**
 
 ```bash
-git add supabase/migrations/20260425000200_account_deletion_cron.sql
+git add supabase/migrations/20260501000520_account_deletion_cron.sql
 git commit -m "feat: schedule daily purge-account-deletions via pg_cron"
 ```
 
