@@ -37,6 +37,10 @@ interface AuthContextValue {
   deepLinkError: string | null;
   clearDeepLinkError: () => void;
   signOut: () => Promise<void>;
+  /** Populated when a deletion request exists for the current user. */
+  deletionPending: { requestedAt: string; purgeAt: string } | null;
+  /** Refreshes the deletionPending state from the DB (used after cancel). */
+  refreshDeletionPending: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -50,6 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initialAuthMode, setInitialAuthMode] = useState<"signin" | "signup">("signin");
   const [mfaChallenge, setMfaChallenge] = useState<{ factorId: string } | null>(null);
   const [deepLinkError, setDeepLinkError] = useState<string | null>(null);
+  const [deletionPending, setDeletionPending] = useState<
+    { requestedAt: string; purgeAt: string } | null
+  >(null);
   const restoredRef = useRef(false);
   // True while a recovery deep-link is being processed: defer MFA enforcement
   // so the user can set a new password before being challenged.
@@ -80,6 +87,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus(next);
     if (next === "mfa-required") setAuthModalOpen(true);
     else setAuthModalOpen(false);
+  }
+
+  async function fetchDeletionPending(userId: string) {
+    const { data, error } = await supabase
+      .from("account_deletion_requests")
+      .select("requested_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) {
+      flog(`deletion-pending check failed: ${error.message}`, "warn");
+      return null;
+    }
+    if (!data) return null;
+    const requestedAt = data.requested_at as string;
+    const purgeAt = new Date(
+      new Date(requestedAt).getTime() + 30 * 24 * 3600 * 1000,
+    ).toISOString();
+    return { requestedAt, purgeAt };
+  }
+
+  async function refreshDeletionPending() {
+    if (!session?.user) {
+      setDeletionPending(null);
+      return;
+    }
+    const pending = await fetchDeletionPending(session.user.id);
+    setDeletionPending(pending);
   }
 
   // --- Session restore on boot ---
@@ -207,6 +241,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // --- Deletion-pending check: runs whenever signed-in status is reached ---
+  useEffect(() => {
+    if (status !== "signed-in" || !session?.user) {
+      setDeletionPending(null);
+      return;
+    }
+    void (async () => {
+      const pending = await fetchDeletionPending(session.user.id);
+      setDeletionPending(pending);
+    })();
+  }, [status, session?.user?.id]);
+
   async function upsertDevice(userId: string) {
     try {
       const fp = await invoke<string>("get_or_create_device_id");
@@ -313,9 +359,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deepLinkError,
       clearDeepLinkError: () => setDeepLinkError(null),
       signOut,
+      deletionPending,
+      refreshDeletionPending,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [status, user, session, keyringAvailable, isAuthModalOpen, initialAuthMode, mfaChallenge, deepLinkError],
+    [status, user, session, keyringAvailable, isAuthModalOpen, initialAuthMode, mfaChallenge, deepLinkError, deletionPending],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
