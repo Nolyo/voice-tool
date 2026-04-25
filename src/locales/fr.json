@@ -843,6 +843,20 @@
       "exportTitle": "Exporter mes données",
       "exportDesc": "Archive JSON conforme RGPD : préférences, snippets, dictionnaire, historique."
     },
+    "deletion_pending": {
+      "title": "Suppression de compte en attente",
+      "headline": "Tu as demandé la suppression de ton compte",
+      "requested_at": "Demande effectuée le {{date}}",
+      "purge_at": "Purge définitive prévue le {{date}}",
+      "remaining": "{{count}} jour restant",
+      "remaining_plural": "{{count}} jours restants",
+      "cancel": "Annuler la suppression",
+      "cancel_busy": "Annulation en cours…",
+      "cancel_error": "Impossible d'annuler : {{message}}",
+      "aal2_required": "Vérification 2FA requise. Termine le challenge MFA puis réessaie.",
+      "signout": "Se déconnecter",
+      "local_mode": "Continuer en mode local"
+    },
     "security": {
       "sectionTitle": "Sécurité",
       "sectionSubtitle": "Authentification à deux facteurs et appareils connectés.",
@@ -935,7 +949,8 @@
       "confirm_prompt": "Tape {{word}} pour confirmer.",
       "confirm": "Confirmer la suppression",
       "deleting": "Suppression en cours…",
-      "submitted": "Ta demande de suppression est enregistrée. Tu as été déconnecté. Tes données seront purgées sous 30 jours."
+      "submitted": "Ta demande de suppression est enregistrée. Tu as été déconnecté. Tes données seront purgées sous 30 jours.",
+      "aal2_required": "Vérification 2FA requise pour confirmer la suppression. Termine le challenge MFA puis réessaie."
     },
     "multi_profile_warning": "La synchronisation couvre uniquement ton profil actif (« {{name}} »). Tes autres profils restent locaux à ce device."
   }

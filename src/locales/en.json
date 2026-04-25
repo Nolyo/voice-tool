@@ -843,6 +843,20 @@
       "exportTitle": "Export my data",
       "exportDesc": "GDPR-compliant JSON archive: preferences, snippets, dictionary, history."
     },
+    "deletion_pending": {
+      "title": "Account deletion pending",
+      "headline": "You requested the deletion of your account",
+      "requested_at": "Requested on {{date}}",
+      "purge_at": "Final purge scheduled for {{date}}",
+      "remaining": "{{count}} day left",
+      "remaining_plural": "{{count}} days left",
+      "cancel": "Cancel deletion",
+      "cancel_busy": "Cancelling…",
+      "cancel_error": "Unable to cancel: {{message}}",
+      "aal2_required": "2FA verification required. Complete the MFA challenge and retry.",
+      "signout": "Sign out",
+      "local_mode": "Continue in local mode"
+    },
     "security": {
       "sectionTitle": "Security",
       "sectionSubtitle": "Two-factor authentication and connected devices.",
@@ -935,7 +949,8 @@
       "confirm_prompt": "Type {{word}} to confirm.",
       "confirm": "Confirm deletion",
       "deleting": "Deleting…",
-      "submitted": "Your deletion request is registered. You've been signed out. Your data will be purged within 30 days."
+      "submitted": "Your deletion request is registered. You've been signed out. Your data will be purged within 30 days.",
+      "aal2_required": "2FA verification required to confirm deletion. Complete the MFA challenge and retry."
     },
     "multi_profile_warning": "Sync covers only your active profile (\"{{name}}\"). Your other profiles stay local to this device."
   }
