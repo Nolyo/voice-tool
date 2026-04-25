@@ -86,6 +86,12 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "supabase"
-    ]
+    ],
+    "overrides": {
+      "tar@<7.5.11": ">=7.5.11 <8",
+      "picomatch@<4.0.4": ">=4.0.4 <5",
+      "vite@<7.3.2": ">=7.3.2 <8",
+      "rollup@<4.59.0": ">=4.59.0 <5"
+    }
   }
 }
