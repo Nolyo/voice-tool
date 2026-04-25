@@ -145,7 +145,7 @@ git commit -m "feat: tighten request_account_deletion AAL2 + add cancel RPC"
 
 ```sql
 begin;
-select plan(8);
+select plan(10);
 
 -- Fixture: two users
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, aud, role, instance_id)
@@ -185,11 +185,32 @@ select throws_ok($$ select public.request_account_deletion() $$, 'aal2_required'
 select tests.simulate_jwt('11111111-1111-1111-1111-111111111111', 'aal2');
 select lives_ok($$ select public.request_account_deletion() $$);
 
--- (5) cancel_account_deletion symmetry: AAL1+MFA fails
+-- (5) RLS cross-tenant SELECT: user B cannot see user A's tombstone
+select tests.simulate_jwt('22222222-2222-2222-2222-222222222222', 'aal2');
+select is(
+  (select count(*)::int from public.account_deletion_requests where user_id = '11111111-1111-1111-1111-111111111111'),
+  0,
+  'RLS: user B cannot see user A tombstone'
+);
+
+-- (6) RLS cross-tenant DELETE: user B's delete is invisible to user A's row
+delete from public.account_deletion_requests where user_id = '11111111-1111-1111-1111-111111111111';
+-- Switch to postgres to bypass RLS and verify user A's row still exists
+set local role postgres;
+select is(
+  (select count(*)::int from public.account_deletion_requests where user_id = '11111111-1111-1111-1111-111111111111'),
+  1,
+  'RLS: user B cannot delete user A tombstone'
+);
+-- Restore user A's session for the cancel tests that follow
+set local role authenticated;
+select tests.simulate_jwt('11111111-1111-1111-1111-111111111111', 'aal2');
+
+-- (7) cancel_account_deletion symmetry: AAL1+MFA fails
 select tests.simulate_jwt('11111111-1111-1111-1111-111111111111', 'aal1');
 select throws_ok($$ select public.cancel_account_deletion() $$, 'aal2_required');
 
--- (6) cancel_account_deletion at AAL2 deletes own row
+-- (8) cancel_account_deletion at AAL2 deletes own row
 select tests.simulate_jwt('11111111-1111-1111-1111-111111111111', 'aal2');
 select lives_ok($$ select public.cancel_account_deletion() $$);
 select is(
@@ -205,7 +226,7 @@ rollback;
 - [ ] **Step 2: Run tests to verify they fail (function not yet applied if you reset)**
 
 Run: `pnpm exec supabase db test`
-Expected: 8/8 pass (the migration from Task 1 is loaded by `db reset`). If they fail with "function does not exist", run `pnpm exec supabase db reset` first to apply Task 1's migration.
+Expected: 10/10 pass (the migration from Task 1 is loaded by `db reset`). If they fail with "function does not exist", run `pnpm exec supabase db reset` first to apply Task 1's migration.
 
 - [ ] **Step 3: Commit**
 
