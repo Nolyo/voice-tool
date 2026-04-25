@@ -60,3 +60,4 @@ end;
 $$;
 
 grant execute on function public.cancel_account_deletion() to authenticated;
+grant execute on function public.request_account_deletion() to authenticated;
