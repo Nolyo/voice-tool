@@ -140,6 +140,33 @@ pub async fn delete_local_backup(app: AppHandle, filename: String) -> Result<(),
 }
 
 #[tauri::command]
+pub async fn delete_all_local_backups(app: AppHandle) -> Result<u32, String> {
+    let dir = backups_dir(&app)?;
+    let mut deleted: u32 = 0;
+    for entry in fs::read_dir(&dir).map_err(|e| format!("cannot read backups dir: {}", e))? {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let path = entry.path();
+        let name = match path.file_name() {
+            Some(n) => n.to_string_lossy().to_string(),
+            None => continue,
+        };
+        if !name.starts_with(BACKUP_FILE_PREFIX) || !name.ends_with(".json") {
+            continue;
+        }
+        if let Err(e) = fs::remove_file(&path) {
+            warn!("failed to remove backup {:?}: {}", path, e);
+            continue;
+        }
+        deleted += 1;
+    }
+    info!("delete_all_local_backups removed {} files", deleted);
+    Ok(deleted)
+}
+
+#[tauri::command]
 pub async fn save_export_to_download(
     app: AppHandle,
     payload_json: String,

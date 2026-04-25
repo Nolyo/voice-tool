@@ -138,6 +138,7 @@ pub fn run() {
             sync::list_local_backups,
             sync::read_local_backup,
             sync::delete_local_backup,
+            sync::delete_all_local_backups,
             sync::save_export_to_download,
         ])
         .setup(move |app| {
