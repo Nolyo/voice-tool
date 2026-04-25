@@ -4,16 +4,16 @@ import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { supabase, AUTH_CALLBACK_URL } from "@/lib/supabase";
 import { isPwnedPassword } from "@/lib/pwned-passwords";
-import { useAuth } from "@/hooks/useAuth";
 import { VtIcon } from "@/components/settings/vt";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 import type { AuthView } from "./AuthModal";
 
+type Mode = "signin" | "signup";
+
 interface Props {
   onNavigate: (v: AuthView) => void;
+  initialMode?: Mode;
 }
-
-type Mode = "signin" | "signup";
 type Method = "magic" | "password";
 type Step = "form" | "sent";
 
@@ -61,27 +61,11 @@ const LockIcon = () => (
   </svg>
 );
 
-const CloseIcon = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <line x1="18" y1="6" x2="6" y2="18" />
-    <line x1="6" y1="6" x2="18" y2="18" />
-  </svg>
-);
-
-export function SignInPanel({ onNavigate }: Props) {
+export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
   const { t } = useTranslation();
-  const { closeAuthModal } = useAuth();
-  const [mode, setMode] = useState<Mode>("signin");
-  const [method, setMethod] = useState<Method>("magic");
+  const [mode, setMode] = useState<Mode>(initialMode);
+  // Signup always uses password — magic-link only makes sense for sign-in.
+  const [method, setMethod] = useState<Method>(initialMode === "signup" ? "password" : "magic");
   const [step, setStep] = useState<Step>("form");
 
   const [email, setEmail] = useState("");
@@ -194,37 +178,27 @@ export function SignInPanel({ onNavigate }: Props) {
   return (
     <div className="flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{
-              background: "oklch(from var(--vt-accent) l c h / 0.18)",
-              color: "var(--vt-accent-2)",
-              boxShadow: "inset 0 0 0 1px oklch(from var(--vt-accent) l c h / 0.35)",
-            }}
-          >
-            <VtIcon.mic />
+      <div className="flex items-center gap-2.5 px-5 pt-5 pb-3 pr-12">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+          style={{
+            background: "oklch(from var(--vt-accent) l c h / 0.18)",
+            color: "var(--vt-accent-2)",
+            boxShadow: "inset 0 0 0 1px oklch(from var(--vt-accent) l c h / 0.35)",
+          }}
+        >
+          <VtIcon.mic />
+        </div>
+        <div className="min-w-0">
+          <div className="text-[14px] font-semibold tracking-tight">
+            {mode === "signup"
+              ? t("auth.signup.title")
+              : t("auth.login.title")}
           </div>
-          <div>
-            <div className="text-[14px] font-semibold tracking-tight">
-              {mode === "signup"
-                ? t("auth.signup.title")
-                : t("auth.login.title")}
-            </div>
-            <div className="text-[11.5px]" style={{ color: "var(--vt-fg-3)" }}>
-              {t("auth.login.subtitle")}
-            </div>
+          <div className="text-[11.5px]" style={{ color: "var(--vt-fg-3)" }}>
+            {t("auth.login.subtitle")}
           </div>
         </div>
-        <button
-          onClick={closeAuthModal}
-          className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[var(--vt-surface)]"
-          style={{ color: "var(--vt-fg-3)" }}
-          aria-label={t("auth.modal.close")}
-        >
-          <CloseIcon />
-        </button>
       </div>
 
       {step === "sent" ? (

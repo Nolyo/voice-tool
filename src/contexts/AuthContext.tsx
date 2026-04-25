@@ -20,7 +20,9 @@ interface AuthContextValue {
   keyringAvailable: boolean;
   /** Opened when the user clicks the "Sign in" CTA. */
   isAuthModalOpen: boolean;
-  openAuthModal: () => void;
+  /** Initial tab to show in the auth modal ("signin" | "signup"). */
+  initialAuthMode: "signin" | "signup";
+  openAuthModal: (mode?: "signin" | "signup") => void;
   closeAuthModal: () => void;
   /** Signals an MFA challenge is pending (set by login flows). */
   mfaChallenge: { factorId: string } | null;
@@ -38,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [keyringAvailable, setKeyringAvailable] = useState(true);
   const [isAuthModalOpen, setAuthModalOpen] = useState(false);
+  const [initialAuthMode, setInitialAuthMode] = useState<"signin" | "signup">("signin");
   const [mfaChallenge, setMfaChallenge] = useState<{ factorId: string } | null>(null);
   const restoredRef = useRef(false);
   // True while a recovery deep-link is being processed: defer MFA enforcement
@@ -241,7 +244,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       keyringAvailable,
       isAuthModalOpen,
-      openAuthModal: () => setAuthModalOpen(true),
+      initialAuthMode,
+      openAuthModal: (mode = "signin") => {
+        setInitialAuthMode(mode);
+        setAuthModalOpen(true);
+      },
       closeAuthModal: () => setAuthModalOpen(false),
       mfaChallenge,
       setMfaChallenge,
@@ -249,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [status, user, session, keyringAvailable, isAuthModalOpen, mfaChallenge],
+    [status, user, session, keyringAvailable, isAuthModalOpen, initialAuthMode, mfaChallenge],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

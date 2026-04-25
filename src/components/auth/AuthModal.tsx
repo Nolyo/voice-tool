@@ -15,7 +15,7 @@ export type AuthView =
 
 export function AuthModal() {
   const { t } = useTranslation();
-  const { isAuthModalOpen, closeAuthModal, mfaChallenge } = useAuth();
+  const { isAuthModalOpen, closeAuthModal, mfaChallenge, initialAuthMode } = useAuth();
   const [view, setView] = useState<AuthView>("signin");
 
   // MFA challenge intercepts any other view.
@@ -50,7 +50,9 @@ export function AuthModal() {
         style={{ background: "oklch(0.13 0.015 264)" }}
       >
         <DialogTitle className="sr-only">{t("auth.modal.title")}</DialogTitle>
-        {view === "signin" && <SignInPanel onNavigate={setView} />}
+        {view === "signin" && (
+          <SignInPanel onNavigate={setView} initialMode={initialAuthMode} />
+        )}
         {view === "reset-request" && (
           <div className="p-5">
             <ResetPasswordRequestView onNavigate={setView} />
