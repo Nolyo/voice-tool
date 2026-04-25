@@ -20,7 +20,7 @@
 
 | Path | Responsibility |
 |---|---|
-| `supabase/migrations/20260425000100_account_deletion_v2.sql` | Tighten `request_account_deletion` (AAL2) + new `cancel_account_deletion` RPC |
+| `supabase/migrations/20260501000510_account_deletion_v2.sql` | Tighten `request_account_deletion` (AAL2) + new `cancel_account_deletion` RPC |
 | `supabase/migrations/20260425000200_account_deletion_cron.sql` | `pg_cron` daily job calling the Edge Function via `net.http_post` |
 | `supabase/tests/account_deletion.sql` | pgtap tests for both RPCs (auth, AAL2 enforcement, RLS) |
 | `supabase/functions/purge-account-deletions/index.ts` | Edge Function: select tombstones >30d via DELETE-RETURNING, call `admin.deleteUser` per uid |
@@ -53,7 +53,7 @@
 ### Task 1: SQL migration — tighten `request_account_deletion` + add `cancel_account_deletion`
 
 **Files:**
-- Create: `supabase/migrations/20260425000100_account_deletion_v2.sql`
+- Create: `supabase/migrations/20260501000510_account_deletion_v2.sql`
 
 - [ ] **Step 1: Write the migration**
 
@@ -125,12 +125,12 @@ grant execute on function public.cancel_account_deletion() to authenticated;
 - [ ] **Step 2: Apply locally to verify SQL syntax**
 
 Run: `pnpm exec supabase db reset`
-Expected: migration applies without error, output shows `applying migration ... 20260425000100_account_deletion_v2.sql`. If it errors on `auth.mfa_factors`, the table is `auth.mfa_factors` in Supabase by default — confirm via `\d auth.mfa_factors` in Studio.
+Expected: migration applies without error, output shows `applying migration ... 20260501000510_account_deletion_v2.sql`. If it errors on `auth.mfa_factors`, the table is `auth.mfa_factors` in Supabase by default — confirm via `\d auth.mfa_factors` in Studio.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add supabase/migrations/20260425000100_account_deletion_v2.sql
+git add supabase/migrations/20260501000510_account_deletion_v2.sql
 git commit -m "feat: tighten request_account_deletion AAL2 + add cancel RPC"
 ```
 
