@@ -30,9 +30,18 @@ export function DangerCard() {
         throw rpcError;
       }
       await purgeLocalCloudData();
-      await supabase.auth.signOut({ scope: "global" });
-      // signOut will flip status to "signed-out"; the modal closes naturally.
+      // Show confirmation BEFORE sign-out so the alert renders while the
+      // component is still mounted. Tolerate signOut failures: the tombstone
+      // is committed, local data is purged, the user is effectively logged
+      // out from this device's perspective. A signOut network blip should
+      // not surface as an error.
       alert(t("sync.delete_account.submitted"));
+      try {
+        await supabase.auth.signOut({ scope: "global" });
+      } catch {
+        // ignore: tombstone is committed, local purge done, AuthContext
+        // will eventually clear when session refresh fails.
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -91,6 +100,7 @@ export function DangerCard() {
                 {t("sync.delete_account.confirm_prompt", { word: confirmWord })}
               </p>
               <input
+                aria-label={t("sync.delete_account.confirm_prompt", { word: confirmWord })}
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
                 placeholder={confirmWord}

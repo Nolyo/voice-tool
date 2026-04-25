@@ -8,6 +8,15 @@ const STORES = [
   "sync-meta.json",
 ] as const;
 
+/**
+ * Wipes all cloud-derived caches on disk: sync stores (snippets, dictionary,
+ * queue, meta) and local backup dumps. Local-only data (transcriptions,
+ * recordings, hardware-bound settings) is intentionally preserved.
+ *
+ * Errors are silently swallowed by design: this is a best-effort cleanup
+ * that runs after the authoritative server-side tombstone has been
+ * committed. A failed local cleanup must not block the deletion flow.
+ */
 export async function purgeLocalCloudData(): Promise<void> {
   for (const file of STORES) {
     try {
