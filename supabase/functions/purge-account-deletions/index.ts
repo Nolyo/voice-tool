@@ -31,23 +31,41 @@ function realDeps(): Deps {
 }
 
 export async function handler(req: Request, deps: Deps): Promise<Response> {
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "method not allowed" }), { status: 405 });
+  }
+
   const auth = req.headers.get("Authorization") ?? "";
   if (auth !== `Bearer ${deps.cronSecret}`) {
     return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
   }
 
   const start = performance.now();
-  const uids = await deps.selectExpired();
+  let uids: string[];
+  try {
+    uids = await deps.selectExpired();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.log(JSON.stringify({ event: "purge_run_error", phase: "selectExpired", message }));
+    return new Response(JSON.stringify({ error: "selectExpired failed", message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   const errors: Array<{ uid: string; message: string }> = [];
   let purged = 0;
 
   for (const uid of uids) {
-    const { error } = await deps.deleteUser(uid);
-    if (error) {
-      errors.push({ uid, message: error.message });
-      continue;
+    try {
+      const { error } = await deps.deleteUser(uid);
+      if (error) {
+        errors.push({ uid, message: error.message });
+      } else {
+        purged++;
+      }
+    } catch (err: unknown) {
+      errors.push({ uid, message: err instanceof Error ? err.message : String(err) });
     }
-    purged++;
   }
 
   const duration_ms = Math.round(performance.now() - start);
