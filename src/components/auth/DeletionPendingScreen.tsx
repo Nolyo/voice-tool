@@ -114,7 +114,11 @@ export function DeletionPendingScreen() {
             </span>
           </p>
           {error && (
-            <p className="text-[12px]" style={{ color: "var(--vt-danger)" }}>
+            <p
+              role="alert"
+              className="text-[12px]"
+              style={{ color: "var(--vt-danger)" }}
+            >
               {error}
             </p>
           )}
@@ -124,6 +128,14 @@ export function DeletionPendingScreen() {
           className="px-6 py-4 flex flex-wrap items-center gap-2 justify-end"
           style={{ borderTop: "1px solid var(--vt-border)" }}
         >
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            disabled={busy}
+            className="vt-btn"
+          >
+            {t("auth.deletion_pending.local_mode")}
+          </button>
           <button
             type="button"
             onClick={() => void signOut()}
