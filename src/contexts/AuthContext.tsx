@@ -247,10 +247,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDeletionPending(null);
       return;
     }
+    let cancelled = false;
     void (async () => {
       const pending = await fetchDeletionPending(session.user.id);
-      setDeletionPending(pending);
+      if (!cancelled) setDeletionPending(pending);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [status, session?.user?.id]);
 
   async function upsertDevice(userId: string) {
