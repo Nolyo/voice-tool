@@ -15,7 +15,14 @@ export type AuthView =
 
 export function AuthModal() {
   const { t } = useTranslation();
-  const { isAuthModalOpen, closeAuthModal, mfaChallenge, initialAuthMode } = useAuth();
+  const {
+    isAuthModalOpen,
+    closeAuthModal,
+    mfaChallenge,
+    initialAuthMode,
+    deepLinkError,
+    clearDeepLinkError,
+  } = useAuth();
   const [view, setView] = useState<AuthView>("signin");
 
   // MFA challenge intercepts any other view.
@@ -50,6 +57,34 @@ export function AuthModal() {
         style={{ background: "oklch(0.13 0.015 264)" }}
       >
         <DialogTitle className="sr-only">{t("auth.modal.title")}</DialogTitle>
+        {deepLinkError && (
+          <div
+            role="alert"
+            className="mx-5 mt-4 rounded-md p-3 text-[12px] flex items-start gap-2"
+            style={{
+              background: "var(--vt-danger-soft)",
+              border: "1px solid oklch(from var(--vt-danger) l c h / 0.35)",
+              color: "var(--vt-danger)",
+            }}
+          >
+            <span className="font-semibold shrink-0">
+              {t("auth.modal.deepLinkErrorTitle", {
+                defaultValue: "Échec de la connexion",
+              })}
+            </span>
+            <span className="vt-mono break-all min-w-0" style={{ color: "var(--vt-fg-2)" }}>
+              {deepLinkError}
+            </span>
+            <button
+              type="button"
+              onClick={clearDeepLinkError}
+              className="ml-auto shrink-0 underline"
+              style={{ color: "var(--vt-fg-3)" }}
+            >
+              {t("common.dismiss", { defaultValue: "Fermer" })}
+            </button>
+          </div>
+        )}
         {view === "signin" && (
           <SignInPanel onNavigate={setView} initialMode={initialAuthMode} />
         )}

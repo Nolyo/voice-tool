@@ -22,6 +22,9 @@ pub struct AuthState {
     pub memory_fallback_refresh_token: Option<String>,
     /// Whether the OS keyring was reachable on the last write attempt.
     pub keyring_available: bool,
+    /// Last deep-link payload captured before the frontend listener was ready.
+    /// Drained by the frontend on AuthProvider mount via `consume_pending_deep_link`.
+    pub pending_deep_link: Option<DeepLinkPayload>,
 }
 
 impl AuthState {
@@ -30,6 +33,7 @@ impl AuthState {
             pending_oauth_states: Vec::new(),
             memory_fallback_refresh_token: None,
             keyring_available: true,
+            pending_deep_link: None,
         }
     }
 }
@@ -71,6 +75,7 @@ fn delete_keyring(account: &str) -> Result<(), String> {
 /// Removes `nonce` from the pending list if present and returns `true`.
 /// Returns `false` if the nonce was not found (already consumed or never issued).
 /// NOT exposed as a Tauri command — called from Rust's deep-link handler only.
+#[allow(dead_code)]
 pub fn consume_nonce_from_state<R: Runtime>(app: &AppHandle<R>, nonce: &str) -> bool {
     let state = app.state::<AppState>();
     let mut auth = state.auth.lock().unwrap();
@@ -99,37 +104,51 @@ const WHITELIST_TYPES: &[&str] = &["magiclink", "oauth", "signup", "recovery", "
 
 /// Entry point called from lib.rs deep-link handlers.
 /// NEVER logs the token — only the validity flag + reason.
+///
+/// Two delivery paths:
+///   1. Live: `app.emit` to the webview (works when the listener is already mounted).
+///   2. Buffered: stored in `AuthState.pending_deep_link` so a freshly-mounting
+///      AuthProvider can drain it via `consume_pending_deep_link`.
+/// Cold-start (URL fires before the webview is ready) only path 2 works.
 pub fn emit_deep_link_event<R: Runtime>(app: &AppHandle<R>, url: &str) {
-    let payload = parse_and_validate_deep_link(url, app);
-    info!(valid = payload.valid, reason = ?payload.reason, "deep link received");
-    if let Err(e) = app.emit("auth-deep-link-received", &payload) {
-        warn!("failed to emit auth-deep-link-received: {}", e);
+    let payload = parse_and_validate_deep_link(url);
+    let type_seen = payload.params.get("type").cloned().unwrap_or_else(|| "<none>".to_string());
+    info!(
+        "deep link received (valid={}, type={}, reason={:?}, param_keys={:?})",
+        payload.valid,
+        type_seen,
+        payload.reason,
+        payload.params.keys().collect::<Vec<_>>(),
+    );
+
+    // Store for cold-start drain (overwrites any earlier unconsumed payload).
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(mut auth) = state.auth.lock() {
+            auth.pending_deep_link = Some(payload.clone());
+        } else {
+            warn!("auth state mutex poisoned, cannot buffer deep link");
+        }
+    } else {
+        warn!("AppState not yet managed, cannot buffer deep link");
+    }
+
+    match app.emit("auth-deep-link-received", &payload) {
+        Ok(()) => info!("auth-deep-link-received emitted to webview"),
+        Err(e) => warn!("failed to emit auth-deep-link-received: {}", e),
     }
 }
 
-/// Parse URL, run pure-shape validation, THEN validate OAuth nonce with app state.
-fn parse_and_validate_deep_link<R: Runtime>(url: &str, app: &AppHandle<R>) -> DeepLinkPayload {
+/// Parse URL, run pure-shape validation. CSRF protection for OAuth comes from
+/// Supabase's PKCE flow (code_verifier in memory storage) — no custom nonce needed.
+fn parse_and_validate_deep_link(url: &str) -> DeepLinkPayload {
     match validate_url_shape(url) {
         Err(reason) => invalid(url, reason),
-        Ok(params) => {
-            // OAuth only: also validate and consume the state nonce.
-            if params.get("type").map(|s| s.as_str()) == Some("oauth") {
-                match params.get("state") {
-                    None => return invalid(url, "missing state for oauth"),
-                    Some(nonce) => {
-                        if !consume_nonce_from_state(app, nonce) {
-                            return invalid(url, "unknown or replayed state nonce");
-                        }
-                    }
-                }
-            }
-            DeepLinkPayload {
-                url: url.to_string(),
-                params,
-                valid: true,
-                reason: None,
-            }
-        }
+        Ok(params) => DeepLinkPayload {
+            url: url.to_string(),
+            params,
+            valid: true,
+            reason: None,
+        },
     }
 }
 
@@ -181,6 +200,7 @@ pub fn store_refresh_token(
     token: String,
     state: State<'_, AppState>,
 ) -> Result<KeyringStatus, String> {
+    info!("store_refresh_token called (token_len={})", token.len());
     let mut auth = state.auth.lock().unwrap();
 
     match write_keyring(KEYRING_ACCOUNT_REFRESH_TOKEN, &token) {
@@ -263,6 +283,20 @@ pub fn get_or_create_device_id() -> Result<String, String> {
     }
 
     Ok(new_id)
+}
+
+/// Drain and return any deep-link payload buffered before the frontend was ready.
+/// Returns `None` if nothing is pending. Called by AuthProvider on mount to
+/// recover from cold-start races (URL captured by Rust before React listener
+/// registered).
+#[tauri::command]
+pub fn consume_pending_deep_link(state: State<'_, AppState>) -> Result<Option<DeepLinkPayload>, String> {
+    let mut auth = state.auth.lock().map_err(|e| e.to_string())?;
+    let payload = auth.pending_deep_link.take();
+    if payload.is_some() {
+        info!("pending deep link drained by frontend");
+    }
+    Ok(payload)
 }
 
 /// Generate a UUID v4 OAuth state nonce and add it to the pending list.
@@ -378,7 +412,6 @@ mod tests {
 
     #[test]
     fn validate_url_shape_accepts_valid_oauth_with_state() {
-        // OAuth state validation happens later via consume_nonce_from_state, not here.
         let result = validate_url_shape(
             "voice-tool://auth/callback?type=oauth&code=abc123&state=nonce-uuid"
         );

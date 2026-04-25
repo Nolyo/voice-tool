@@ -4,6 +4,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { supabase } from "@/lib/supabase";
 
+function flog(message: string, level: "info" | "warn" | "error" = "info") {
+  invoke("frontend_log", { level, message }).catch(() => {});
+}
+
 export type AuthStatus = "loading" | "signed-out" | "signed-in" | "mfa-required";
 
 export interface DeepLinkPayload {
@@ -29,6 +33,9 @@ interface AuthContextValue {
   setMfaChallenge: (c: { factorId: string } | null) => void;
   /** Re-evaluates AAL and prompts MFA if needed. Called after recovery flows complete. */
   reevaluateMfa: () => Promise<void>;
+  /** Last deep-link auth error (e.g. PKCE verifier missing, code expired). */
+  deepLinkError: string | null;
+  clearDeepLinkError: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -42,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthModalOpen, setAuthModalOpen] = useState(false);
   const [initialAuthMode, setInitialAuthMode] = useState<"signin" | "signup">("signin");
   const [mfaChallenge, setMfaChallenge] = useState<{ factorId: string } | null>(null);
+  const [deepLinkError, setDeepLinkError] = useState<string | null>(null);
   const restoredRef = useRef(false);
   // True while a recovery deep-link is being processed: defer MFA enforcement
   // so the user can set a new password before being challenged.
@@ -115,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // --- Persist each rotation + react to auth events ---
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, next) => {
+      flog(`onAuthStateChange event=${event} hasSession=${!!next}`);
       setSession(next);
       setUser(next?.user ?? null);
       if (event === "TOKEN_REFRESHED" && next?.refresh_token) {
@@ -134,27 +143,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // it will call reevaluateMfa() on success.
           deferMfaRef.current = false;
           setStatus("signed-in");
+          flog("SIGNED_IN: deferred-mfa branch, status=signed-in");
           return;
         }
-        const status = await evaluateMfa();
-        setStatus(status);
-        if (status === "signed-in") setAuthModalOpen(false);
-        else setAuthModalOpen(true);
+        // Defer all supabase.auth.* calls: SIGNED_IN may be fired from inside
+        // exchangeCodeForSession, which holds GoTrueClient's internal lock.
+        // Calling getSession()/mfa.* here would re-enter the lock and deadlock
+        // (the queued operation waits for the outer exchange which waits for
+        // this subscriber). setTimeout(0) lets the lock release first.
+        setTimeout(() => {
+          void (async () => {
+            const status = await evaluateMfa();
+            setStatus(status);
+            flog(`SIGNED_IN: evaluateMfa=${status} (deferred)`);
+            if (status === "signed-in") setAuthModalOpen(false);
+            else setAuthModalOpen(true);
+          })();
+        }, 0);
       }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
 
   // --- Deep link listener (emitted from Rust) ---
+  // Two delivery paths covered:
+  //   1. Live: `auth-deep-link-received` event from Rust.
+  //   2. Buffered: `consume_pending_deep_link` Tauri command — drains a payload
+  //      that fired before this listener mounted (cold-start race).
   useEffect(() => {
-    const p = listen<DeepLinkPayload>("auth-deep-link-received", async (ev) => {
-      const payload = ev.payload;
+    async function processPayload(payload: DeepLinkPayload, source: "live" | "buffered") {
+      flog(
+        `processPayload source=${source} valid=${payload.valid} type=${payload.params.type ?? "<none>"} hasCode=${!!payload.params.code} hasAccessToken=${!!payload.params.access_token}`,
+      );
       if (!payload.valid) {
         console.warn("invalid deep link", payload.reason);
+        setDeepLinkError(payload.reason ?? "invalid deep link");
         return;
       }
       await handleAuthDeepLink(payload);
+    }
+
+    const p = listen<DeepLinkPayload>("auth-deep-link-received", (ev) => {
+      flog("listener received auth-deep-link-received event");
+      void processPayload(ev.payload, "live");
     });
+
+    // Drain anything captured before mount.
+    invoke<DeepLinkPayload | null>("consume_pending_deep_link")
+      .then((pending) => {
+        if (pending) {
+          flog("consume_pending_deep_link returned a payload, draining");
+          void processPayload(pending, "buffered");
+        } else {
+          flog("consume_pending_deep_link returned null (no buffered payload)");
+        }
+      })
+      .catch((e) => {
+        flog(`consume_pending_deep_link failed: ${String(e)}`, "warn");
+      });
+
     return () => {
       p.then((unlisten) => unlisten());
     };
@@ -188,10 +235,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (type === "recovery") deferMfaRef.current = true;
     try {
       if (code) {
-        // PKCE flow (flowType: "pkce" in supabase client). Covers magic link,
-        // signup, recovery, and OAuth — all come back with `?code=...`.
+        flog("handleAuthDeepLink: calling exchangeCodeForSession");
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) throw error;
+        if (error) {
+          flog(`exchangeCodeForSession error: ${error.message}`, "error");
+          throw error;
+        }
+        flog(
+          `exchangeCodeForSession ok hasSession=${!!data.session} hasRefreshToken=${!!data.session?.refresh_token}`,
+        );
         if (data.session?.refresh_token) {
           const res = await invoke<{ available: boolean }>("store_refresh_token", {
             token: data.session.refresh_token,
@@ -219,9 +271,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAuthModalOpen(true);
           window.dispatchEvent(new CustomEvent("auth:recovery-mode"));
         }
+      } else {
+        throw new Error("deep link has neither code nor token pair");
       }
     } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
       console.error("deep link exchange failed", e);
+      setDeepLinkError(message);
+      setAuthModalOpen(true);
     }
   }
 
@@ -253,10 +310,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mfaChallenge,
       setMfaChallenge,
       reevaluateMfa,
+      deepLinkError,
+      clearDeepLinkError: () => setDeepLinkError(null),
       signOut,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [status, user, session, keyringAvailable, isAuthModalOpen, initialAuthMode, mfaChallenge],
+    [status, user, session, keyringAvailable, isAuthModalOpen, initialAuthMode, mfaChallenge, deepLinkError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

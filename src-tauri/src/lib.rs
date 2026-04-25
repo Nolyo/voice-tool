@@ -30,6 +30,12 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            let has_deep_link = args.iter().any(|a| a.starts_with("voice-tool://"));
+            tracing::info!(
+                "single_instance fired (arg_count={}, has_deep_link={})",
+                args.len(),
+                has_deep_link
+            );
             // ─── NEW: route deep-link args to auth handler ────────────────────────────
             if let Some(url) = args.iter().find(|a| a.starts_with("voice-tool://")) {
                 auth::emit_deep_link_event(app, url);
@@ -72,6 +78,7 @@ pub fn run() {
             commands::transcription::load_recording,
             commands::misc::paste_text_to_active_window,
             commands::misc::type_text_at_cursor,
+            commands::misc::frontend_log,
             updater::check_for_updates,
             updater::download_and_install_update,
             updater::is_updater_available,
@@ -126,6 +133,7 @@ pub fn run() {
             auth::clear_refresh_token,
             auth::get_or_create_device_id,
             auth::generate_oauth_state,
+            auth::consume_pending_deep_link,
             sync::write_local_backup,
             sync::list_local_backups,
             sync::read_local_backup,
@@ -137,7 +145,9 @@ pub fn run() {
             use tauri_plugin_deep_link::DeepLinkExt;
             let handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
-                for url in event.urls() {
+                let urls: Vec<_> = event.urls().into_iter().collect();
+                tracing::info!("on_open_url fired (url_count={})", urls.len());
+                for url in urls {
                     let s = url.as_str();
                     if s.starts_with("voice-tool://") {
                         auth::emit_deep_link_event(&handle, s);

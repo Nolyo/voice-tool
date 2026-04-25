@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { supabase, AUTH_CALLBACK_URL } from "@/lib/supabase";
 import { isPwnedPassword } from "@/lib/pwned-passwords";
@@ -136,13 +135,11 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
     setError(null);
     setLoading(true);
     try {
-      const nonce = await invoke<string>("generate_oauth_state");
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: AUTH_CALLBACK_URL,
           queryParams: {
-            state: nonce,
             access_type: "offline",
             prompt: "consent",
           },
