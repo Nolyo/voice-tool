@@ -116,6 +116,7 @@ export interface PushResponse {
   results: Array<{ index: number; ok: boolean; error?: string }>;
   error?: string;
   quota_bytes?: number;
+  status?: number;
 }
 
 export async function pushOperations(
@@ -126,11 +127,43 @@ export async function pushOperations(
     body: { operations, device_id: deviceId },
   });
   if (error) {
-    // Le Functions client throw sur status >= 400, capturer proprement :
+    // FunctionsHttpError exposes the Response in error.context (>= 400).
+    const ctx = (error as { context?: Response }).context;
+    let status: number | undefined;
+    let body: unknown = undefined;
+    if (ctx && typeof ctx === "object" && "status" in ctx) {
+      status = (ctx as Response).status;
+      try {
+        body = await (ctx as Response).clone().json();
+      } catch {
+        body = undefined;
+      }
+    }
+    if (
+      body &&
+      typeof body === "object" &&
+      "error" in (body as Record<string, unknown>)
+    ) {
+      const b = body as {
+        error?: string;
+        quota_bytes?: number;
+        current_bytes?: number;
+        results?: Array<{ index: number; ok: boolean; error?: string }>;
+      };
+      return {
+        ok: false,
+        error: b.error ?? error.message,
+        results: b.results ?? [],
+        quota_bytes: b.quota_bytes,
+        current_bytes: b.current_bytes,
+        status,
+      };
+    }
     return {
       ok: false,
       error: error.message,
       results: [],
+      status,
     };
   }
   const parsed = PushResponseSchema.safeParse(data);

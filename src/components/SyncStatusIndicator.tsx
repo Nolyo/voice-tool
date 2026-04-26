@@ -10,6 +10,7 @@ const TOOLTIP_KEY: Record<SyncStatus, string> = {
   syncing: "sync.status.syncing",
   offline: "sync.status.offline",
   error: "sync.status.error",
+  "quota-exceeded": "sync.quotaExceeded.title",
 };
 
 export function SyncStatusIndicator() {
@@ -44,6 +45,10 @@ export function SyncStatusIndicator() {
     case "error":
       icon = <AlertTriangle className="w-4 h-4" />;
       colorClass = "text-destructive";
+      break;
+    case "quota-exceeded":
+      icon = <AlertTriangle className="w-4 h-4" />;
+      colorClass = "text-amber-500";
       break;
   }
 

@@ -4,6 +4,9 @@ import { createMutex } from "./_mutex";
 
 const STORE_FILE = "sync-queue.json";
 const KEY_QUEUE = "queue";
+const KEY_DLQ = "dead-letters";
+
+export const MAX_RETRIES_BEFORE_DLQ = 5;
 
 let storePromise: Promise<Awaited<ReturnType<typeof Store.load>>> | null = null;
 const withLock = createMutex();
@@ -40,6 +43,7 @@ export async function enqueue(op: SyncOperation): Promise<SyncQueueEntry> {
       enqueued_at: new Date().toISOString(),
       retry_count: 0,
       last_error: null,
+      next_retry_at: null,
     };
     q.push(entry);
     await saveQueue(q);
@@ -54,6 +58,16 @@ export async function peekAll(): Promise<SyncQueueEntry[]> {
 export async function peekHead(): Promise<SyncQueueEntry | null> {
   const q = await loadQueue();
   return q[0] ?? null;
+}
+
+export async function peekReadyHead(): Promise<SyncQueueEntry | null> {
+  const q = await loadQueue();
+  const head = q[0];
+  if (!head) return null;
+  if (head.next_retry_at && new Date(head.next_retry_at).getTime() > Date.now()) {
+    return null;
+  }
+  return head;
 }
 
 export async function dequeue(): Promise<SyncQueueEntry | null> {
@@ -82,7 +96,14 @@ export async function markRetry(id: string, error: string): Promise<void> {
     const q = await loadQueue();
     const idx = q.findIndex((e) => e.id === id);
     if (idx < 0) return;
-    q[idx] = { ...q[idx], retry_count: q[idx].retry_count + 1, last_error: error };
+    const newCount = q[idx].retry_count + 1;
+    const next = new Date(Date.now() + backoffMs(newCount - 1)).toISOString();
+    q[idx] = {
+      ...q[idx],
+      retry_count: newCount,
+      last_error: error,
+      next_retry_at: next,
+    };
     await saveQueue(q);
   });
 }
@@ -103,4 +124,42 @@ export async function clear(): Promise<void> {
 export function backoffMs(retryCount: number): number {
   const table = [1_000, 5_000, 30_000, 120_000, 300_000];
   return table[Math.min(retryCount, table.length - 1)];
+}
+
+// === Dead-Letter Queue ===
+
+async function loadDlq(): Promise<SyncQueueEntry[]> {
+  const store = await getStore();
+  const d = await store.get<SyncQueueEntry[]>(KEY_DLQ);
+  return d ?? [];
+}
+
+async function saveDlq(d: SyncQueueEntry[]): Promise<void> {
+  const store = await getStore();
+  await store.set(KEY_DLQ, d);
+  await store.save();
+}
+
+export async function moveToDeadLetter(id: string, error: string): Promise<void> {
+  return withLock(async () => {
+    const q = await loadQueue();
+    const idx = q.findIndex((e) => e.id === id);
+    if (idx < 0) return;
+    const [entry] = q.splice(idx, 1);
+    const dlq = await loadDlq();
+    dlq.push({ ...entry, last_error: error });
+    await saveQueue(q);
+    await saveDlq(dlq);
+  });
+}
+
+export async function getDeadLetters(): Promise<SyncQueueEntry[]> {
+  return loadDlq();
+}
+
+export async function removeDeadLetter(id: string): Promise<void> {
+  return withLock(async () => {
+    const dlq = await loadDlq();
+    await saveDlq(dlq.filter((e) => e.id !== id));
+  });
 }

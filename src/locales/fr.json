@@ -945,6 +945,20 @@
       "offline": "Hors ligne — {{count}} modif(s) en attente",
       "error": "Erreur de sync (clique pour réessayer)"
     },
+    "quotaExceeded": {
+      "title": "Espace cloud saturé",
+      "subtitle": "Tu as dépassé ta limite de stockage. Supprime des snippets ou des mots du dictionnaire pour relancer la synchronisation.",
+      "manage": "Gérer mes données"
+    },
+    "deadLetters": {
+      "title": "Opérations bloquées",
+      "subtitle": "{{count}} opération(s) ont échoué après plusieurs tentatives.",
+      "open": "Voir les opérations bloquées",
+      "retry": "Réessayer",
+      "discard": "Abandonner",
+      "empty": "Aucune opération bloquée.",
+      "lastError": "Dernière erreur"
+    },
     "export": {
       "button": "Exporter mes données (JSON)",
       "exporting": "Export en cours…",
