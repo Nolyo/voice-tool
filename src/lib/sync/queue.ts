@@ -66,6 +66,17 @@ export async function dequeue(): Promise<SyncQueueEntry | null> {
   });
 }
 
+export async function dequeueById(id: string): Promise<SyncQueueEntry | null> {
+  return withLock(async () => {
+    const q = await loadQueue();
+    const idx = q.findIndex((e) => e.id === id);
+    if (idx < 0) return null;
+    const [removed] = q.splice(idx, 1);
+    await saveQueue(q);
+    return removed;
+  });
+}
+
 export async function markRetry(id: string, error: string): Promise<void> {
   return withLock(async () => {
     const q = await loadQueue();

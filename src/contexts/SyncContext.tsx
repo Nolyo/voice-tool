@@ -17,10 +17,10 @@ import { pullAll, pushOperations } from "@/lib/sync/client";
 import {
   enqueue,
   peekAll,
-  dequeue,
   markRetry,
   size as queueSize,
 } from "@/lib/sync/queue";
+import { applyBatchResults } from "@/lib/sync/apply-batch-results";
 import {
   loadSnippets,
   applyRemoteSnippet,
@@ -130,15 +130,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           sawError = true;
           break;
         }
-        for (let i = 0; i < batch.length; i++) {
-          const r = resp.results.find((x) => x.index === i);
-          if (r?.ok) {
-            await dequeue();
-          } else {
-            await markRetry(batch[i].id, r?.error ?? "unknown");
-          }
-        }
-        if (resp.results.some((r) => !r.ok)) {
+        const { failedCount } = await applyBatchResults(batch, resp.results);
+        if (failedCount > 0) {
           setStatus("error");
           setLastError("Some operations failed");
           sawError = true;
