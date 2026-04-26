@@ -62,7 +62,6 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 # Local Transcription (native whisper-rs with model caching)
 whisper-rs = { version = "0.14" }
 rubato = "0.15"
-tauri-plugin-fs = "2"
 
 # Keyboard simulation
 enigo = "0.2"
