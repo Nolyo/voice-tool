@@ -351,6 +351,8 @@
         "dialogWarning": "Cette action supprime définitivement tous les paramètres, profils, transcriptions, enregistrements, notes, modèles téléchargés et logs. L'application redémarrera automatiquement.",
         "dialogConfirmInstruction": "Pour confirmer, tapez exactement la phrase ci-dessous :",
         "confirmationLabel": "Phrase de confirmation",
+        "confirmPhrase": "EFFACER TOUTES MES DONNÉES",
+        "confirmPlaceholder": "Tapez la phrase ci-dessus pour confirmer",
         "cancel": "Annuler",
         "confirmReset": "Effacer et redémarrer",
         "error": "La réinitialisation a échoué. Vérifiez les logs."
@@ -880,7 +882,14 @@
       "twoFAPerk2": "Codes de récupération hors-ligne fournis",
       "twoFAPerk3": "Configuration en moins de 60 secondes",
       "twoFAActiveTitle": "Application d'authentification",
-      "twoFAActiveDesc": "Une seconde étape protège ton compte à la connexion."
+      "twoFAActiveDesc": "Une seconde étape protège ton compte à la connexion.",
+      "disableMfa": {
+        "title": "Confirmer la désactivation 2FA",
+        "subtitle": "Pour des raisons de sécurité, saisis un code TOTP avant de désactiver l'authentification à deux facteurs.",
+        "codeLabel": "Code TOTP",
+        "codePlaceholder": "123456",
+        "confirm": "Désactiver le 2FA"
+      }
     },
     "cta": {
       "header": "Se connecter",

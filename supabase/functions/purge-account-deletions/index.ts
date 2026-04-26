@@ -5,6 +5,7 @@ interface Deps {
   cronSecret: string;
   selectExpired: () => Promise<string[]>;
   deleteUser: (uid: string) => Promise<{ data: any; error: { message: string } | null }>;
+  deleteTombstone: (uid: string) => Promise<void>;
 }
 
 function realDeps(): Deps {
@@ -16,16 +17,24 @@ function realDeps(): Deps {
   return {
     cronSecret,
     async selectExpired() {
+      // SELECT only — do NOT delete here.
+      const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
       const { data: rows, error } = await client
         .from("account_deletion_requests")
-        .delete()
-        .lt("requested_at", new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString())
-        .select("user_id");
+        .select("user_id")
+        .lt("requested_at", cutoff);
       if (error) throw error;
       return (rows ?? []).map((r: any) => r.user_id as string);
     },
     async deleteUser(uid) {
       return await client.auth.admin.deleteUser(uid);
+    },
+    async deleteTombstone(uid) {
+      const { error } = await client
+        .from("account_deletion_requests")
+        .delete()
+        .eq("user_id", uid);
+      if (error) throw error;
     },
   };
 }
@@ -52,6 +61,7 @@ export async function handler(req: Request, deps: Deps): Promise<Response> {
       headers: { "Content-Type": "application/json" },
     });
   }
+
   const errors: Array<{ uid: string; message: string }> = [];
   let purged = 0;
 
@@ -60,9 +70,16 @@ export async function handler(req: Request, deps: Deps): Promise<Response> {
       const { error } = await deps.deleteUser(uid);
       if (error) {
         errors.push({ uid, message: error.message });
-      } else {
-        purged++;
+        continue; // don't delete the tombstone — retry tomorrow
       }
+      try {
+        await deps.deleteTombstone(uid);
+      } catch (tombErr: unknown) {
+        const m = tombErr instanceof Error ? tombErr.message : String(tombErr);
+        errors.push({ uid, message: `user deleted but tombstone still present: ${m}` });
+        continue;
+      }
+      purged++;
     } catch (err: unknown) {
       errors.push({ uid, message: err instanceof Error ? err.message : String(err) });
     }
@@ -76,4 +93,6 @@ export async function handler(req: Request, deps: Deps): Promise<Response> {
   });
 }
 
-Deno.serve((req) => handler(req, realDeps()));
+if (import.meta.main) {
+  Deno.serve((req) => handler(req, realDeps()));
+}

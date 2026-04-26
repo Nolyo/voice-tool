@@ -35,8 +35,10 @@ end $$;
 select pass('compute_user_sync_size intègre la contribution dico');
 
 -- Test que user B ne peut pas compute la size de user A
+set local role postgres;
 insert into auth.users (id, email, aud, role) values
   ('22222222-2222-2222-2222-222222222222', 'b@test.local', 'authenticated', 'authenticated');
+set local role authenticated;
 set local "request.jwt.claim.sub" = '22222222-2222-2222-2222-222222222222';
 
 select throws_ok(

@@ -351,6 +351,8 @@
         "dialogWarning": "This permanently deletes all settings, profiles, transcriptions, recordings, notes, downloaded models and logs. The app will restart automatically.",
         "dialogConfirmInstruction": "To confirm, type the phrase below exactly:",
         "confirmationLabel": "Confirmation phrase",
+        "confirmPhrase": "ERASE ALL MY DATA",
+        "confirmPlaceholder": "Type the phrase above to confirm",
         "cancel": "Cancel",
         "confirmReset": "Erase and restart",
         "error": "Reset failed. Check the logs."
@@ -880,7 +882,14 @@
       "twoFAPerk2": "Offline recovery codes provided",
       "twoFAPerk3": "Setup in under 60 seconds",
       "twoFAActiveTitle": "Authentication app",
-      "twoFAActiveDesc": "A second step protects your account at sign-in."
+      "twoFAActiveDesc": "A second step protects your account at sign-in.",
+      "disableMfa": {
+        "title": "Confirm 2FA disable",
+        "subtitle": "For security reasons, enter a TOTP code before disabling two-factor authentication.",
+        "codeLabel": "TOTP code",
+        "codePlaceholder": "123456",
+        "confirm": "Disable 2FA"
+      }
     },
     "cta": {
       "header": "Sign in",

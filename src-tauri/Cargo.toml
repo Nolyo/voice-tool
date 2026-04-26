@@ -62,15 +62,10 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 # Local Transcription (native whisper-rs with model caching)
 whisper-rs = { version = "0.14" }
 rubato = "0.15"
-tauri-plugin-fs = "2"
 
 # Keyboard simulation
 enigo = "0.2"
 tauri-plugin-deep-link = "2.4.7"
-
-# Windows-specific APIs (show window without activation)
-[target.'cfg(target_os = "windows")'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_UI_WindowsAndMessaging"] }
 
 # Date/time for timestamps
 chrono = "0.4"
@@ -91,3 +86,10 @@ num_cpus = "1.17.0"
 # Hardware detection for onboarding recommendations
 sysinfo = "0.32"
 wgpu = "22"
+
+# Open files/URLs with system default app (used on non-Windows; Windows uses explorer.exe directly)
+opener = "0.7"
+
+# Windows-specific APIs (show window without activation)
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_UI_WindowsAndMessaging"] }

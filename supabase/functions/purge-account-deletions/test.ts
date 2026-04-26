@@ -6,6 +6,7 @@ Deno.test("rejects requests without bearer", async () => {
     cronSecret: "secret",
     deleteUser: async () => ({ data: null, error: null }),
     selectExpired: async () => [],
+    deleteTombstone: async () => {},
   });
   assertEquals(res.status, 401);
 });
@@ -22,6 +23,7 @@ Deno.test("calls deleteUser for each expired uid", async () => {
       cronSecret: "secret",
       deleteUser: async (uid: string) => { calls.push(uid); return { data: null, error: null }; },
       selectExpired: async () => ["a", "b"],
+      deleteTombstone: async () => {},
     },
   );
   assertEquals(res.status, 200);
@@ -45,6 +47,7 @@ Deno.test("partial failure: continues + returns errors", async () => {
           ? { data: null, error: { message: "boom" } as any }
           : { data: null, error: null },
       selectExpired: async () => ["a", "b", "c"],
+      deleteTombstone: async () => {},
     },
   );
   assertEquals(res.status, 200);
@@ -65,6 +68,7 @@ Deno.test("returns 500 when selectExpired throws", async () => {
       cronSecret: "secret",
       selectExpired: async () => { throw new Error("db gone"); },
       deleteUser: async () => ({ data: null, error: null }),
+      deleteTombstone: async () => {},
     },
   );
   assertEquals(res.status, 500);
@@ -86,6 +90,7 @@ Deno.test("partial failure: thrown deleteUser is caught and reported", async () 
         if (uid === "b") throw new Error("network blip");
         return { data: null, error: null };
       },
+      deleteTombstone: async () => {},
     },
   );
   assertEquals(res.status, 200);
@@ -107,7 +112,40 @@ Deno.test("rejects non-POST requests with 405", async () => {
       cronSecret: "secret",
       selectExpired: async () => [],
       deleteUser: async () => ({ data: null, error: null }),
+      deleteTombstone: async () => {},
     },
   );
   assertEquals(res.status, 405);
+});
+
+Deno.test("ordering: tombstone n'est supprimée que si deleteUser réussit", async () => {
+  const { handler } = await import("./index.ts");
+  const deletedTombstones: string[] = [];
+  const seenSelect: string[] = ["uid-ok", "uid-fail"];
+
+  const deps = {
+    cronSecret: "secret",
+    selectExpired: async () => seenSelect,
+    deleteUser: async (uid: string) => {
+      if (uid === "uid-fail") return { data: null, error: { message: "boom" } };
+      return { data: {}, error: null };
+    },
+    deleteTombstone: async (uid: string) => {
+      deletedTombstones.push(uid);
+    },
+  };
+
+  const req = new Request("http://x", {
+    method: "POST",
+    headers: { Authorization: "Bearer secret" },
+  });
+  const res = await handler(req, deps as any);
+  const body = await res.json();
+
+  if (deletedTombstones.length !== 1 || deletedTombstones[0] !== "uid-ok") {
+    throw new Error(`expected ['uid-ok'], got ${JSON.stringify(deletedTombstones)}`);
+  }
+  if (body.purged !== 1 || body.errors?.length !== 1) {
+    throw new Error(`expected purged=1 + errors=1, got ${JSON.stringify(body)}`);
+  }
 });

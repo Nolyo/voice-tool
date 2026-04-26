@@ -42,3 +42,6 @@ artifacts/
 .worktrees/
 .security-key
 logs/security/
+
+# Deno lockfile (Deno 2.x format incompatible with Deno 1.x used in CI)
+deno.lock
