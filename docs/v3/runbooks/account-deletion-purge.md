@@ -95,6 +95,7 @@ Pour rotater `CRON_SECRET` :
 ```bash
 NEW=$(openssl rand -hex 32)
 pnpm exec supabase secrets set CRON_SECRET="$NEW"
+echo $NEW
 ```
 
 Puis dans Studio SQL editor :
