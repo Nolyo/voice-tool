@@ -882,7 +882,14 @@
       "twoFAPerk2": "Codes de récupération hors-ligne fournis",
       "twoFAPerk3": "Configuration en moins de 60 secondes",
       "twoFAActiveTitle": "Application d'authentification",
-      "twoFAActiveDesc": "Une seconde étape protège ton compte à la connexion."
+      "twoFAActiveDesc": "Une seconde étape protège ton compte à la connexion.",
+      "disableMfa": {
+        "title": "Confirmer la désactivation 2FA",
+        "subtitle": "Pour des raisons de sécurité, saisis un code TOTP avant de désactiver l'authentification à deux facteurs.",
+        "codeLabel": "Code TOTP",
+        "codePlaceholder": "123456",
+        "confirm": "Désactiver le 2FA"
+      }
     },
     "cta": {
       "header": "Se connecter",

@@ -882,7 +882,14 @@
       "twoFAPerk2": "Offline recovery codes provided",
       "twoFAPerk3": "Setup in under 60 seconds",
       "twoFAActiveTitle": "Authentication app",
-      "twoFAActiveDesc": "A second step protects your account at sign-in."
+      "twoFAActiveDesc": "A second step protects your account at sign-in.",
+      "disableMfa": {
+        "title": "Confirm 2FA disable",
+        "subtitle": "For security reasons, enter a TOTP code before disabling two-factor authentication.",
+        "codeLabel": "TOTP code",
+        "codePlaceholder": "123456",
+        "confirm": "Disable 2FA"
+      }
     },
     "cta": {
       "header": "Sign in",

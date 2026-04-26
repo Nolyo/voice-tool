@@ -14,6 +14,16 @@ import {
   type BackupMeta,
 } from "@/lib/sync/backups";
 import { TwoFactorActivationFlow } from "@/components/auth/TwoFactorActivationFlow";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Callout, SectionHeader, VtIcon } from "../vt";
 import { SyncActivationModal } from "./SyncActivationModal";
 import { DangerCard } from "./account/DangerCard";
@@ -548,11 +558,34 @@ function LocalBackupsRow() {
 
 /* ─── Security card (2FA + devices) ────────────────────────────────── */
 
+/**
+ * Disable the user's TOTP factor.
+ * Throws "aal2-required" if the current session is not AAL2 — the caller
+ * must prompt for a TOTP challenge first.
+ */
+export async function disableTotpFactor(): Promise<void> {
+  const { data } = await supabase.auth.mfa.listFactors();
+  const totp = data?.totp?.[0];
+  if (!totp) return;
+
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal?.currentLevel !== "aal2") {
+    throw new Error("aal2-required");
+  }
+
+  const { error } = await supabase.auth.mfa.unenroll({ factorId: totp.id });
+  if (error) throw error;
+}
+
 function SecurityCard() {
   const { t } = useTranslation();
   const { keyringAvailable } = useAuth();
   const [mfaEnabled, setMfaEnabled] = useState<boolean | null>(null);
   const [showActivation, setShowActivation] = useState(false);
+  const [aal2PromptFactor, setAal2PromptFactor] = useState<string | null>(null);
+  const [aal2Code, setAal2Code] = useState("");
+  const [aal2Error, setAal2Error] = useState<string | null>(null);
+  const [aal2Loading, setAal2Loading] = useState(false);
 
   async function loadMfa() {
     const { data } = await supabase.auth.mfa.listFactors();
@@ -564,11 +597,41 @@ function SecurityCard() {
   }, []);
 
   async function disable() {
-    const { data } = await supabase.auth.mfa.listFactors();
-    const totp = data?.totp?.[0];
-    if (!totp) return;
-    await supabase.auth.mfa.unenroll({ factorId: totp.id });
-    await loadMfa();
+    try {
+      await disableTotpFactor();
+      await loadMfa();
+    } catch (e) {
+      if (e instanceof Error && e.message === "aal2-required") {
+        const { data } = await supabase.auth.mfa.listFactors();
+        const totp = data?.totp?.[0];
+        if (totp) setAal2PromptFactor(totp.id);
+        return;
+      }
+      throw e;
+    }
+  }
+
+  async function confirmAal2AndDisable() {
+    if (!aal2PromptFactor) return;
+    setAal2Loading(true);
+    setAal2Error(null);
+    try {
+      const { error } = await supabase.auth.mfa.challengeAndVerify({
+        factorId: aal2PromptFactor,
+        code: aal2Code.trim(),
+      });
+      if (error) {
+        setAal2Error(error.message);
+        return;
+      }
+      // Session is now AAL2 — actually unenroll.
+      await disableTotpFactor();
+      await loadMfa();
+      setAal2PromptFactor(null);
+      setAal2Code("");
+    } finally {
+      setAal2Loading(false);
+    }
   }
 
   const accent = mfaEnabled ? ACCENT_OK : ACCENT_WARN;
@@ -724,6 +787,66 @@ function SecurityCard() {
       <div className="vt-row">
         <DevicesList />
       </div>
+
+      {aal2PromptFactor && (
+        <Dialog
+          open
+          onOpenChange={(o) => {
+            if (!o && !aal2Loading) {
+              setAal2PromptFactor(null);
+              setAal2Code("");
+              setAal2Error(null);
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("auth.security.disableMfa.title")}</DialogTitle>
+              <DialogDescription>
+                {t("auth.security.disableMfa.subtitle")}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                value={aal2Code}
+                onChange={(e) => setAal2Code(e.target.value)}
+                placeholder={t("auth.security.disableMfa.codePlaceholder")}
+                aria-label={t("auth.security.disableMfa.codeLabel")}
+                className="font-mono"
+                disabled={aal2Loading}
+              />
+              {aal2Error && (
+                <p role="alert" className="text-xs text-destructive">
+                  {aal2Error}
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setAal2PromptFactor(null);
+                  setAal2Code("");
+                  setAal2Error(null);
+                }}
+                disabled={aal2Loading}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={() => void confirmAal2AndDisable()}
+                disabled={aal2Loading || aal2Code.trim().length < 6}
+              >
+                {t("auth.security.disableMfa.confirm")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
