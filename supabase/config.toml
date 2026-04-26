@@ -378,6 +378,11 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Cron-style endpoint: invoked server-to-server by pg_cron, no Supabase JWT
+# (auth is handled internally via the Bearer CRON_SECRET check).
+[functions.purge-account-deletions]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
