@@ -351,6 +351,8 @@
         "dialogWarning": "Cette action supprime définitivement tous les paramètres, profils, transcriptions, enregistrements, notes, modèles téléchargés et logs. L'application redémarrera automatiquement.",
         "dialogConfirmInstruction": "Pour confirmer, tapez exactement la phrase ci-dessous :",
         "confirmationLabel": "Phrase de confirmation",
+        "confirmPhrase": "EFFACER TOUTES MES DONNÉES",
+        "confirmPlaceholder": "Tapez la phrase ci-dessus pour confirmer",
         "cancel": "Annuler",
         "confirmReset": "Effacer et redémarrer",
         "error": "La réinitialisation a échoué. Vérifiez les logs."

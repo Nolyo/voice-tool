@@ -15,10 +15,9 @@ import {
 } from "@/components/ui/dialog";
 import { VtIcon } from "../vt";
 
-const RESET_CONFIRMATION_PHRASE = "EFFACER TOUTES MES DONNÉES";
-
 export function DangerZone() {
   const { t } = useTranslation();
+  const resetConfirmationPhrase = t("settings.system.danger.confirmPhrase");
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [isResetting, setIsResetting] = useState(false);
@@ -34,7 +33,7 @@ export function DangerZone() {
   };
 
   const handleReset = async () => {
-    if (confirmation !== RESET_CONFIRMATION_PHRASE) return;
+    if (confirmation !== resetConfirmationPhrase) return;
     setIsResetting(true);
     setError(null);
     try {
@@ -54,7 +53,7 @@ export function DangerZone() {
     }
   };
 
-  const isPhraseValid = confirmation === RESET_CONFIRMATION_PHRASE;
+  const isPhraseValid = confirmation === resetConfirmationPhrase;
 
   const dangerRowStyle = {
     borderColor: "oklch(from var(--vt-danger) l c h / 0.25)",
@@ -159,7 +158,7 @@ export function DangerZone() {
           <div className="space-y-3">
             <div className="rounded-md bg-muted/50 border border-border p-3">
               <code className="text-sm font-mono select-all">
-                {RESET_CONFIRMATION_PHRASE}
+                {resetConfirmationPhrase}
               </code>
             </div>
 
@@ -171,7 +170,7 @@ export function DangerZone() {
                 id="reset-confirmation"
                 value={confirmation}
                 onChange={(e) => setConfirmation(e.target.value)}
-                placeholder={RESET_CONFIRMATION_PHRASE}
+                placeholder={t("settings.system.danger.confirmPlaceholder")}
                 disabled={isResetting}
                 autoComplete="off"
                 spellCheck={false}
