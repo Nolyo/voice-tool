@@ -59,3 +59,20 @@ jobs:
           deno-version: v1.x
       - name: Run all tests in supabase/functions
         run: deno test --allow-env --allow-net supabase/functions/
+
+  pgtap:
+    name: Database tests (pgtap)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local Supabase
+        run: supabase start
+      - name: Run pgtap suite
+        run: supabase test db
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
