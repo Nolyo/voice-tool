@@ -67,13 +67,6 @@ rubato = "0.15"
 enigo = "0.2"
 tauri-plugin-deep-link = "2.4.7"
 
-# Windows-specific APIs (show window without activation)
-[target.'cfg(target_os = "windows")'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_UI_WindowsAndMessaging"] }
-
-# Resume cross-platform deps (the Windows-only block above must not absorb them).
-[dependencies]
-
 # Date/time for timestamps
 chrono = "0.4"
 time = { version = "0.3", features = ["formatting"] }
@@ -93,3 +86,7 @@ num_cpus = "1.17.0"
 # Hardware detection for onboarding recommendations
 sysinfo = "0.32"
 wgpu = "22"
+
+# Windows-specific APIs (show window without activation)
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_UI_WindowsAndMessaging"] }
