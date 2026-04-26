@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/voice-tool",
-  "generated_at": "2026-04-21T08:07:15.197Z",
+  "generated_at": "2026-04-26T13:42:36.481Z",
   "latest": {
     "version": "2.10.1",
     "tag": "v2.10.1",
@@ -16,7 +16,7 @@
         "size_bytes": 41593344,
         "size_human": "39.7 MB",
         "sha256": "00b3a107a4aaa6eb54939baa94382b2943f337082605d991e5a4a8d170984888",
-        "download_count": 0
+        "download_count": 1
       },
       "nsis_installer": {
         "filename": "voice-tool-v2.10.1-setup.exe",
@@ -24,7 +24,7 @@
         "size_bytes": 7707493,
         "size_human": "7.4 MB",
         "sha256": "3d7e1b5d5c5ab2e5d450d37ae190c7892a8d4cf5ea24b8a0ecad31ea3d417a14",
-        "download_count": 0
+        "download_count": 2
       }
     }
   },
@@ -42,7 +42,7 @@
           "size_bytes": 41593344,
           "size_human": "39.7 MB",
           "sha256": "00b3a107a4aaa6eb54939baa94382b2943f337082605d991e5a4a8d170984888",
-          "download_count": 0
+          "download_count": 1
         },
         "nsis_installer": {
           "filename": "voice-tool-v2.10.1-setup.exe",
@@ -50,7 +50,7 @@
           "size_bytes": 7707493,
           "size_human": "7.4 MB",
           "sha256": "3d7e1b5d5c5ab2e5d450d37ae190c7892a8d4cf5ea24b8a0ecad31ea3d417a14",
-          "download_count": 0
+          "download_count": 2
         }
       }
     },
@@ -646,7 +646,7 @@
           "size_bytes": 4514056,
           "size_human": "4.3 MB",
           "sha256": "01fa6e187a0c4aa4f2eaa1049837cb2d3edab54326df1d3001a84753a0bc7a0a",
-          "download_count": 5
+          "download_count": 6
         }
       }
     },
