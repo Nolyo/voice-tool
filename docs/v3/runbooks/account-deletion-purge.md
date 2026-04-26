@@ -57,6 +57,14 @@ delete from auth.users where id = '<uid>';
    alter database postgres set app.settings.supabase_url = 'https://<project-ref>.supabase.co';
    alter database postgres set app.settings.cron_secret = '<la même valeur que ci-dessus>';
    ```
+4b. Vérifier que `pg_net` est activé (nécessaire pour `net.http_post` dans le cron) :
+
+   ```sql
+   select * from pg_extension where extname = 'pg_net';
+   ```
+
+   Sur les projets Supabase managés, `pg_net` est pré-installé et activé par défaut. Pour un déploiement self-host, il faut l'activer explicitement : `create extension if not exists pg_net;`
+
 5. Vérifier : `select * from cron.job where jobname = 'purge-account-deletions-daily';`
 6. Smoke test : `select cron.run('purge-account-deletions-daily');` — vérifier les logs Edge Function.
 7. Tag release `v2.x.x` pour livrer le frontend via auto-update.

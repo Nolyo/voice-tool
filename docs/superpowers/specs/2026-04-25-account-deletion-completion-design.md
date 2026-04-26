@@ -104,14 +104,14 @@ L'épique v3 ne peut pas sortir publiquement avec un compte non-supprimable. Ce 
 
 ### 4.1 Backend SQL
 
-**Migration `supabase/migrations/20260425000100_account_deletion_v2.sql`** :
+**Migration `supabase/migrations/20260501000510_account_deletion_v2.sql`** :
 
 - Remplace `request_account_deletion()` par une version qui exige AAL2 si l'user a un facteur MFA `verified`. Lecture du claim via `auth.jwt() ->> 'aal'`. Erreur explicite `aal2_required` (errcode 42501).
 - Ajoute `cancel_account_deletion()` : symétrique, AAL2 si MFA enrolled, `delete from account_deletion_requests where user_id = auth.uid()`.
 - Grants : `execute` sur les deux fonctions à `authenticated`.
 - La table `account_deletion_requests` et son RLS existent déjà (migration 20260501000500), pas modifiés.
 
-**Migration `supabase/migrations/20260425000200_account_deletion_cron.sql`** :
+**Migration `supabase/migrations/20260501000520_account_deletion_cron.sql`** :
 
 - `create extension if not exists pg_cron with schema extensions;`
 - `select cron.schedule('purge-account-deletions-daily', '0 3 * * *', $$ select net.http_post(...) $$)` — appelle l'Edge Function avec header `Authorization: Bearer <cron_secret>`. URL et secret lus via `current_setting('app.settings.*')` (GUCs custom à initialiser hors migration).

@@ -1,6 +1,7 @@
 // src/components/settings/sections/account/DangerCard.tsx
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { purgeLocalCloudData } from "@/lib/sync/local-purge";
@@ -42,6 +43,10 @@ export function DangerCard() {
         // ignore: tombstone is committed, local purge done, AuthContext
         // will eventually clear when session refresh fails.
       }
+      // Clear keyring explicitly: AuthContext.signOut() does this but we
+      // bypassed it to use scope:global. Without this, the next app launch
+      // would attempt a refresh with the revoked token before falling back.
+      await invoke<void>("clear_refresh_token").catch(() => {});
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
