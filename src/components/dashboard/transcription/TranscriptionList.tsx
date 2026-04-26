@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Check, Copy, Trash2, Sparkles, Download, Filter } from "lucide-react";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
 import { isToday, useDateFormatters } from "@/lib/date-format";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
+import { ExportDialog } from "./ExportDialog";
+import {
+  AdvancedFiltersPopover,
+  EMPTY_ADV_FILTERS,
+  applyAdvFilters,
+  countActiveAdvFilters,
+  type AdvancedFilters,
+} from "./AdvancedFiltersPopover";
 
 interface TranscriptionListProps {
   transcriptions: Transcription[];
@@ -303,19 +311,15 @@ export function TranscriptionList({
   const { dayLabel, formatShortDate } = useDateFormatters();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterId>("all");
+  const [advFilters, setAdvFilters] = useState<AdvancedFilters>(EMPTY_ADV_FILTERS);
+  const [advFiltersOpen, setAdvFiltersOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const advFilterBtnRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  const advCount = countActiveAdvFilters(advFilters);
+
+  const openExport = useCallback(() => setExportOpen(true), []);
 
   const filtered = useMemo(() => {
     let list = transcriptions;
@@ -325,6 +329,8 @@ export function TranscriptionList({
     } else if (filter === "today") {
       list = list.filter((tr) => isToday(parseAt(tr)));
     }
+
+    list = applyAdvFilters(list, advFilters);
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -338,7 +344,83 @@ export function TranscriptionList({
     }
 
     return list;
-  }, [transcriptions, search, filter]);
+  }, [transcriptions, search, filter, advFilters]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Ignore key events when typing in inputs (except for our own search box).
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target as HTMLElement | null)?.isContentEditable;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
+        // Don't open export if user is typing inside the search box specifically;
+        // they may be using Ctrl+E for caret movement etc. Open from anywhere else.
+        if (target === searchInputRef.current) return;
+        if (transcriptions.length === 0) return;
+        e.preventDefault();
+        openExport();
+        return;
+      }
+
+      if (e.key === "Escape" && document.activeElement === searchInputRef.current) {
+        e.preventDefault();
+        setSearch("");
+        searchInputRef.current?.blur();
+        return;
+      }
+
+      // Avoid stealing arrow keys / Enter / Delete from inputs other than our search.
+      if (isTyping && target !== searchInputRef.current) return;
+
+      if (filtered.length === 0) return;
+
+      const currentIdx =
+        selectedId === undefined
+          ? -1
+          : filtered.findIndex((tr) => tr.id === selectedId);
+
+      if (e.key === "ArrowDown") {
+        if (target === searchInputRef.current) e.preventDefault();
+        else e.preventDefault();
+        const next = filtered[Math.min(filtered.length - 1, currentIdx + 1)];
+        if (next) onSelectTranscription(next);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prev = filtered[Math.max(0, currentIdx - 1)];
+        if (prev) onSelectTranscription(prev);
+        return;
+      }
+      if (e.key === "Delete" && onDelete && selectedId) {
+        if (target === searchInputRef.current) return;
+        if (confirm(t("history.deleteConfirm"))) {
+          onDelete(selectedId);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    filtered,
+    selectedId,
+    onSelectTranscription,
+    onDelete,
+    t,
+    transcriptions.length,
+    openExport,
+  ]);
 
   const groups = useMemo(() => {
     const map = new Map<string, { items: Transcription[]; firstAt: Date }>();
@@ -403,22 +485,39 @@ export function TranscriptionList({
             </button>
           </div>
 
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5 relative">
             <button
+              ref={advFilterBtnRef}
               type="button"
               className="vt-btn vt-btn-sm"
-              data-tip={t("history.filterAdvancedComingSoon")}
+              data-on={advCount > 0}
+              data-tip={t("history.filterAdvanced")}
               aria-label={t("history.filterAdvanced")}
-              disabled
+              aria-expanded={advFiltersOpen}
+              onClick={() => setAdvFiltersOpen((v) => !v)}
             >
               <Filter className="w-3.5 h-3.5" />
+              {advCount > 0 && (
+                <span className="filter-chip-badge" aria-label={t("history.filterCountActive", { count: advCount })}>
+                  {advCount}
+                </span>
+              )}
             </button>
+            <AdvancedFiltersPopover
+              open={advFiltersOpen}
+              onClose={() => setAdvFiltersOpen(false)}
+              anchorRef={advFilterBtnRef}
+              value={advFilters}
+              onChange={setAdvFilters}
+              items={transcriptions}
+            />
             <button
               type="button"
               className="vt-btn vt-btn-sm"
-              data-tip={t("history.exportComingSoon")}
+              data-tip={t("history.exportTooltip")}
               aria-label={t("history.exportLabel")}
-              disabled
+              onClick={openExport}
+              disabled={transcriptions.length === 0}
             >
               <Download className="w-3.5 h-3.5" />
               <span>{t("history.exportLabel")}</span>
@@ -460,12 +559,12 @@ export function TranscriptionList({
               <Search className="w-5 h-5" />
             </div>
             <p className="text-[13.5px]" style={{ color: "var(--vt-fg-2)" }}>
-              {search || filter !== "all"
+              {search || filter !== "all" || advCount > 0
                 ? t("history.emptySearch")
                 : t("history.empty")}
             </p>
             <p className="text-[12px] mt-1" style={{ color: "var(--vt-fg-3)" }}>
-              {search || filter !== "all"
+              {search || filter !== "all" || advCount > 0
                 ? t("history.emptyNoMatches")
                 : t("history.emptySubtitle")}
             </p>
@@ -530,9 +629,21 @@ export function TranscriptionList({
           className="pt-3 border-t text-[11.5px] vt-mono"
           style={{ borderColor: "var(--vt-border)", color: "var(--vt-fg-4)" }}
         >
-          {t("history.count", { count: transcriptions.length })}
+          {filtered.length === transcriptions.length
+            ? t("history.count", { count: transcriptions.length })
+            : t("history.countFiltered", {
+                shown: filtered.length,
+                total: transcriptions.length,
+              })}
         </div>
       )}
+
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        filteredItems={filtered}
+        allItems={transcriptions}
+      />
     </div>
   );
 }

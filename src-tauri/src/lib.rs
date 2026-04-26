@@ -114,6 +114,7 @@ pub fn run() {
             transcriptions::delete_transcription,
             transcriptions::clear_transcriptions,
             transcriptions::update_transcription,
+            transcriptions::export_transcriptions,
             logs::list_logs,
             logs::save_log,
             logs::clear_logs,
