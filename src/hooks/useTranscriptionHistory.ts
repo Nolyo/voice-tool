@@ -11,6 +11,8 @@ export interface Transcription {
   isStreaming?: boolean;
   audioPath?: string;
   apiCost?: number;
+  /** Vendor used for transcription ("OpenAI", "Groq", "Local", "Google"). Absent on legacy records. */
+  transcriptionProvider?: string;
   /** Raw Whisper output before post-process. Set only when post-process modified the text. */
   originalText?: string;
   /** Mode applied by the post-process step ("auto", "list", "email", ...). */
@@ -19,7 +21,7 @@ export interface Transcription {
   postProcessCost?: number;
 }
 
-export function useTranscriptionHistory() {
+export function useTranscriptionHistory(historyKeepLast?: number) {
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,12 +48,18 @@ export function useTranscriptionHistory() {
     apiCost?: number,
     originalText?: string,
     postProcessMode?: string,
-    postProcessCost?: number
+    postProcessCost?: number,
+    duration?: number,
+    transcriptionProvider?: string,
   ): Promise<Transcription> => {
     const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
     const newTranscription: Transcription = {
       id: crypto.randomUUID(),
-      date: now.toISOString().split('T')[0],
+      // Local-date components (not toISOString) so the day matches the
+      // `time` field, which is already local. Using UTC here caused
+      // post-midnight entries in UTC+2 to land on the previous day.
+      date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
       time: now.toLocaleTimeString('fr-FR', {
         hour: '2-digit',
         minute: '2-digit',
@@ -59,15 +67,26 @@ export function useTranscriptionHistory() {
       }),
       text,
       provider,
+      duration,
       audioPath,
       apiCost,
+      transcriptionProvider,
       originalText,
       postProcessMode,
       postProcessCost,
     };
 
-    await invoke('save_transcription', { transcription: newTranscription });
-    setTranscriptions(prev => [newTranscription, ...prev]);
+    await invoke('save_transcription', {
+      transcription: newTranscription,
+      historyKeepLast: historyKeepLast ?? null,
+    });
+    setTranscriptions(prev => {
+      const next = [newTranscription, ...prev];
+      if (typeof historyKeepLast === 'number' && next.length > historyKeepLast) {
+        return next.slice(0, historyKeepLast);
+      }
+      return next;
+    });
 
     return newTranscription;
   };

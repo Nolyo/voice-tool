@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card } from "@/components/ui/card";
 import { DashboardHeader } from "./common/DashboardHeader";
 import {
   DashboardSidebar,
@@ -11,10 +10,15 @@ import {
 import { HistoriqueTab } from "./dashboard/tabs/HistoriqueTab";
 import { SettingTabs } from "./settings/SettingTabs";
 import { type SettingsSectionId } from "./settings/common/SettingsNav";
-import { LogsTab } from "./logs/LogsTab";
+import {
+  ALL_LEVELS_ON,
+  LogsTab,
+  type LevelFilter,
+} from "./logs/LogsTab";
 import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./common/UpdateModal";
 import { OnboardingWizard } from "./OnboardingWizard";
+import { AuthModal } from "./auth/AuthModal";
 import { SelectedModelMissingBanner } from "./SelectedModelMissingBanner";
 import { useSettings } from "@/hooks/useSettings";
 import { useOnboardingCheck } from "@/hooks/useOnboardingCheck";
@@ -28,6 +32,7 @@ import { useAppLogs } from "@/hooks/useAppLogs";
 import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { useRecordingWorkflow } from "@/hooks/useRecordingWorkflow";
 import { useNotesWorkflow } from "@/hooks/useNotesWorkflow";
+import { useIsCompactLayout } from "@/hooks/useIsCompactLayout";
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -38,6 +43,9 @@ export default function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSettingsSection, setActiveSettingsSection] =
     useState<SettingsSectionId>("section-transcription");
+  const [logsLevelFilter, setLogsLevelFilter] =
+    useState<LevelFilter>(ALL_LEVELS_ON);
+  const [logsSourceFilter, setLogsSourceFilter] = useState<string | null>(null);
 
   const { settings, isLoaded: settingsLoaded } = useSettings();
   const { showOnboarding, recheck: recheckOnboarding } = useOnboardingCheck(
@@ -51,7 +59,7 @@ export default function Dashboard() {
     addTranscription,
     deleteTranscription,
     clearHistory,
-  } = useTranscriptionHistory();
+  } = useTranscriptionHistory(settings.history_keep_last);
   const {
     notes,
     isLoading: notesLoading,
@@ -62,6 +70,7 @@ export default function Dashboard() {
     searchNotes,
     toggleFavorite,
     moveNoteToFolder,
+    moveNoteToFolderAtIndex,
     reorderNotesInFolder,
   } = useNotes();
   const {
@@ -72,6 +81,7 @@ export default function Dashboard() {
     reorderFolders,
   } = useFolders();
   const { logs, clearLogs } = useAppLogs();
+  const isCompact = useIsCompactLayout(sidebarCollapsed);
 
   const { isRecording, isTranscribing, handleToggleRecording } =
     useRecordingWorkflow({
@@ -149,10 +159,6 @@ export default function Dashboard() {
     [notes, handleOpenNote],
   );
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
   const handleDelete = async (id: string) => {
     if (selectedTranscription?.id === id) {
       setSelectedTranscription(null);
@@ -220,8 +226,19 @@ export default function Dashboard() {
         onReorderFolders={reorderFolders}
         onReorderNotes={reorderNotesInFolder}
         onMoveNote={moveNoteToFolder}
+        onMoveNoteToIndex={moveNoteToFolderAtIndex}
         activeSettingsSection={activeSettingsSection}
         onSettingsSectionChange={setActiveSettingsSection}
+        onOpenAccountPage={() => {
+          setActiveTab("parametres");
+          setActiveSettingsSection("section-compte");
+        }}
+        transcriptions={transcriptions}
+        logs={logs}
+        levelFilter={logsLevelFilter}
+        onLevelFilterChange={setLogsLevelFilter}
+        sourceFilter={logsSourceFilter}
+        onSourceFilterChange={setLogsSourceFilter}
       />
 
       {/* Main area */}
@@ -232,6 +249,7 @@ export default function Dashboard() {
           onToggleRecording={handleToggleRecording}
           updateAvailable={updateAvailable}
           onUpdateClick={() => setShowUpdateModal(true)}
+          activeTab={activeTab}
         />
 
         <SelectedModelMissingBanner
@@ -245,7 +263,13 @@ export default function Dashboard() {
           {activeTab === "notes" && openNoteIds.length > 0 ? (
             <NotesEditor
               notes={notes}
-              openNotes={notes.filter((n) => openNoteIds.includes(n.id))}
+              // Preserve open-order (FIFO) for the tab strip — new tabs land
+              // on the right, as the workflow intends. `notes.filter(...)`
+              // would instead use the `notes` array order (most-recently-
+              // updated first), which made new tabs jump to the left.
+              openNotes={openNoteIds
+                .map((id) => notes.find((n) => n.id === id))
+                .filter((n): n is NoteMeta => n !== undefined)}
               activeNoteId={activeNoteId}
               folders={folders}
               onActivateNote={setActiveNoteId}
@@ -255,7 +279,6 @@ export default function Dashboard() {
               onUpdateNote={updateNote}
               onCreateNote={() => handleCreateNoteFromSidebar(null)}
               onRecreateLinkedNote={handleRecreateLinkedNote}
-              onCopyContent={handleCopy}
               onMoveNote={moveNoteToFolder}
               onCreateFolder={createFolder}
               apiKey={settings.openai_api_key}
@@ -265,34 +288,34 @@ export default function Dashboard() {
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
               {t('dashboard.emptyNotes')}
             </div>
+          ) : activeTab === "logs" ? (
+            <LogsTab
+              logs={logs}
+              onClearLogs={clearLogs}
+              levelFilter={logsLevelFilter}
+              sourceFilter={logsSourceFilter}
+              onSourceFilterChange={setLogsSourceFilter}
+            />
           ) : (
             <div className="overflow-y-auto h-full">
-              <div className="container mx-auto px-6 py-8">
-                {activeTab === "historique" && (
-                  <HistoriqueTab
-                    transcriptions={transcriptions}
-                    selectedTranscription={selectedTranscription}
-                    isSidebarOpen={isSidebarOpen}
-                    onSelectTranscription={handleSelectTranscription}
-                    onCloseDetails={handleCloseDetails}
-                    onCopy={handleCopy}
-                    onDelete={handleDelete}
-                    onClearAll={handleClearAll}
-                  />
-                )}
-
-                {activeTab === "parametres" && (
-                  <Card className="p-6">
-                    <SettingTabs activeSection={activeSettingsSection} />
-                  </Card>
-                )}
-
-                {activeTab === "logs" && (
-                  <Card className="p-6">
-                    <LogsTab logs={logs} onClearLogs={clearLogs} />
-                  </Card>
-                )}
-              </div>
+              {activeTab === "parametres" ? (
+                <SettingTabs activeSection={activeSettingsSection} />
+              ) : (
+                <div className="container mx-auto px-6 py-8">
+                  {activeTab === "historique" && (
+                    <HistoriqueTab
+                      transcriptions={transcriptions}
+                      selectedTranscription={selectedTranscription}
+                      isSidebarOpen={isSidebarOpen}
+                      isCompact={isCompact}
+                      onSelectTranscription={handleSelectTranscription}
+                      onCloseDetails={handleCloseDetails}
+                      onDelete={handleDelete}
+                      onClearAll={handleClearAll}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           )}
         </main>
@@ -305,6 +328,8 @@ export default function Dashboard() {
       />
 
       {showOnboarding && <OnboardingWizard onComplete={recheckOnboarding} />}
+
+      <AuthModal />
     </div>
   );
 }

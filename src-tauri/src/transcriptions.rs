@@ -22,6 +22,10 @@ pub struct Transcription {
     pub audio_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_cost: Option<f64>,
+    /// Vendor used for transcription ("OpenAI", "Groq", "Local", "Google").
+    /// Absent on records created before this field existed.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub transcription_provider: Option<String>,
     /// Raw Whisper output before post-process. Present only when post-process
     /// actually modified the transcription, so old records remain unaffected.
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -89,11 +93,58 @@ pub async fn list_transcriptions(app_handle: AppHandle) -> Result<Vec<Transcript
 pub async fn save_transcription(
     app_handle: AppHandle,
     transcription: Transcription,
+    history_keep_last: Option<usize>,
 ) -> Result<(), String> {
     let dir = get_transcriptions_dir(&app_handle).map_err(|e| e.to_string())?;
     let path = dir.join(format!("{}.json", transcription.id));
     let json = serde_json::to_string_pretty(&transcription).map_err(|e| e.to_string())?;
     fs::write(&path, json).map_err(|e| e.to_string())?;
+
+    if let Some(keep) = history_keep_last {
+        if let Err(err) = cleanup_old_transcriptions(&app_handle, keep) {
+            tracing::warn!("History cleanup failed: {}", err);
+        }
+    }
+    Ok(())
+}
+
+/// Remove oldest transcription JSONs beyond `keep_last`, deleting the
+/// matching WAV alongside each purged record. Silent on individual file errors.
+pub fn cleanup_old_transcriptions(app_handle: &AppHandle, keep_last: usize) -> Result<()> {
+    let dir = get_transcriptions_dir(app_handle)?;
+
+    let mut entries: Vec<(PathBuf, String)> = fs::read_dir(&dir)?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                return None;
+            }
+            let content = fs::read_to_string(&path).ok()?;
+            let t: Transcription = serde_json::from_str(&content).ok()?;
+            let dt = format!("{} {}", t.date, t.time);
+            Some((path, dt))
+        })
+        .collect();
+
+    // Newest first — identical ordering to list_transcriptions.
+    entries.sort_by(|a, b| b.1.cmp(&a.1));
+
+    for (path, _) in entries.iter().skip(keep_last) {
+        if let Ok(content) = fs::read_to_string(path) {
+            if let Ok(t) = serde_json::from_str::<Transcription>(&content) {
+                if let Some(audio_path) = t.audio_path {
+                    let _ = fs::remove_file(&audio_path);
+                }
+            }
+        }
+        if let Err(err) = fs::remove_file(path) {
+            tracing::warn!("Failed to purge transcription {}: {}", path.display(), err);
+        } else {
+            tracing::info!("Purged old transcription: {}", path.display());
+        }
+    }
+
     Ok(())
 }
 
@@ -149,5 +200,5 @@ pub async fn update_transcription(
     app_handle: AppHandle,
     transcription: Transcription,
 ) -> Result<(), String> {
-    save_transcription(app_handle, transcription).await
+    save_transcription(app_handle, transcription, None).await
 }

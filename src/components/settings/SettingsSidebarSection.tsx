@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { NAV_ITEM_DEFS, type SettingsSectionId } from "./common/SettingsNav";
+import { useNavItems, type SettingsSectionId } from "./common/SettingsNav";
 
 interface SettingsSidebarSectionProps {
   activeSection: SettingsSectionId;
@@ -13,11 +13,12 @@ export function SettingsSidebarSection({
   collapsed = false,
 }: SettingsSidebarSectionProps) {
   const { t } = useTranslation();
+  const navItems = useNavItems();
 
   if (collapsed) {
     return (
       <div className="flex flex-col border-t border-border overflow-y-auto flex-1 min-h-0 p-1 gap-1 items-center">
-        {NAV_ITEM_DEFS.map((item) => {
+        {navItems.map((item) => {
           const isActive = activeSection === item.id;
           return (
             <button
@@ -45,7 +46,7 @@ export function SettingsSidebarSection({
 
   return (
     <div className="flex flex-col border-t border-border overflow-y-auto flex-1 min-h-0 p-2 gap-0.5">
-      {NAV_ITEM_DEFS.map((item) => {
+      {navItems.map((item) => {
         const isActive = activeSection === item.id;
         return (
           <button

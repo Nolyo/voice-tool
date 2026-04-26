@@ -1,6 +1,17 @@
 import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { AudioWaveform, BookOpen, Keyboard, Mic, RefreshCw, Settings, Sparkles } from "lucide-react";
+import {
+  BookOpen,
+  Keyboard,
+  Mic,
+  Palette,
+  RefreshCw,
+  Settings,
+  Sparkles,
+  UserCircle2,
+  Wand2,
+} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface NavItemDef {
   id: string;
@@ -12,22 +23,31 @@ export interface NavItemDef {
 
 export type SettingsSectionId =
   | "section-transcription"
-  | "section-audio"
-  | "section-texte"
   | "section-post-process"
+  | "section-audio"
   | "section-vocabulaire"
-  | "section-systeme"
-  | "section-mini-window"
+  | "section-apparence"
   | "section-raccourcis"
-  | "section-mises-a-jour";
+  | "section-systeme"
+  | "section-mises-a-jour"
+  | "section-compte";
+
+const AUTH_ONLY_IDS = new Set<SettingsSectionId>([]);
 
 export const NAV_ITEM_DEFS: NavItemDef[] = [
   {
     id: "section-transcription",
-    icon: <Settings className="w-3.5 h-3.5 text-violet-500" />,
+    icon: <Sparkles className="w-3.5 h-3.5 text-violet-500" />,
     iconBg: "bg-violet-500/10",
-    titleKey: "settings.nav.ai",
-    subtitleKey: "settings.nav.aiSubtitle",
+    titleKey: "settings.nav.transcription",
+    subtitleKey: "settings.nav.transcriptionSubtitle",
+  },
+  {
+    id: "section-post-process",
+    icon: <Wand2 className="w-3.5 h-3.5 text-pink-500" />,
+    iconBg: "bg-pink-500/10",
+    titleKey: "settings.nav.postProcess",
+    subtitleKey: "settings.nav.postProcessSubtitle",
   },
   {
     id: "section-audio",
@@ -37,20 +57,6 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     subtitleKey: "settings.nav.audioSubtitle",
   },
   {
-    id: "section-texte",
-    icon: <span className="text-xs font-bold text-emerald-500 leading-none">T</span>,
-    iconBg: "bg-emerald-500/10",
-    titleKey: "settings.nav.text",
-    subtitleKey: "settings.nav.textSubtitle",
-  },
-  {
-    id: "section-post-process",
-    icon: <Sparkles className="w-3.5 h-3.5 text-pink-500" />,
-    iconBg: "bg-pink-500/10",
-    titleKey: "settings.nav.postProcess",
-    subtitleKey: "settings.nav.postProcessSubtitle",
-  },
-  {
     id: "section-vocabulaire",
     icon: <BookOpen className="w-3.5 h-3.5 text-cyan-500" />,
     iconBg: "bg-cyan-500/10",
@@ -58,18 +64,11 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     subtitleKey: "settings.nav.vocabularySubtitle",
   },
   {
-    id: "section-systeme",
-    icon: <Settings className="w-3.5 h-3.5 text-orange-500" />,
-    iconBg: "bg-orange-500/10",
-    titleKey: "settings.nav.system",
-    subtitleKey: "settings.nav.systemSubtitle",
-  },
-  {
-    id: "section-mini-window",
-    icon: <AudioWaveform className="w-3.5 h-3.5 text-fuchsia-500" />,
+    id: "section-apparence",
+    icon: <Palette className="w-3.5 h-3.5 text-fuchsia-500" />,
     iconBg: "bg-fuchsia-500/10",
-    titleKey: "settings.nav.miniWindow",
-    subtitleKey: "settings.nav.miniWindowSubtitle",
+    titleKey: "settings.nav.appearance",
+    subtitleKey: "settings.nav.appearanceSubtitle",
   },
   {
     id: "section-raccourcis",
@@ -79,16 +78,38 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     subtitleKey: "settings.nav.shortcutsSubtitle",
   },
   {
+    id: "section-systeme",
+    icon: <Settings className="w-3.5 h-3.5 text-orange-500" />,
+    iconBg: "bg-orange-500/10",
+    titleKey: "settings.nav.system",
+    subtitleKey: "settings.nav.systemSubtitle",
+  },
+  {
     id: "section-mises-a-jour",
     icon: <RefreshCw className="w-3.5 h-3.5 text-sky-500" />,
     iconBg: "bg-sky-500/10",
     titleKey: "settings.nav.updates",
     subtitleKey: "settings.nav.updatesSubtitle",
   },
+  {
+    id: "section-compte",
+    icon: <UserCircle2 className="w-3.5 h-3.5 text-cyan-400" />,
+    iconBg: "bg-cyan-500/10",
+    titleKey: "auth.account.sectionTitle",
+    subtitleKey: "auth.account.sectionSubtitle",
+  },
 ];
 
 // Keep backward compat alias
 export const NAV_ITEMS = NAV_ITEM_DEFS;
+
+/** Returns only the nav items appropriate for the current auth status. */
+export function useNavItems(): NavItemDef[] {
+  const { status } = useAuth();
+  return NAV_ITEM_DEFS.filter((item) =>
+    AUTH_ONLY_IDS.has(item.id as SettingsSectionId) ? status === "signed-in" : true,
+  );
+}
 
 interface SettingsNavProps {
   activeId: string;
@@ -97,6 +118,7 @@ interface SettingsNavProps {
 
 export function SettingsNav({ activeId, scrollContainer }: SettingsNavProps) {
   const { t } = useTranslation();
+  const items = useNavItems();
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -108,7 +130,7 @@ export function SettingsNav({ activeId, scrollContainer }: SettingsNavProps) {
 
   return (
     <nav className="w-48 shrink-0 sticky top-0 self-start space-y-0.5 pt-0.5">
-      {NAV_ITEM_DEFS.map((item) => (
+      {items.map((item) => (
         <button
           key={item.id}
           type="button"

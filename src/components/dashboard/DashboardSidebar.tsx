@@ -1,6 +1,7 @@
 import {
   FileText,
   History,
+  Mic,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -13,7 +14,14 @@ import { SettingsSidebarSection } from "@/components/settings/SettingsSidebarSec
 import { type SettingsSectionId } from "@/components/settings/common/SettingsNav";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
+import { type Transcription } from "@/hooks/useTranscriptionHistory";
+import { type AppLog } from "@/hooks/useAppLogs";
+import {
+  type LevelFilter,
+} from "@/components/logs/LogsTab";
 import { ProfileSwitcher } from "./ProfileSwitcher";
+import { HistoriqueSidebarSection } from "./HistoriqueSidebarSection";
+import { LogsSidebarSection } from "./LogsSidebarSection";
 
 export const DASHBOARD_NAV_ITEMS = [
   { id: "historique", labelKey: "sidebar.history", icon: History },
@@ -43,8 +51,20 @@ interface DashboardSidebarProps {
   onReorderFolders: (ids: string[]) => Promise<void>;
   onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
+  onMoveNoteToIndex: (
+    noteId: string,
+    targetFolderId: string | null,
+    noteIdsInNewOrder: string[],
+  ) => Promise<void>;
   activeSettingsSection: SettingsSectionId;
   onSettingsSectionChange: (id: SettingsSectionId) => void;
+  onOpenAccountPage?: () => void;
+  transcriptions: Transcription[];
+  logs: AppLog[];
+  levelFilter: LevelFilter;
+  onLevelFilterChange: (next: LevelFilter) => void;
+  sourceFilter: string | null;
+  onSourceFilterChange: (next: string | null) => void;
 }
 
 export function DashboardSidebar({
@@ -66,8 +86,16 @@ export function DashboardSidebar({
   onReorderFolders,
   onReorderNotes,
   onMoveNote,
+  onMoveNoteToIndex,
   activeSettingsSection,
   onSettingsSectionChange,
+  onOpenAccountPage,
+  transcriptions,
+  logs,
+  levelFilter,
+  onLevelFilterChange,
+  sourceFilter,
+  onSourceFilterChange,
 }: DashboardSidebarProps) {
   const { t } = useTranslation();
 
@@ -77,14 +105,19 @@ export function DashboardSidebar({
         collapsed ? "w-[52px]" : "w-[260px]"
       }`}
     >
-      {/* Header: title (expanded only) + collapse/expand button (always in the same corner) */}
+      {/* Header: logo + title (expanded only) + collapse/expand button */}
       <div
         className={`flex items-center border-b border-border h-[61px] shrink-0 ${
           collapsed ? "justify-center px-2" : "px-3 gap-2"
         }`}
       >
         {!collapsed && (
-          <span className="font-semibold text-sm truncate flex-1">{t('header.title')}</span>
+          <>
+            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 flex-shrink-0">
+              <Mic className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="font-semibold text-sm truncate flex-1">{t('header.title')}</span>
+          </>
         )}
         <Button
           variant="ghost"
@@ -137,6 +170,7 @@ export function DashboardSidebar({
           onReorderFolders={onReorderFolders}
           onReorderNotes={onReorderNotes}
           onMoveNote={onMoveNote}
+          onMoveNoteToIndex={onMoveNoteToIndex}
         />
       )}
 
@@ -149,14 +183,36 @@ export function DashboardSidebar({
         />
       )}
 
-      {/* Spacer to push profile to bottom — only when no sub-nav takes the remaining space */}
-      {activeTab !== "parametres" && !(activeTab === "notes" && !collapsed) && (
-        <div className="flex-1" />
+      {/* Historique overview — expanded sidebar only */}
+      {!collapsed && activeTab === "historique" && (
+        <HistoriqueSidebarSection transcriptions={transcriptions} />
       )}
+
+      {/* Logs level filters — expanded sidebar only */}
+      {!collapsed && activeTab === "logs" && (
+        <LogsSidebarSection
+          logs={logs}
+          levelFilter={levelFilter}
+          onLevelFilterChange={onLevelFilterChange}
+          sourceFilter={sourceFilter}
+          onSourceFilterChange={onSourceFilterChange}
+        />
+      )}
+
+      {/* Spacer to push profile to bottom — only when no sub-nav takes the remaining space */}
+      {activeTab !== "parametres" &&
+        !(activeTab === "notes" && !collapsed) &&
+        !(activeTab === "historique" && !collapsed) &&
+        !(activeTab === "logs" && !collapsed) && (
+          <div className="flex-1" />
+        )}
 
       {/* Profile switcher — always at the very bottom */}
       <div className="border-t border-border shrink-0 p-2">
-        <ProfileSwitcher collapsed={collapsed} />
+        <ProfileSwitcher
+          collapsed={collapsed}
+          onOpenAccountPage={onOpenAccountPage}
+        />
       </div>
     </aside>
   );

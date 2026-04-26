@@ -66,11 +66,12 @@ Voir chaque fichier `XX-*.md` pour le détail.
 | Version | Contenu | Promesse marketing |
 |---|---|---|
 | **v2.x → v2.y** | EPIC-07 audit sécurité (remédiation findings critiques/majeurs) | "On consolide avant d'ouvrir" |
-| **v3.0** | 00 + 01 + 02 + 04 (auth + sync settings + billing minimal) | "Crée ton compte, sync tes settings, soutien le projet" |
+| **v3.0** | 00 + 01 + 02 (auth + sync settings étendus : dico, snippets, prompts, préréglages) | "Crée ton compte, ton setup te suit partout" |
 | **v3.1** | 03 + 06 v1 (sync notes + onboarding) | "Tes notes te suivent partout" |
-| **v3.2** | 05 (service managé transcription) | "Plus besoin de gérer une clé OpenAI" |
+| **v3.2** | 04 (billing & gating premium) | "Soutiens le projet, débloque les fonctionnalités premium" |
+| **v3.3** | 05 (service managé transcription) | "Plus besoin de gérer une clé OpenAI" |
 
-Rationale: livrer du valeur tôt (settings sync seuls = déjà utile), garder le sujet le plus complexe (proxy modèles) pour quand le reste est stable.
+Rationale (révisé 2026-04-22): le billing a été décalé en v3.2 pour se concentrer sur la création de compte + sync settings étendus en v3.0. Livre une valeur concrète dès la première release (pas un "compte vide") sans ouvrir les flows complexes billing/notes/service managé en parallèle. Chaque release ajoute une brique autonome.
 
 ---
 
@@ -78,13 +79,17 @@ Rationale: livrer du valeur tôt (settings sync seuls = déjà utile), garder le
 
 | Sujet | Sous-épique | Pourquoi c'est critique |
 |---|---|---|
-| **Définition de l'offre premium** (quoi est gratuit, quoi est payant) | 04 | Détermine le gating, le pricing, la story marketing. **Premier sujet à brainstormer.** |
-| **Threat model formel** (qui on défend contre quoi) | 00 | Doit cadrer toutes les décisions sécu en aval. |
-| **Account recovery** (reset email basique? recovery codes? 2FA?) | 01 | UX vs sécu, acceptation du compromis. |
-| **Conflict resolution multi-device** | 02 / 03 | Last-write-wins simple vs CRDT (Yjs) costaud. Risque perte de données. |
-| **Stack backend confirmé** | transverse | Supabase EU dans le POC mais pas formellement validé. Vendor lock-in à acter. |
-| **Migration des données locales existantes** vers cloud à l'opt-in | 02 / 03 | Risque perte. Backup pre-migration obligatoire. |
-| **Architecture du proxy modèles** | 05 | Audio = gros payload, latence-sensible. Supabase Edge Functions Deno probablement pas adapté. |
+| **Définition de l'offre premium** (quoi est gratuit, quoi est payant) | 04 (v3.2) | Détermine le gating, le pricing, la story marketing. À brainstormer avant l'ouverture du sous-épique 04. |
+| **Architecture du proxy modèles** | 05 (v3.3) | Audio = gros payload, latence-sensible. Supabase Edge Functions Deno probablement pas adapté. |
+| **Domaine final + marque** | 06 (v3.1) | Nom + TLD + registrar. Impacte les URLs callback auth, la privacy policy, le site marketing. |
+
+### Sujets déjà figés (ne plus rouvrir sans nouvel ADR)
+
+- ✅ Threat model (ADR 0006, figé 2026-04-22)
+- ✅ Stack backend : Supabase Auth + Postgres EU (ADR 0007)
+- ✅ Account recovery : reset email + 2FA TOTP optionnel + recovery codes à activation 2FA (ADR 0007)
+- ✅ Conflict resolution multi-device : LWW par item + soft-delete + tables séparées (ADR 0008)
+- ✅ Migration données locales : modale choix explicite + backup auto (ADR 0008)
 
 ---
 

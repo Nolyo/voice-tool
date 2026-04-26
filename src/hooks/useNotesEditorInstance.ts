@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useEditor } from "@tiptap/react";
+import { useEditor, ReactNodeViewRenderer } from "@tiptap/react";
+import { CodeBlockLanguageSelect } from "@/components/notes/NotesEditor/CodeBlockLanguageSelect";
 import StarterKit from "@tiptap/starter-kit";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { createLowlight, common } from "lowlight";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableCell } from "@tiptap/extension-table-cell";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
@@ -8,9 +15,29 @@ import TaskItem from "@tiptap/extension-task-item";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import { Highlight } from "@tiptap/extension-highlight";
+import i18n from "@/i18n";
 import { type NoteData, type NoteMeta, deriveTitle } from "@/hooks/useNotes";
 import { NoteLink } from "@/components/notes/NotesEditor/NoteLinkExtension";
 import { buildNoteLinkSuggestion } from "@/components/notes/NotesEditor/NoteLinkSuggestion";
+import { SlashCommand } from "@/components/notes/NotesEditor/SlashCommand/SlashCommandExtension";
+
+const lowlight = createLowlight(common);
+
+/** Layout the editor falls back to when a note has no persisted content.
+ *  Surfaces a visible "title slot" so new users grasp the first-line-is-title
+ *  convention without reading docs. Empty H1 + empty P produce no text nodes,
+ *  so `editor.getText()` still returns `""` and the "delete-on-close-empty"
+ *  policy in NotesEditor keeps working unchanged. */
+const EMPTY_NOTE_SEED = "<h1></h1><p></p>";
+
+/** Content strings that should be treated as "empty" and replaced by the
+ *  seed. Covers the backend's literal empty file, whitespace, and the
+ *  single-paragraph shape TipTap serialises for an empty doc. */
+function isBlankContent(raw: string): boolean {
+  if (!raw) return true;
+  const stripped = raw.replace(/\s+/g, "");
+  return stripped === "" || stripped === "<p></p>";
+}
 
 interface UseNotesEditorInstanceOptions {
   openNotes: NoteMeta[];
@@ -47,6 +74,12 @@ export function useNotesEditorInstance({
   onContentSaved,
 }: UseNotesEditorInstanceOptions) {
   const [isLoadingContent, setIsLoadingContent] = useState(false);
+  // `loadedNoteId` is exposed to renderers so they can gate any UI that
+  // derives from the editor's current document (live tab title, word count)
+  // until TipTap has actually ingested the active note's content. Without
+  // this, clicking a tab shows the previous note's title/word-count for one
+  // paint because `activeNoteId` flips before `readNote()` resolves.
+  const [loadedNoteId, setLoadedNoteId] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const activeNoteIdRef = useRef(activeNoteId);
   const loadedNoteIdRef = useRef<string | null>(null);
@@ -61,6 +94,7 @@ export function useNotesEditorInstance({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
+        codeBlock: false,
         // Link is bundled in StarterKit v3; keep openOnClick: false so our
         // existing Ctrl+clic handler (see handleDOMEvents.click) remains the
         // only place that opens links externally via Tauri plugin-opener.
@@ -72,12 +106,55 @@ export function useNotesEditorInstance({
           },
         },
       }),
+      CodeBlockLowlight.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(CodeBlockLanguageSelect);
+        },
+      }).configure({
+        lowlight,
+        defaultLanguage: "plaintext",
+        HTMLAttributes: {
+          class: "vt-code-block",
+        },
+      }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: { class: "vt-table" },
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Image.configure({
         inline: true,
         allowBase64: true,
       }),
       Placeholder.configure({
-        placeholder: "Commencez à écrire...",
+        // Show placeholders on every empty node (not just the focused one)
+        // so the seeded <h1> and <p> both display hints before the user
+        // touches the doc.
+        showOnlyCurrent: false,
+        placeholder: ({ node, editor, pos }) => {
+          const { doc } = editor.state;
+          // Node at position 0 is the first child of the doc.
+          if (pos === 0 && node.type.name === "heading" && node.attrs.level === 1) {
+            return i18n.t("notes.editor.titlePlaceholder", {
+              defaultValue: "Titre de la note",
+            });
+          }
+          // The slot directly after an opening H1 gets the body hint.
+          const first = doc.firstChild;
+          if (
+            first &&
+            first.type.name === "heading" &&
+            pos === first.nodeSize &&
+            node.type.name === "paragraph"
+          ) {
+            return i18n.t("notes.editor.bodyPlaceholder", {
+              defaultValue: "Commencez à écrire…",
+            });
+          }
+          return "";
+        },
       }),
       TaskList,
       TaskItem.configure({
@@ -90,6 +167,7 @@ export function useNotesEditorInstance({
         HTMLAttributes: {},
         suggestion: buildNoteLinkSuggestion(getNoteLinkRefs),
       }),
+      SlashCommand,
     ],
     editorProps: {
       attributes: {
@@ -185,14 +263,30 @@ export function useNotesEditorInstance({
     if (loadedNoteIdRef.current === activeNoteId) return;
 
     setIsLoadingContent(true);
+    // Clear the loaded flag so consumers don't trust the editor's document
+    // while it still holds the previous note's content.
+    setLoadedNoteId(null);
     readNote(activeNoteId)
       .then((data) => {
+        // Swap empty/blank content for a title+body scaffold so new users
+        // discover the "first line = title" convention visually. The seed
+        // contains no text nodes, so `getText()` stays empty and the
+        // auto-delete-on-close-empty policy is untouched.
+        const blank = isBlankContent(data.content);
+        const content = blank ? EMPTY_NOTE_SEED : data.content;
         // `emitUpdate: false` is critical: TipTap v3 defaults to emitting an
         // update event on setContent, which would schedule a debounced save
         // right after loading — re-writing the just-read content to disk and
         // potentially clobbering attributes that weren't round-tripped cleanly.
-        editor.commands.setContent(data.content, { emitUpdate: false });
+        editor.commands.setContent(content, { emitUpdate: false });
+        // Drop the caret inside the empty H1 so the user can start typing
+        // a title immediately. `focus()` emits selectionUpdate, not update,
+        // so it doesn't trigger a save.
+        if (blank) {
+          editor.commands.focus("start");
+        }
         loadedNoteIdRef.current = activeNoteId;
+        setLoadedNoteId(activeNoteId);
       })
       .catch((err) => {
         console.error("Failed to load note:", err);
@@ -206,6 +300,7 @@ export function useNotesEditorInstance({
     const openIds = new Set(openNotes.map((n) => n.id));
     if (loadedNoteIdRef.current && !openIds.has(loadedNoteIdRef.current)) {
       loadedNoteIdRef.current = null;
+      setLoadedNoteId(null);
     }
   }, [openNotes]);
 
@@ -233,5 +328,5 @@ export function useNotesEditorInstance({
     }
   }, [editor, onUpdateNote, onContentSaved]);
 
-  return { editor, isLoadingContent, flushSave };
+  return { editor, isLoadingContent, loadedNoteId, flushSave };
 }

@@ -129,6 +129,32 @@ export function useNotes() {
     }
   };
 
+  const moveNoteToFolderAtIndex = async (
+    noteId: string,
+    targetFolderId: string | null,
+    noteIdsInNewOrder: string[],
+  ): Promise<void> => {
+    try {
+      await invoke<NoteMeta>('move_note_to_folder', { noteId, folderId: targetFolderId });
+    } catch (error) {
+      console.error('Failed to move note:', error);
+      await loadNotes();
+      throw error;
+    }
+    try {
+      await invoke('reorder_notes_in_folder', {
+        folderId: targetFolderId,
+        noteIds: noteIdsInNewOrder,
+      });
+    } catch (error) {
+      console.error('Failed to reorder notes after move:', error);
+      await loadNotes();
+      throw error;
+    }
+    // On success, refresh local state to reflect both the folderId change and the order change.
+    await loadNotes();
+  };
+
   return {
     notes,
     isLoading,
@@ -141,6 +167,7 @@ export function useNotes() {
     toggleFavorite,
     moveNoteToFolder,
     reorderNotesInFolder,
+    moveNoteToFolderAtIndex,
     reloadNotes: loadNotes,
   };
 }

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -35,17 +36,11 @@ interface SystemInfo {
   gpu_name: string | null;
 }
 
-const MODEL_OPTIONS: { value: ModelSize; label: string; size: string }[] = [
-  { value: "tiny", label: "Tiny", size: "39 Mo" },
-  { value: "base", label: "Base", size: "74 Mo" },
-  { value: "small", label: "Small", size: "244 Mo" },
-  { value: "medium", label: "Medium", size: "1,5 Go" },
-  { value: "large-v1", label: "Large v1", size: "2,9 Go" },
-  { value: "large-v2", label: "Large v2", size: "2,9 Go" },
-  { value: "large-v3", label: "Large v3", size: "2,9 Go" },
-  { value: "large-v3-turbo-q5_0", label: "Large v3 Turbo (quantifié)", size: "547 Mo" },
-  { value: "large-v3-turbo", label: "Large v3 Turbo", size: "1,6 Go" },
-];
+interface ModelOption {
+  value: ModelSize;
+  label: string;
+  size: string;
+}
 
 function recommendModel(info: SystemInfo): ModelSize | "api" {
   if (info.has_discrete_gpu) return "large-v3-turbo";
@@ -55,8 +50,28 @@ function recommendModel(info: SystemInfo): ModelSize | "api" {
 }
 
 export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
+  const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const [step, setStep] = useState<Step>("choice");
+
+  const modelOptions = useMemo<ModelOption[]>(
+    () => [
+      { value: "tiny", label: "Tiny", size: "39 MB" },
+      { value: "base", label: "Base", size: "74 MB" },
+      { value: "small", label: "Small", size: "244 MB" },
+      { value: "medium", label: "Medium", size: "1.5 GB" },
+      { value: "large-v1", label: "Large v1", size: "2.9 GB" },
+      { value: "large-v2", label: "Large v2", size: "2.9 GB" },
+      { value: "large-v3", label: "Large v3", size: "2.9 GB" },
+      {
+        value: "large-v3-turbo-q5_0",
+        label: `Large v3 Turbo ${t("onboarding.modelQuantizedSuffix")}`,
+        size: "547 MB",
+      },
+      { value: "large-v3-turbo", label: "Large v3 Turbo", size: "1.6 GB" },
+    ],
+    [t],
+  );
 
   const [sysInfo, setSysInfo] = useState<SystemInfo | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
@@ -158,6 +173,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
           )}
           {step === "local" && (
             <LocalStep
+              modelOptions={modelOptions}
               sysInfo={sysInfo}
               isDetecting={isDetecting}
               detectionFailed={detectionFailed}
@@ -195,6 +211,7 @@ function ChoiceStep({
   onLocal: () => void;
   onApi: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className="space-y-2 text-center">
@@ -202,10 +219,10 @@ function ChoiceStep({
           <Sparkles className="h-6 w-6 text-violet-500" />
         </div>
         <DialogPrimitive.Title className="text-xl font-semibold">
-          Bienvenue ! Configurons la transcription
+          {t("onboarding.welcomeTitle")}
         </DialogPrimitive.Title>
         <DialogPrimitive.Description className="text-sm text-muted-foreground">
-          Pour commencer, choisis comment transcrire tes enregistrements.
+          {t("onboarding.welcomeSubtitle")}
         </DialogPrimitive.Description>
       </div>
 
@@ -222,10 +239,9 @@ function ChoiceStep({
             <HardDrive className="h-5 w-5" />
           </div>
           <div>
-            <div className="font-semibold">Local (recommandé)</div>
+            <div className="font-semibold">{t("onboarding.choiceLocalTitle")}</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Gratuit, offline, tourne sur ton PC. Nécessite de télécharger un
-              modèle (entre 39 Mo et 3 Go).
+              {t("onboarding.choiceLocalDesc")}
             </p>
           </div>
         </button>
@@ -242,10 +258,9 @@ function ChoiceStep({
             <Cloud className="h-5 w-5" />
           </div>
           <div>
-            <div className="font-semibold">API OpenAI</div>
+            <div className="font-semibold">{t("onboarding.choiceApiTitle")}</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Qualité maximale, requiert internet et une clé API OpenAI
-              (payant à l'usage).
+              {t("onboarding.choiceApiDesc")}
             </p>
           </div>
         </button>
@@ -255,6 +270,7 @@ function ChoiceStep({
 }
 
 function LocalStep({
+  modelOptions,
   sysInfo,
   isDetecting,
   detectionFailed,
@@ -269,6 +285,7 @@ function LocalStep({
   onBack,
   onSwitchToApi,
 }: {
+  modelOptions: ModelOption[];
   sysInfo: SystemInfo | null;
   isDetecting: boolean;
   detectionFailed: boolean;
@@ -283,7 +300,16 @@ function LocalStep({
   onBack: () => void;
   onSwitchToApi: () => void;
 }) {
-  const reco = MODEL_OPTIONS.find((m) => m.value === recommendedModel);
+  const { t } = useTranslation();
+  const reco = modelOptions.find((m) => m.value === recommendedModel);
+  const gpuSuffix =
+    sysInfo?.has_discrete_gpu && sysInfo.gpu_name
+      ? ` · ${t("onboarding.gpuDetectedNamed", { name: sysInfo.gpu_name })}`
+      : sysInfo?.has_discrete_gpu
+        ? ` · ${t("onboarding.gpuDetected")}`
+        : sysInfo
+          ? ` · ${t("onboarding.noGpu")}`
+          : "";
 
   return (
     <>
@@ -298,12 +324,11 @@ function LocalStep({
             <ArrowLeft className="h-4 w-4" />
           </button>
           <DialogPrimitive.Title className="text-xl font-semibold">
-            Choisis ton modèle local
+            {t("onboarding.localTitle")}
           </DialogPrimitive.Title>
         </div>
         <DialogPrimitive.Description className="text-sm text-muted-foreground">
-          Le bouton ci-dessous analyse ta machine (RAM, GPU) et te propose le
-          modèle le plus adapté.
+          {t("onboarding.localSubtitle")}
         </DialogPrimitive.Description>
       </div>
 
@@ -319,12 +344,12 @@ function LocalStep({
             {isDetecting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Analyse en cours...
+                {t("onboarding.analyzing")}
               </>
             ) : (
               <>
                 <Wand2 className="h-4 w-4" />
-                Détecter automatiquement le meilleur modèle
+                {t("onboarding.detectButton")}
               </>
             )}
           </Button>
@@ -332,7 +357,7 @@ function LocalStep({
 
         {detectionFailed && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700 dark:text-amber-400">
-            Détection impossible. Choisis manuellement un modèle ci-dessous.
+            {t("onboarding.detectionFailed")}
           </div>
         )}
 
@@ -342,21 +367,19 @@ function LocalStep({
               <Info className="h-4 w-4 mt-0.5 text-violet-500 shrink-0" />
               <div className="text-sm">
                 <div className="font-medium text-foreground">
-                  RAM : {sysInfo.total_ram_gb.toFixed(1)} Go
-                  {sysInfo.has_discrete_gpu && sysInfo.gpu_name
-                    ? ` · GPU discret détecté (${sysInfo.gpu_name})`
-                    : sysInfo.has_discrete_gpu
-                      ? " · GPU discret détecté"
-                      : " · pas de GPU discret"}
+                  {t("onboarding.systemInfoRam", {
+                    ram: sysInfo.total_ram_gb.toFixed(1),
+                  })}
+                  {gpuSuffix}
                 </div>
                 {recommendedModel === "api" ? (
                   <p className="mt-1 text-muted-foreground">
-                    Ton PC risque d'être limité pour le mode local. On te
-                    conseille d'utiliser l'API OpenAI.
+                    {t("onboarding.recommendApi")}
                   </p>
                 ) : reco ? (
                   <p className="mt-1 text-muted-foreground">
-                    Recommandation : <strong>{reco.label}</strong> ({reco.size}).
+                    {t("onboarding.recommendationLabel")} :{" "}
+                    <strong>{reco.label}</strong> ({reco.size}).
                   </p>
                 ) : null}
               </div>
@@ -369,7 +392,7 @@ function LocalStep({
                 onClick={onSwitchToApi}
                 className="w-full"
               >
-                Passer au mode API
+                {t("onboarding.switchToApi")}
               </Button>
             )}
           </div>
@@ -378,7 +401,7 @@ function LocalStep({
 
       <div className="space-y-2">
         <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Modèle à télécharger
+          {t("onboarding.modelToDownload")}
         </label>
         <Select
           value={selectedModel}
@@ -389,7 +412,7 @@ function LocalStep({
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="dark">
-            {MODEL_OPTIONS.map((m) => (
+            {modelOptions.map((m) => (
               <SelectItem key={m.value} value={m.value}>
                 {m.label} ({m.size})
               </SelectItem>
@@ -399,24 +422,24 @@ function LocalStep({
       </div>
 
       <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-        <strong className="text-foreground">Astuce :</strong> si les
-        transcriptions sont trop lentes, essaie un modèle plus petit. Si ton PC
-        tient la charge, monte d'un cran. À toi de trouver le bon équilibre
-        qualité / vitesse.
+        <strong className="text-foreground">{t("onboarding.tipLabel")} :</strong>{" "}
+        {t("onboarding.tipBody")}
       </div>
 
       {isDownloading && (
         <div className="space-y-1.5">
           <Progress value={downloadProgress} className="h-2" />
           <p className="text-xs text-muted-foreground">
-            Téléchargement : {Math.round(downloadProgress)}%
+            {t("onboarding.downloadProgress", {
+              percent: Math.round(downloadProgress),
+            })}
           </p>
         </div>
       )}
 
       {downloadError && (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-          Erreur : {downloadError}
+          {t("onboarding.downloadErrorPrefix")} : {downloadError}
         </div>
       )}
 
@@ -429,12 +452,12 @@ function LocalStep({
         {isDownloading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Téléchargement...
+            {t("onboarding.downloading")}
           </>
         ) : (
           <>
             <Download className="h-4 w-4" />
-            Télécharger le modèle
+            {t("onboarding.downloadButton")}
           </>
         )}
       </Button>
@@ -455,6 +478,7 @@ function ApiStep({
   isSaving: boolean;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className="space-y-2">
@@ -468,11 +492,11 @@ function ApiStep({
             <ArrowLeft className="h-4 w-4" />
           </button>
           <DialogPrimitive.Title className="text-xl font-semibold">
-            Configure ton API OpenAI
+            {t("onboarding.apiTitle")}
           </DialogPrimitive.Title>
         </div>
         <DialogPrimitive.Description className="text-sm text-muted-foreground">
-          Saisis ta clé API OpenAI. Tu peux en créer une sur{" "}
+          {t("onboarding.apiSubtitleBefore")}{" "}
           <a
             href="https://platform.openai.com/api-keys"
             target="_blank"
@@ -487,7 +511,7 @@ function ApiStep({
 
       <div className="space-y-2">
         <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Clé API
+          {t("onboarding.apiKeyLabel")}
         </label>
         <Input
           type="password"
@@ -510,10 +534,10 @@ function ApiStep({
         {isSaving ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Enregistrement...
+            {t("onboarding.saving")}
           </>
         ) : (
-          "Valider"
+          t("onboarding.save")
         )}
       </Button>
     </>

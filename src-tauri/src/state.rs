@@ -36,6 +36,8 @@ pub struct AppState {
     pub whisper: WhisperState,
     /// ID of the currently active profile — populated during setup by profiles::init_active_profile
     pub active_profile_id: Mutex<String>,
+    /// Auth state: pending OAuth nonces, memory-fallback refresh token, keyring flag
+    pub auth: Mutex<crate::auth::AuthState>,
 }
 
 pub(crate) fn create_app_state() -> AppState {
@@ -52,5 +54,6 @@ pub(crate) fn create_app_state() -> AppState {
             })),
         },
         active_profile_id: Mutex::new(String::new()),
+        auth: Mutex::new(crate::auth::AuthState::new()),
     }
 }

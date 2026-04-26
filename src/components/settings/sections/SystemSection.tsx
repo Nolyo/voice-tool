@@ -1,23 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
-import { Minus, Moon, Plus, Settings, Sun } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useSettings } from "@/hooks/useSettings";
 import { useAutostart } from "@/hooks/useAutostart";
-import { changeLanguage } from "@/i18n";
-import { SectionCard } from "../common/SectionCard";
-import { Divider } from "../common/Divider";
+import { RadioCardList, Row, SectionHeader, Toggle, VtIcon } from "../vt";
 import { DangerZone } from "./DangerZone";
+
+const ACCENT = "oklch(0.72 0.16 75)";
+
+type InsertionMode = "cursor" | "clipboard" | "none";
 
 export function SystemSection() {
   const { t } = useTranslation();
@@ -25,188 +14,230 @@ export function SystemSection() {
   const { enabled: autoStartEnabled, isUpdating: isUpdatingAutostart, toggle } =
     useAutostart();
 
-  return (
-    <SectionCard
-      id="section-systeme"
-      icon={<Settings className="w-3.5 h-3.5 text-orange-500" />}
-      iconBg="bg-orange-500/10"
-      title={t('settings.system.title')}
-      subtitle={t('settings.system.subtitle')}
+  const keep = settings.recordings_keep_last;
+  const historyKeep = settings.history_keep_last;
+  const RECORDINGS_MAX = 500;
+  const HISTORY_MAX = 2000;
+
+  const systemIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <div className="space-y-5">
-        {/* Language selector */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t('settings.system.language')}
-          </Label>
-          <Select
-            value={settings.ui_language}
-            onValueChange={async (value) => {
-              await updateSetting("ui_language", value as "fr" | "en");
-              changeLanguage(value);
-            }}
-          >
-            <SelectTrigger className="h-9 bg-background/50 w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="fr">Français</SelectItem>
-              <SelectItem value="en">English</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            {t('settings.system.languageDesc')}
-          </p>
-        </div>
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+    </svg>
+  );
 
-        <Divider />
+  return (
+    <div className="vt-fade-up space-y-5">
+      <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
+        <SectionHeader
+          color={ACCENT}
+          icon={systemIcon}
+          title={t("settings.system.title")}
+          description={t("settings.system.subtitle")}
+        />
 
-        {/* Theme selector */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t('settings.system.theme')}
-          </Label>
-          <div className="inline-flex rounded-lg border bg-background/50 p-1">
-            <Button
-              type="button"
-              variant={settings.theme === "dark" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() => updateSetting("theme", "dark")}
-            >
-              <Moon className="w-3.5 h-3.5" />
-              {t('settings.system.themeDark')}
-            </Button>
-            <Button
-              type="button"
-              variant={settings.theme === "light" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() => updateSetting("theme", "light")}
-            >
-              <Sun className="w-3.5 h-3.5" />
-              {t('settings.system.themeLight')}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {t('settings.system.themeDesc')}
-          </p>
-        </div>
-
-        <Divider />
-
-        {/* Autostart */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/30 transition-colors">
-            <Checkbox
-              id="auto-start"
-              checked={autoStartEnabled}
-              disabled={isUpdatingAutostart}
-              onCheckedChange={(checked) => toggle(checked as boolean)}
-            />
-            <Label
-              htmlFor="auto-start"
-              className="text-sm text-foreground cursor-pointer flex-1"
-            >
-              {t('settings.system.startWithWindows')}
-              {isUpdatingAutostart && (
-                <span className="text-muted-foreground ml-1 text-xs">
-                  {t('settings.system.updating')}
-                </span>
-              )}
-            </Label>
-          </div>
-
-          {autoStartEnabled && (
-            <div className="flex items-center gap-3 p-2.5 pl-10 rounded-lg hover:bg-muted/30 transition-colors">
-              <Checkbox
-                id="start-minimized"
-                checked={settings.start_minimized_on_boot}
-                onCheckedChange={(checked) =>
-                  updateSetting("start_minimized_on_boot", checked as boolean)
-                }
-              />
-              <Label
-                htmlFor="start-minimized"
-                className="text-sm text-muted-foreground cursor-pointer flex-1"
-              >
-                {t('settings.system.startMinimized')}
-              </Label>
-            </div>
-          )}
-        </div>
-
-        <Divider />
-
-        {/* Keep recordings */}
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="keep-recordings"
-            className="text-sm font-medium text-foreground"
-          >
-            {t('settings.system.recordingsKeep')}
-          </Label>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() =>
-                updateSetting(
-                  "recordings_keep_last",
-                  Math.max(0, settings.recordings_keep_last - 1),
-                )
+        <Row
+          label={t("settings.system.startWithWindows")}
+          hint={t("settings.system.startWithWindowsHint", {
+            defaultValue: "Comportement au lancement de Windows.",
+          })}
+          align="start"
+        >
+          <div className="flex flex-col gap-3">
+            <Toggle
+              on={autoStartEnabled}
+              onClick={() => toggle(!autoStartEnabled)}
+              label={t("settings.system.startWithWindows")}
+              hint={
+                isUpdatingAutostart ? t("settings.system.updating") : undefined
               }
-              className="h-9 w-9 shrink-0"
+              disabled={isUpdatingAutostart}
+            />
+            <div
+              style={{
+                opacity: autoStartEnabled ? 1 : 0.4,
+                pointerEvents: autoStartEnabled ? "auto" : "none",
+                paddingLeft: 46,
+              }}
             >
-              <Minus className="w-3.5 h-3.5" />
-            </Button>
-            <Input
-              id="keep-recordings"
+              <Toggle
+                on={settings.start_minimized_on_boot}
+                onClick={() =>
+                  updateSetting(
+                    "start_minimized_on_boot",
+                    !settings.start_minimized_on_boot,
+                  )
+                }
+                label={t("settings.system.startMinimized")}
+              />
+            </div>
+          </div>
+        </Row>
+
+        <Row
+          label={t("settings.system.recordingsKeep")}
+          hint={t("settings.system.recordingsKeepHelp")}
+        >
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                updateSetting("recordings_keep_last", Math.max(0, keep - 1))
+              }
+              className="w-9 h-9 rounded-md flex items-center justify-center"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+                color: "var(--vt-fg-2)",
+              }}
+            >
+              <VtIcon.minus />
+            </button>
+            <input
               type="number"
-              value={settings.recordings_keep_last}
+              min={0}
+              max={RECORDINGS_MAX}
+              value={keep}
               onChange={(e) =>
                 updateSetting(
                   "recordings_keep_last",
-                  Number.parseInt(e.target.value) || 0,
+                  Math.min(
+                    RECORDINGS_MAX,
+                    Math.max(0, Number.parseInt(e.target.value) || 0),
+                  ),
                 )
               }
-              className="h-9 text-center font-mono bg-background/50 w-20"
+              className="vt-mono w-20 h-9 rounded-md text-center text-[13px]"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+                color: "var(--vt-fg)",
+              }}
             />
-            <Button
-              variant="outline"
-              size="icon"
+            <button
+              type="button"
               onClick={() =>
                 updateSetting(
                   "recordings_keep_last",
-                  settings.recordings_keep_last + 1,
+                  Math.min(RECORDINGS_MAX, keep + 1),
                 )
               }
-              className="h-9 w-9 shrink-0"
+              className="w-9 h-9 rounded-md flex items-center justify-center"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+                color: "var(--vt-fg-2)",
+              }}
             >
-              <Plus className="w-3.5 h-3.5" />
-            </Button>
+              <VtIcon.plus />
+            </button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {t('settings.system.recordingsKeepHelp')}
-          </p>
-        </div>
+        </Row>
 
-        <Divider />
-
-        <Button
-          variant="destructive"
-          className="w-full h-10 font-medium"
-          onClick={async () => {
-            await invoke("exit_app");
-          }}
+        <Row
+          label={t("settings.system.historyKeep")}
+          hint={t("settings.system.historyKeepHelp")}
         >
-          {t('settings.quitApp')}
-        </Button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                updateSetting(
+                  "history_keep_last",
+                  Math.max(0, historyKeep - 10),
+                )
+              }
+              className="w-9 h-9 rounded-md flex items-center justify-center"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+                color: "var(--vt-fg-2)",
+              }}
+            >
+              <VtIcon.minus />
+            </button>
+            <input
+              type="number"
+              min={0}
+              max={HISTORY_MAX}
+              value={historyKeep}
+              onChange={(e) =>
+                updateSetting(
+                  "history_keep_last",
+                  Math.min(
+                    HISTORY_MAX,
+                    Math.max(0, Number.parseInt(e.target.value) || 0),
+                  ),
+                )
+              }
+              className="vt-mono w-20 h-9 rounded-md text-center text-[13px]"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+                color: "var(--vt-fg)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                updateSetting(
+                  "history_keep_last",
+                  Math.min(HISTORY_MAX, historyKeep + 10),
+                )
+              }
+              className="w-9 h-9 rounded-md flex items-center justify-center"
+              style={{
+                background: "var(--vt-surface)",
+                border: "1px solid var(--vt-border)",
+                color: "var(--vt-fg-2)",
+              }}
+            >
+              <VtIcon.plus />
+            </button>
+          </div>
+        </Row>
 
-        <Divider />
-
-        <DangerZone />
+        <Row
+          label={t("settings.system.insertionMode")}
+          hint={t("settings.system.insertionModeHint")}
+          align="start"
+        >
+          <RadioCardList<InsertionMode>
+            value={settings.insertion_mode}
+            onChange={(v) => updateSetting("insertion_mode", v)}
+            options={[
+              {
+                id: "cursor",
+                title: t("settings.system.modeCursor"),
+                sub: t("settings.system.modeCursorDesc"),
+                badge: t("common.recommended", { defaultValue: "Recommandé" }),
+              },
+              {
+                id: "clipboard",
+                title: t("settings.system.modeClipboard"),
+                sub: t("settings.system.modeClipboardDesc"),
+              },
+              {
+                id: "none",
+                title: t("settings.system.modeNone"),
+                sub: t("settings.system.modeNoneDesc"),
+              },
+            ]}
+          />
+        </Row>
       </div>
-    </SectionCard>
+
+      <DangerZone />
+    </div>
   );
 }

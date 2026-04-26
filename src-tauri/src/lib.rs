@@ -1,4 +1,6 @@
 mod audio;
+mod audio_trim;
+mod auth;
 mod chat;
 mod commands;
 mod folders;
@@ -8,6 +10,7 @@ mod logs;
 mod notes;
 mod profiles;
 mod state;
+mod sync;
 mod transcription;
 mod transcription_local;
 mod transcriptions;
@@ -26,12 +29,24 @@ pub fn run() {
     let log_layer = logging::init_logging();
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            let has_deep_link = args.iter().any(|a| a.starts_with("voice-tool://"));
+            tracing::info!(
+                "single_instance fired (arg_count={}, has_deep_link={})",
+                args.len(),
+                has_deep_link
+            );
+            // ─── NEW: route deep-link args to auth handler ────────────────────────────
+            if let Some(url) = args.iter().find(|a| a.starts_with("voice-tool://")) {
+                auth::emit_deep_link_event(app, url);
+            }
+            // ─── Preserve existing behavior (bring window forward) ────────────────────
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -63,6 +78,7 @@ pub fn run() {
             commands::transcription::load_recording,
             commands::misc::paste_text_to_active_window,
             commands::misc::type_text_at_cursor,
+            commands::misc::frontend_log,
             updater::check_for_updates,
             updater::download_and_install_update,
             updater::is_updater_available,
@@ -111,11 +127,42 @@ pub fn run() {
             commands::profiles::rename_profile,
             commands::profiles::delete_profile,
             commands::profiles::switch_profile,
-            commands::reset::reset_app_data
+            commands::reset::reset_app_data,
+            auth::store_refresh_token,
+            auth::get_refresh_token,
+            auth::clear_refresh_token,
+            auth::get_or_create_device_id,
+            auth::generate_oauth_state,
+            auth::consume_pending_deep_link,
+            sync::write_local_backup,
+            sync::list_local_backups,
+            sync::read_local_backup,
+            sync::delete_local_backup,
+            sync::delete_all_local_backups,
+            sync::save_export_to_download,
         ])
         .setup(move |app| {
+            // ─── Deep-link: subscribe to live on_open_url events ──────────────────────
+            use tauri_plugin_deep_link::DeepLinkExt;
+            let handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                let urls: Vec<_> = event.urls().into_iter().collect();
+                tracing::info!("on_open_url fired (url_count={})", urls.len());
+                for url in urls {
+                    let s = url.as_str();
+                    if s.starts_with("voice-tool://") {
+                        auth::emit_deep_link_event(&handle, s);
+                    }
+                }
+            });
+
             // Enable logging to frontend
             log_layer.set_app_handle(app.handle().clone());
+
+            tracing::info!(
+                "Voice Tool v{} started",
+                app.package_info().version
+            );
 
             // Profile system: migrate legacy data then init active profile
             if let Err(e) = profiles::migrate_legacy_to_default(app.handle()) {

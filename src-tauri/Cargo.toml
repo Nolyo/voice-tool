@@ -56,6 +56,9 @@ hound = "3.5"
 # HTTP client for API calls
 reqwest = { version = "0.12", features = ["multipart", "json", "stream"] }
 
+# OS native keyring (Windows Credential Manager, macOS Keychain, Linux libsecret)
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+
 # Local Transcription (native whisper-rs with model caching)
 whisper-rs = { version = "0.14" }
 rubato = "0.15"
@@ -63,6 +66,7 @@ tauri-plugin-fs = "2"
 
 # Keyboard simulation
 enigo = "0.2"
+tauri-plugin-deep-link = "2.4.7"
 
 # Windows-specific APIs (show window without activation)
 [target.'cfg(target_os = "windows")'.dependencies]

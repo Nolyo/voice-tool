@@ -1,20 +1,37 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronUp, Plus, Settings2, UserCircle2 } from "lucide-react";
+import {
+  Check,
+  ChevronUp,
+  Cloud,
+  LogOut,
+  Plus,
+  Settings2,
+  Shield,
+  ShieldCheck,
+  UserCircle2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useProfiles } from "@/contexts/ProfilesContext";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
 import { ProfilesManageDialog } from "./ProfilesManageDialog";
 
 interface ProfileSwitcherProps {
   collapsed: boolean;
+  onOpenAccountPage?: () => void;
 }
 
-export function ProfileSwitcher({ collapsed }: ProfileSwitcherProps) {
+export function ProfileSwitcher({
+  collapsed,
+  onOpenAccountPage,
+}: ProfileSwitcherProps) {
   const { t } = useTranslation();
   const { profiles, activeProfileId, createProfile, switchProfile } =
     useProfiles();
+  const { status, user, openAuthModal, signOut } = useAuth();
 
   const [open, setOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -22,10 +39,12 @@ export function ProfileSwitcher({ collapsed }: ProfileSwitcherProps) {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [mfaEnabled, setMfaEnabled] = useState<boolean | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const createInputRef = useRef<HTMLInputElement>(null);
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId);
+  const isSignedIn = status === "signed-in";
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -48,6 +67,23 @@ export function ProfileSwitcher({ collapsed }: ProfileSwitcherProps) {
     }
   }, [showCreate]);
 
+  // Fetch MFA enrollment when signed in
+  useEffect(() => {
+    if (!isSignedIn) {
+      setMfaEnabled(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.auth.mfa.listFactors();
+      if (cancelled) return;
+      setMfaEnabled((data?.totp?.length ?? 0) > 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn, user?.id]);
+
   function getInitials(name: string) {
     return name
       .split(" ")
@@ -55,6 +91,14 @@ export function ProfileSwitcher({ collapsed }: ProfileSwitcherProps) {
       .join("")
       .toUpperCase()
       .slice(0, 2);
+  }
+
+  function getAccountInitials(email: string | null | undefined): string {
+    if (!email) return "?";
+    const local = email.split("@")[0] ?? "";
+    const parts = local.split(/[._-]+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return local.slice(0, 2).toUpperCase();
   }
 
   async function handleSwitch(id: string) {
@@ -66,7 +110,6 @@ export function ProfileSwitcher({ collapsed }: ProfileSwitcherProps) {
     setSwitching(true);
     try {
       await switchProfile(id);
-      // Page reloads automatically — switching state resets on unmount
     } catch (err) {
       toast.error(t("profile.errorSwitch") + ": " + String(err));
       setSwitching(false);
@@ -97,9 +140,23 @@ export function ProfileSwitcher({ collapsed }: ProfileSwitcherProps) {
     setOpen(false);
     setShowCreate(false);
     setShowManage(false);
-    // open create inline in dropdown
     setOpen(true);
     setShowCreate(true);
+  }
+
+  function handleOpenAccount() {
+    setOpen(false);
+    onOpenAccountPage?.();
+  }
+
+  function handleSignIn() {
+    setOpen(false);
+    openAuthModal();
+  }
+
+  async function handleSignOut() {
+    setOpen(false);
+    await signOut();
   }
 
   if (switching) {
@@ -113,6 +170,17 @@ export function ProfileSwitcher({ collapsed }: ProfileSwitcherProps) {
     );
   }
 
+  // Status dot color
+  const statusDot = !isSignedIn
+    ? "bg-muted-foreground/40"
+    : mfaEnabled
+      ? "bg-emerald-500 shadow-[0_0_6px_currentColor] text-emerald-500"
+      : "bg-amber-500 shadow-[0_0_6px_currentColor] text-amber-500";
+
+  const subline = !isSignedIn
+    ? t("profile.localNotSynced", { defaultValue: "Local · non synchronisé" })
+    : (user?.email ?? "");
+
   return (
     <>
       <div ref={dropdownRef} className="relative">
@@ -124,20 +192,29 @@ export function ProfileSwitcher({ collapsed }: ProfileSwitcherProps) {
               : undefined
           }
           className={`w-full flex items-center gap-2 rounded-md text-sm text-foreground hover:bg-accent/50 transition-colors cursor-pointer ${
-            collapsed ? "justify-center p-2" : "px-2 py-2"
+            collapsed ? "justify-center p-2" : "px-2 py-1.5"
           }`}
         >
           {/* Avatar */}
-          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+          <div className="w-7 h-7 rounded-md bg-primary/15 ring-1 ring-primary/30 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
             {activeProfile ? getInitials(activeProfile.name) : "?"}
           </div>
           {!collapsed && (
             <>
-              <span className="flex-1 text-left truncate font-medium">
-                {activeProfile?.name ?? t("profile.label")}
-              </span>
+              <div className="flex-1 min-w-0 text-left leading-tight">
+                <div className="text-[12.5px] font-medium truncate">
+                  {activeProfile?.name ?? t("profile.label")}
+                </div>
+                <div className="text-[10.5px] text-muted-foreground truncate">
+                  {subline}
+                </div>
+              </div>
+              <span
+                aria-hidden
+                className={`w-2 h-2 rounded-full shrink-0 ${statusDot}`}
+              />
               <ChevronUp
-                className={`w-3.5 h-3.5 shrink-0 transition-transform ${
+                className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform ${
                   open ? "" : "rotate-180"
                 }`}
               />
@@ -148,82 +225,160 @@ export function ProfileSwitcher({ collapsed }: ProfileSwitcherProps) {
         {/* Dropdown */}
         {open && (
           <div
-            className={`absolute z-50 bg-popover text-popover-foreground border border-border rounded-lg shadow-xl py-1 min-w-[180px] ${
-              collapsed ? "left-full bottom-0 ml-2" : "bottom-full left-0 mb-1 w-full"
+            className={`absolute z-50 bg-popover text-popover-foreground border border-border rounded-lg shadow-xl py-1.5 ${
+              collapsed
+                ? "left-full bottom-0 ml-2 min-w-[260px]"
+                : "bottom-full left-0 mb-1 w-full"
             }`}
           >
-            {/* Profile list */}
-            {profiles.map((profile) => (
-              <button
-                key={profile.id}
-                onClick={() => handleSwitch(profile.id)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent/50 cursor-pointer"
-              >
-                <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
-                  {getInitials(profile.name)}
-                </div>
-                <span className="flex-1 truncate">{profile.name}</span>
-                {profile.id === activeProfileId && (
-                  <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                )}
-              </button>
-            ))}
+            {/* Account header */}
+            {isSignedIn ? (
+              <div className="px-1.5 pb-1.5">
+                <button
+                  onClick={handleOpenAccount}
+                  className="w-full flex items-center gap-2.5 p-2 rounded-md transition-colors bg-muted/30 border border-border hover:bg-muted/60 cursor-pointer text-left"
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary/15 ring-1 ring-primary/30 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
+                    {getAccountInitials(user?.email)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12.5px] font-medium truncate">
+                      {user?.email}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10.5px] mt-0.5">
+                      {mfaEnabled ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-500">
+                          <ShieldCheck className="w-3 h-3" />
+                          {t("auth.security.twoFactorEnabled")}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-amber-500">
+                          <Shield className="w-3 h-3" />
+                          {t("auth.security.twoFactorDisabled")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              </div>
+            ) : (
+              <div className="px-1.5 pb-1.5">
+                <button
+                  onClick={handleSignIn}
+                  className="w-full flex items-center gap-2.5 p-2 rounded-md transition-colors bg-primary/10 border border-primary/30 hover:bg-primary/15 cursor-pointer text-left"
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                    <Cloud className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12.5px] font-medium">
+                      {t("auth.cta.header")}
+                    </div>
+                    <div className="text-[10.5px] text-muted-foreground">
+                      {t("auth.cta.dashboardCard")}
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
 
             <div className="border-t border-border my-1" />
 
-            {/* Create inline */}
-            {showCreate ? (
-              <div className="px-3 py-2 space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">
-                  {t("profile.profileName")}
-                </p>
-                <Input
-                  ref={createInputRef}
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder={t("profile.profileNamePlaceholder")}
-                  className="h-7 text-xs"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleCreate();
-                    if (e.key === "Escape") setShowCreate(false);
-                  }}
-                />
-                <div className="flex gap-1 justify-end">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 text-xs px-2"
-                    onClick={() => setShowCreate(false)}
-                  >
-                    {t("common.cancel")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-6 text-xs px-2"
-                    onClick={handleCreate}
-                    disabled={creating || !newName.trim()}
-                  >
-                    {t("profile.createProfile")}
-                  </Button>
-                </div>
+            {/* Profile list */}
+            <div className="px-2 pt-0.5 pb-1">
+              <div className="text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground px-1.5 pt-1 pb-1">
+                {t("profile.activeProfileLabel", {
+                  defaultValue: "Profil actif",
+                })}
               </div>
-            ) : (
-              <button
-                onClick={() => setShowCreate(true)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent/50 cursor-pointer text-muted-foreground"
-              >
-                <Plus className="w-3.5 h-3.5 shrink-0" />
-                <span>{t("profile.newProfile")}</span>
-              </button>
-            )}
+              {profiles.map((profile) => (
+                <button
+                  key={profile.id}
+                  onClick={() => handleSwitch(profile.id)}
+                  className="w-full flex items-center gap-2 px-1.5 py-1.5 rounded-md text-sm text-left hover:bg-accent/50 cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-md bg-primary/15 ring-1 ring-primary/30 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">
+                    {getInitials(profile.name)}
+                  </div>
+                  <span className="flex-1 truncate text-[12.5px]">
+                    {profile.name}
+                  </span>
+                  {profile.id === activeProfileId && (
+                    <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
 
-            <button
-              onClick={openManage}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent/50 cursor-pointer text-muted-foreground"
-            >
-              <Settings2 className="w-3.5 h-3.5 shrink-0" />
-              <span>{t("profile.manageProfiles")}</span>
-            </button>
+            <div className="border-t border-border my-1" />
+
+            <div className="px-2 pb-1">
+              {showCreate ? (
+                <div className="px-1.5 py-1.5 space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    {t("profile.profileName")}
+                  </p>
+                  <Input
+                    ref={createInputRef}
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder={t("profile.profileNamePlaceholder")}
+                    className="h-7 text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCreate();
+                      if (e.key === "Escape") setShowCreate(false);
+                    }}
+                  />
+                  <div className="flex gap-1 justify-end">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 text-xs px-2"
+                      onClick={() => setShowCreate(false)}
+                    >
+                      {t("common.cancel")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-6 text-xs px-2"
+                      onClick={handleCreate}
+                      disabled={creating || !newName.trim()}
+                    >
+                      {t("profile.createProfile")}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="w-full flex items-center gap-2 px-1.5 py-1.5 rounded-md text-[12.5px] text-left hover:bg-accent/50 cursor-pointer text-muted-foreground"
+                >
+                  <Plus className="w-3.5 h-3.5 shrink-0" />
+                  <span>{t("profile.newProfile")}</span>
+                </button>
+              )}
+
+              <button
+                onClick={openManage}
+                className="w-full flex items-center gap-2 px-1.5 py-1.5 rounded-md text-[12.5px] text-left hover:bg-accent/50 cursor-pointer text-muted-foreground"
+              >
+                <Settings2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{t("profile.manageProfiles")}</span>
+              </button>
+
+              {isSignedIn && (
+                <>
+                  <div className="border-t border-border my-1" />
+                  <button
+                    onClick={() => void handleSignOut()}
+                    className="w-full flex items-center gap-2 px-1.5 py-1.5 rounded-md text-[12.5px] text-left hover:bg-accent/50 cursor-pointer text-muted-foreground"
+                  >
+                    <LogOut className="w-3.5 h-3.5 shrink-0" />
+                    <span>{t("auth.logout.label")}</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -1,305 +1,365 @@
 import { useTranslation } from "react-i18next";
-import { Settings, AlertTriangle, Check, Download, Loader2, Trash2, MemoryStick, Zap } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { ApiConfigDialog } from "@/components/common/ApiConfigDialog";
 import { useSettings } from "@/hooks/useSettings";
 import { useModelDownload } from "@/hooks/useModelDownload";
-import { SectionCard } from "../common/SectionCard";
-import { Divider } from "../common/Divider";
+import { ApiConfigDialog } from "@/components/common/ApiConfigDialog";
+import {
+  Callout,
+  PickerCardGrid,
+  Row,
+  SectionHeader,
+  Segmented,
+  Toggle,
+  VtIcon,
+} from "../vt";
+
+const ACCENT = "oklch(0.68 0.18 265)";
+
+type Provider = "OpenAI" | "Google" | "Local" | "Groq";
+type LocalModel =
+  | "tiny"
+  | "base"
+  | "small"
+  | "medium"
+  | "large-v1"
+  | "large-v2"
+  | "large-v3"
+  | "large-v3-turbo"
+  | "large-v3-turbo-q5_0";
 
 export function TranscriptionSection() {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
-  const {
-    isDownloading,
-    progress,
-    isDownloaded,
-    isChecking,
-    download,
-    remove,
-  } = useModelDownload(settings.transcription_provider, settings.local_model_size);
+  const { isDownloading, progress, isDownloaded, isChecking, download, remove } =
+    useModelDownload(settings.transcription_provider, settings.local_model_size);
+
+  const providerOptions = [
+    {
+      id: "OpenAI" as Provider,
+      title: t("settings.transcription.providerOpenai"),
+      sub: t("settings.transcription.providerOpenaiSub"),
+      dot: "oklch(0.72 0.17 155)",
+    },
+    {
+      id: "Groq" as Provider,
+      title: t("settings.transcription.providerGroq"),
+      sub: t("settings.transcription.providerGroqSub"),
+      dot: "oklch(0.72 0.18 15)",
+    },
+    {
+      id: "Local" as Provider,
+      title: t("settings.transcription.providerLocal"),
+      sub: t("settings.transcription.providerLocalSub"),
+      dot: "oklch(0.72 0.15 250)",
+    },
+  ];
+
+  const hasOpenaiKey = settings.openai_api_key.trim().length > 0;
+  const hasGroqKey = settings.groq_api_key.trim().length > 0;
 
   return (
-    <SectionCard
-      id="section-transcription"
-      icon={<Settings className="w-3.5 h-3.5 text-violet-500" />}
-      iconBg="bg-violet-500/10"
-      title={t('settings.transcription.title')}
-      subtitle={t('settings.transcription.subtitle')}
-    >
-      <div className="space-y-4">
-        {/* Provider + Language on the same row */}
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="service-provider"
-              className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+    <div className="vt-fade-up space-y-5">
+      <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
+        <SectionHeader
+          color={ACCENT}
+          icon={<VtIcon.sparkle />}
+          title={t("settings.transcription.title")}
+          description={t("settings.transcription.subtitle")}
+        />
+
+        <Row
+          label={t("settings.transcription.provider")}
+          hint={t("settings.transcription.providerHint", {
+            defaultValue:
+              "Change le service de transcription. Chacun a ses compromis vitesse / coût / confidentialité.",
+          })}
+        >
+          <PickerCardGrid
+            value={settings.transcription_provider}
+            onChange={(v) => updateSetting("transcription_provider", v)}
+            options={providerOptions}
+            columns={3}
+          />
+        </Row>
+
+        <Row
+          label={t("settings.transcription.language")}
+          hint={t("settings.transcription.languageHint", {
+            defaultValue:
+              "Langue parlée principale. Améliore la précision de la transcription.",
+          })}
+        >
+          <select
+            className="vt-select"
+            value={settings.language}
+            onChange={(e) => updateSetting("language", e.target.value)}
+            style={{ maxWidth: 240 }}
+          >
+            <option value="fr-FR">{t("settings.transcription.languageFr")}</option>
+            <option value="en-US">{t("settings.transcription.languageEn")}</option>
+            <option value="es-ES">{t("settings.transcription.languageEs")}</option>
+            <option value="de-DE">{t("settings.transcription.languageDe")}</option>
+          </select>
+        </Row>
+
+        {(settings.transcription_provider === "OpenAI" ||
+          settings.transcription_provider === "Groq") && (
+          <div className="vt-row">
+            <Callout
+              kind="warn"
+              icon={<VtIcon.alert />}
+              title={t("settings.transcription.paidWarningTitle", {
+                defaultValue: "Service payant",
+              })}
             >
-              {t('settings.transcription.provider')}
-            </Label>
-            <Select
-              value={settings.transcription_provider}
-              onValueChange={(value) =>
+              {t("settings.transcription.paidWarning")}
+            </Callout>
+          </div>
+        )}
+
+        {settings.transcription_provider === "Groq" && (
+          <Row
+            label={t("settings.transcription.groqModel")}
+            hint={t("settings.transcription.groqInfo")}
+          >
+            <select
+              className="vt-select"
+              value={settings.groq_model}
+              onChange={(e) =>
                 updateSetting(
-                  "transcription_provider",
-                  value as "OpenAI" | "Google" | "Local" | "Groq",
+                  "groq_model",
+                  e.target.value as "whisper-large-v3-turbo" | "whisper-large-v3",
                 )
               }
+              style={{ maxWidth: 320 }}
             >
-              <SelectTrigger
-                id="service-provider"
-                className="h-9 bg-background/50 w-48"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="OpenAI">{t('settings.transcription.providerOpenai')}</SelectItem>
-                <SelectItem value="Groq">{t('settings.transcription.providerGroq')}</SelectItem>
-                <SelectItem value="Local">{t('settings.transcription.providerLocal')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="language"
-              className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-            >
-              {t('settings.transcription.language')}
-            </Label>
-            <Select
-              value={settings.language}
-              onValueChange={(value) => updateSetting("language", value)}
-            >
-              <SelectTrigger id="language" className="h-9 bg-background/50 w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fr-FR">{t('settings.transcription.languageFr')}</SelectItem>
-                <SelectItem value="en-US">{t('settings.transcription.languageEn')}</SelectItem>
-                <SelectItem value="es-ES">{t('settings.transcription.languageEs')}</SelectItem>
-                <SelectItem value="de-DE">{t('settings.transcription.languageDe')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Warning for paid providers */}
-        {settings.transcription_provider === "OpenAI" && (
-          <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-sm text-amber-600 dark:text-amber-400">
-            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-            <span>{t('settings.transcription.paidWarning')}</span>
-          </div>
+              <option value="whisper-large-v3-turbo">
+                {t("settings.transcription.groqModelTurbo")} ⭐
+              </option>
+              <option value="whisper-large-v3">
+                {t("settings.transcription.groqModelLargeV3")}
+              </option>
+            </select>
+          </Row>
         )}
 
-        {/* Groq model section */}
-        {settings.transcription_provider === "Groq" && (
-          <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/60 animate-in fade-in slide-in-from-top-1">
-            <div className="flex items-start gap-2 text-sm text-orange-600 dark:text-orange-400">
-              <Zap className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>{t('settings.transcription.groqInfo')}</span>
-            </div>
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="groq-model"
-                className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-              >
-                {t('settings.transcription.groqModel')}
-              </Label>
-              <Select
-                value={settings.groq_model}
-                onValueChange={(value) =>
-                  updateSetting(
-                    "groq_model",
-                    value as "whisper-large-v3-turbo" | "whisper-large-v3",
-                  )
-                }
-              >
-                <SelectTrigger id="groq-model" className="h-9 bg-background/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="whisper-large-v3-turbo">{t('settings.transcription.groqModelTurbo')} ⭐</SelectItem>
-                  <SelectItem value="whisper-large-v3">{t('settings.transcription.groqModelLargeV3')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-
-        {/* Local model section – right after provider when local */}
         {settings.transcription_provider === "Local" && (
-          <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/60 animate-in fade-in slide-in-from-top-1">
-            {/* Model size + action button on same row */}
-            <div className="flex items-end gap-3">
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <Label
-                  htmlFor="model-size"
-                  className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-                >
-                  {t('settings.transcription.whisperModel')}
-                </Label>
-                <Select
+          <>
+            <Row
+              label={t("settings.transcription.whisperModel")}
+              hint={t("settings.transcription.whisperModelHint", {
+                defaultValue:
+                  "Plus le modèle est grand, plus il est précis mais lent et lourd.",
+              })}
+            >
+              <div className="flex items-center gap-2">
+                <select
+                  className="vt-select flex-1"
                   value={settings.local_model_size}
-                  onValueChange={(value) =>
-                    updateSetting(
-                      "local_model_size",
-                      value as
-                        | "tiny"
-                        | "base"
-                        | "small"
-                        | "medium"
-                        | "large-v1"
-                        | "large-v2"
-                        | "large-v3"
-                        | "large-v3-turbo"
-                        | "large-v3-turbo-q5_0",
-                    )
+                  onChange={(e) =>
+                    updateSetting("local_model_size", e.target.value as LocalModel)
                   }
                   disabled={isDownloading}
                 >
-                  <SelectTrigger id="model-size" className="h-9 bg-background/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="tiny">{t('settings.transcription.modelTiny')}</SelectItem>
-                    <SelectItem value="base">{t('settings.transcription.modelBase')}</SelectItem>
-                    <SelectItem value="small">{t('settings.transcription.modelSmall')}</SelectItem>
-                    <SelectItem value="medium">{t('settings.transcription.modelMedium')}</SelectItem>
-                    <SelectItem value="large-v1">{t('settings.transcription.modelLargeV1')}</SelectItem>
-                    <SelectItem value="large-v2">{t('settings.transcription.modelLargeV2')}</SelectItem>
-                    <SelectItem value="large-v3">{t('settings.transcription.modelLargeV3')}</SelectItem>
-                    <SelectItem value="large-v3-turbo">{t('settings.transcription.modelLargeV3Turbo')} ⭐</SelectItem>
-                    <SelectItem value="large-v3-turbo-q5_0">{t('settings.transcription.modelLargeV3TurboQ5')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <option value="tiny">{t("settings.transcription.modelTiny")}</option>
+                  <option value="base">{t("settings.transcription.modelBase")}</option>
+                  <option value="small">{t("settings.transcription.modelSmall")}</option>
+                  <option value="medium">{t("settings.transcription.modelMedium")}</option>
+                  <option value="large-v1">
+                    {t("settings.transcription.modelLargeV1")}
+                  </option>
+                  <option value="large-v2">
+                    {t("settings.transcription.modelLargeV2")}
+                  </option>
+                  <option value="large-v3">
+                    {t("settings.transcription.modelLargeV3")}
+                  </option>
+                  <option value="large-v3-turbo">
+                    {t("settings.transcription.modelLargeV3Turbo")} ⭐
+                  </option>
+                  <option value="large-v3-turbo-q5_0">
+                    {t("settings.transcription.modelLargeV3TurboQ5")}
+                  </option>
+                </select>
 
-              <div className="flex items-center gap-1.5 shrink-0">
                 {isDownloaded ? (
                   <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-green-500 border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:text-green-600"
-                      disabled
+                    <span
+                      className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-[12px] font-medium"
+                      style={{
+                        color: "var(--vt-ok)",
+                        background: "var(--vt-ok-soft)",
+                        border: "1px solid oklch(from var(--vt-ok) l c h / 0.3)",
+                      }}
                     >
-                      <Check className="w-3.5 h-3.5" />
-                      {t('settings.transcription.installed')}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
+                      <VtIcon.check /> {t("settings.transcription.installed")}
+                    </span>
+                    <button
+                      type="button"
                       onClick={remove}
-                      className="h-9 w-9 text-destructive hover:bg-destructive/10 border-destructive/20"
-                      title={t('settings.transcription.deleteModel')}
+                      className="vt-btn"
+                      data-tip={t("settings.transcription.deleteModel")}
+                      style={{
+                        color: "var(--vt-danger)",
+                        borderColor: "oklch(from var(--vt-danger) l c h / 0.3)",
+                      }}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                      <VtIcon.trash />
+                    </button>
                   </>
                 ) : (
-                  <Button
+                  <button
+                    type="button"
                     onClick={download}
                     disabled={isDownloading || isChecking}
-                    size="sm"
+                    className="vt-btn-primary"
                   >
                     {isDownloading ? (
                       <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <VtIcon.spinner />
                         {Math.round(progress)}%
                       </>
                     ) : (
                       <>
-                        <Download className="w-3.5 h-3.5" />
-                        {t('settings.transcription.download')}
+                        <VtIcon.refresh />
+                        {t("settings.transcription.download")}
                       </>
                     )}
-                  </Button>
+                  </button>
                 )}
               </div>
-            </div>
-
-            {isDownloading && <Progress value={progress} className="h-1.5" />}
-
-            {/* Keep model in memory option */}
-            {isDownloaded && (
-              <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/40">
-                <div className="flex items-center gap-2 min-w-0">
-                  <MemoryStick className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <div className="min-w-0">
-                    <Label className="text-xs font-medium text-foreground">
-                      {t('settings.transcription.keepModelInMemory')}
-                    </Label>
-                    <p className="text-[10px] text-muted-foreground leading-tight">
-                      {t('settings.transcription.keepModelInMemoryDesc')}
-                    </p>
-                  </div>
+              {isDownloading && (
+                <div
+                  className="mt-2 h-1.5 rounded-full overflow-hidden"
+                  style={{ background: "var(--vt-surface)" }}
+                >
+                  <div
+                    className="h-full"
+                    style={{
+                      width: `${progress}%`,
+                      background: "var(--vt-accent)",
+                      transition: "width .2s",
+                    }}
+                  />
                 </div>
-                <Select
-                  value={settings.keep_model_in_memory === null ? "auto" : settings.keep_model_in_memory ? "true" : "false"}
-                  onValueChange={(value) => {
-                    const mapped = value === "auto" ? null : value === "true";
+              )}
+            </Row>
+
+            {isDownloaded && (
+              <Row
+                label={t("settings.transcription.keepModelInMemory")}
+                hint={t("settings.transcription.keepModelInMemoryDesc")}
+              >
+                <Segmented
+                  value={
+                    settings.keep_model_in_memory === null
+                      ? "auto"
+                      : settings.keep_model_in_memory
+                        ? "true"
+                        : "false"
+                  }
+                  onChange={(v) => {
+                    const mapped = v === "auto" ? null : v === "true";
                     updateSetting("keep_model_in_memory", mapped);
                   }}
-                >
-                  <SelectTrigger className="h-8 w-24 text-xs bg-background/50 shrink-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">{t('settings.transcription.keepModelInMemoryAuto')}</SelectItem>
-                    <SelectItem value="true">{t('common.yes')}</SelectItem>
-                    <SelectItem value="false">{t('common.no')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  options={[
+                    { id: "auto", label: t("settings.transcription.keepModelInMemoryAuto") },
+                    { id: "true", label: t("common.yes") },
+                    { id: "false", label: t("common.no") },
+                  ]}
+                />
+              </Row>
             )}
-          </div>
+          </>
         )}
 
-        {/* Translation mode section */}
-        <Divider />
-        {/* <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium text-foreground">
-                {t('settings.transcription.translateMode')}
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                {t('settings.transcription.translateModeDesc')}
-              </p>
-            </div>
-            <Checkbox
-              checked={settings.translate_mode ?? false}
-              onCheckedChange={(checked) =>
-                updateSetting("translate_mode", checked === true)
-              }
+        <Row
+          label={t("settings.transcription.apiKeysLabel", {
+            defaultValue: "Clés API",
+          })}
+          hint={t("settings.transcription.apiKeyHelp")}
+          align="start"
+        >
+          <div className="flex flex-col gap-2">
+            <ApiKeyRow
+              name="OpenAI"
+              maskedKey={settings.openai_api_key}
+              present={hasOpenaiKey}
             />
-          </div>
-          {settings.translate_mode && (
-            <div className="p-3 rounded-md bg-blue-500/5 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400">
-              🌐 {t('settings.transcription.translateOpenaiInfo')}
+            <ApiKeyRow
+              name="Groq"
+              maskedKey={settings.groq_api_key}
+              present={hasGroqKey}
+            />
+            <div className="mt-1">
+              <ApiConfigDialog />
             </div>
-          )}
-        </div> */}
+          </div>
+        </Row>
 
-        {/* API keys – always visible */}
-        <Divider />
-        <div className="space-y-2">
-          <ApiConfigDialog />
-          <p className="text-xs text-muted-foreground">
-            {t('settings.transcription.apiKeyHelp')}
-          </p>
-        </div>
+        <Row
+          label={t("settings.transcription.smartFormatting")}
+          hint={t("settings.transcription.smartFormattingHint")}
+        >
+          <Toggle
+            on={settings.smart_formatting}
+            onClick={() =>
+              updateSetting("smart_formatting", !settings.smart_formatting)
+            }
+            label={
+              settings.smart_formatting
+                ? t("common.enabled", { defaultValue: "Activé" })
+                : t("common.disabled", { defaultValue: "Désactivé" })
+            }
+          />
+        </Row>
       </div>
-    </SectionCard>
+    </div>
+  );
+}
+
+interface ApiKeyRowProps {
+  name: string;
+  maskedKey: string;
+  present: boolean;
+}
+
+function ApiKeyRow({ name, maskedKey, present }: ApiKeyRowProps) {
+  const { t } = useTranslation();
+  const masked =
+    maskedKey.length > 8
+      ? `${maskedKey.slice(0, 3)}${"•".repeat(Math.max(0, maskedKey.length - 6))}${maskedKey.slice(-3)}`
+      : undefined;
+
+  return (
+    <div
+      className="flex items-center justify-between px-3 h-11 rounded-lg"
+      style={{ background: "var(--vt-surface)", border: "1px solid var(--vt-border)" }}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span
+          className="w-2 h-2 rounded-full shrink-0"
+          style={
+            present
+              ? { background: "var(--vt-ok)", boxShadow: "0 0 6px var(--vt-ok)" }
+              : { background: "var(--vt-fg-4)" }
+          }
+        />
+        <span className="text-[13px] font-medium">{name}</span>
+        {present ? (
+          <span
+            className="vt-mono text-[11px] truncate"
+            style={{ color: "var(--vt-fg-4)" }}
+          >
+            {masked}
+          </span>
+        ) : (
+          <span className="text-[11px]" style={{ color: "var(--vt-fg-4)" }}>
+            {t("settings.transcription.apiKeyMissing", {
+              defaultValue: "Non configurée",
+            })}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }

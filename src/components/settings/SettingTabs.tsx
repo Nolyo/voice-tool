@@ -2,14 +2,14 @@ import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
 import { type SettingsSectionId } from "./common/SettingsNav";
 import { TranscriptionSection } from "./sections/TranscriptionSection";
-import { AudioSection } from "./sections/AudioSection";
-import { TextSection } from "./sections/TextSection";
 import { PostProcessSection } from "./sections/PostProcessSection";
+import { AudioSection } from "./sections/AudioSection";
 import { VocabularySection } from "./sections/VocabularySection";
 import { SystemSection } from "./sections/SystemSection";
-import { MiniWindowSection } from "./sections/MiniWindowSection";
+import { AppearanceSection } from "./sections/AppearanceSection";
 import { ShortcutsSection } from "./sections/ShortcutsSection";
 import { UpdaterSection } from "./sections/UpdaterSection";
+import { AccountSection } from "./sections/AccountSection";
 
 interface SettingTabsProps {
   activeSection: SettingsSectionId;
@@ -34,16 +34,16 @@ export function SettingTabs({ activeSection }: SettingTabsProps) {
   }
 
   return (
-    <div className="space-y-8 pb-6">
+    <div className="vt-app mx-auto max-w-5xl px-3 py-6 sm:px-4 md:px-6">
       {activeSection === "section-transcription" && <TranscriptionSection />}
-      {activeSection === "section-audio" && <AudioSection />}
-      {activeSection === "section-texte" && <TextSection />}
       {activeSection === "section-post-process" && <PostProcessSection />}
+      {activeSection === "section-audio" && <AudioSection />}
       {activeSection === "section-vocabulaire" && <VocabularySection />}
-      {activeSection === "section-systeme" && <SystemSection />}
-      {activeSection === "section-mini-window" && <MiniWindowSection />}
+      {activeSection === "section-apparence" && <AppearanceSection />}
       {activeSection === "section-raccourcis" && <ShortcutsSection />}
+      {activeSection === "section-systeme" && <SystemSection />}
       {activeSection === "section-mises-a-jour" && <UpdaterSection />}
+      {activeSection === "section-compte" && <AccountSection />}
     </div>
   );
 }

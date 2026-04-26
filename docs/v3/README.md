@@ -15,20 +15,24 @@ Ce dossier est l'**epic story** de la v3 de Voice Tool. Il se construit progress
 - **[05-managed-transcription.md](05-managed-transcription.md)** — Proxy modèles transcription (v3.1+).
 - **[06-onboarding.md](06-onboarding.md)** — Marketing, pricing, onboarding UX.
 - **[decisions/](decisions/)** — Architecture Decision Records (ADR) au format Michael Nygard.
+- **[runbooks/](runbooks/)** — rotations, backups, incidents
+- **[compliance/](compliance/)** — registre GDPR, base légale
+- **[ops/](ops/)** — bootstrap Supabase, Cloudflare Pages, checklist 2FA
 
 ## État d'avancement
 
-| Sous-épique | Statut | Cible |
-|---|---|---|
-| 00 — Threat model | 📝 Stub (à brainstormer) | Bloquant v3.0 |
-| 01 — Auth | 📝 Stub | v3.0 |
-| 02 — Sync settings | 📝 Stub | v3.0 |
-| 03 — Sync notes | 📝 Stub | v3.1 |
-| 04 — Billing | 📝 Stub (POC fait) | v3.0 |
-| 05 — Managed transcription | 📝 Stub | v3.2 |
-| 06 — Onboarding | 📝 Stub | v3.0 → v3.1 |
+| Sous-épique | Statut spec | Statut impl | Cible |
+|---|---|---|---|
+| 00 — Threat model & fondations | ✅ Figé 2026-04-22 | 🚧 En cours (plan 2026-04-24) | Bloquant v3.0 |
+| 01 — Auth | ✅ Figé 2026-04-22 | ✅ Livré 2026-04-24 | v3.0 |
+| 02 — Sync settings | ✅ Figé 2026-04-22 | 📝 À planifier | v3.0 |
+| 03 — Sync notes | 📝 Stub | — | v3.1 |
+| 04 — Billing | 📝 Stub (POC fait) | — | v3.2 |
+| 05 — Managed transcription | 📝 Stub | — | v3.3 |
+| 06 — Onboarding | 📝 Stub | — | v3.1 |
 
-Légende: 📝 stub, 🚧 en cours, ✅ figé.
+Légende statut spec : 📝 stub, 🚧 en cours, ✅ figé.
+Légende statut impl : — non démarré, 📝 à planifier, 🚧 en cours, ✅ livré.
 
 ## Convention de travail
 

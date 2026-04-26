@@ -41,19 +41,51 @@ where
         event.record(&mut visitor);
         let message = visitor.message;
 
+        // Derive a short source tag from the tracing target (module path).
+        // Strip the crate prefix, keep the first submodule segment, and remap
+        // a few technical module names to more user-friendly labels.
+        let target = metadata.target();
+        let source = {
+            let stripped = target.strip_prefix("voice_tool_lib").unwrap_or(target);
+            let stripped = stripped.trim_start_matches("::");
+            let first = stripped.split("::").next().unwrap_or("");
+            let raw = if first.is_empty() { "app" } else { first };
+            match raw {
+                // `transcription` covers WAV I/O + remote provider calls
+                "transcription" => "api",
+                // local whisper inference
+                "transcription_local" => "whisper",
+                other => other,
+            }
+            .to_string()
+        };
+
         // Get current timestamp
         let timestamp = chrono::Local::now()
             .format("%Y-%m-%d %H:%M:%S%.3f")
             .to_string();
 
-        // Emit event to frontend
+        // Persist to disk + emit live event to the frontend (if connected).
+        // Persistence runs even before the webview is ready so early-boot
+        // logs survive until the user opens the Logs tab.
         if let Some(app) = self.app_handle.read().as_ref() {
+            let stored = crate::logs::AppLog {
+                id: uuid::Uuid::new_v4().to_string(),
+                timestamp: timestamp.clone(),
+                level: level.to_string(),
+                message: message.clone(),
+                source: Some(source.clone()),
+            };
+            if let Err(e) = crate::logs::append_log(app, stored) {
+                eprintln!("Failed to persist log to disk: {e}");
+            }
+
             let log_event = serde_json::json!({
                 "timestamp": timestamp,
                 "level": level,
                 "message": message,
+                "source": source,
             });
-
             let _ = app.emit("app-log", log_event);
         }
     }
@@ -80,8 +112,10 @@ impl tracing::field::Visit for MessageVisitor {
 pub fn init_logging() -> TauriLogLayer {
     let tauri_layer = TauriLogLayer::new();
 
-    // Create a filter that only shows INFO and above for our app, and WARN+ for dependencies
-    let filter = tracing_subscriber::EnvFilter::new("voice_tool=info,warn");
+    // Create a filter that only shows INFO and above for our app, and WARN+ for dependencies.
+    // The lib crate name is `voice_tool_lib` (not `voice_tool`) — without this alignment,
+    // our INFO logs would be dropped.
+    let filter = tracing_subscriber::EnvFilter::new("voice_tool_lib=info,warn");
 
     // Set up subscriber with both console output and Tauri event emission
     let subscriber = tracing_subscriber::registry()

@@ -36,6 +36,8 @@ Tout ce qui transforme un user de l'app gratuite en utilisateur informé du comp
 - [ ] Message clés API non syncées (transparency dès l'opt-in)
 - [ ] Lien vers la doc
 
+> Voir aussi **[06a — Intro tour in-app (post-setup, pré-signup)](./06-onboarding-intro-tour.md)** — brainstorming figé en attente des dépendances 01-auth + 04-billing (crédits offerts) pour pouvoir faire tourner l'étape post-process côté users local-only.
+
 ### Proposition de souscription
 
 - [ ] Quand proposer? À l'inscription? Après X jours d'usage? Sur action premium tentée?

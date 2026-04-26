@@ -14,11 +14,16 @@ import {
 } from "lucide-react";
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   closestCenter,
+  useDroppable,
   useSensor,
   useSensors,
+  type DragCancelEvent,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -26,13 +31,42 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FloatingMenu, type FloatingMenuEntry } from "@/components/ui/floating-menu";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
+import { FolderNameDialog } from "./FolderNameDialog";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
 import { useSidebarCollapseState } from "@/hooks/useSidebarCollapseState";
+
+type NoteDragData = {
+  type: 'note';
+  noteId: string;
+  containerId: string; // folderId or 'root'
+};
+
+type FolderDragData = {
+  type: 'folder';
+  folderId: string;
+};
+
+type ContainerDroppableData = {
+  type: 'container';
+  containerId: string; // folderId or 'root'
+};
+
+type ContainerMap = Record<string, string[]>;
+
+const ROOT_CONTAINER_ID = 'root';
+
+function findContainerOf(containers: ContainerMap, noteId: string): string | null {
+  for (const [containerId, ids] of Object.entries(containers)) {
+    if (ids.includes(noteId)) return containerId;
+  }
+  return null;
+}
 
 interface NotesSidebarSectionProps {
   notes: NoteMeta[];
@@ -49,6 +83,11 @@ interface NotesSidebarSectionProps {
   onReorderFolders: (ids: string[]) => Promise<void>;
   onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
+  onMoveNoteToIndex: (
+    noteId: string,
+    targetFolderId: string | null,
+    noteIdsInNewOrder: string[],
+  ) => Promise<void>;
 }
 
 interface NoteItemProps {
@@ -64,19 +103,57 @@ interface NoteItemProps {
 
 interface SortableNoteItemProps extends NoteItemProps {
   sortableId: string;
+  containerId: string;
 }
 
-function SortableNoteItem({ sortableId, ...props }: SortableNoteItemProps) {
+function SortableNoteItem({ sortableId, containerId, ...props }: SortableNoteItemProps) {
+  const data: NoteDragData = { type: 'note', noteId: sortableId, containerId };
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: sortableId });
+    useSortable({ id: sortableId, data });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
   };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <NoteItem {...props} />
+    </div>
+  );
+}
+
+type FolderBodyDroppableProps = {
+  containerId: string;
+  children: React.ReactNode;
+};
+
+function FolderBodyDroppable({ containerId, children }: FolderBodyDroppableProps) {
+  const data: ContainerDroppableData = { type: 'container', containerId };
+  const { setNodeRef, isOver } = useDroppable({
+    id: `container-${containerId}`,
+    data,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      data-container-id={containerId}
+      data-over={isOver}
+      className="min-h-[8px]"
+    >
+      {children}
+    </div>
+  );
+}
+
+type DragOverlayNoteCardProps = { note: NoteMeta | null };
+
+function DragOverlayNoteCard({ note }: DragOverlayNoteCardProps) {
+  if (!note) return null;
+  return (
+    <div className="vt-app flex items-center gap-2 px-3 py-1.5 rounded-md bg-background border shadow-lg text-sm max-w-[240px]">
+      <FileText className="w-3.5 h-3.5 shrink-0 opacity-70" />
+      <span className="truncate flex-1">{note.title || "Untitled"}</span>
+      {note.favorite ? <Star className="w-3 h-3 fill-current text-yellow-500" /> : null}
     </div>
   );
 }
@@ -135,7 +212,7 @@ interface FolderSectionProps {
   onRename: (id: string, currentName: string) => void;
   onRequestDelete: (folder: FolderMeta) => void;
   onCreateNoteIn: (folderId: string) => void;
-  onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
+  isDropActive: boolean;
   t: (key: string) => string;
 }
 
@@ -152,34 +229,21 @@ function FolderSection({
   onRename,
   onRequestDelete,
   onCreateNoteIn,
-  onReorderNotes,
+  isDropActive,
   t,
 }: FolderSectionProps) {
+  const data: FolderDragData = { type: 'folder', folderId: folder.id };
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: folder.id });
+    useSortable({ id: folder.id, data });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
-  const noteSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  );
-  const handleNoteDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = notes.findIndex((n) => n.id === active.id);
-    const newIndex = notes.findIndex((n) => n.id === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-    const next = [...notes];
-    const [moved] = next.splice(oldIndex, 1);
-    next.splice(newIndex, 0, moved);
-    void onReorderNotes(folder.id, next.map((n) => n.id));
-  };
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       <div
-        className="group flex items-center gap-1.5 px-3 py-1 hover:bg-accent/30 transition-colors"
+        className={`group flex items-center gap-1.5 px-3 py-1 hover:bg-accent/30 transition-colors${isDropActive ? ' vt-folder-header--drop-active' : ''}`}
         {...listeners}
       >
         <button
@@ -233,11 +297,7 @@ function FolderSection({
         </div>
       </div>
       {!collapsed && (
-        <DndContext
-          sensors={noteSensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleNoteDragEnd}
-        >
+        <FolderBodyDroppable containerId={folder.id}>
           <SortableContext
             items={notes.map((n) => n.id)}
             strategy={verticalListSortingStrategy}
@@ -246,6 +306,7 @@ function FolderSection({
               <SortableNoteItem
                 key={note.id}
                 sortableId={note.id}
+                containerId={folder.id}
                 note={note}
                 isActive={note.id === activeNoteId}
                 indented
@@ -257,7 +318,7 @@ function FolderSection({
               />
             ))}
           </SortableContext>
-        </DndContext>
+        </FolderBodyDroppable>
       )}
     </div>
   );
@@ -278,27 +339,150 @@ export function NotesSidebarSection({
   onReorderFolders,
   onReorderNotes,
   onMoveNote,
+  onMoveNoteToIndex,
 }: NotesSidebarSectionProps) {
   const { t } = useTranslation();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  const rootNoteSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  );
+  const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingExpandTargetRef = useRef<string | null>(null);
 
-  const handleFolderDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = folders.findIndex((f) => f.id === active.id);
-    const newIndex = folders.findIndex((f) => f.id === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-    const next = [...folders];
-    const [moved] = next.splice(oldIndex, 1);
-    next.splice(newIndex, 0, moved);
-    void onReorderFolders(next.map((f) => f.id));
+  const AUTO_EXPAND_DELAY_MS = 600;
+
+  const clearExpandTimer = () => {
+    if (expandTimerRef.current) {
+      clearTimeout(expandTimerRef.current);
+      expandTimerRef.current = null;
+    }
+    pendingExpandTargetRef.current = null;
   };
+
+  const schedulePossibleExpand = (containerId: string | null) => {
+    if (!containerId) {
+      clearExpandTimer();
+      return;
+    }
+    const isCollapsed =
+      containerId === ROOT_CONTAINER_ID
+        ? collapseState.root === true
+        : collapseState.folders[containerId] === true;
+    if (!isCollapsed) {
+      clearExpandTimer();
+      return;
+    }
+    if (pendingExpandTargetRef.current === containerId) return; // already pending
+    clearExpandTimer();
+    pendingExpandTargetRef.current = containerId;
+    expandTimerRef.current = setTimeout(() => {
+      if (pendingExpandTargetRef.current !== containerId) return;
+      if (containerId === ROOT_CONTAINER_ID) {
+        expandRoot();
+      } else {
+        expandFolder(containerId);
+      }
+      expandTimerRef.current = null;
+      pendingExpandTargetRef.current = null;
+    }, AUTO_EXPAND_DELAY_MS);
+  };
+
+  const resetDragState = () => {
+    clearExpandTimer();
+    setActiveId(null);
+    setActiveType(null);
+    setOriginContainerId(null);
+    setDraftContainers(null);
+    setOverContainerId(null);
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current as NoteDragData | FolderDragData | undefined;
+    if (!data) return;
+    setActiveId(String(event.active.id));
+    setActiveType(data.type);
+    if (data.type === 'note') {
+      setOriginContainerId(data.containerId);
+      setDraftContainers({ ...liveContainers });
+    }
+  };
+
+  const resolveOverContainerId = (
+    over: DragEndEvent['over'] | null,
+  ): string | null => {
+    if (!over) return null;
+    const data = over.data.current as
+      | NoteDragData
+      | ContainerDroppableData
+      | FolderDragData
+      | undefined;
+    if (!data) return null;
+    if (data.type === 'note') return data.containerId;
+    if (data.type === 'container') return data.containerId;
+    if (data.type === 'folder') return data.folderId;
+    return null;
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    const activeData = active.data.current as NoteDragData | FolderDragData | undefined;
+    if (!activeData || activeData.type !== 'note') {
+      setOverContainerId(null);
+      return;
+    }
+
+    const overId = over ? String(over.id) : null;
+    const nextContainerId = resolveOverContainerId(over);
+    setOverContainerId(nextContainerId);
+    schedulePossibleExpand(nextContainerId);
+    if (!nextContainerId || !draftContainers) return;
+
+    const activeNoteId = activeData.noteId;
+    const currentContainerId = findContainerOf(draftContainers, activeNoteId);
+    if (!currentContainerId) return;
+
+    const overIsNote =
+      over?.data.current &&
+      (over.data.current as { type: string }).type === 'note';
+
+    if (currentContainerId === nextContainerId) {
+      // Same-container reorder during hover — reflect over-position
+      if (!overIsNote || !overId) return;
+      const items = draftContainers[currentContainerId];
+      const activeIndex = items.indexOf(activeNoteId);
+      const overIndex = items.indexOf(overId);
+      if (activeIndex === overIndex || overIndex < 0) return;
+      const nextItems = [...items];
+      nextItems.splice(activeIndex, 1);
+      nextItems.splice(overIndex, 0, activeNoteId);
+      setDraftContainers({ ...draftContainers, [currentContainerId]: nextItems });
+      return;
+    }
+
+    // Cross-container move
+    const fromItems = draftContainers[currentContainerId].filter((id) => id !== activeNoteId);
+    const toItemsOriginal = draftContainers[nextContainerId] ?? [];
+    const insertAt =
+      overIsNote && overId ? toItemsOriginal.indexOf(overId) : toItemsOriginal.length;
+    const toItems = [...toItemsOriginal];
+    toItems.splice(insertAt >= 0 ? insertAt : toItems.length, 0, activeNoteId);
+
+    setDraftContainers({
+      ...draftContainers,
+      [currentContainerId]: fromItems,
+      [nextContainerId]: toItems,
+    });
+  };
+
+  const handleDragCancel = (_event: DragCancelEvent) => {
+    resetDragState();
+  };
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<'note' | 'folder' | null>(null);
+  const [originContainerId, setOriginContainerId] = useState<string | null>(null);
+  const [draftContainers, setDraftContainers] = useState<ContainerMap | null>(null);
+  const [overContainerId, setOverContainerId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NoteMeta[] | null>(null);
   const {
@@ -307,6 +491,8 @@ export function NotesSidebarSection({
     toggleRecents,
     toggleRoot,
     toggleFolder: toggleFolderCollapsed,
+    expandFolder,
+    expandRoot,
   } = useSidebarCollapseState();
   const favoritesCollapsed = collapseState.favorites;
   const recentsCollapsed = collapseState.recents;
@@ -314,6 +500,11 @@ export function NotesSidebarSection({
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; note: NoteMeta } | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<NoteMeta | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<FolderMeta | null>(null);
+  type FolderDialogState =
+    | { mode: "create" }
+    | { mode: "rename"; id: string; currentName: string }
+    | { mode: "createAndMove"; noteId: string };
+  const [folderDialog, setFolderDialog] = useState<FolderDialogState | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleSearch = useCallback(
@@ -342,28 +533,34 @@ export function NotesSidebarSection({
     return () => clearTimeout(debounceRef.current);
   }, []);
 
+  useEffect(() => () => clearExpandTimer(), []);
+
   const handleNoteContextMenu = (e: React.MouseEvent, note: NoteMeta) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, note });
   };
 
-  const handleCreateFolder = async () => {
-    const name = window.prompt(t('notes.folders.namePrompt'));
-    if (!name || !name.trim()) return;
-    try {
-      await onCreateFolder(name.trim());
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-    }
+  const handleCreateFolder = () => {
+    setFolderDialog({ mode: "create" });
   };
 
-  const handleRenameFolder = async (id: string, currentName: string) => {
-    const name = window.prompt(t('notes.folders.namePrompt'), currentName);
-    if (!name || !name.trim() || name.trim() === currentName) return;
+  const handleRenameFolder = (id: string, currentName: string) => {
+    setFolderDialog({ mode: "rename", id, currentName });
+  };
+
+  const handleFolderDialogSubmit = async (name: string) => {
+    if (!folderDialog) return;
     try {
-      await onRenameFolder(id, name.trim());
+      if (folderDialog.mode === "create") {
+        await onCreateFolder(name);
+      } else if (folderDialog.mode === "rename") {
+        await onRenameFolder(folderDialog.id, name);
+      } else if (folderDialog.mode === "createAndMove") {
+        const folder = await onCreateFolder(name);
+        await onMoveNote(folderDialog.noteId, folder.id);
+      }
     } catch (error) {
-      console.error('Failed to rename folder:', error);
+      console.error('Folder action failed:', error);
     }
   };
 
@@ -419,6 +616,115 @@ export function NotesSidebarSection({
     return { notesByFolder: byFolder, rootNotes: root };
   }, [displayedNotes, folders]);
 
+  const liveContainers: ContainerMap = useMemo(() => {
+    const map: ContainerMap = { [ROOT_CONTAINER_ID]: rootNotes.map((n) => n.id) };
+    for (const folder of folders) {
+      map[folder.id] = (notesByFolder.get(folder.id) ?? []).map((n) => n.id);
+    }
+    return map;
+  }, [rootNotes, folders, notesByFolder]);
+
+  const containersForRender = draftContainers ?? liveContainers;
+
+  const noteById = useMemo(() => {
+    const map = new Map<string, NoteMeta>();
+    for (const n of displayedNotes) map.set(n.id, n);
+    return map;
+  }, [displayedNotes]);
+
+  const notesForFolder = (folderId: string): NoteMeta[] => {
+    const ids = containersForRender[folderId] ?? [];
+    const out: NoteMeta[] = [];
+    for (const id of ids) {
+      const n = noteById.get(id);
+      if (n) out.push(n);
+    }
+    return out;
+  };
+
+  const rootNotesForRender = notesForFolder(ROOT_CONTAINER_ID);
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    const activeData = active.data.current as NoteDragData | FolderDragData | undefined;
+
+    const resetDragState = () => {
+      clearExpandTimer();
+      setActiveId(null);
+      setActiveType(null);
+      setOriginContainerId(null);
+      setDraftContainers(null);
+      setOverContainerId(null);
+    };
+
+    if (!activeData) {
+      resetDragState();
+      return;
+    }
+
+    // Folder reorder (unchanged behavior)
+    if (activeData.type === 'folder') {
+      if (over && active.id !== over.id) {
+        const oldIndex = folders.findIndex((f) => f.id === active.id);
+        const newIndex = folders.findIndex((f) => f.id === over.id);
+        if (oldIndex >= 0 && newIndex >= 0) {
+          const next = [...folders];
+          const [moved] = next.splice(oldIndex, 1);
+          next.splice(newIndex, 0, moved);
+          void onReorderFolders(next.map((f) => f.id));
+        }
+      }
+      resetDragState();
+      return;
+    }
+
+    // Note drop
+    if (activeData.type === 'note' && draftContainers && originContainerId) {
+      const noteId = activeData.noteId;
+      const finalContainerId = findContainerOf(draftContainers, noteId);
+      if (!finalContainerId) {
+        resetDragState();
+        return;
+      }
+
+      const finalIds = draftContainers[finalContainerId];
+      const originIds = liveContainers[originContainerId] ?? [];
+
+      // No-op detection: note stayed in origin AND order unchanged
+      if (finalContainerId === originContainerId) {
+        const unchanged =
+          finalIds.length === originIds.length &&
+          finalIds.every((id, i) => id === originIds[i]);
+        if (unchanged) {
+          resetDragState();
+          return;
+        }
+        const folderId = finalContainerId === ROOT_CONTAINER_ID ? null : finalContainerId;
+        try {
+          await onReorderNotes(folderId, finalIds);
+        } catch (error) {
+          console.error('Reorder failed:', error);
+          toast.error(t('notes.errors.moveFailed'));
+        }
+        resetDragState();
+        return;
+      }
+
+      // Cross-container move
+      const targetFolderId = finalContainerId === ROOT_CONTAINER_ID ? null : finalContainerId;
+      try {
+        await onMoveNoteToIndex(noteId, targetFolderId, finalIds);
+      } catch (error) {
+        console.error('Cross-container move failed:', error);
+        toast.error(t('notes.errors.moveFailed'));
+      }
+      resetDragState();
+      return;
+    }
+
+    resetDragState();
+  };
+
   const showFavoritesSection = favoriteNotes.length > 0 && !isSearching;
   const showRecentsSection = recentNotes.length > 0 && !isSearching;
 
@@ -461,16 +767,14 @@ export function NotesSidebarSection({
         </span>
       ),
       onClick: () => {
-        const name = window.prompt(t('notes.folders.namePrompt'));
-        if (!name || !name.trim()) return;
-        void onCreateFolder(name.trim()).then((folder) => onMoveNote(note.id, folder.id));
+        setFolderDialog({ mode: "createAndMove", noteId: note.id });
       },
     });
     return items;
   };
 
   return (
-    <div className="flex flex-col border-t border-border overflow-hidden flex-1 min-h-0">
+    <div className="vt-notes-tree flex flex-col border-t border-border overflow-hidden flex-1 min-h-0">
       {/* Search input + new-note button + new-folder button */}
       <div className="flex items-center gap-1 px-2 py-2 shrink-0">
         <Input
@@ -522,7 +826,14 @@ export function NotesSidebarSection({
             ))
           )
         ) : (
-          <>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
             {/* Favorites section */}
             {showFavoritesSection && (
               <div>
@@ -598,103 +909,97 @@ export function NotesSidebarSection({
             )}
 
             {/* Folders (drag-reorderable) */}
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleFolderDragEnd}
+            <SortableContext
+              items={folders.map((f) => f.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <SortableContext
-                items={folders.map((f) => f.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {folders.map((folder) => (
-                  <FolderSection
-                    key={folder.id}
-                    folder={folder}
-                    notes={notesByFolder.get(folder.id) ?? []}
-                    activeNoteId={activeNoteId}
-                    collapsed={collapseState.folders[folder.id] ?? false}
-                    onToggle={() => toggleFolderCollapsed(folder.id)}
-                    onOpenNote={onOpenNote}
-                    onToggleFavorite={onToggleFavorite}
-                    onRequestDeleteNote={setNoteToDelete}
-                    onNoteContextMenu={handleNoteContextMenu}
-                    onRename={handleRenameFolder}
-                    onRequestDelete={setFolderToDelete}
-                    onCreateNoteIn={(id) => onCreateNote(id)}
-                    onReorderNotes={onReorderNotes}
-                    t={t}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
+              {folders.map((folder) => (
+                <FolderSection
+                  key={folder.id}
+                  folder={folder}
+                  notes={notesForFolder(folder.id)}
+                  activeNoteId={activeNoteId}
+                  collapsed={collapseState.folders[folder.id] ?? false}
+                  onToggle={() => toggleFolderCollapsed(folder.id)}
+                  onOpenNote={onOpenNote}
+                  onToggleFavorite={onToggleFavorite}
+                  onRequestDeleteNote={setNoteToDelete}
+                  onNoteContextMenu={handleNoteContextMenu}
+                  onRename={handleRenameFolder}
+                  onRequestDelete={setFolderToDelete}
+                  onCreateNoteIn={(id) => onCreateNote(id)}
+                  isDropActive={
+                    activeType === 'note' &&
+                    overContainerId === folder.id &&
+                    originContainerId !== folder.id
+                  }
+                  t={t}
+                />
+              ))}
+            </SortableContext>
 
             {/* Root / unfiled notes */}
-            {(rootNotes.length > 0 || folders.length === 0) && (
-              <div>
-                {folders.length > 0 && (
-                  <button
-                    className="flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors"
-                    onClick={toggleRoot}
+            <div>
+              {folders.length > 0 && (
+                <button
+                  className={`flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors${
+                    activeType === 'note' &&
+                    overContainerId === ROOT_CONTAINER_ID &&
+                    originContainerId !== ROOT_CONTAINER_ID
+                      ? ' vt-folder-header--drop-active'
+                      : ''
+                  }`}
+                  onClick={toggleRoot}
+                >
+                  {rootCollapsed ? (
+                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                  )}
+                  <span className="text-xs text-muted-foreground select-none">
+                    {t('notes.folders.unfiled')}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60 select-none">
+                    ({rootNotes.length})
+                  </span>
+                </button>
+              )}
+              {!rootCollapsed && rootNotes.length === 0 && folders.length === 0 && (
+                <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                  {t('notes.empty')}
+                </div>
+              )}
+              {!rootCollapsed && (rootNotes.length > 0 || folders.length > 0) && (
+                <FolderBodyDroppable containerId={ROOT_CONTAINER_ID}>
+                  <SortableContext
+                    items={rootNotesForRender.map((n) => n.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    {rootCollapsed ? (
-                      <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                    )}
-                    <span className="text-xs text-muted-foreground select-none">
-                      {t('notes.folders.unfiled')}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground/60 select-none">
-                      ({rootNotes.length})
-                    </span>
-                  </button>
-                )}
-                {!rootCollapsed && rootNotes.length === 0 && folders.length === 0 && (
-                  <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                    {t('notes.empty')}
-                  </div>
-                )}
-                {!rootCollapsed && rootNotes.length > 0 && (
-                  <DndContext
-                    sensors={rootNoteSensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={(event) => {
-                      const { active, over } = event;
-                      if (!over || active.id === over.id) return;
-                      const oldIndex = rootNotes.findIndex((n) => n.id === active.id);
-                      const newIndex = rootNotes.findIndex((n) => n.id === over.id);
-                      if (oldIndex < 0 || newIndex < 0) return;
-                      const next = [...rootNotes];
-                      const [moved] = next.splice(oldIndex, 1);
-                      next.splice(newIndex, 0, moved);
-                      void onReorderNotes(null, next.map((n) => n.id));
-                    }}
-                  >
-                    <SortableContext
-                      items={rootNotes.map((n) => n.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {rootNotes.map((note) => (
-                        <SortableNoteItem
-                          key={note.id}
-                          sortableId={note.id}
-                          note={note}
-                          isActive={note.id === activeNoteId}
-                          indented={folders.length > 0}
-                          onOpen={onOpenNote}
-                          onToggleFavorite={onToggleFavorite}
-                          onRequestDelete={setNoteToDelete}
-                          onContextMenu={handleNoteContextMenu}
-                          t={t}
-                        />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
-                )}
-              </div>
-            )}
-          </>
+                    {rootNotesForRender.map((note) => (
+                      <SortableNoteItem
+                        key={note.id}
+                        sortableId={note.id}
+                        containerId={ROOT_CONTAINER_ID}
+                        note={note}
+                        isActive={note.id === activeNoteId}
+                        indented={folders.length > 0}
+                        onOpen={onOpenNote}
+                        onToggleFavorite={onToggleFavorite}
+                        onRequestDelete={setNoteToDelete}
+                        onContextMenu={handleNoteContextMenu}
+                        t={t}
+                      />
+                    ))}
+                  </SortableContext>
+                </FolderBodyDroppable>
+              )}
+            </div>
+            <DragOverlay dropAnimation={null}>
+              {activeId && activeType === 'note' ? (
+                <DragOverlayNoteCard note={noteById.get(activeId) ?? null} />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         )}
       </div>
 
@@ -726,6 +1031,14 @@ export function NotesSidebarSection({
         description={t('notes.folders.deleteConfirmDesc')}
         onOpenChange={(open) => { if (!open) setFolderToDelete(null); }}
         onConfirm={confirmDeleteFolder}
+      />
+
+      <FolderNameDialog
+        open={folderDialog !== null}
+        mode={folderDialog?.mode === "rename" ? "rename" : "create"}
+        initialValue={folderDialog?.mode === "rename" ? folderDialog.currentName : ""}
+        onOpenChange={(open) => { if (!open) setFolderDialog(null); }}
+        onSubmit={handleFolderDialogSubmit}
       />
     </div>
   );

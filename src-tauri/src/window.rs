@@ -300,12 +300,26 @@ pub(crate) fn show_mini_window<R: Runtime>(app_handle: &AppHandle<R>) {
         #[cfg(windows)]
         {
             if let Ok(hwnd) = mini_window.hwnd() {
+                use windows_sys::Win32::UI::WindowsAndMessaging::{
+                    HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SetWindowPos,
+                    ShowWindow,
+                };
                 const SW_SHOWNOACTIVATE: i32 = 4;
                 unsafe {
-                    windows_sys::Win32::UI::WindowsAndMessaging::ShowWindow(
+                    // Re-assert HWND_TOPMOST on every show: the always_on_top flag
+                    // set at creation can be lost (another topmost window focuses,
+                    // session switch, explorer restart), leaving the mini behind
+                    // the taskbar.
+                    SetWindowPos(
                         hwnd.0,
-                        SW_SHOWNOACTIVATE,
+                        HWND_TOPMOST,
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
                     );
+                    ShowWindow(hwnd.0, SW_SHOWNOACTIVATE);
                 }
                 return;
             }

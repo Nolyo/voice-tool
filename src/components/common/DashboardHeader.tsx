@@ -2,11 +2,21 @@
 
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Mic, Download } from "lucide-react"
+import {
+  Mic,
+  Download,
+  FileText,
+  History,
+  ScrollText,
+  Settings2,
+  type LucideIcon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AudioVisualizer } from "./AudioVisualizer"
+import { SyncStatusIndicator } from "@/components/SyncStatusIndicator"
 import { useSettings } from "@/hooks/useSettings"
+import type { DashboardTabId } from "@/components/dashboard/DashboardSidebar"
 
 interface DashboardHeaderProps {
   isRecording: boolean;
@@ -14,7 +24,15 @@ interface DashboardHeaderProps {
   onToggleRecording: () => void;
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
+  activeTab: DashboardTabId;
 }
+
+const TAB_ICONS: Record<DashboardTabId, LucideIcon> = {
+  historique: History,
+  notes: FileText,
+  parametres: Settings2,
+  logs: ScrollText,
+};
 
 export function DashboardHeader({
   isRecording,
@@ -22,6 +40,7 @@ export function DashboardHeader({
   onToggleRecording,
   updateAvailable,
   onUpdateClick,
+  activeTab,
 }: DashboardHeaderProps) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -53,34 +72,36 @@ export function DashboardHeader({
       ? t('recording.recording')
       : t('recording.clickToStart');
 
+  const TabIcon = TAB_ICONS[activeTab];
+
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-      <div className="container mx-auto px-6 py-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 flex-shrink-0">
-              <Mic className="w-5 h-5 text-primary" />
+      <div className="px-5 h-[61px] flex items-center">
+        <div className="flex items-center justify-between gap-4 w-full">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 flex-shrink-0">
+              <TabIcon className="w-[18px] h-[18px] text-primary" />
             </div>
-            <div className="min-w-0">
-              <h1 className="text-xl font-semibold text-foreground truncate">{t('header.title')}</h1>
-              <p className="text-xs text-muted-foreground truncate">{t('header.subtitle')}</p>
+            <div className="min-w-0 leading-tight">
+              <h1 className="text-[15px] font-semibold text-foreground truncate">{t('header.title')}</h1>
+              <p className="text-[11px] text-muted-foreground truncate">{t(`header.subtitle.${activeTab}`)}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="relative w-11 h-11 flex-shrink-0 flex items-center justify-center">
-                <AudioVisualizer isRecording={isRecording} size={44} />
+              <div className="relative w-9 h-9 flex-shrink-0 flex items-center justify-center">
+                <AudioVisualizer isRecording={isRecording} size={36} />
                 <button
                   onClick={onToggleRecording}
                   disabled={isTranscribing}
-                  className={`relative z-10 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-70 ${
+                  className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-70 ${
                     isRecording
                       ? "bg-destructive shadow-lg shadow-destructive/50 scale-110"
                       : "bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
                   }`}
                 >
-                  <Mic className="w-5 h-5 text-primary-foreground" />
+                  <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
                 {isRecording && (
                   <div className="absolute inset-0 rounded-full border-4 border-destructive animate-ping opacity-75" />
@@ -110,6 +131,8 @@ export function DashboardHeader({
               </div>
             </div>
 
+            <SyncStatusIndicator />
+
             {updateAvailable && (
               <Button
                 variant="default"
@@ -124,6 +147,7 @@ export function DashboardHeader({
                 </Badge>
               </Button>
             )}
+
           </div>
         </div>
       </div>

@@ -1,31 +1,105 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Mic, Copy, Play, Pause, X, Sparkles, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import {
+  Mic,
+  Check,
+  Copy,
+  Play,
+  Pause,
+  X,
+  ArrowLeft,
+  Sparkles,
+  Download,
+  Trash2,
+  Loader2,
+  ChevronRight,
+} from "lucide-react";
 import type { Transcription } from "@/hooks/useTranscriptionHistory";
 import { useSettings } from "@/hooks/useSettings";
 import { invoke } from "@tauri-apps/api/core";
+import { useDateFormatters } from "@/lib/date-format";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 interface TranscriptionDetailsProps {
   transcription: Transcription | null;
-  onCopy: (text: string) => void;
   onClose: () => void;
+  onDelete?: (id: string) => void;
+  compact?: boolean;
+}
+
+function parseAt(t: Transcription): Date {
+  const iso = `${t.date}T${t.time}`;
+  const d = new Date(iso);
+  if (!Number.isNaN(d.getTime())) return d;
+  return new Date(`${t.date} ${t.time}`);
+}
+
+function durFmt(s?: number): string {
+  if (!s || s <= 0) return "—";
+  if (s < 60) return `${Math.round(s)}s`;
+  const m = Math.floor(s / 60);
+  const r = Math.round(s % 60);
+  return `${m}m ${String(r).padStart(2, "0")}s`;
+}
+
+function wordsOf(text: string): number {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
+
+/* ── Waveform (placeholder bars; progress driven by actual audio) ───── */
+function Waveform({
+  progress,
+  accent,
+}: {
+  progress: number;
+  accent: string;
+}) {
+  const bars = useMemo(
+    () => Array.from({ length: 56 }, () => Math.random() * 0.8 + 0.2),
+    [],
+  );
+
+  return (
+    <div className="flex items-end gap-[2px] h-10 overflow-hidden">
+      {bars.map((v, i) => {
+        const played = i / bars.length < progress;
+        return (
+          <div
+            key={i}
+            className="wave-bar"
+            style={{
+              width: 3,
+              height: Math.max(4, v * 38),
+              background: played
+                ? accent
+                : `oklch(from ${accent} l c h / 0.22)`,
+              transition: "background 120ms linear",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 export function TranscriptionDetails({
   transcription,
-  onCopy,
   onClose,
+  onDelete,
+  compact = false,
 }: TranscriptionDetailsProps) {
   const { t } = useTranslation();
+  const { copy, justCopied } = useCopyToClipboard();
+  const { dayLabel, formatTime } = useDateFormatters();
   const { settings } = useSettings();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(false);
+  const [playbackProgress, setPlaybackProgress] = useState(0);
 
   const stopPlayback = useCallback(() => {
     if (audioRef.current) {
@@ -39,56 +113,45 @@ export function TranscriptionDetails({
     }
     setIsPlaying(false);
     setIsLoading(false);
+    setPlaybackProgress(0);
   }, []);
 
   useEffect(() => {
     stopPlayback();
+    setShowOriginal(false);
   }, [transcription?.id, stopPlayback]);
 
   useEffect(() => {
-    if (!settings.enable_history_audio_preview) {
-      stopPlayback();
-    }
+    if (!settings.enable_history_audio_preview) stopPlayback();
   }, [settings.enable_history_audio_preview, stopPlayback]);
 
   useEffect(() => {
-    return () => {
-      stopPlayback();
-    };
+    return () => stopPlayback();
   }, [stopPlayback]);
 
   const handleListen = useCallback(async () => {
     if (!transcription?.audioPath) {
-      alert(t('transcriptionDetails.noAudio'));
+      alert(t("transcriptionDetails.noAudio"));
       return;
     }
-
     if (!settings.enable_history_audio_preview) {
-      alert(t('transcriptionDetails.previewDisabled'));
+      alert(t("transcriptionDetails.previewDisabled"));
       return;
     }
-
     if (isPlaying) {
       stopPlayback();
       return;
     }
-
     try {
-      if (audioRef.current) {
-        stopPlayback();
-      }
-
+      if (audioRef.current) stopPlayback();
       setIsLoading(true);
 
       const normalizedPath = transcription.audioPath.replace(/\\/g, "/");
       const rawData = await invoke<Uint8Array | number[]>("load_recording", {
         audioPath: normalizedPath,
       });
-      const bytes =
-        rawData instanceof Uint8Array ? rawData : new Uint8Array(rawData);
-      if (!bytes || bytes.length === 0) {
-        throw new Error("Empty audio file");
-      }
+      const bytes = rawData instanceof Uint8Array ? rawData : new Uint8Array(rawData);
+      if (!bytes || bytes.length === 0) throw new Error("Empty audio file");
 
       const audioBlob = new Blob([bytes], { type: "audio/wav" });
       const objectUrl = URL.createObjectURL(audioBlob);
@@ -97,7 +160,14 @@ export function TranscriptionDetails({
       const audio = new Audio(objectUrl);
       audioRef.current = audio;
 
+      audio.ontimeupdate = () => {
+        const total = audio.duration;
+        if (!Number.isFinite(total) || total <= 0) return;
+        setPlaybackProgress(Math.min(1, audio.currentTime / total));
+      };
+
       audio.onended = () => {
+        setPlaybackProgress(1);
         setIsPlaying(false);
         audioRef.current = null;
         if (objectUrlRef.current) {
@@ -108,156 +178,455 @@ export function TranscriptionDetails({
 
       audio.onerror = () => {
         console.error("Audio playback error");
-        alert(t('transcriptionDetails.playbackError'));
+        alert(t("transcriptionDetails.playbackError"));
         stopPlayback();
       };
 
+      setPlaybackProgress(0);
       await audio.play();
       setIsPlaying(true);
     } catch (error: unknown) {
       console.error("Failed to play audio preview:", error);
-      alert(t('transcriptionDetails.playbackError'));
+      alert(t("transcriptionDetails.playbackError"));
       stopPlayback();
     } finally {
       setIsLoading(false);
     }
-  }, [
-    transcription,
-    settings.enable_history_audio_preview,
-    isPlaying,
-    stopPlayback,
-    t,
-  ]);
+  }, [transcription, settings.enable_history_audio_preview, isPlaying, stopPlayback, t]);
 
+  if (!transcription) {
+    return (
+      <div
+        className="vt-card-sectioned p-10 text-center flex flex-col items-center gap-3 relative"
+        style={{ minHeight: 400 }}
+      >
+        {compact && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[12px] vt-hover-bg"
+            style={{ color: "var(--vt-fg-3)" }}
+            aria-label={t("transcriptionDetails.backToList", {
+              defaultValue: "Retour à la liste",
+            })}
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            {t("transcriptionDetails.back", { defaultValue: "Retour" })}
+          </button>
+        )}
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center"
+          style={{ background: "var(--vt-hover)", color: "var(--vt-fg-4)" }}
+        >
+          <Mic className="w-5 h-5" />
+        </div>
+        <div>
+          <div className="text-[13.5px] font-medium">
+            {t("transcriptionDetails.emptyState")}
+          </div>
+          <div
+            className="text-[12px] mt-1"
+            style={{ color: "var(--vt-fg-3)" }}
+          >
+            {t("transcriptionDetails.emptyStateSubtitle")}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const at = parseAt(transcription);
+  const postProcess = Boolean(transcription.originalText);
+  const accent = postProcess ? "oklch(0.72 0.17 295)" : "var(--vt-accent)";
+  const durationSec = transcription.duration ?? 0;
   const canListen =
-    Boolean(transcription?.audioPath) && settings.enable_history_audio_preview;
+    Boolean(transcription.audioPath) && settings.enable_history_audio_preview;
+  const totalCost =
+    (transcription.apiCost ?? 0) + (transcription.postProcessCost ?? 0);
+  const words = wordsOf(transcription.text);
+  const wpm = durationSec > 0 ? Math.round(words / (durationSec / 60)) : 0;
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-foreground">{t('transcriptionDetails.details')}</h3>
-        <button
-          onClick={onClose}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Fermer"
+    <div className="vt-card-sectioned vt-fade-up overflow-hidden" key={transcription.id}>
+      {/* Header */}
+      <div
+        className="flex items-start gap-3 px-5 pt-5 pb-4"
+        style={{ borderBottom: "1px solid var(--vt-border)" }}
+      >
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+          style={{
+            background: `oklch(from ${accent} l c h / 0.15)`,
+            color: accent,
+            boxShadow: `inset 0 0 0 1px oklch(from ${accent} l c h / 0.3)`,
+          }}
         >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-      {transcription ? (
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">{t('transcriptionDetails.dateTime')}</p>
-            <p className="text-sm font-mono text-foreground">
-              {transcription.date} {transcription.time}
-            </p>
-          </div>
-          {transcription.apiCost !== undefined && (
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">{t('transcriptionDetails.cost')}</p>
-              {transcription.postProcessCost !== undefined ? (
-                <div className="space-y-0.5 text-sm font-mono text-foreground">
-                  <div className="flex justify-between">
-                    <span className="text-xs text-muted-foreground">{t('transcriptionDetails.costWhisper')}</span>
-                    <span>{transcription.apiCost === 0 ? t('transcriptionDetails.free') : `$${transcription.apiCost.toFixed(5)}`}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-violet-400">{t('transcriptionDetails.costPostProcess')}</span>
-                    <span className="text-violet-300">${transcription.postProcessCost.toFixed(5)}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-border/50 pt-0.5 mt-0.5">
-                    <span className="text-xs font-medium">{t('transcriptionDetails.costTotal')}</span>
-                    <span className="font-medium">${(transcription.apiCost + transcription.postProcessCost).toFixed(5)} USD</span>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm font-mono text-foreground">
-                  {transcription.apiCost === 0 ? t('transcriptionDetails.free') : `$${transcription.apiCost.toFixed(4)} USD`}
-                </p>
-              )}
-            </div>
+          {postProcess ? (
+            <Sparkles className="w-4 h-4" />
+          ) : (
+            <Mic className="w-4 h-4" />
           )}
-          {transcription.originalText && (
-            <details className="group rounded-lg border border-violet-500/30 bg-violet-500/5">
-              <summary className="flex items-center gap-2 px-3 py-2 cursor-pointer list-none select-none">
-                <Sparkles className="w-3.5 h-3.5 text-violet-400" aria-hidden="true" />
-                <span className="text-xs font-medium text-violet-300">
-                  {t('transcriptionDetails.postProcessTitle')}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-[14.5px] font-semibold tracking-tight">
+              {dayLabel(at)} · {formatTime(at)}
+            </h2>
+            <span
+              className="vt-mono text-[10.5px] px-1.5 py-0.5 rounded"
+              style={{
+                background: "var(--vt-hover)",
+                border: "1px solid var(--vt-border)",
+                color: "var(--vt-fg-3)",
+              }}
+            >
+              {transcription.id.slice(0, 6).toUpperCase()}
+            </span>
+          </div>
+          <div
+            className="flex items-center gap-3 mt-1 text-[11.5px] flex-wrap"
+            style={{ color: "var(--vt-fg-3)" }}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: "var(--vt-accent)",
+                  boxShadow: "0 0 6px var(--vt-accent)",
+                }}
+              />
+              Whisper
+            </span>
+            {durationSec > 0 && (
+              <>
+                <span>·</span>
+                <span className="vt-mono">{durFmt(durationSec)}</span>
+              </>
+            )}
+            {postProcess && transcription.postProcessMode && (
+              <>
+                <span>·</span>
+                <span
+                  className="vt-mono text-[10.5px] px-1.5 py-0.5 rounded"
+                  style={{
+                    background: "oklch(0.72 0.17 295 / 0.16)",
+                    color: "oklch(0.78 0.15 295)",
+                  }}
+                >
+                  {t(
+                    `settings.postProcess.modes.${transcription.postProcessMode}.label`,
+                    { defaultValue: transcription.postProcessMode },
+                  )}
                 </span>
-                {transcription.postProcessMode && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 border border-violet-500/30">
-                    {t(
-                      `settings.postProcess.modes.${transcription.postProcessMode}.label`,
-                      { defaultValue: transcription.postProcessMode },
-                    )}
-                  </span>
-                )}
-                <ChevronDown className="ml-auto w-3.5 h-3.5 text-violet-400 transition-transform group-open:rotate-180" aria-hidden="true" />
-              </summary>
-              <div className="px-3 pb-3 pt-1 space-y-2">
-                <p className="text-[11px] text-muted-foreground">
-                  {t('transcriptionDetails.originalHint')}
-                </p>
-                <p className="text-sm text-foreground/80 leading-relaxed bg-background/60 p-3 rounded border border-border/50 whitespace-pre-wrap">
-                  {transcription.originalText}
-                </p>
-              </div>
-            </details>
-          )}
-          <div>
-            <p className="text-xs text-muted-foreground mb-2">
-              {transcription.originalText
-                ? t('transcriptionDetails.transcriptionFinal')
-                : t('transcriptionDetails.transcription')}
-            </p>
-            <p className="text-sm text-foreground leading-relaxed bg-muted/50 p-4 rounded-lg whitespace-pre-wrap">
-              {transcription.text}
-            </p>
-          </div>
-          <div className="flex flex-row gap-2 pt-4">
-            <Button
-              onClick={() => onCopy(transcription.text)}
-              className="flex-1 cursor-pointer dark:hover:border-blue-800"
-            >
-              <Copy className="w-4 h-4 mr-2" />
-              {t('transcriptionDetails.copy')}
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1 bg-transparent"
-              onClick={handleListen}
-              disabled={!canListen || isLoading}
-            >
-              {isPlaying ? (
-                <Pause className="w-4 h-4 mr-2" />
-              ) : (
-                <Play className="w-4 h-4 mr-2" />
-              )}
-              {isPlaying ? t('transcriptionDetails.stop') : t('transcriptionDetails.listen')}
-            </Button>
-            {transcription.audioPath &&
-              !settings.enable_history_audio_preview && (
-                <p className="text-xs text-muted-foreground">
-                  {t('transcriptionDetails.previewDisabledHelp')}
-                </p>
-              )}
-            {!transcription.audioPath && (
-              <p className="text-xs text-muted-foreground">
-                {t('transcriptionDetails.noAudioHelp')}
-              </p>
+              </>
             )}
           </div>
         </div>
-      ) : (
-        <div className="py-12 text-center">
-          <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-3">
-            <Mic className="w-6 h-6 text-muted-foreground" />
+        <button
+          type="button"
+          onClick={onClose}
+          className={
+            compact
+              ? "inline-flex items-center gap-1.5 px-2 h-7 rounded-md text-[12px] vt-hover-bg"
+              : "w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg"
+          }
+          style={{ color: "var(--vt-fg-3)" }}
+          aria-label={
+            compact
+              ? t("transcriptionDetails.backToList", {
+                  defaultValue: "Retour à la liste",
+                })
+              : t("common.close")
+          }
+        >
+          {compact ? (
+            <>
+              <ArrowLeft className="w-3.5 h-3.5" />
+              {t("transcriptionDetails.back", { defaultValue: "Retour" })}
+            </>
+          ) : (
+            <X className="w-3.5 h-3.5" />
+          )}
+        </button>
+      </div>
+
+      {/* Waveform player */}
+      {transcription.audioPath && (
+        <div
+          className="px-5 py-4 flex items-center gap-4"
+          style={{ borderBottom: "1px solid var(--vt-border)" }}
+        >
+          <button
+            type="button"
+            onClick={handleListen}
+            disabled={!canListen || isLoading}
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition"
+            style={{
+              background: isPlaying
+                ? "var(--vt-accent)"
+                : "oklch(from var(--vt-accent) l c h / 0.15)",
+              color: isPlaying ? "white" : "var(--vt-accent-2)",
+              border: "1px solid oklch(from var(--vt-accent) l c h / 0.35)",
+              opacity: !canListen || isLoading ? 0.5 : 1,
+              cursor: !canListen || isLoading ? "not-allowed" : "pointer",
+            }}
+            aria-label={isPlaying ? t("transcriptionDetails.stop") : t("transcriptionDetails.listen")}
+          >
+            {isLoading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : isPlaying ? (
+              <Pause className="w-3.5 h-3.5" />
+            ) : (
+              <Play className="w-3.5 h-3.5 ml-0.5" />
+            )}
+          </button>
+          <div className="flex-1 min-w-0">
+            <Waveform progress={playbackProgress} accent="var(--vt-accent)" />
           </div>
-          <p className="text-sm text-muted-foreground">
-            {t('transcriptionDetails.emptyState')}
-          </p>
+          <span
+            className="vt-mono text-[11px]"
+            style={{ color: "var(--vt-fg-4)" }}
+          >
+            {durFmt(durationSec)}
+          </span>
         </div>
       )}
-    </Card>
+
+      {/* Metrics */}
+      <div
+        className="px-5 py-3 grid grid-cols-3 gap-3"
+        style={{ borderBottom: "1px solid var(--vt-border)" }}
+      >
+        <div>
+          <div
+            className="text-[10.5px] uppercase tracking-wider"
+            style={{ color: "var(--vt-fg-4)" }}
+          >
+            {t("transcriptionDetails.metricWords")}
+          </div>
+          <div className="text-[16px] font-semibold vt-mono mt-0.5">{words}</div>
+        </div>
+        <div>
+          <div
+            className="text-[10.5px] uppercase tracking-wider"
+            style={{ color: "var(--vt-fg-4)" }}
+          >
+            {t("transcriptionDetails.metricRate")}
+          </div>
+          <div className="text-[16px] font-semibold vt-mono mt-0.5">
+            {wpm > 0 ? (
+              <>
+                {wpm}
+                <span
+                  className="text-[11px] font-normal ml-1"
+                  style={{ color: "var(--vt-fg-4)" }}
+                >
+                  {t("transcriptionDetails.metricRateUnit")}
+                </span>
+              </>
+            ) : (
+              "—"
+            )}
+          </div>
+        </div>
+        <div>
+          <div
+            className="text-[10.5px] uppercase tracking-wider"
+            style={{ color: "var(--vt-fg-4)" }}
+          >
+            {t("transcriptionDetails.cost")}
+          </div>
+          <div className="text-[16px] font-semibold vt-mono mt-0.5">
+            {totalCost > 0 ? `$${totalCost.toFixed(4)}` : t("transcriptionDetails.free")}
+          </div>
+        </div>
+      </div>
+
+      {/* Post-process banner + original text */}
+      {postProcess && (
+        <details
+          className="vt-details"
+          style={{ borderBottom: "1px solid var(--vt-border)" }}
+          open={showOriginal}
+        >
+          <summary
+            onClick={(e) => {
+              e.preventDefault();
+              setShowOriginal((v) => !v);
+            }}
+            className="flex items-center gap-2.5 px-5 py-2.5 vt-trace"
+            style={{ background: "oklch(0.72 0.17 295 / 0.06)" }}
+          >
+            <span
+              className="w-5 h-5 rounded-md flex items-center justify-center"
+              style={{
+                background: "oklch(0.72 0.17 295 / 0.18)",
+                color: "oklch(0.72 0.17 295)",
+              }}
+            >
+              <Sparkles className="w-3 h-3" />
+            </span>
+            <span
+              className="text-[12px] font-medium"
+              style={{ color: "oklch(0.72 0.17 295)" }}
+            >
+              {t("transcriptionDetails.postProcessTitle")}
+              {transcription.postProcessMode && (
+                <>
+                  {" · "}
+                  {t(`settings.postProcess.modes.${transcription.postProcessMode}.label`, {
+                    defaultValue: transcription.postProcessMode,
+                  })}
+                </>
+              )}
+            </span>
+            <span
+              className="vt-chev ml-auto"
+              style={{ color: "oklch(0.72 0.17 295)" }}
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </span>
+          </summary>
+          {transcription.originalText && (
+            <div
+              className="px-5 py-3"
+              style={{ background: "oklch(0.72 0.17 295 / 0.03)" }}
+            >
+              <div
+                className="text-[10.5px] uppercase tracking-wider mb-1.5"
+                style={{ color: "var(--vt-fg-4)" }}
+              >
+                {t("transcriptionDetails.originalHint")}
+              </div>
+              <p
+                className="text-[12.5px] leading-relaxed italic"
+                style={{ color: "var(--vt-fg-2)" }}
+              >
+                « {transcription.originalText} »
+              </p>
+            </div>
+          )}
+        </details>
+      )}
+
+      {/* Transcript */}
+      <div
+        className="px-5 py-4"
+        style={{ borderBottom: "1px solid var(--vt-border)" }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div
+            className="text-[10.5px] uppercase tracking-wider"
+            style={{ color: "var(--vt-fg-4)" }}
+          >
+            {postProcess
+              ? t("transcriptionDetails.transcriptionFinal")
+              : t("transcriptionDetails.transcription")}
+          </div>
+          <div
+            className="text-[10.5px] vt-mono"
+            style={{ color: "var(--vt-fg-4)" }}
+          >
+            {t("history.wordsCount", { count: words })}
+          </div>
+        </div>
+        <p
+          className="text-[13.5px] leading-relaxed whitespace-pre-wrap"
+          style={{ color: "var(--vt-fg)" }}
+        >
+          {transcription.text}
+        </p>
+
+        {transcription.apiCost !== undefined &&
+          transcription.postProcessCost !== undefined && (
+            <div
+              className="mt-4 pt-3 text-[11px] vt-mono space-y-0.5"
+              style={{
+                borderTop: "1px dashed var(--vt-border)",
+                color: "var(--vt-fg-3)",
+              }}
+            >
+              <div className="flex justify-between">
+                <span>{t("transcriptionDetails.costWhisper")}</span>
+                <span>
+                  {transcription.apiCost === 0
+                    ? t("transcriptionDetails.free")
+                    : `$${transcription.apiCost.toFixed(5)}`}
+                </span>
+              </div>
+              <div className="flex justify-between" style={{ color: "oklch(0.72 0.17 295)" }}>
+                <span>{t("transcriptionDetails.costPostProcess")}</span>
+                <span>${transcription.postProcessCost.toFixed(5)}</span>
+              </div>
+            </div>
+          )}
+      </div>
+
+      {/* Actions */}
+      <div className="px-5 py-3 flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          className="vt-btn-primary"
+          onClick={() => copy(transcription.text)}
+        >
+          {justCopied ? (
+            <Check
+              className="w-3.5 h-3.5"
+              style={{ color: "var(--vt-ok)" }}
+            />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+          {justCopied ? t("common.copied") : t("transcriptionDetails.copy")}
+        </button>
+        <button
+          type="button"
+          className="vt-btn"
+          disabled
+          data-tip={t("transcriptionDetails.exportComingSoon")}
+        >
+          <Download className="w-3.5 h-3.5" />
+          <span>{t("transcriptionDetails.exportLabel")}</span>
+        </button>
+        {onDelete && (
+          <button
+            type="button"
+            className="vt-btn vt-btn-danger"
+            style={{ marginLeft: "auto" }}
+            onClick={() => {
+              if (confirm(t("history.deleteConfirm"))) {
+                onDelete(transcription.id);
+              }
+            }}
+            aria-label={t("history.deleteConfirm")}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {!transcription.audioPath && (
+        <div
+          className="px-5 py-2 text-[11px]"
+          style={{
+            color: "var(--vt-fg-4)",
+            borderTop: "1px solid var(--vt-border)",
+          }}
+        >
+          {t("transcriptionDetails.noAudioHelp")}
+        </div>
+      )}
+      {transcription.audioPath && !settings.enable_history_audio_preview && (
+        <div
+          className="px-5 py-2 text-[11px]"
+          style={{
+            color: "var(--vt-fg-4)",
+            borderTop: "1px solid var(--vt-border)",
+          }}
+        >
+          {t("transcriptionDetails.previewDisabledHelp")}
+        </div>
+      )}
+    </div>
   );
 }

@@ -143,11 +143,19 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(1 0 0 / 15%);
+  background: oklch(0 0 0 / 18%);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0 0 0 / 32%);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 15%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
   background: oklch(1 0 0 / 28%);
 }
 
@@ -383,4 +391,1451 @@ body.mini-window-body #root {
     0 1px 2px rgba(255, 255, 255, 0.05) inset,
     0 0 0 1px rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(12px);
+}
+
+/* ── Voice Tool design-system tokens & utilities ───────────────────────────
+ * Scoped under `.vt-app` to avoid leaking into other parts of the app.
+ * Shared across Settings, Historique, and future redesigned screens.
+ */
+.vt-app {
+  --vt-bg: oklch(0.14 0.015 264);
+  --vt-panel: oklch(0.165 0.018 264);
+  --vt-panel-2: oklch(0.19 0.02 264);
+  --vt-surface: oklch(0.21 0.022 264);
+  --vt-surface-hi: oklch(0.235 0.024 264);
+  --vt-border: oklch(0.27 0.025 264);
+  --vt-border-strong: oklch(0.34 0.03 264);
+  --vt-fg: oklch(0.96 0.005 264);
+  --vt-fg-2: oklch(0.78 0.01 264);
+  --vt-fg-3: oklch(0.6 0.015 264);
+  --vt-fg-4: oklch(0.48 0.015 264);
+  --vt-accent: oklch(0.7 0.17 264);
+  --vt-accent-2: oklch(0.78 0.15 264);
+  --vt-accent-soft: oklch(0.7 0.17 264 / 0.14);
+  --vt-warn: oklch(0.78 0.14 75);
+  --vt-warn-soft: oklch(0.78 0.14 75 / 0.13);
+  --vt-ok: oklch(0.78 0.14 150);
+  --vt-ok-soft: oklch(0.78 0.14 150 / 0.13);
+  --vt-danger: oklch(0.7 0.2 25);
+  --vt-hover-soft: oklch(1 0 0 / 0.025);
+  --vt-hover: oklch(1 0 0 / 0.04);
+  --vt-hover-strong: oklch(1 0 0 / 0.08);
+  --vt-inset-highlight: oklch(1 0 0 / 0.04);
+  --vt-tooltip-bg: oklch(0.1 0 0);
+  --vt-tooltip-fg: oklch(0.96 0.005 264);
+  color: var(--vt-fg);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01", "ss03";
+}
+
+.vt-app .vt-folder-header--drop-active {
+  background-color: var(--vt-accent-soft);
+  outline: 1px solid var(--vt-accent);
+  outline-offset: -1px;
+  border-radius: 6px;
+}
+
+.vt-mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-feature-settings: "zero";
+}
+
+/* Geist — used for the notes sidebar tree (folders + note titles). Slightly
+   narrower and crisper than Inter at small sizes, better suited for dense
+   tree listings. */
+.vt-notes-tree {
+  font-family: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* Theme-aware hover background for buttons and rows inside .vt-app. */
+.vt-app .vt-hover-bg:hover {
+  background: var(--vt-hover);
+}
+
+/* Card styles */
+.vt-app .vt-card-flat {
+  background: transparent;
+  border: 1px solid var(--vt-border);
+  border-radius: 14px;
+}
+.vt-app .vt-card-elevated {
+  background: var(--vt-panel-2);
+  border: 1px solid var(--vt-border);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 0 var(--vt-inset-highlight) inset,
+    0 10px 30px -12px rgba(0, 0, 0, 0.5),
+    0 2px 6px -2px rgba(0, 0, 0, 0.3);
+}
+.vt-app .vt-card-sectioned {
+  background: var(--vt-panel-2);
+  border: 1px solid var(--vt-border);
+  border-radius: 16px;
+}
+.vt-app .vt-card-sectioned .vt-row + .vt-row {
+  border-top: 1px solid var(--vt-border);
+}
+
+.vt-app .vt-row {
+  padding: 18px 20px;
+}
+
+/* Range slider */
+.vt-app input[type="range"].vt-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 20px;
+  background: transparent;
+}
+.vt-app input[type="range"].vt-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--vt-accent) 0%,
+    var(--vt-accent) var(--val, 10%),
+    var(--vt-hover-strong) var(--val, 10%),
+    var(--vt-hover-strong) 100%
+  );
+}
+.vt-app input[type="range"].vt-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: white;
+  border: 2px solid var(--vt-accent);
+  margin-top: -5px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 4px transparent;
+  transition: box-shadow 0.15s;
+}
+.vt-app input[type="range"].vt-range:hover::-webkit-slider-thumb {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 0 0 6px oklch(from var(--vt-accent) l c h / 0.18);
+}
+
+/* Toggle */
+.vt-app .vt-toggle {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--vt-border);
+  transition: background 0.15s;
+  flex: none;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+.vt-app .vt-toggle[data-on="true"] {
+  background: var(--vt-accent);
+}
+.vt-app .vt-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: white;
+  transition: transform 0.15s ease, box-shadow 0.15s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.vt-app .vt-toggle[data-on="true"]::after {
+  transform: translateX(14px);
+}
+
+/* Checkbox (custom) */
+.vt-app .vt-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--vt-border-strong);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.vt-app .vt-check[data-on="true"] {
+  background: var(--vt-accent);
+  border-color: var(--vt-accent);
+}
+.vt-app .vt-check[data-on="true"] svg {
+  opacity: 1;
+}
+.vt-app .vt-check svg {
+  opacity: 0;
+  color: white;
+}
+
+/* Select */
+.vt-app .vt-select {
+  appearance: none;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  color: var(--vt-fg);
+  height: 36px;
+  padding: 0 36px 0 12px;
+  border-radius: 10px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: border-color 0.15s, background-color 0.15s;
+  font-size: 14px;
+  width: 100%;
+}
+.vt-app .vt-select:hover {
+  border-color: var(--vt-border-strong);
+  background-color: var(--vt-surface-hi);
+}
+.vt-app .vt-select:focus {
+  outline: none;
+  border-color: var(--vt-accent);
+  box-shadow: 0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25);
+}
+
+/* Buttons */
+.vt-app .vt-btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--vt-border);
+  background: var(--vt-surface);
+  color: var(--vt-fg);
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, border-color 0.15s;
+  cursor: pointer;
+}
+.vt-app .vt-btn:hover {
+  background: var(--vt-surface-hi);
+  border-color: var(--vt-border-strong);
+}
+.vt-app .vt-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.vt-app .vt-btn-primary {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--vt-accent);
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.15) inset,
+    0 6px 18px -6px oklch(from var(--vt-accent) l c h / 0.55);
+  cursor: pointer;
+}
+.vt-app .vt-btn-primary:hover {
+  filter: brightness(1.08);
+}
+.vt-app .vt-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Tooltip */
+.vt-app [data-tip] {
+  position: relative;
+}
+.vt-app [data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--vt-tooltip-bg);
+  color: var(--vt-tooltip-fg);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  border: 1px solid var(--vt-border);
+  z-index: 40;
+}
+
+/* Level meter bar */
+.vt-app .vt-meter-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--vt-border);
+}
+.vt-app .vt-meter-bar[data-on="true"] {
+  background: var(--vt-accent);
+}
+
+/* Reveal animation */
+@keyframes vtFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.vt-app .vt-fade-up {
+  animation: vtFadeUp 0.22s ease both;
+}
+
+/* ── Historique timeline & cards ───────────────────────────────────────── */
+
+.vt-app .vt-trace {
+  color: oklch(0.72 0.17 295);
+}
+
+.vt-app .vt-kbd {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--vt-hover);
+  border: 1px solid var(--vt-border);
+  border-bottom-width: 2px;
+  color: var(--vt-fg-2);
+}
+
+.vt-app .hist-row {
+  display: grid;
+  grid-template-columns: 84px 28px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.vt-app .hist-row:hover {
+  background: var(--vt-hover-soft);
+}
+.vt-app .hist-row[data-selected="true"] {
+  background: oklch(from var(--vt-accent) l c h / 0.09);
+  box-shadow: inset 0 0 0 1px oklch(from var(--vt-accent) l c h / 0.3);
+}
+.vt-app .hist-row[data-selected="true"] .hist-time {
+  color: var(--vt-accent-2);
+}
+
+.vt-app .hist-dot {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+.vt-app .hist-dot::before {
+  content: "";
+  position: absolute;
+  top: -18px;
+  bottom: -18px;
+  left: 50%;
+  width: 1px;
+  background: var(--vt-border);
+  transform: translateX(-0.5px);
+}
+.vt-app .hist-rail-first::before {
+  top: 50%;
+}
+.vt-app .hist-rail-last::before {
+  bottom: 50%;
+}
+.vt-app .hist-dot-circle {
+  position: relative;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--vt-surface);
+  border: 1.5px solid var(--vt-border-strong);
+}
+.vt-app .hist-row[data-source="api"] .hist-dot-circle {
+  background: oklch(0.72 0.14 205);
+  border-color: oklch(0.72 0.14 205);
+}
+.vt-app .hist-row[data-source="local"] .hist-dot-circle {
+  background: oklch(0.74 0.14 150);
+  border-color: oklch(0.74 0.14 150);
+}
+.vt-app .hist-row[data-selected="true"] .hist-dot-circle {
+  box-shadow: 0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25);
+}
+
+.vt-app .day-label {
+  display: grid;
+  grid-template-columns: 84px 28px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 16px 6px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(to bottom, var(--vt-bg) 70%, transparent);
+}
+.vt-app .day-label-inner {
+  grid-column: 2 / 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vt-app .day-chip {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--vt-fg-4);
+  font-weight: 600;
+}
+.vt-app .day-chip-count {
+  font-size: 10.5px;
+  color: var(--vt-fg-4);
+  font-family: "JetBrains Mono", monospace;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--vt-hover);
+  border: 1px solid var(--vt-border);
+}
+
+.vt-app .stat-tile {
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--vt-panel-2);
+  border: 1px solid var(--vt-border);
+}
+.vt-app .stat-tile .lbl {
+  font-size: 11px;
+  color: var(--vt-fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+.vt-app .stat-tile .val {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.vt-app .stat-tile .trend {
+  font-size: 11px;
+  margin-top: 6px;
+  font-family: "JetBrains Mono", monospace;
+  color: var(--vt-fg-3);
+}
+
+.vt-app .filter-chip {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  border: 1px solid var(--vt-border);
+  color: var(--vt-fg-2);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.vt-app .filter-chip:hover {
+  background: var(--vt-surface);
+}
+.vt-app .filter-chip[data-on="true"] {
+  background: oklch(from var(--vt-accent) l c h / 0.14);
+  border-color: oklch(from var(--vt-accent) l c h / 0.4);
+  color: var(--vt-accent-2);
+}
+
+.vt-app .wave-bar {
+  background: oklch(from var(--vt-accent) l c h / 0.55);
+  border-radius: 2px;
+}
+
+.vt-app details.vt-details summary {
+  list-style: none;
+  cursor: pointer;
+}
+.vt-app details.vt-details summary::-webkit-details-marker {
+  display: none;
+}
+.vt-app details.vt-details[open] summary .vt-chev {
+  transform: rotate(90deg);
+}
+.vt-app .vt-chev {
+  transition: transform 0.15s;
+  display: inline-flex;
+}
+
+.vt-app .vt-btn-danger:hover {
+  border-color: oklch(from var(--vt-danger) l c h / 0.5);
+  color: var(--vt-danger);
+  background: oklch(from var(--vt-danger) l c h / 0.08);
+}
+
+.vt-app .vt-hist-search {
+  appearance: none;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  color: var(--vt-fg);
+  height: 36px;
+  width: 100%;
+  padding: 0 72px 0 36px;
+  border-radius: 10px;
+  font-size: 13px;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.vt-app .vt-hist-search:hover {
+  background: var(--vt-surface-hi);
+  border-color: var(--vt-border-strong);
+}
+.vt-app .vt-hist-search:focus {
+  outline: none;
+  border-color: var(--vt-accent);
+  box-shadow: 0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25);
+}
+
+/* ── Logs console design ──────────────────────────────────────────────── */
+
+.vt-app {
+  --vt-info: oklch(0.72 0.15 240);
+  --vt-debug: oklch(0.7 0.02 264);
+  --vt-trace: oklch(0.72 0.17 295);
+}
+
+.vt-app .log-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 104px 72px 1fr;
+  gap: 14px;
+  padding: 5px 36px 5px 16px;
+  border-left: 2px solid transparent;
+  align-items: baseline;
+  transition: background 0.08s;
+}
+.vt-app .log-row:hover {
+  background: var(--vt-hover-soft);
+}
+.vt-app .log-row-copy {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--vt-fg-4);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+.vt-app .log-row:hover .log-row-copy {
+  opacity: 1;
+}
+.vt-app .log-row-copy:hover {
+  background: var(--vt-hover);
+  color: var(--vt-fg-2);
+}
+.vt-app .log-row[data-level="error"] {
+  border-left-color: oklch(from var(--vt-danger) l c h / 0.5);
+}
+.vt-app .log-row[data-level="warn"] {
+  border-left-color: oklch(from var(--vt-warn) l c h / 0.4);
+}
+.vt-app .log-row[data-level="info"] {
+  border-left-color: oklch(from var(--vt-info) l c h / 0.3);
+}
+.vt-app .log-row[data-level="debug"] {
+  border-left-color: oklch(from var(--vt-debug) l c h / 0.25);
+}
+.vt-app .log-row[data-level="trace"] {
+  border-left-color: oklch(from var(--vt-trace) l c h / 0.3);
+}
+.vt-app .log-row[data-level="error"]:hover {
+  background: oklch(from var(--vt-danger) l c h / 0.05);
+}
+.vt-app .log-row[data-level="warn"]:hover {
+  background: oklch(from var(--vt-warn) l c h / 0.04);
+}
+
+.vt-app .lvl-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.vt-app .lvl-error {
+  background: oklch(from var(--vt-danger) l c h / 0.18);
+  color: var(--vt-danger);
+}
+.vt-app .lvl-warn {
+  background: oklch(from var(--vt-warn) l c h / 0.2);
+  color: var(--vt-warn);
+}
+.vt-app .lvl-info {
+  background: oklch(from var(--vt-info) l c h / 0.2);
+  color: var(--vt-info);
+}
+.vt-app .lvl-debug {
+  background: oklch(from var(--vt-debug) l c h / 0.3);
+  color: oklch(0.82 0.01 264);
+}
+.vt-app .lvl-trace {
+  background: oklch(from var(--vt-trace) l c h / 0.2);
+  color: var(--vt-trace);
+}
+
+.vt-app .log-time {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--vt-fg-4);
+}
+.vt-app .log-msg {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--vt-fg-2);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.vt-app .log-row[data-level="error"] .log-msg {
+  color: oklch(0.88 0.05 25);
+}
+.vt-app .log-row[data-level="warn"] .log-msg {
+  color: oklch(0.92 0.07 75);
+}
+
+.vt-app .lvl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: "JetBrains Mono", monospace;
+  border: 1px solid var(--vt-border);
+  background: transparent;
+  color: var(--vt-fg-3);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.vt-app .lvl-btn:hover {
+  background: var(--vt-surface);
+  color: var(--vt-fg);
+}
+.vt-app .lvl-btn[data-on="true"][data-level="error"] {
+  background: oklch(from var(--vt-danger) l c h / 0.15);
+  border-color: oklch(from var(--vt-danger) l c h / 0.4);
+  color: var(--vt-danger);
+}
+.vt-app .lvl-btn[data-on="true"][data-level="warn"] {
+  background: oklch(from var(--vt-warn) l c h / 0.18);
+  border-color: oklch(from var(--vt-warn) l c h / 0.4);
+  color: var(--vt-warn);
+}
+.vt-app .lvl-btn[data-on="true"][data-level="info"] {
+  background: oklch(from var(--vt-info) l c h / 0.18);
+  border-color: oklch(from var(--vt-info) l c h / 0.4);
+  color: var(--vt-info);
+}
+.vt-app .lvl-btn[data-on="true"][data-level="debug"] {
+  background: oklch(from var(--vt-debug) l c h / 0.3);
+  border-color: var(--vt-border-strong);
+  color: var(--vt-fg-2);
+}
+.vt-app .lvl-btn[data-on="true"][data-level="trace"] {
+  background: oklch(from var(--vt-trace) l c h / 0.18);
+  border-color: oklch(from var(--vt-trace) l c h / 0.4);
+  color: var(--vt-trace);
+}
+
+.vt-app .dot-live {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--vt-ok);
+  animation: vtLivePulse 1.8s infinite;
+}
+@keyframes vtLivePulse {
+  0% {
+    box-shadow: 0 0 0 0 oklch(from var(--vt-ok) l c h / 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 6px oklch(from var(--vt-ok) l c h / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 oklch(from var(--vt-ok) l c h / 0);
+  }
+}
+
+.vt-app .mini-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 28px;
+}
+.vt-app .mini-bar > span {
+  width: 3px;
+  border-radius: 1px;
+  display: block;
+}
+
+.vt-app .log-highlight {
+  background: oklch(from var(--vt-warn) l c h / 0.28);
+  color: var(--vt-warn);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.vt-app .count-chip {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--vt-hover);
+  border: 1px solid var(--vt-border);
+  color: var(--vt-fg-3);
+}
+
+.vt-app .vt-btn-active {
+  background: oklch(from var(--vt-accent) l c h / 0.15);
+  border-color: oklch(from var(--vt-accent) l c h / 0.4);
+  color: var(--vt-accent-2);
+}
+
+/* ── Light mode overrides for the vt-app token system ───────────────────
+ * The .vt-app tokens above are defined with dark-mode values (app default).
+ * When the `.dark` class is absent from <html>, override them for light mode.
+ */
+:root:not(.dark) .vt-app {
+  --vt-bg: oklch(0.985 0.003 264);
+  --vt-panel: oklch(0.965 0.005 264);
+  --vt-panel-2: oklch(1 0 0);
+  --vt-surface: oklch(0.965 0.006 264);
+  --vt-surface-hi: oklch(0.935 0.009 264);
+  --vt-border: oklch(0.9 0.008 264);
+  --vt-border-strong: oklch(0.8 0.012 264);
+  --vt-fg: oklch(0.22 0.02 264);
+  --vt-fg-2: oklch(0.38 0.018 264);
+  --vt-fg-3: oklch(0.52 0.015 264);
+  --vt-fg-4: oklch(0.65 0.012 264);
+  --vt-accent: oklch(0.5 0.22 264);
+  --vt-accent-2: oklch(0.4 0.22 264);
+  --vt-accent-soft: oklch(0.5 0.22 264 / 0.12);
+  --vt-warn: oklch(0.58 0.16 75);
+  --vt-warn-soft: oklch(0.58 0.16 75 / 0.12);
+  --vt-ok: oklch(0.52 0.14 150);
+  --vt-ok-soft: oklch(0.52 0.14 150 / 0.12);
+  --vt-danger: oklch(0.55 0.22 25);
+  --vt-info: oklch(0.5 0.18 240);
+  --vt-debug: oklch(0.5 0.02 264);
+  --vt-trace: oklch(0.5 0.2 295);
+  --vt-hover-soft: oklch(0 0 0 / 0.025);
+  --vt-hover: oklch(0 0 0 / 0.045);
+  --vt-hover-strong: oklch(0 0 0 / 0.08);
+  --vt-inset-highlight: oklch(0 0 0 / 0.02);
+  --vt-tooltip-bg: oklch(0.2 0.015 264);
+  --vt-tooltip-fg: oklch(0.97 0 0);
+}
+
+/* ── Notes editor design ────────────────────────────────────────────────
+ * Scoped styles for the notes editor screen — tabs, header, toolbar,
+ * prose content, footer. Matches the visual system from Settings/Historique/Logs.
+ */
+
+.vt-app .notes-shell {
+  background: var(--vt-bg);
+}
+
+/* Title bar (tabs row) */
+.vt-app .notes-tabbar {
+  background: var(--vt-panel);
+  border-bottom: 1px solid var(--vt-border);
+  height: 36px;
+}
+
+.vt-app .notes-tab {
+  height: 36px;
+  padding: 0 10px 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-right: 1px solid var(--vt-border);
+  position: relative;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--vt-fg-3);
+  max-width: 220px;
+  min-width: 110px;
+  transition: color 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+.vt-app .notes-tab:hover {
+  color: var(--vt-fg-2);
+  background: var(--vt-hover-soft);
+}
+.vt-app .notes-tab[data-active="true"] {
+  color: var(--vt-fg);
+  background: var(--vt-bg);
+}
+.vt-app .notes-tab[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--vt-accent);
+}
+.vt-app .notes-tab .notes-tab-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vt-app .notes-tab .notes-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  flex: none;
+}
+.vt-app .notes-tab[data-dirty="true"] .notes-tab-dot {
+  background: var(--vt-accent);
+  box-shadow: 0 0 6px oklch(from var(--vt-accent) l c h / 0.6);
+}
+.vt-app .notes-tab-icon {
+  color: var(--vt-fg-4);
+  flex: none;
+}
+.vt-app .notes-tab[data-active="true"] .notes-tab-icon {
+  color: var(--vt-accent-2);
+}
+.vt-app .notes-tab-close {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vt-fg-4);
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+  flex: none;
+}
+.vt-app .notes-tab:hover .notes-tab-close,
+.vt-app .notes-tab[data-active="true"] .notes-tab-close {
+  opacity: 1;
+}
+.vt-app .notes-tab-close:hover {
+  background: var(--vt-hover-strong);
+  color: var(--vt-fg);
+}
+
+.vt-app .notes-tab-new {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vt-fg-3);
+  border-right: 1px solid var(--vt-border);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+.vt-app .notes-tab-new:hover {
+  color: var(--vt-fg);
+  background: var(--vt-hover-soft);
+}
+
+/* Folder badge (right side of tabbar) */
+.vt-app .notes-folder-badge {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--vt-border);
+  background: var(--vt-surface);
+  color: var(--vt-fg-2);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, border-color 0.15s;
+  max-width: 180px;
+}
+.vt-app .notes-folder-badge:hover {
+  background: var(--vt-surface-hi);
+  border-color: var(--vt-border-strong);
+  color: var(--vt-fg);
+}
+.vt-app .notes-folder-badge .notes-folder-badge-icon {
+  color: var(--vt-fg-4);
+  flex: none;
+}
+
+/* Document header (breadcrumb + meta + divider) */
+.vt-app .note-doc-header {
+  padding: 22px 40px 14px;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+}
+.vt-app .note-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--vt-fg-3);
+  margin-bottom: 10px;
+}
+.vt-app .note-breadcrumb-icon {
+  color: var(--vt-fg-4);
+}
+.vt-app .note-breadcrumb-sep {
+  color: var(--vt-fg-4);
+  font-weight: 500;
+}
+.vt-app .note-breadcrumb-current {
+  color: var(--vt-fg-2);
+}
+.vt-app .note-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--vt-fg-4);
+  flex-wrap: wrap;
+}
+.vt-app .note-meta .dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--vt-fg-4);
+  opacity: 0.7;
+}
+.vt-app .note-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.vt-app .note-meta-item .vt-mono {
+  font-size: 11px;
+}
+.vt-app .note-doc-divider {
+  height: 1px;
+  background: var(--vt-border);
+  max-width: 860px;
+  margin: 6px auto 0;
+}
+
+/* Prose (TipTap) adjustments under .vt-app */
+.vt-app .tiptap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 16px 40px 48px;
+  font-size: 14.5px;
+  line-height: 1.72;
+  color: var(--vt-fg);
+}
+.vt-app .tiptap p {
+  margin: 0 0 14px;
+}
+.vt-app .tiptap h1 {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 4px 0 16px;
+  color: var(--vt-fg);
+}
+.vt-app .tiptap h2 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 28px 0 10px;
+  color: var(--vt-fg);
+}
+.vt-app .tiptap h3 {
+  font-size: 15.5px;
+  font-weight: 600;
+  margin: 22px 0 8px;
+  color: var(--vt-fg);
+}
+.vt-app .tiptap ul,
+.vt-app .tiptap ol {
+  padding-left: 1.25rem;
+  margin: 6px 0 14px;
+}
+.vt-app .tiptap li {
+  margin: 2px 0;
+}
+.vt-app .tiptap li p {
+  margin: 0;
+}
+.vt-app .tiptap blockquote {
+  margin: 12px 0;
+  padding: 2px 14px;
+  border-left: 3px solid var(--vt-accent);
+  color: var(--vt-fg-2);
+  font-style: italic;
+}
+.vt-app .tiptap code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--vt-hover);
+  border: 1px solid var(--vt-border);
+  color: var(--vt-fg-2);
+}
+.vt-app .tiptap pre {
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 14px 0;
+  overflow-x: auto;
+}
+.vt-app .tiptap pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--vt-fg-2);
+}
+.vt-app .tiptap a {
+  color: var(--vt-accent-2);
+  text-decoration: underline;
+  text-decoration-color: oklch(from var(--vt-accent) l c h / 0.4);
+  text-underline-offset: 2px;
+}
+.vt-app .tiptap hr {
+  border: 0;
+  border-top: 1px solid var(--vt-border);
+  margin: 22px 0;
+}
+/* Per-node placeholders (Tiptap Placeholder extension with
+ * `showOnlyCurrent: false`). The seeded H1+P both need hints. */
+.vt-app .tiptap .is-empty::before,
+.vt-app .tiptap .is-editor-empty::before {
+  content: attr(data-placeholder);
+  color: var(--vt-fg-4);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.vt-app .tiptap h1.is-empty::before {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Task list (checklist) */
+.vt-app .tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 14px;
+}
+.vt-app .tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0;
+  padding: 2px 0;
+}
+.vt-app .tiptap ul[data-type="taskList"] li > label {
+  flex: none;
+  margin-top: 4px;
+  user-select: none;
+}
+.vt-app .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--vt-border-strong);
+  background: var(--vt-surface);
+  transition: all 0.15s;
+  cursor: pointer;
+  position: relative;
+  display: block;
+}
+.vt-app .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:hover {
+  border-color: var(--vt-accent);
+}
+.vt-app .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  background: var(--vt-accent);
+  border-color: var(--vt-accent);
+}
+.vt-app .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.vt-app .tiptap ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+.vt-app .tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--vt-fg-4);
+  text-decoration: line-through;
+  text-decoration-color: oklch(from var(--vt-fg-4) l c h / 0.6);
+}
+.vt-app .tiptap ul[data-type="taskList"] li > div > p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Footer */
+.vt-app .notes-footer {
+  height: 30px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--vt-border);
+  font-size: 11px;
+  color: var(--vt-fg-4);
+  background: var(--vt-panel);
+  flex-shrink: 0;
+}
+.vt-app .notes-footer .footer-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--vt-fg-4);
+  opacity: 0.7;
+}
+.vt-app .notes-footer .footer-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vt-app .notes-footer .footer-save .save-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vt-ok);
+  box-shadow: 0 0 6px oklch(from var(--vt-ok) l c h / 0.5);
+}
+.vt-app .notes-footer .footer-save[data-state="dirty"] .save-led {
+  background: var(--vt-warn);
+  box-shadow: 0 0 6px oklch(from var(--vt-warn) l c h / 0.5);
+}
+@keyframes vtSaveBadgeIn {
+  0% { opacity: 0; transform: translateY(2px); }
+  100% { opacity: 1; transform: none; }
+}
+.vt-app .notes-footer .footer-save-transient {
+  animation: vtSaveBadgeIn 0.22s ease-out both;
+}
+.vt-app .notes-footer .footer-save-transient + .footer-dot {
+  animation: vtSaveBadgeIn 0.22s ease-out both;
+}
+.vt-app .notes-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.vt-app .notes-footer-actions .footer-action {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--vt-fg-3);
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.vt-app .notes-footer-actions .footer-action:hover:not(:disabled) {
+  background: var(--vt-hover);
+  color: var(--vt-fg);
+}
+.vt-app .notes-footer-actions .footer-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.vt-app .notes-footer-actions .footer-action.is-danger:hover {
+  background: oklch(from var(--vt-danger) l c h / 0.12);
+  color: var(--vt-danger);
+}
+
+/* Backlinks panel */
+.vt-app .notes-backlinks {
+  border-top: 1px solid var(--vt-border);
+  background: var(--vt-panel);
+  padding: 10px 20px;
+  flex-shrink: 0;
+}
+.vt-app .notes-backlinks-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--vt-fg-4);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.vt-app .notes-backlinks-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vt-app .notes-backlink-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--vt-fg-2);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  max-width: 220px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.vt-app .notes-backlink-chip:hover {
+  background: var(--vt-surface-hi);
+  border-color: var(--vt-border-strong);
+  color: var(--vt-fg);
+}
+.vt-app .notes-backlink-chip span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty state */
+.vt-app .notes-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--vt-fg-3);
+  font-size: 13px;
+  gap: 8px;
+  padding: 40px;
+}
+.vt-app .notes-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vt-hover);
+  border: 1px solid var(--vt-border);
+  color: var(--vt-fg-4);
+}
+
+/* AI error banner */
+.vt-app .notes-error-banner {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--vt-danger);
+  background: oklch(from var(--vt-danger) l c h / 0.08);
+  border-top: 1px solid oklch(from var(--vt-danger) l c h / 0.2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Some Historique/Logs components use text colours that are too light for
+ * a white background: darken them for the light palette only. */
+:root:not(.dark) .vt-app .vt-trace {
+  color: oklch(0.5 0.2 295);
+}
+:root:not(.dark) .vt-app .log-row[data-level="error"] .log-msg {
+  color: oklch(0.4 0.18 25);
+}
+:root:not(.dark) .vt-app .log-row[data-level="warn"] .log-msg {
+  color: oklch(0.45 0.14 75);
+}
+:root:not(.dark) .vt-app .lvl-debug {
+  color: var(--vt-fg-2);
+}
+
+/* ===== Notes editor — code blocks (lowlight) ===== */
+
+.vt-app .ProseMirror pre.vt-code-block,
+.vt-app .ProseMirror pre {
+  background: var(--vt-panel-2, #1e1e24);
+  color: var(--vt-fg, #e5e5ea);
+  border: 1px solid var(--vt-border, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  line-height: 1.6;
+  margin: 0.75em 0;
+}
+
+.vt-app .ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* highlight.js token colors — OKLCH tuned for dark design system */
+.vt-app .ProseMirror pre .hljs-keyword,
+.vt-app .ProseMirror pre .hljs-selector-tag,
+.vt-app .ProseMirror pre .hljs-literal,
+.vt-app .ProseMirror pre .hljs-doctag,
+.vt-app .ProseMirror pre .hljs-tag .hljs-name {
+  color: oklch(0.72 0.18 290);
+}
+.vt-app .ProseMirror pre .hljs-string,
+.vt-app .ProseMirror pre .hljs-regexp,
+.vt-app .ProseMirror pre .hljs-addition,
+.vt-app .ProseMirror pre .hljs-attribute,
+.vt-app .ProseMirror pre .hljs-meta .hljs-string {
+  color: oklch(0.78 0.14 140);
+}
+.vt-app .ProseMirror pre .hljs-comment,
+.vt-app .ProseMirror pre .hljs-quote {
+  color: oklch(0.55 0.02 260);
+  font-style: italic;
+}
+.vt-app .ProseMirror pre .hljs-number,
+.vt-app .ProseMirror pre .hljs-symbol,
+.vt-app .ProseMirror pre .hljs-bullet,
+.vt-app .ProseMirror pre .hljs-link {
+  color: oklch(0.78 0.16 60);
+}
+.vt-app .ProseMirror pre .hljs-function .hljs-title,
+.vt-app .ProseMirror pre .hljs-title.function_,
+.vt-app .ProseMirror pre .hljs-built_in,
+.vt-app .ProseMirror pre .hljs-builtin-name {
+  color: oklch(0.80 0.14 200);
+}
+.vt-app .ProseMirror pre .hljs-variable,
+.vt-app .ProseMirror pre .hljs-template-variable,
+.vt-app .ProseMirror pre .hljs-attr {
+  color: oklch(0.82 0.12 30);
+}
+.vt-app .ProseMirror pre .hljs-title,
+.vt-app .ProseMirror pre .hljs-class .hljs-title,
+.vt-app .ProseMirror pre .hljs-type {
+  color: oklch(0.82 0.14 80);
+}
+.vt-app .ProseMirror pre .hljs-emphasis { font-style: italic; }
+.vt-app .ProseMirror pre .hljs-strong { font-weight: 700; }
+
+/* ===== Notes editor — tables ===== */
+
+.vt-app .ProseMirror table.vt-table,
+.vt-app .ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75em 0;
+  table-layout: fixed;
+  overflow: hidden;
+}
+
+.vt-app .ProseMirror table th,
+.vt-app .ProseMirror table td {
+  border: 1px solid var(--vt-border, rgba(255, 255, 255, 0.12));
+  padding: 0.5em 0.75em;
+  vertical-align: top;
+  position: relative;
+  min-width: 1em;
+}
+
+.vt-app .ProseMirror table th {
+  background: oklch(from var(--vt-panel-2, #1e1e24) l c h / 0.7);
+  font-weight: 600;
+  text-align: left;
+}
+
+.vt-app .ProseMirror table .selectedCell::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: oklch(0.65 0.15 265 / 0.18);
+  content: "";
+}
+
+.vt-app .ProseMirror table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background: oklch(0.65 0.15 265 / 0.6);
+  pointer-events: none;
+}
+
+.vt-app .ProseMirror.resize-cursor { cursor: col-resize; }
+
+.vt-app .ProseMirror .tableWrapper {
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+
+/* ===== Notes editor — slash menu ===== */
+
+.vt-slash-menu {
+  font-family: inherit;
+}
+
+.vt-slash-menu button:focus-visible {
+  outline: 2px solid oklch(0.65 0.15 265 / 0.6);
+  outline-offset: 1px;
+}
+
+/* ===== Notes editor — code block wrapper (NodeView) ===== */
+
+.vt-app .ProseMirror .vt-code-block-wrapper {
+  position: relative;
+  margin: 0.75em 0;
+}
+
+.vt-app .ProseMirror .vt-code-block-wrapper > pre {
+  margin: 0;
+}
+
+/* ===== Notes editor — table toolbar ===== */
+
+.vt-app .vt-table-toolbar {
+  font-family: inherit;
 }

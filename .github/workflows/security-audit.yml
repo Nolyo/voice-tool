@@ -1,0 +1,60 @@
+name: Security Audit
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    # Tous les jours à 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pnpm-audit:
+    name: pnpm audit (HIGH/CRITICAL gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high
+
+  cargo-audit:
+    name: cargo audit (HIGH/CRITICAL gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit
+
+      - name: Run cargo audit
+        working-directory: src-tauri
+        # HIGH/CRITICAL gate: warnings (unmaintained) ne cassent pas le job.
+        # Les RUSTSECs ignorés viennent de dépendances transitives via Tauri 2.10.x
+        # (pas de fix disponible sans bump Tauri majeur). À revoir au prochain bump.
+        run: |
+          cargo audit \
+            --ignore RUSTSEC-2026-0007 \
+            --ignore RUSTSEC-2026-0037 \
+            --ignore RUSTSEC-2026-0104 \
+            --ignore RUSTSEC-2026-0049 \
+            --ignore RUSTSEC-2026-0098 \
+            --ignore RUSTSEC-2026-0099 \
+            --ignore RUSTSEC-2026-0068 \
+            --ignore RUSTSEC-2026-0067 \
+            --ignore RUSTSEC-2026-0009

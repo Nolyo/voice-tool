@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ interface Props {
  * wizard handles the empty-state case).
  */
 export function SelectedModelMissingBanner({ onGoToSettings }: Props) {
+  const { t } = useTranslation();
   const { settings, isLoaded } = useSettings();
   const [selectedExists, setSelectedExists] = useState<boolean | null>(null);
   const [anyExists, setAnyExists] = useState<boolean | null>(null);
@@ -61,12 +63,12 @@ export function SelectedModelMissingBanner({ onGoToSettings }: Props) {
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <div className="flex-1 min-w-0">
         <span className="font-medium">
-          Modèle <code className="font-mono">{settings.local_model_size}</code>{" "}
-          non téléchargé.
+          {t("modelMissing.titleBefore")}{" "}
+          <code className="font-mono">{settings.local_model_size}</code>{" "}
+          {t("modelMissing.titleAfter")}
         </span>{" "}
         <span className="text-amber-700/80 dark:text-amber-400/80">
-          La transcription ne fonctionnera pas tant que tu n'as pas téléchargé
-          ce modèle ou sélectionné un autre modèle déjà installé.
+          {t("modelMissing.subtitle")}
         </span>
       </div>
       <Button
@@ -75,7 +77,7 @@ export function SelectedModelMissingBanner({ onGoToSettings }: Props) {
         onClick={onGoToSettings}
         className="shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
       >
-        Gérer les modèles
+        {t("modelMissing.manage")}
       </Button>
     </div>
   );

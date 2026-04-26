@@ -10,6 +10,8 @@ export interface AppSettings {
     enable_history_audio_preview: boolean;
     input_device_index: number | null;
     silence_threshold: number;
+    /** When true, leading and trailing silence are stripped before transcription. */
+    trim_silence: boolean;
 
     // Transcription
     transcription_provider: "OpenAI" | "Google" | "Local" | "Groq";
@@ -32,6 +34,7 @@ export interface AppSettings {
 
     // System
     recordings_keep_last: number;
+    history_keep_last: number;
     start_minimized_on_boot: boolean;
     main_window_state: string;
     main_window_geometry: string;
@@ -97,6 +100,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     enable_history_audio_preview: true,
     input_device_index: null,
     silence_threshold: 0.005, // RMS threshold below which audio is considered silent (0.5%)
+    trim_silence: true,
 
     // Transcription
     transcription_provider: "Local",
@@ -118,10 +122,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
     insertion_mode: "cursor",
 
     // System
-    recordings_keep_last: 25,
+    recordings_keep_last: 50,
+    history_keep_last: 500,
     start_minimized_on_boot: true,
     main_window_state: "maximized",
-    main_window_geometry: "800x600+0+0",
+    main_window_geometry: "1000x600+0+0",
     auto_check_updates: true,
     update_channel: "stable",
 

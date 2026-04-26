@@ -1,15 +1,27 @@
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
-import { ChevronDown, Folder, FolderPlus, Plus, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  ChevronDown,
+  FileText,
+  Folder,
+  FolderPlus,
+  Plus,
+  X,
+} from "lucide-react";
 import { FloatingMenu, type FloatingMenuEntry } from "@/components/ui/floating-menu";
+import { FolderNameDialog } from "@/components/notes/FolderNameDialog";
 import { type NoteMeta, deriveTitle } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
 
 interface NotesEditorTitleBarProps {
   openNotes: NoteMeta[];
   activeNoteId: string | null;
+  /** Id of the note whose content currently lives in the TipTap editor.
+   *  When it doesn't match `activeNoteId`, the editor still holds the old
+   *  document — don't derive any UI from it (title, word count) until it
+   *  catches up, or tabs flicker to the previous note's title for one paint. */
+  loadedNoteId: string | null;
   folders: FolderMeta[];
   editor: Editor | null;
   onActivateNote: (id: string) => void;
@@ -22,6 +34,7 @@ interface NotesEditorTitleBarProps {
 export function NotesEditorTitleBar({
   openNotes,
   activeNoteId,
+  loadedNoteId,
   folders,
   editor,
   onActivateNote,
@@ -32,7 +45,9 @@ export function NotesEditorTitleBar({
 }: NotesEditorTitleBarProps) {
   const { t } = useTranslation();
   const editorText = editor?.getText() ?? "";
+  const isEditorInSync = loadedNoteId !== null && loadedNoteId === activeNoteId;
   const [badgeMenu, setBadgeMenu] = useState<{ x: number; y: number } | null>(null);
+  const [createFolderForNoteId, setCreateFolderForNoteId] = useState<string | null>(null);
   const badgeButtonRef = useRef<HTMLButtonElement>(null);
 
   const activeNote = openNotes.find((n) => n.id === activeNoteId) ?? null;
@@ -53,10 +68,12 @@ export function NotesEditorTitleBar({
           label: (
             <span className="flex items-center gap-1.5">
               <Folder className="w-3 h-3" />
-              {t('notes.folders.moveToRoot')}
+              {t("notes.folders.moveToRoot")}
             </span>
           ),
-          onClick: () => { void onMoveNote(activeNote.id, null); },
+          onClick: () => {
+            void onMoveNote(activeNote.id, null);
+          },
           active: !activeNote.folderId,
           disabled: !activeNote.folderId,
         });
@@ -70,7 +87,9 @@ export function NotesEditorTitleBar({
                   {folder.name}
                 </span>
               ),
-              onClick: () => { void onMoveNote(activeNote.id, folder.id); },
+              onClick: () => {
+                void onMoveNote(activeNote.id, folder.id);
+              },
               active: activeNote.folderId === folder.id,
               disabled: activeNote.folderId === folder.id,
             });
@@ -81,15 +100,11 @@ export function NotesEditorTitleBar({
           label: (
             <span className="flex items-center gap-1.5">
               <FolderPlus className="w-3 h-3" />
-              {t('notes.folders.newFolderAndMove')}
+              {t("notes.folders.newFolderAndMove")}
             </span>
           ),
           onClick: () => {
-            const name = window.prompt(t('notes.folders.namePrompt'));
-            if (!name || !name.trim()) return;
-            void onCreateFolder(name.trim()).then((folder) =>
-              onMoveNote(activeNote.id, folder.id),
-            );
+            setCreateFolderForNoteId(activeNote.id);
           },
         });
         return items;
@@ -97,67 +112,77 @@ export function NotesEditorTitleBar({
     : [];
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 bg-muted/50 border-b select-none shrink-0">
-      {/* Tabs */}
-      <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto">
-        {openNotes.map((note) => (
-          <div
-            key={note.id}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer shrink-0 max-w-[160px] ${
-              note.id === activeNoteId
-                ? "bg-background text-foreground"
-                : "text-foreground/60 hover:text-foreground hover:bg-background/50"
-            }`}
-            onClick={() => onActivateNote(note.id)}
-            onMouseDown={(e) => {
-              if (e.button === 1) {
-                e.preventDefault();
-                onTabClose(note.id);
-              }
-            }}
-          >
-            <span className="truncate">
-              {note.id === activeNoteId && editorText
-                ? deriveTitle(editor?.getHTML() ?? "")
-                : note.title}
-            </span>
-            <button
-              className="text-foreground/70 hover:text-destructive shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                onTabClose(note.id);
+    <div className="notes-tabbar flex items-stretch select-none shrink-0">
+      {/* Tabs row (scrollable) */}
+      <div
+        className="flex items-stretch overflow-x-auto flex-1 min-w-0"
+        style={{ overflowY: "hidden" }}
+      >
+        {openNotes.map((note) => {
+          const isActive = note.id === activeNoteId;
+          // Only trust the editor's derived title for the active tab when the
+          // editor has actually ingested this note's content. Otherwise the
+          // tab would briefly display the previous note's title.
+          const displayTitle =
+            isActive && isEditorInSync && editorText
+              ? deriveTitle(editor?.getHTML() ?? "")
+              : note.title || t("notes.editor.untitled");
+          return (
+            <div
+              key={note.id}
+              className="notes-tab"
+              data-active={isActive}
+              onClick={() => onActivateNote(note.id)}
+              onMouseDown={(e) => {
+                if (e.button === 1) {
+                  e.preventDefault();
+                  onTabClose(note.id);
+                }
               }}
             >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        ))}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 shrink-0 text-foreground"
+              <span className="notes-tab-dot" />
+              <FileText className="notes-tab-icon w-3 h-3" />
+              <span className="notes-tab-title">{displayTitle}</span>
+              <span
+                className="notes-tab-close"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTabClose(note.id);
+                }}
+              >
+                <X className="w-3 h-3" />
+              </span>
+            </div>
+          );
+        })}
+
+        <button
+          type="button"
+          className="notes-tab-new"
           onClick={onCreateNote}
-          title={t('notes.newNote')}
+          title={t("notes.newNote")}
         >
           <Plus className="w-3.5 h-3.5" />
-        </Button>
+        </button>
       </div>
 
-      {/* Folder badge (only for active note) */}
+      {/* Right cluster: folder badge */}
       {activeNote && (
-        <button
-          ref={badgeButtonRef}
-          type="button"
-          onClick={openBadgeMenu}
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-background/50 shrink-0 max-w-[160px]"
-          title={t('notes.folders.moveTo')}
-        >
-          <Folder className="w-3 h-3 shrink-0" />
-          <span className="truncate">
-            {activeFolder ? activeFolder.name : t('notes.folders.unfiled')}
-          </span>
-          <ChevronDown className="w-3 h-3 shrink-0" />
-        </button>
+        <div className="flex items-center gap-2 px-3 shrink-0">
+          <button
+            ref={badgeButtonRef}
+            type="button"
+            onClick={openBadgeMenu}
+            className="notes-folder-badge"
+            title={t("notes.folders.moveTo")}
+          >
+            <Folder className="notes-folder-badge-icon w-3 h-3" />
+            <span className="truncate">
+              {activeFolder ? activeFolder.name : t("notes.folders.unfiled")}
+            </span>
+            <ChevronDown className="notes-folder-badge-icon w-3 h-3" />
+          </button>
+        </div>
       )}
 
       {badgeMenu && (
@@ -169,6 +194,17 @@ export function NotesEditorTitleBar({
           items={badgeMenuItems}
         />
       )}
+
+      <FolderNameDialog
+        open={createFolderForNoteId !== null}
+        mode="create"
+        onOpenChange={(open) => { if (!open) setCreateFolderForNoteId(null); }}
+        onSubmit={(name) => {
+          const noteId = createFolderForNoteId;
+          if (!noteId) return;
+          void onCreateFolder(name).then((folder) => onMoveNote(noteId, folder.id));
+        }}
+      />
     </div>
   );
 }

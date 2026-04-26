@@ -31,6 +31,9 @@ artifacts/
 
 # Auto Claude data directory
 .auto-claude/
+.mcp.json
+
+.design-handoff/
 
 # Auto Claude generated files
 .auto-claude-security.json

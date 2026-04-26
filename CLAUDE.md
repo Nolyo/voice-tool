@@ -323,6 +323,42 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
   - See [docs/UPDATER_SETUP.md](docs/UPDATER_SETUP.md) for complete setup guide
 - Auto-updater is disabled in development mode and for portable installations (not in Program Files or AppData)
 
+## V3 Documentation
+
+- `docs/v3/` — sous-épiques v3 (comptes, sync, billing)
+- `docs/v3/runbooks/` — rotations, backups, incidents (cf. `docs/v3/runbooks/README.md`)
+- `docs/v3/compliance/` — registre GDPR, base légale
+- `docs/v3/ops/` — bootstrap infra (Supabase, Cloudflare Pages) et checklist 2FA
+- `docs/superpowers/plans/` — plans d'implémentation (dont `2026-04-24-v3-sub-epic-00-security-foundations.md`)
+
+### V3 Auth (livré sous-épique 01)
+
+- Backend auth : `src-tauri/src/auth.rs` (keyring + oauth nonce + deep link parsing + 11 tests unitaires)
+- Deep link scheme : `voice-tool://auth/callback?type=<magiclink|oauth|signup|recovery|email_change>&...`
+- Frontend client Supabase : `src/lib/supabase.ts` (env vars `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` dans `.env.local` gitignored)
+- État global : `src/contexts/AuthContext.tsx` + `src/hooks/useAuth.ts`
+- Écrans auth : `src/components/auth/*` (AuthModal, Login, Signup, Reset×2, 2FA Challenge, 2FA Activation, RecoveryCodesPanel, AccountCTA, PasswordStrengthMeter)
+- Settings tabs : `src/components/settings/sections/AccountSection.tsx` + `SecuritySection.tsx` + `DevicesList.tsx` (visibles uniquement signed-in)
+- Pwned passwords : `src/lib/pwned-passwords.ts` + liste embarquée top-10k SHA-256 (9999 entrées)
+- Migrations Supabase : `supabase/migrations/20260501*` (user_devices, rate_limit_log, recovery_codes, new_device_trigger, account_deletion)
+- Page callback : repo séparé `voice-tool-auth-callback` déployé sur Cloudflare Pages (`voice-tool-auth-callback.pages.dev`)
+- Supabase CLI : `pnpm exec supabase <cmd>` (dev dep du projet)
+
+### V3 Sync settings (livré sous-épique 02)
+
+- Backend Rust : `src-tauri/src/sync.rs` (commandes filesystem backups + export download)
+- Sync engine TS : `src/lib/sync/` (types, mapping, _mutex, queue, backups, merge, client, stores snippets/dictionary, schemas Zod)
+- Context : `src/contexts/SyncContext.tsx` + hook `src/hooks/useSync.ts`
+- Stores locaux : `sync-snippets.json` + `sync-dictionary.json` + `sync-queue.json` + `sync-meta.json` (Tauri Store plugin)
+- Edge Functions : `supabase/functions/sync-push/`, `supabase/functions/account-export/` (déploiement distant encore à autoriser)
+- Tables Supabase : `user_settings`, `user_dictionary_words`, `user_snippets` (migrations `20260525*`)
+- Clés settings syncées : 9 scalaires (theme, ui_language, record_hotkey, ptt_hotkey, open_window_hotkey, insertion_mode, enable_sounds, transcription_provider, local_model_size)
+- Non syncé : clés API (ADR 0003), settings hardware-dépendants, notes, historique transcriptions, autres profils
+- Tests : pgtap RLS cross-tenant (`supabase/tests/`) + Vitest unitaires (queue/merge/mapping/stores/client) = 37 tests
+- Supabase CLI : `pnpm exec supabase functions deploy sync-push` / `account-export`
+- Checklist E2E : `docs/v3/02-sync-settings-e2e-checklist.md`
+- ADR de clôture : `docs/v3/decisions/0010-sub-epic-02-closure.md`
+
 ## Commit and Push
 
 - Use conventional commits: - Format: `<type>: <message>`
