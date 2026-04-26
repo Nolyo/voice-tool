@@ -30,7 +30,7 @@ select throws_ok(
 -- (2) User B (no MFA) at AAL1 : insert succeeds
 set local role authenticated;
 set local "request.jwt.claim.sub" = '22222222-2222-2222-2222-222222222222';
-set local "request.jwt.claim.aal" = 'aal1';
+set local "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","aal":"aal1"}';
 select lives_ok(
   $$ select public.request_account_deletion() $$,
   'request_account_deletion : user sans MFA à AAL1 → ok'
@@ -45,7 +45,7 @@ select is(
 
 -- (4) User A (has MFA) at AAL1 : aal2_required
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
-set local "request.jwt.claim.aal" = 'aal1';
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","aal":"aal1"}';
 select throws_ok(
   $$ select public.request_account_deletion() $$,
   '42501',
@@ -54,7 +54,7 @@ select throws_ok(
 );
 
 -- (5) User A at AAL2 : insert succeeds
-set local "request.jwt.claim.aal" = 'aal2';
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","aal":"aal2"}';
 select lives_ok(
   $$ select public.request_account_deletion() $$,
   'request_account_deletion : user avec MFA à AAL2 → ok'
@@ -69,7 +69,7 @@ select is(
 
 -- (6) RLS cross-tenant SELECT : user B cannot see user A's tombstone
 set local "request.jwt.claim.sub" = '22222222-2222-2222-2222-222222222222';
-set local "request.jwt.claim.aal" = 'aal2';
+set local "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","aal":"aal2"}';
 select is(
   (select count(*)::int from public.account_deletion_requests where user_id = '11111111-1111-1111-1111-111111111111'),
   0,
@@ -88,10 +88,10 @@ select is(
 -- Restore user A's session for the cancel tests that follow
 set local role authenticated;
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
-set local "request.jwt.claim.aal" = 'aal2';
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","aal":"aal2"}';
 
 -- (8) cancel_account_deletion : User A at AAL1 → aal2_required
-set local "request.jwt.claim.aal" = 'aal1';
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","aal":"aal1"}';
 select throws_ok(
   $$ select public.cancel_account_deletion() $$,
   '42501',
@@ -100,7 +100,7 @@ select throws_ok(
 );
 
 -- (9) cancel_account_deletion : User A at AAL2 → deletes own row
-set local "request.jwt.claim.aal" = 'aal2';
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","aal":"aal2"}';
 select lives_ok(
   $$ select public.cancel_account_deletion() $$,
   'cancel_account_deletion : user avec MFA à AAL2 → ok'
@@ -116,7 +116,7 @@ select is(
 -- (NEW) cancel by user without MFA at AAL1 → ok (deletes B's tombstone)
 set local role authenticated;
 set local "request.jwt.claim.sub" = '22222222-2222-2222-2222-222222222222';
-set local "request.jwt.claim.aal" = 'aal1';
+set local "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","aal":"aal1"}';
 select lives_ok(
   $$ select public.cancel_account_deletion() $$,
   'cancel_account_deletion : user sans MFA à AAL1 → ok'

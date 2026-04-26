@@ -93,4 +93,6 @@ export async function handler(req: Request, deps: Deps): Promise<Response> {
   });
 }
 
-Deno.serve((req) => handler(req, realDeps()));
+if (import.meta.main) {
+  Deno.serve((req) => handler(req, realDeps()));
+}
