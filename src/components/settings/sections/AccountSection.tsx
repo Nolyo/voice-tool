@@ -28,6 +28,7 @@ import { Callout, SectionHeader, VtIcon } from "../vt";
 import { SyncActivationModal } from "./SyncActivationModal";
 import { DangerCard } from "./account/DangerCard";
 import { DevicesList } from "./DevicesList";
+import { DeadLettersDialog } from "./DeadLettersDialog";
 
 const ACCENT_COMPTE = "oklch(0.72 0.17 200)";
 const ACCENT_SYNC = "oklch(0.72 0.17 220)";
@@ -268,6 +269,7 @@ function SyncCard() {
   const { profiles, activeProfileId } = useProfiles();
   const activeProfile = profiles.find((p) => p.id === activeProfileId);
   const [activationOpen, setActivationOpen] = useState(false);
+  const [showDlq, setShowDlq] = useState(false);
 
   return (
     <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
@@ -295,6 +297,42 @@ function SyncCard() {
           </button>
         }
       />
+
+      {sync.enabled && (sync.status === "quota-exceeded" || sync.dead_letter_count > 0) && (
+        <div className="vt-row space-y-3">
+          {sync.status === "quota-exceeded" && (
+            <Callout
+              kind="warn"
+              icon={<VtIcon.alert />}
+              title={t("sync.quotaExceeded.title")}
+            >
+              {t("sync.quotaExceeded.subtitle")}
+            </Callout>
+          )}
+          {sync.dead_letter_count > 0 && (
+            <Callout
+              kind="danger"
+              icon={<VtIcon.alert />}
+              title={t("sync.deadLetters.title")}
+            >
+              <div className="space-y-2">
+                <div>
+                  {t("sync.deadLetters.subtitle", {
+                    count: sync.dead_letter_count,
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDlq(true)}
+                  className="vt-btn"
+                >
+                  {t("sync.deadLetters.open")}
+                </button>
+              </div>
+            </Callout>
+          )}
+        </div>
+      )}
 
       {sync.enabled && (
         <>
@@ -380,6 +418,7 @@ function SyncCard() {
         open={activationOpen}
         onClose={() => setActivationOpen(false)}
       />
+      <DeadLettersDialog open={showDlq} onClose={() => setShowDlq(false)} />
     </div>
   );
 }
