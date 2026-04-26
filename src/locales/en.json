@@ -945,6 +945,20 @@
       "offline": "Offline — {{count}} change(s) pending",
       "error": "Sync error (click to retry)"
     },
+    "quotaExceeded": {
+      "title": "Cloud storage full",
+      "subtitle": "You've reached your storage limit. Delete snippets or dictionary words to resume sync.",
+      "manage": "Manage my data"
+    },
+    "deadLetters": {
+      "title": "Stuck operations",
+      "subtitle": "{{count}} operation(s) failed after multiple retries.",
+      "open": "View stuck operations",
+      "retry": "Retry",
+      "discard": "Discard",
+      "empty": "No stuck operations.",
+      "lastError": "Last error"
+    },
     "export": {
       "button": "Export my data (JSON)",
       "exporting": "Exporting…",

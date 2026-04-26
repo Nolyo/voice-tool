@@ -17,10 +17,14 @@ import { pullAll, pushOperations } from "@/lib/sync/client";
 import {
   enqueue,
   peekAll,
-  dequeue,
+  peekReadyHead,
   markRetry,
+  moveToDeadLetter,
+  getDeadLetters,
+  MAX_RETRIES_BEFORE_DLQ,
   size as queueSize,
 } from "@/lib/sync/queue";
+import { applyBatchResults } from "@/lib/sync/apply-batch-results";
 import {
   loadSnippets,
   applyRemoteSnippet,
@@ -43,9 +47,11 @@ const DEBOUNCE_PUSH_MS = 500;
 const FOCUS_PULL_IDLE_MS = 5 * 60 * 1000;
 
 export interface SyncContextValue extends SyncState {
+  dead_letter_count: number;
   enableSync(): Promise<void>;
   disableSync(): Promise<void>;
   syncNow(): Promise<void>;
+  refreshDeadLetters(): Promise<void>;
   notifySettingsChanged(
     previous: AppSettings["settings"],
     current: AppSettings["settings"]
@@ -82,6 +88,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [lastPullAt, setLastPullAt] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const [deadLetterCount, setDeadLetterCount] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
   const debounceRef = useRef<number | null>(null);
   const flushingRef = useRef(false);
@@ -100,12 +107,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       setEnabled(en);
       setLastPullAt(lp);
       setPendingCount(await queueSize());
+      setDeadLetterCount((await getDeadLetters()).length);
       setStatus(en ? "idle" : "disabled");
     })();
   }, []);
 
   const getDeviceId = useCallback(async (): Promise<string> => {
     return invoke<string>("get_or_create_device_id");
+  }, []);
+
+  const refreshDeadLetterCount = useCallback(async () => {
+    const dlq = await getDeadLetters();
+    setDeadLetterCount(dlq.length);
   }, []);
 
   const flushQueue = useCallback(async () => {
@@ -117,28 +130,43 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       let sawError = false;
       // eslint-disable-next-line no-constant-condition
       while (true) {
+        const ready = await peekReadyHead();
+        if (!ready) break;
         const pending = await peekAll();
-        if (pending.length === 0) break;
         const batch = pending.slice(0, 50);
         const ops = batch.map((e) => e.operation);
         const resp = await pushOperations(ops, deviceId);
         if (!resp.ok) {
-          const head = pending[0];
-          await markRetry(head.id, resp.error ?? "push failed");
-          setStatus("offline");
+          // Whole-batch failure (network, 5xx, 413 quota)
+          await markRetry(ready.id, resp.error ?? "push failed");
+          const updated = (await peekAll())[0];
+          if (
+            updated &&
+            updated.id === ready.id &&
+            updated.retry_count >= MAX_RETRIES_BEFORE_DLQ
+          ) {
+            await moveToDeadLetter(updated.id, resp.error ?? "max retries");
+          }
+          if (resp.status === 413) {
+            setStatus("quota-exceeded");
+          } else {
+            setStatus("offline");
+          }
           setLastError(resp.error ?? "push failed");
           sawError = true;
           break;
         }
-        for (let i = 0; i < batch.length; i++) {
-          const r = resp.results.find((x) => x.index === i);
-          if (r?.ok) {
-            await dequeue();
-          } else {
-            await markRetry(batch[i].id, r?.error ?? "unknown");
+        const { failedCount } = await applyBatchResults(batch, resp.results);
+
+        // Move to DLQ if any entry crossed the retry threshold
+        const after = await peekAll();
+        for (const e of after) {
+          if (e.retry_count >= MAX_RETRIES_BEFORE_DLQ) {
+            await moveToDeadLetter(e.id, e.last_error ?? "max retries");
           }
         }
-        if (resp.results.some((r) => !r.ok)) {
+
+        if (failedCount > 0) {
           setStatus("error");
           setLastError("Some operations failed");
           sawError = true;
@@ -152,6 +180,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }
       }
       setPendingCount(await queueSize());
+      await refreshDeadLetterCount();
       if (!sawError) {
         setStatus("idle");
         setLastError(null);
@@ -159,7 +188,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     } finally {
       flushingRef.current = false;
     }
-  }, [getDeviceId]);
+  }, [getDeviceId, refreshDeadLetterCount]);
 
   const enqueueAndTry = useCallback(
     async (op: SyncOperation) => {
@@ -363,6 +392,17 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     void pullAndApply().then(() => flushQueue());
   }, [auth.status, enabled, pullAndApply, flushQueue]);
 
+  // Schedule a retry when the head's next_retry_at is past
+  useEffect(() => {
+    if (!enabled) return;
+    const id = setInterval(async () => {
+      if (flushingRef.current) return;
+      const ready = await peekReadyHead();
+      if (ready) void flushQueue();
+    }, 5_000);
+    return () => clearInterval(id);
+  }, [enabled, flushQueue]);
+
   // Subscribe to settings changes when sync is on so edits anywhere in the UI
   // hit `notifySettingsChanged` and trigger the debounced push.
   useEffect(() => {
@@ -412,10 +452,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       last_sync_at: lastSyncAt,
       last_pull_at: lastPullAt,
       pending_count: pendingCount,
+      dead_letter_count: deadLetterCount,
       last_error: lastError,
       enableSync,
       disableSync,
       syncNow,
+      refreshDeadLetters: refreshDeadLetterCount,
       notifySettingsChanged,
       notifyDictionaryUpserted,
       notifyDictionaryDeleted,
@@ -428,10 +470,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       lastSyncAt,
       lastPullAt,
       pendingCount,
+      deadLetterCount,
       lastError,
       enableSync,
       disableSync,
       syncNow,
+      refreshDeadLetterCount,
       notifySettingsChanged,
       notifyDictionaryUpserted,
       notifyDictionaryDeleted,

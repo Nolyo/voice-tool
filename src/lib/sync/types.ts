@@ -78,10 +78,17 @@ export interface SyncQueueEntry {
   enqueued_at: string;
   retry_count: number;
   last_error: string | null;
+  next_retry_at: string | null; // ISO — null = ready immediately
 }
 
 // État global
-export type SyncStatus = "disabled" | "idle" | "syncing" | "offline" | "error";
+export type SyncStatus =
+  | "disabled"
+  | "idle"
+  | "syncing"
+  | "offline"
+  | "error"
+  | "quota-exceeded";
 
 export interface SyncState {
   enabled: boolean;
