@@ -87,6 +87,9 @@ num_cpus = "1.17.0"
 sysinfo = "0.32"
 wgpu = "22"
 
+# Open files/URLs with system default app (used on non-Windows; Windows uses explorer.exe directly)
+opener = "0.7"
+
 # Windows-specific APIs (show window without activation)
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_UI_WindowsAndMessaging"] }
