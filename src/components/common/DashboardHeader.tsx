@@ -9,6 +9,7 @@ import {
   History,
   ScrollText,
   Settings2,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -29,6 +30,7 @@ interface DashboardHeaderProps {
 
 const TAB_ICONS: Record<DashboardTabId, LucideIcon> = {
   historique: History,
+  statistiques: BarChart3,
   notes: FileText,
   parametres: Settings2,
   logs: ScrollText,

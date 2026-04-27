@@ -8,6 +8,7 @@ import {
   type DashboardTabId,
 } from "./dashboard/DashboardSidebar";
 import { HistoriqueTab } from "./dashboard/tabs/HistoriqueTab";
+import { StatistiquesTab } from "./dashboard/tabs/StatistiquesTab";
 import { SettingTabs } from "./settings/SettingTabs";
 import { type SettingsSectionId } from "./settings/common/SettingsNav";
 import {
@@ -313,6 +314,9 @@ export default function Dashboard() {
                       onDelete={handleDelete}
                       onClearAll={handleClearAll}
                     />
+                  )}
+                  {activeTab === "statistiques" && (
+                    <StatistiquesTab transcriptions={transcriptions} />
                   )}
                 </div>
               )}

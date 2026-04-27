@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   FileText,
   History,
   Mic,
@@ -21,10 +22,12 @@ import {
 } from "@/components/logs/LogsTab";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 import { HistoriqueSidebarSection } from "./HistoriqueSidebarSection";
+import { StatistiquesSidebarSection } from "./StatistiquesSidebarSection";
 import { LogsSidebarSection } from "./LogsSidebarSection";
 
 export const DASHBOARD_NAV_ITEMS = [
   { id: "historique", labelKey: "sidebar.history", icon: History },
+  { id: "statistiques", labelKey: "sidebar.statistics", icon: BarChart3 },
   { id: "notes", labelKey: "sidebar.notes", icon: FileText },
   { id: "parametres", labelKey: "sidebar.settings", icon: Settings2 },
   { id: "logs", labelKey: "sidebar.logs", icon: ScrollText },
@@ -188,6 +191,11 @@ export function DashboardSidebar({
         <HistoriqueSidebarSection transcriptions={transcriptions} />
       )}
 
+      {/* Statistiques overview — expanded sidebar only */}
+      {!collapsed && activeTab === "statistiques" && (
+        <StatistiquesSidebarSection transcriptions={transcriptions} />
+      )}
+
       {/* Logs level filters — expanded sidebar only */}
       {!collapsed && activeTab === "logs" && (
         <LogsSidebarSection
@@ -203,6 +211,7 @@ export function DashboardSidebar({
       {activeTab !== "parametres" &&
         !(activeTab === "notes" && !collapsed) &&
         !(activeTab === "historique" && !collapsed) &&
+        !(activeTab === "statistiques" && !collapsed) &&
         !(activeTab === "logs" && !collapsed) && (
           <div className="flex-1" />
         )}
