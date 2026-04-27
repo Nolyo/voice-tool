@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { supabase, AUTH_CALLBACK_URL } from "@/lib/supabase";
 import { isPwnedPassword } from "@/lib/pwned-passwords";
+import { isDisposableDomain } from "@/lib/email-normalize";
 import { VtIcon } from "@/components/settings/vt";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 import type { AuthView } from "./AuthModal";
@@ -112,6 +113,10 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
       setError(t("auth.signup.passwordTooShort"));
       return;
     }
+    if (isDisposableDomain(email)) {
+      setError(t("auth.signup.emailDisposable"));
+      return;
+    }
     setLoading(true);
     const pwned = await isPwnedPassword(password);
     if (pwned) {
@@ -125,10 +130,15 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
       options: { emailRedirectTo: AUTH_CALLBACK_URL },
     });
     setLoading(false);
-    setStep("sent");
     if (signupError) {
+      // Trigger from migration 20260601000100 raises P0001 with our message.
+      if (signupError.message.includes("canonical form collision")) {
+        setError(t("auth.signup.emailAlreadyRegistered"));
+        return;
+      }
       console.warn("signup error (not shown)", signupError.message);
     }
+    setStep("sent");
   }
 
   async function handleGoogle() {

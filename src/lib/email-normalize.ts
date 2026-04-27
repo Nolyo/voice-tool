@@ -17,7 +17,7 @@ export function normalizeEmail(input: string): string {
   const localNoSuffix = localRaw.split("+")[0];
   const local =
     domain === "gmail.com" || domain === "googlemail.com"
-      ? localNoSuffix.replaceAll(".", "")
+      ? localNoSuffix.replace(/\./g, "")
       : localNoSuffix;
   return `${local}@${domain}`;
 }

@@ -874,6 +874,8 @@
       "strengthStrong": "Fort",
       "submit": "Créer mon compte",
       "success": "Si ce compte n'existait pas, un email vient d'être envoyé pour confirmer.",
+      "emailDisposable": "Cette adresse email semble jetable. Utilise une adresse permanente.",
+      "emailAlreadyRegistered": "Cette adresse email (ou une variante) est déjà enregistrée.",
       "backToLogin": "J'ai déjà un compte"
     },
     "passwordReset": {
