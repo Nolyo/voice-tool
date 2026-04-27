@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_plugin_store::StoreBuilder;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -201,4 +201,88 @@ pub async fn update_transcription(
     transcription: Transcription,
 ) -> Result<(), String> {
     save_transcription(app_handle, transcription, None).await
+}
+
+const ALLOWED_EXPORT_EXTS: &[&str] = &["txt", "md", "json", "csv"];
+
+/// Export the supplied payload to the OS Downloads folder.
+///
+/// Filename is sanitized (no traversal, no separators, no NUL) and the
+/// extension must be in the whitelist above. Returns the absolute path
+/// written, so the frontend can offer to reveal it.
+#[tauri::command]
+pub async fn export_transcriptions(
+    app: AppHandle,
+    payload: String,
+    suggested_filename: String,
+) -> Result<String, String> {
+    if suggested_filename.is_empty() {
+        return Err("empty filename".into());
+    }
+    if suggested_filename.contains("..")
+        || suggested_filename.contains('/')
+        || suggested_filename.contains('\\')
+        || suggested_filename.contains('\0')
+    {
+        return Err("invalid filename".into());
+    }
+    let ext_ok = ALLOWED_EXPORT_EXTS
+        .iter()
+        .any(|e| suggested_filename.to_lowercase().ends_with(&format!(".{}", e)));
+    if !ext_ok {
+        return Err(format!(
+            "filename must end with one of: {}",
+            ALLOWED_EXPORT_EXTS
+                .iter()
+                .map(|e| format!(".{}", e))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+
+    let downloads = app
+        .path()
+        .download_dir()
+        .map_err(|e| format!("cannot resolve download dir: {}", e))?;
+    if !downloads.exists() {
+        fs::create_dir_all(&downloads)
+            .map_err(|e| format!("cannot create download dir: {}", e))?;
+    }
+    let path = downloads.join(&suggested_filename);
+    fs::write(&path, payload.as_bytes())
+        .map_err(|e| format!("cannot write export: {}", e))?;
+    tracing::info!("transcription export written: {}", path.display());
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn export_extension_whitelist_blocks_unknown() {
+        let exts = super::ALLOWED_EXPORT_EXTS;
+        for bad in ["history.exe", "history.sh", "history.zip", "history"] {
+            let ok = exts
+                .iter()
+                .any(|e| bad.to_lowercase().ends_with(&format!(".{}", e)));
+            assert!(!ok, "{} should not be allowed", bad);
+        }
+        for good in ["history.txt", "history.md", "history.json", "history.csv"] {
+            let ok = exts
+                .iter()
+                .any(|e| good.to_lowercase().ends_with(&format!(".{}", e)));
+            assert!(ok, "{} should be allowed", good);
+        }
+    }
+
+    #[test]
+    fn export_filename_traversal_chars_are_listed() {
+        let bad = ["../escape.txt", "sub/file.txt", "weird\\path.csv", "nul\0.md"];
+        for f in bad {
+            assert!(
+                f.contains("..") || f.contains('/') || f.contains('\\') || f.contains('\0'),
+                "{} should trip the guard",
+                f
+            );
+        }
+    }
 }

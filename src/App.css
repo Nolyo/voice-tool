@@ -623,6 +623,11 @@ body.mini-window-body #root {
   opacity: 0.5;
   cursor: not-allowed;
 }
+.vt-app .vt-btn[data-on="true"] {
+  background: oklch(from var(--vt-accent) l c h / 0.14);
+  border-color: oklch(from var(--vt-accent) l c h / 0.4);
+  color: var(--vt-accent-2);
+}
 .vt-app .vt-btn-primary {
   height: 36px;
   padding: 0 14px;
@@ -903,6 +908,175 @@ body.mini-window-body #root {
   outline: none;
   border-color: var(--vt-accent);
   box-shadow: 0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25);
+}
+
+/* ── Advanced filters popover ─────────────────────────────────────────── */
+.vt-app .vt-adv-filter-popover {
+  position: absolute;
+  z-index: 50;
+  width: 340px;
+  margin-top: 8px;
+  right: 0;
+  border-radius: 12px;
+  background: var(--vt-bg);
+  border: 1px solid var(--vt-border);
+  box-shadow: var(--vt-shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: vt-adv-pop-in 120ms ease-out;
+}
+@keyframes vt-adv-pop-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.vt-app .vt-adv-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--vt-border);
+}
+.vt-app .vt-adv-filter-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.vt-app .vt-adv-filter-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--vt-border);
+  background: var(--vt-surface);
+}
+.vt-app .vt-adv-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vt-app .vt-adv-label {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--vt-fg-3);
+}
+.vt-app .vt-adv-input {
+  height: 30px;
+  padding: 0 10px;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: 8px;
+  color: var(--vt-fg);
+  font-size: 12.5px;
+  font-family: inherit;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+.vt-app .vt-adv-input:hover {
+  background: var(--vt-surface-hi);
+  border-color: var(--vt-border-strong);
+}
+.vt-app .vt-adv-input:focus {
+  outline: none;
+  border-color: var(--vt-accent);
+  box-shadow: 0 0 0 2px oklch(from var(--vt-accent) l c h / 0.22);
+}
+.vt-app .vt-adv-input-num {
+  width: 96px;
+}
+
+.vt-app .vt-icon-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--vt-fg-3);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.vt-app .vt-icon-btn:hover {
+  background: var(--vt-hover);
+  color: var(--vt-fg);
+}
+
+/* ── Filter chip count badge ──────────────────────────────────────────── */
+.vt-app .filter-chip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--vt-accent);
+  color: var(--vt-bg);
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Export dialog tiles ──────────────────────────────────────────────── */
+.vt-app .vt-format-tile {
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--vt-border);
+  background: var(--vt-surface);
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+.vt-app .vt-format-tile:hover {
+  background: var(--vt-surface-hi);
+  border-color: var(--vt-border-strong);
+}
+.vt-app .vt-format-tile[data-on="true"] {
+  border-color: var(--vt-accent);
+  background: oklch(from var(--vt-accent) l c h / 0.08);
+}
+
+.vt-app .vt-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+  transition: background 0.1s;
+}
+.vt-app .vt-radio-row:hover:not([data-disabled="true"]) {
+  background: var(--vt-hover);
+}
+.vt-app .vt-radio-row[data-on="true"] {
+  background: oklch(from var(--vt-accent) l c h / 0.08);
+}
+.vt-app .vt-radio-row[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.vt-app .vt-radio-row input[type="radio"] {
+  accent-color: var(--vt-accent);
+}
+
+.vt-app .vt-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.vt-app .vt-checkbox-row input[type="checkbox"] {
+  accent-color: var(--vt-accent);
 }
 
 /* ── Logs console design ──────────────────────────────────────────────── */
