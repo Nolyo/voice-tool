@@ -43,11 +43,16 @@ create or replace function public.enforce_email_canonical_unique()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, auth
+set search_path = ''
 as $$
 declare
   v_canonical text;
 begin
+  -- auth.users.email is NOT NULL in practice, but be explicit.
+  if NEW.email is null then
+    return NEW;
+  end if;
+
   v_canonical := public.normalize_email(NEW.email);
   if exists (
     select 1 from auth.users
@@ -67,4 +72,11 @@ create trigger enforce_email_canonical_unique_trigger
   for each row execute function public.enforce_email_canonical_unique();
 
 comment on function public.enforce_email_canonical_unique is
-  'Rejects auth.users INSERT/UPDATE whose canonical email collides with an existing row. ADR 0011.';
+  'Rejects auth.users INSERT/UPDATE whose canonical email collides with an existing row. ADR 0011. NULL/empty emails are passed through (rely on auth.users NOT NULL constraint).';
+
+-- Performance note (deferred decision, ADR 0011):
+-- The trigger above performs a sequential scan + per-row normalize_email() call on every
+-- auth.users INSERT or email UPDATE. At launch scale this is acceptable. If signup latency
+-- becomes a concern (>50k users), evaluate creating a functional index on
+-- auth.users(public.normalize_email(email)). Owner of auth.users is supabase_auth_admin —
+-- index creation may require elevated privileges or coordination with Supabase support.

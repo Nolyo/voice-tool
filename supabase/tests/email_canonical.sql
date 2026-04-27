@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(18);
 
 -- Function purity
 select is(public.normalize_email('user@example.com'), 'user@example.com', 'lowercase passthrough');
@@ -54,6 +54,13 @@ select throws_ok(
 select lives_ok(
   $$ update auth.users set email = 'alice2@gmail.com' where id = '33333333-3333-3333-3333-333333333333' $$,
   'UPDATE on owner row is allowed when canonical changes uniquely'
+);
+
+-- NULL email is not rejected by the trigger (auth.users.email is NOT NULL in practice, but the trigger guards explicitly).
+select lives_ok(
+  $$ insert into auth.users (id, email, aud, role) values
+       ('77777777-7777-7777-7777-777777777777', null, 'authenticated', 'authenticated') $$,
+  'INSERT with NULL email is not blocked by the trigger (auth-side NOT NULL is the gate)'
 );
 
 select * from finish();
