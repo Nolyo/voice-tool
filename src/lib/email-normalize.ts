@@ -33,3 +33,14 @@ export function isDisposableDomain(input: string): boolean {
   if (atPos === -1) return false;
   return DISPOSABLE_DOMAINS.has(trimmed.slice(atPos + 1).trim());
 }
+
+/**
+ * Substring marker used by the Postgres trigger `enforce_email_canonical_unique`
+ * (migration `20260601000100_email_canonical.sql`) when it raises a P0001 exception
+ * for a canonical-form collision. Frontend code (e.g. `SignInPanel.tsx`) checks
+ * `signupError.message.includes(CANONICAL_COLLISION_ERROR_MARKER)` to surface a
+ * user-friendly error.
+ *
+ * **Stays in sync with the SQL `raise exception` text — change both together.**
+ */
+export const CANONICAL_COLLISION_ERROR_MARKER = "canonical form collision";

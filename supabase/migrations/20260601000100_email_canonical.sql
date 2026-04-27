@@ -59,6 +59,8 @@ begin
     where id <> NEW.id
       and public.normalize_email(email) = v_canonical
   ) then
+    -- Frontend (src/lib/email-normalize.ts CANONICAL_COLLISION_ERROR_MARKER) substring-matches
+    -- this message text. Keep them in sync if you reword.
     raise exception 'email already registered (canonical form collision)'
       using errcode = 'P0001';
   end if;

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { supabase, AUTH_CALLBACK_URL } from "@/lib/supabase";
 import { isPwnedPassword } from "@/lib/pwned-passwords";
-import { isDisposableDomain } from "@/lib/email-normalize";
+import { isDisposableDomain, CANONICAL_COLLISION_ERROR_MARKER } from "@/lib/email-normalize";
 import { VtIcon } from "@/components/settings/vt";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 import type { AuthView } from "./AuthModal";
@@ -132,7 +132,7 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
     setLoading(false);
     if (signupError) {
       // Trigger from migration 20260601000100 raises P0001 with our message.
-      if (signupError.message.includes("canonical form collision")) {
+      if (signupError.message.includes(CANONICAL_COLLISION_ERROR_MARKER)) {
         setError(t("auth.signup.emailAlreadyRegistered"));
         return;
       }
