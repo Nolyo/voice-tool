@@ -25,3 +25,12 @@ export const AUTH_CALLBACK_URL =
   "https://voice-tool-auth-callback.pages.dev";
 
 export const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ?? "";
+
+if (import.meta.env.PROD && !TURNSTILE_SITE_KEY) {
+  // Soft-locking signup is worse than a noisy crash. Catch the misconfiguration immediately.
+  throw new Error(
+    "VITE_TURNSTILE_SITE_KEY is required in production builds. " +
+    "Set it in your build environment before running `pnpm tauri build`. " +
+    "Dev workstations can use the Cloudflare always-pass test key 1x00000000000000000000AA."
+  );
+}

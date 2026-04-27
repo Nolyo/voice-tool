@@ -196,6 +196,9 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
   // Signup ALWAYS uses password (account creation needs a password); no method toggle in signup.
   const showPassword = mode === "signup" || method === "password";
 
+  const captchaRequired = mode === "signup" || (mode === "signin" && method === "magic");
+  const captchaSatisfied = !captchaRequired || !!captchaToken;
+
   return (
     <div className="flex flex-col">
       {/* Header */}
@@ -417,7 +420,7 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
               </div>
             )}
 
-            {(mode === "signup" || (mode === "signin" && method === "magic")) && (
+            {captchaRequired && (
               <div className="my-3 flex justify-center">
                 <TurnstileWidget
                   onSuccess={(token) => setCaptchaToken(token)}
@@ -429,7 +432,7 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
 
             <button
               type="submit"
-              disabled={loading || !email}
+              disabled={loading || !email || !captchaSatisfied}
               className="vt-btn-primary w-full justify-center mt-2"
             >
               {mode === "signin" && method === "magic" && <VtIcon.mail />}
