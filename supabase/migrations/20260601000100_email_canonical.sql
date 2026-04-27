@@ -37,3 +37,34 @@ $$;
 
 comment on function public.normalize_email is
   'Canonicalizes an email for anti-abuse uniqueness check (ADR 0011). Strips +suffix on all domains, strips dots on Gmail/Googlemail, lowercases.';
+
+-- Trigger : reject duplicate canonical emails on auth.users INSERT/UPDATE.
+create or replace function public.enforce_email_canonical_unique()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_canonical text;
+begin
+  v_canonical := public.normalize_email(NEW.email);
+  if exists (
+    select 1 from auth.users
+    where id <> NEW.id
+      and public.normalize_email(email) = v_canonical
+  ) then
+    raise exception 'email already registered (canonical form collision)'
+      using errcode = 'P0001';
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists enforce_email_canonical_unique_trigger on auth.users;
+create trigger enforce_email_canonical_unique_trigger
+  before insert or update of email on auth.users
+  for each row execute function public.enforce_email_canonical_unique();
+
+comment on function public.enforce_email_canonical_unique is
+  'Rejects auth.users INSERT/UPDATE whose canonical email collides with an existing row. ADR 0011.';

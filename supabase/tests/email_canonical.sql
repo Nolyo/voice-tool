@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(17);
 
 -- Function purity
 select is(public.normalize_email('user@example.com'), 'user@example.com', 'lowercase passthrough');
@@ -14,6 +14,47 @@ select is(public.normalize_email('u.s.e.r@yahoo.com'), 'u.s.e.r@yahoo.com', 'doe
 select is(public.normalize_email(NULL), NULL, 'NULL passthrough');
 select is(public.normalize_email(''), '', 'empty string passthrough');
 select is(public.normalize_email('no-at-sign'), 'no-at-sign', 'malformed input passthrough (no @)');
+
+-- Trigger : duplicate canonical rejected on INSERT
+insert into auth.users (id, email, aud, role) values
+  ('33333333-3333-3333-3333-333333333333', 'alice@gmail.com', 'authenticated', 'authenticated');
+
+select throws_ok(
+  $$ insert into auth.users (id, email, aud, role) values
+       ('44444444-4444-4444-4444-444444444444', 'a.l.i.c.e+work@gmail.com', 'authenticated', 'authenticated') $$,
+  'P0001',
+  'email already registered (canonical form collision)',
+  'INSERT with same canonical form is rejected'
+);
+
+select throws_ok(
+  $$ insert into auth.users (id, email, aud, role) values
+       ('55555555-5555-5555-5555-555555555555', 'ALICE+other@GMAIL.COM', 'authenticated', 'authenticated') $$,
+  'P0001',
+  'email already registered (canonical form collision)',
+  'INSERT with case+suffix variant is rejected'
+);
+
+-- Different domain → not blocked
+select lives_ok(
+  $$ insert into auth.users (id, email, aud, role) values
+       ('66666666-6666-6666-6666-666666666666', 'alice@outlook.com', 'authenticated', 'authenticated') $$,
+  'INSERT on different domain is allowed'
+);
+
+-- UPDATE that creates a collision is rejected
+select throws_ok(
+  $$ update auth.users set email = 'alice+update@gmail.com' where id = '66666666-6666-6666-6666-666666666666' $$,
+  'P0001',
+  'email already registered (canonical form collision)',
+  'UPDATE creating canonical collision is rejected'
+);
+
+-- UPDATE the same user's own email (no collision) is allowed
+select lives_ok(
+  $$ update auth.users set email = 'alice2@gmail.com' where id = '33333333-3333-3333-3333-333333333333' $$,
+  'UPDATE on owner row is allowed when canonical changes uniquely'
+);
 
 select * from finish();
 rollback;
