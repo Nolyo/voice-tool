@@ -3,7 +3,6 @@ import { useSettings } from "@/hooks/useSettings";
 import {
   Callout,
   PickerCardGrid,
-  RadioCardList,
   Row,
   SectionHeader,
   Toggle,
@@ -35,24 +34,20 @@ export function PostProcessSection() {
     settings.post_process_mode === "custom" &&
     settings.post_process_custom_prompt.trim().length === 0;
 
-  const modeOptions: { id: PostProcessMode; title: string; sub: string; badge?: string }[] =
-    (
-      [
-        "auto",
-        "list",
-        "email",
-        "formal",
-        "casual",
-        "summary",
-        "grammar",
-        "custom",
-      ] as PostProcessMode[]
-    ).map((m) => ({
-      id: m,
-      title: t(`settings.postProcess.modes.${m}.label`),
-      sub: t(`settings.postProcess.modes.${m}.desc`),
-      badge: m === "auto" ? t("common.recommended", { defaultValue: "Recommandé" }) : undefined,
-    }));
+  const modes: PostProcessMode[] = [
+    "auto",
+    "list",
+    "email",
+    "formal",
+    "casual",
+    "summary",
+    "grammar",
+    "custom",
+  ];
+  const recommendedLabel = t("common.recommended", { defaultValue: "Recommandé" });
+  const activeModeDesc = t(
+    `settings.postProcess.modes.${settings.post_process_mode}.desc`,
+  );
 
   return (
     <>
@@ -172,11 +167,33 @@ export function PostProcessSection() {
               })}
               align="start"
             >
-              <RadioCardList<PostProcessMode>
-                value={settings.post_process_mode}
-                onChange={(v) => updateSetting("post_process_mode", v)}
-                options={modeOptions}
-              />
+              <div className="flex flex-col gap-2" style={{ maxWidth: 360 }}>
+                <select
+                  className="vt-select"
+                  value={settings.post_process_mode}
+                  onChange={(e) =>
+                    updateSetting(
+                      "post_process_mode",
+                      e.target.value as PostProcessMode,
+                    )
+                  }
+                >
+                  {modes.map((m) => {
+                    const label = t(`settings.postProcess.modes.${m}.label`);
+                    return (
+                      <option key={m} value={m}>
+                        {m === "auto" ? `${label} — ${recommendedLabel}` : label}
+                      </option>
+                    );
+                  })}
+                </select>
+                <span
+                  className="text-[12px] leading-snug"
+                  style={{ color: "var(--vt-fg-3)" }}
+                >
+                  {activeModeDesc}
+                </span>
+              </div>
             </Row>
 
             {settings.post_process_mode === "custom" && (
