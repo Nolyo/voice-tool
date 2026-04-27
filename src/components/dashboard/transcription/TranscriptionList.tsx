@@ -185,120 +185,6 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onDelete
   );
 }
 
-/* ── Stats row (top of page) ───────────────────────────────────────── */
-function StatsRow({ transcriptions }: { transcriptions: Transcription[] }) {
-  const { t } = useTranslation();
-  const stats = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(now.getDate() - 7);
-
-    let weekCount = 0;
-    let totalDuration = 0;
-    let measuredDuration = 0;
-    let measuredWords = 0;
-    let measuredCount = 0;
-    const dailyBuckets = new Array(14).fill(0);
-
-    for (const t of transcriptions) {
-      const at = parseAt(t);
-      const atMid = new Date(at);
-      atMid.setHours(0, 0, 0, 0);
-      const diff = Math.round((now.getTime() - atMid.getTime()) / 86400000);
-
-      if (diff >= 0 && diff < 7) weekCount++;
-      if (diff >= 0 && diff < 14) dailyBuckets[13 - diff]++;
-
-      const dur = t.duration ?? 0;
-      totalDuration += dur;
-      if (dur > 0) {
-        measuredDuration += dur;
-        measuredWords += wordsOf(t.text);
-        measuredCount++;
-      }
-    }
-
-    const avgDur =
-      measuredCount > 0 ? Math.round(measuredDuration / measuredCount) : 0;
-    const wpm =
-      measuredDuration > 0
-        ? Math.round(measuredWords / (measuredDuration / 60))
-        : 0;
-
-    return { weekCount, totalDuration, avgDur, wpm, dailyBuckets };
-  }, [transcriptions]);
-
-  const maxBucket = Math.max(1, ...stats.dailyBuckets);
-  const totalMin = Math.floor(stats.totalDuration / 60);
-  const totalSec = Math.round(stats.totalDuration % 60);
-
-  return (
-    <div className="grid grid-cols-4 gap-3">
-      <div className="stat-tile">
-        <div className="lbl">{t("history.statsThisWeek")}</div>
-        <div className="val">{stats.weekCount}</div>
-        <div className="trend">
-          {t("history.statsDictationsWeek", { count: stats.weekCount })}
-        </div>
-      </div>
-      <div className="stat-tile">
-        <div className="lbl">{t("history.statsSpokenTime")}</div>
-        <div className="val">
-          {totalMin}
-          <span
-            className="text-[14px] font-normal vt-mono ml-0.5"
-            style={{ color: "var(--vt-fg-3)" }}
-          >
-            m {String(totalSec).padStart(2, "0")}s
-          </span>
-        </div>
-        <div className="trend">
-          {t("history.statsAverageDuration", { duration: durFmt(stats.avgDur) })}
-        </div>
-      </div>
-      <div className="stat-tile">
-        <div className="lbl">{t("history.statsWordsPerMinute")}</div>
-        <div className="val">{stats.wpm}</div>
-        <div className="trend">
-          {stats.wpm === 0 ? "—" : t("history.statsAverageAcrossHistory")}
-        </div>
-      </div>
-      <div className="stat-tile">
-        <div className="lbl">{t("history.statsActivity14d")}</div>
-        <div className="mt-1.5">
-          <svg
-            width="100%"
-            height="36"
-            viewBox="0 0 140 36"
-            preserveAspectRatio="none"
-          >
-            {stats.dailyBuckets.map((v, i) => {
-              const h = Math.max(3, (v / maxBucket) * 32);
-              const today = i === stats.dailyBuckets.length - 1;
-              return (
-                <rect
-                  key={i}
-                  x={i * 10 + 1}
-                  y={36 - h}
-                  width={8}
-                  height={h}
-                  rx={1.5}
-                  fill={
-                    today
-                      ? "var(--vt-accent)"
-                      : "oklch(from var(--vt-accent) l c h / 0.3)"
-                  }
-                />
-              );
-            })}
-          </svg>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ── Main list (timeline, toolbar, empty state) ────────────────────── */
 export function TranscriptionList({
   transcriptions,
@@ -545,7 +431,6 @@ export function TranscriptionList({
           </div>
         </div>
 
-        <StatsRow transcriptions={transcriptions} />
       </div>
 
       {/* Timeline */}

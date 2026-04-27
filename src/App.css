@@ -812,33 +812,6 @@ body.mini-window-body #root {
   border: 1px solid var(--vt-border);
 }
 
-.vt-app .stat-tile {
-  padding: 16px 18px;
-  border-radius: 12px;
-  background: var(--vt-panel-2);
-  border: 1px solid var(--vt-border);
-}
-.vt-app .stat-tile .lbl {
-  font-size: 11px;
-  color: var(--vt-fg-3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 500;
-}
-.vt-app .stat-tile .val {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin-top: 4px;
-  font-variant-numeric: tabular-nums;
-}
-.vt-app .stat-tile .trend {
-  font-size: 11px;
-  margin-top: 6px;
-  font-family: "JetBrains Mono", monospace;
-  color: var(--vt-fg-3);
-}
-
 .vt-app .filter-chip {
   height: 28px;
   padding: 0 10px;
