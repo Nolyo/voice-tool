@@ -52,4 +52,9 @@ describe("isDisposableDomain", () => {
     expect(isDisposableDomain("no-at-sign")).toBe(false);
     expect(isDisposableDomain("")).toBe(false);
   });
+
+  it("trims input before checking", () => {
+    expect(isDisposableDomain("  user@mailinator.com  ")).toBe(true);
+    expect(isDisposableDomain("user@ mailinator.com")).toBe(true);
+  });
 });

@@ -24,11 +24,12 @@ export function normalizeEmail(input: string): string {
 
 /**
  * Returns true if the email's domain is in the embedded disposable-domain blocklist.
+ * Trims and lowercases input internally — same canonicalization rules as normalizeEmail.
  * Returns false on malformed input (no @).
  */
 export function isDisposableDomain(input: string): boolean {
-  const atPos = input.indexOf("@");
+  const trimmed = input.trim().toLowerCase();
+  const atPos = trimmed.indexOf("@");
   if (atPos === -1) return false;
-  const domain = input.slice(atPos + 1).trim().toLowerCase();
-  return DISPOSABLE_DOMAINS.has(domain);
+  return DISPOSABLE_DOMAINS.has(trimmed.slice(atPos + 1).trim());
 }
