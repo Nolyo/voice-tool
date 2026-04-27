@@ -444,6 +444,8 @@
       "themeLight": "Clair",
       "startWithWindowsHint": "Comportement au lancement de Windows.",
       "quitDescription": "Ferme Voice Tool complètement (pas juste la fenêtre).",
+      "developerMode": "Mode développeur",
+      "developerModeHint": "Affiche l'onglet Logs dans la barre latérale. Réservé au diagnostic.",
       "danger": {
         "title": "Zone de danger",
         "subtitle": "Effacer toutes les données du logiciel et repartir d'une installation vierge.",

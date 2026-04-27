@@ -40,6 +40,8 @@ export interface AppSettings {
     main_window_geometry: string;
     auto_check_updates: boolean;
     update_channel: "stable" | "beta";
+    /** When true, the Logs tab appears in the dashboard sidebar (power-user only). */
+    developer_mode: boolean;
 
     // Shortcuts & Recording Modes
     record_hotkey: string;
@@ -129,6 +131,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     main_window_geometry: "1000x600+0+0",
     auto_check_updates: true,
     update_channel: "stable",
+    developer_mode: false,
 
     // Shortcuts & Recording Modes
     record_hotkey: "Ctrl+F11",

@@ -6,7 +6,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
-  Settings2,
+  Settings,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export const DASHBOARD_NAV_ITEMS = [
   { id: "historique", labelKey: "sidebar.history", icon: History },
   { id: "statistiques", labelKey: "sidebar.statistics", icon: BarChart3 },
   { id: "notes", labelKey: "sidebar.notes", icon: FileText },
-  { id: "parametres", labelKey: "sidebar.settings", icon: Settings2 },
+  { id: "parametres", labelKey: "sidebar.settings", icon: Settings },
   { id: "logs", labelKey: "sidebar.logs", icon: ScrollText },
 ] as const;
 
@@ -68,6 +68,7 @@ interface DashboardSidebarProps {
   onLevelFilterChange: (next: LevelFilter) => void;
   sourceFilter: string | null;
   onSourceFilterChange: (next: string | null) => void;
+  developerMode: boolean;
 }
 
 export function DashboardSidebar({
@@ -99,8 +100,12 @@ export function DashboardSidebar({
   onLevelFilterChange,
   sourceFilter,
   onSourceFilterChange,
+  developerMode,
 }: DashboardSidebarProps) {
   const { t } = useTranslation();
+  const visibleNavItems = DASHBOARD_NAV_ITEMS.filter(
+    (item) => item.id !== "logs" || developerMode,
+  );
 
   return (
     <aside
@@ -135,7 +140,7 @@ export function DashboardSidebar({
 
       {/* Nav items */}
       <nav className="flex flex-col gap-1 p-2 shrink-0">
-        {DASHBOARD_NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => (
+        {visibleNavItems.map(({ id, labelKey, icon: Icon }) => (
           <button
             key={id}
             onClick={() => onTabChange(id)}
