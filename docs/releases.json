@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/voice-tool",
-  "generated_at": "2026-04-26T22:01:34.260Z",
+  "generated_at": "2026-04-27T21:55:45.790Z",
   "latest": {
     "version": "2.10.1",
     "tag": "v2.10.1",
@@ -306,7 +306,7 @@
           "size_bytes": 27922432,
           "size_human": "26.6 MB",
           "sha256": "d6b916512492e2809047e1cc5f5316363705fbbdcc40fcbf2aca9475b4615b78",
-          "download_count": 2
+          "download_count": 3
         }
       }
     },
