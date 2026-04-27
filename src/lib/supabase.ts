@@ -23,3 +23,5 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBL
 export const AUTH_CALLBACK_URL =
   import.meta.env.VITE_AUTH_CALLBACK_URL ??
   "https://voice-tool-auth-callback.pages.dev";
+
+export const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ?? "";

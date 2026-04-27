@@ -6,6 +6,7 @@ import { isPwnedPassword } from "@/lib/pwned-passwords";
 import { isDisposableDomain, CANONICAL_COLLISION_ERROR_MARKER } from "@/lib/email-normalize";
 import { VtIcon } from "@/components/settings/vt";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
+import { TurnstileWidget } from "./TurnstileWidget";
 import type { AuthView } from "./AuthModal";
 
 type Mode = "signin" | "signup";
@@ -72,18 +73,24 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const score = useMemo(() => scorePassword(password), [password]);
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!captchaToken) {
+      setError(t("auth.signup.captchaRequired"));
+      return;
+    }
     setLoading(true);
     const { error: signinError } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: AUTH_CALLBACK_URL },
+      options: { emailRedirectTo: AUTH_CALLBACK_URL, captchaToken },
     });
     setLoading(false);
+    setCaptchaToken(null);
     // Generic anti-enumeration response
     setStep("sent");
     if (signinError) {
@@ -124,20 +131,27 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
       setError(t("auth.signup.passwordPwned"));
       return;
     }
+    if (!captchaToken) {
+      setLoading(false);
+      setError(t("auth.signup.captchaRequired"));
+      return;
+    }
     const { error: signupError } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: AUTH_CALLBACK_URL },
+      options: { emailRedirectTo: AUTH_CALLBACK_URL, captchaToken },
     });
     setLoading(false);
     if (signupError) {
       // Trigger from migration 20260601000100 raises P0001 with our message.
       if (signupError.message.includes(CANONICAL_COLLISION_ERROR_MARKER)) {
+        setCaptchaToken(null);
         setError(t("auth.signup.emailAlreadyRegistered"));
         return;
       }
       console.warn("signup error (not shown)", signupError.message);
     }
+    setCaptchaToken(null);
     setStep("sent");
   }
 
@@ -400,6 +414,16 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {(mode === "signup" || (mode === "signin" && method === "magic")) && (
+              <div className="my-3 flex justify-center">
+                <TurnstileWidget
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  onExpire={() => setCaptchaToken(null)}
+                  onError={() => setCaptchaToken(null)}
+                />
               </div>
             )}
 
