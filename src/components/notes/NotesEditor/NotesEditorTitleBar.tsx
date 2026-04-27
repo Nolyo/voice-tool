@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
 import {
   ChevronDown,
-  FileText,
   Folder,
   FolderPlus,
   Plus,
@@ -141,7 +140,6 @@ export function NotesEditorTitleBar({
               }}
             >
               <span className="notes-tab-dot" />
-              <FileText className="notes-tab-icon w-3 h-3" />
               <span className="notes-tab-title">{displayTitle}</span>
               <span
                 className="notes-tab-close"

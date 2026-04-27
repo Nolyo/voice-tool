@@ -1373,13 +1373,6 @@ body.mini-window-body #root {
   background: var(--vt-accent);
   box-shadow: 0 0 6px oklch(from var(--vt-accent) l c h / 0.6);
 }
-.vt-app .notes-tab-icon {
-  color: var(--vt-fg-4);
-  flex: none;
-}
-.vt-app .notes-tab[data-active="true"] .notes-tab-icon {
-  color: var(--vt-accent-2);
-}
 .vt-app .notes-tab-close {
   width: 18px;
   height: 18px;
