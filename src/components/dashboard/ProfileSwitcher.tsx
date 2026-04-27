@@ -171,11 +171,14 @@ export function ProfileSwitcher({
   }
 
   // Status dot color
-  const statusDot = !isSignedIn
-    ? "bg-muted-foreground/40"
-    : mfaEnabled
-      ? "bg-emerald-500 shadow-[0_0_6px_currentColor] text-emerald-500"
-      : "bg-amber-500 shadow-[0_0_6px_currentColor] text-amber-500";
+  // Désactivé temporairement : l'indicateur ambre « 2FA non activée » est jugé
+  // trop insistant pour les comptes qui choisissent volontairement de ne pas
+  // activer la 2FA. À remplacer plus tard par un signal moins répétitif.
+  // const statusDot = !isSignedIn
+  //   ? "bg-muted-foreground/40"
+  //   : mfaEnabled
+  //     ? "bg-emerald-500 shadow-[0_0_6px_currentColor] text-emerald-500"
+  //     : "bg-amber-500 shadow-[0_0_6px_currentColor] text-amber-500";
 
   const subline = !isSignedIn
     ? t("profile.localNotSynced", { defaultValue: "Local · non synchronisé" })
@@ -209,10 +212,10 @@ export function ProfileSwitcher({
                   {subline}
                 </div>
               </div>
-              <span
+              {/* <span
                 aria-hidden
                 className={`w-2 h-2 rounded-full shrink-0 ${statusDot}`}
-              />
+              /> */}
               <ChevronUp
                 className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform ${
                   open ? "" : "rotate-180"
