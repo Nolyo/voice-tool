@@ -141,13 +141,18 @@ export function useNotesEditorInstance({
               defaultValue: "Titre de la note",
             });
           }
-          // The slot directly after an opening H1 gets the body hint.
+          // The slot directly after an opening H1 gets the body hint, but
+          // only while the note is still in its "blank" shape (H1 + one
+          // empty paragraph). Once the user adds content further down, the
+          // hint is no longer relevant and would otherwise stick forever
+          // on the empty line between the title and the first real block.
           const first = doc.firstChild;
           if (
             first &&
             first.type.name === "heading" &&
             pos === first.nodeSize &&
-            node.type.name === "paragraph"
+            node.type.name === "paragraph" &&
+            doc.childCount === 2
           ) {
             return i18n.t("notes.editor.bodyPlaceholder", {
               defaultValue: "Commencez à écrire…",
