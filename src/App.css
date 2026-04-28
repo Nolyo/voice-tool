@@ -812,33 +812,6 @@ body.mini-window-body #root {
   border: 1px solid var(--vt-border);
 }
 
-.vt-app .stat-tile {
-  padding: 16px 18px;
-  border-radius: 12px;
-  background: var(--vt-panel-2);
-  border: 1px solid var(--vt-border);
-}
-.vt-app .stat-tile .lbl {
-  font-size: 11px;
-  color: var(--vt-fg-3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 500;
-}
-.vt-app .stat-tile .val {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin-top: 4px;
-  font-variant-numeric: tabular-nums;
-}
-.vt-app .stat-tile .trend {
-  font-size: 11px;
-  margin-top: 6px;
-  font-family: "JetBrains Mono", monospace;
-  color: var(--vt-fg-3);
-}
-
 .vt-app .filter-chip {
   height: 28px;
   padding: 0 10px;
@@ -1399,13 +1372,6 @@ body.mini-window-body #root {
 .vt-app .notes-tab[data-dirty="true"] .notes-tab-dot {
   background: var(--vt-accent);
   box-shadow: 0 0 6px oklch(from var(--vt-accent) l c h / 0.6);
-}
-.vt-app .notes-tab-icon {
-  color: var(--vt-fg-4);
-  flex: none;
-}
-.vt-app .notes-tab[data-active="true"] .notes-tab-icon {
-  color: var(--vt-accent-2);
 }
 .vt-app .notes-tab-close {
   width: 18px;

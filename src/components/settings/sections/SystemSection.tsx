@@ -85,6 +85,23 @@ export function SystemSection() {
         </Row>
 
         <Row
+          label={t("settings.system.developerMode")}
+          hint={t("settings.system.developerModeHint")}
+        >
+          <Toggle
+            on={settings.developer_mode}
+            onClick={() =>
+              updateSetting("developer_mode", !settings.developer_mode)
+            }
+            label={
+              settings.developer_mode
+                ? t("common.enabled", { defaultValue: "Activé" })
+                : t("common.disabled", { defaultValue: "Désactivé" })
+            }
+          />
+        </Row>
+
+        <Row
           label={t("settings.system.recordingsKeep")}
           hint={t("settings.system.recordingsKeepHelp")}
         >

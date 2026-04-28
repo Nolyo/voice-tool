@@ -6,7 +6,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
-  Settings2,
+  Settings,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -26,11 +26,41 @@ import { StatistiquesSidebarSection } from "./StatistiquesSidebarSection";
 import { LogsSidebarSection } from "./LogsSidebarSection";
 
 export const DASHBOARD_NAV_ITEMS = [
-  { id: "historique", labelKey: "sidebar.history", icon: History },
-  { id: "statistiques", labelKey: "sidebar.statistics", icon: BarChart3 },
-  { id: "notes", labelKey: "sidebar.notes", icon: FileText },
-  { id: "parametres", labelKey: "sidebar.settings", icon: Settings2 },
-  { id: "logs", labelKey: "sidebar.logs", icon: ScrollText },
+  {
+    id: "historique",
+    labelKey: "sidebar.history",
+    icon: History,
+    iconColor: "text-slate-400",
+    iconBg: "bg-slate-500/10",
+  },
+  {
+    id: "statistiques",
+    labelKey: "sidebar.statistics",
+    icon: BarChart3,
+    iconColor: "text-slate-400",
+    iconBg: "bg-slate-500/10",
+  },
+  {
+    id: "notes",
+    labelKey: "sidebar.notes",
+    icon: FileText,
+    iconColor: "text-slate-400",
+    iconBg: "bg-slate-500/10",
+  },
+  {
+    id: "parametres",
+    labelKey: "sidebar.settings",
+    icon: Settings,
+    iconColor: "text-slate-400",
+    iconBg: "bg-slate-500/10",
+  },
+  {
+    id: "logs",
+    labelKey: "sidebar.logs",
+    icon: ScrollText,
+    iconColor: "text-slate-400",
+    iconBg: "bg-slate-500/10",
+  },
 ] as const;
 
 export type DashboardTabId = (typeof DASHBOARD_NAV_ITEMS)[number]["id"];
@@ -68,6 +98,7 @@ interface DashboardSidebarProps {
   onLevelFilterChange: (next: LevelFilter) => void;
   sourceFilter: string | null;
   onSourceFilterChange: (next: string | null) => void;
+  developerMode: boolean;
 }
 
 export function DashboardSidebar({
@@ -99,8 +130,12 @@ export function DashboardSidebar({
   onLevelFilterChange,
   sourceFilter,
   onSourceFilterChange,
+  developerMode,
 }: DashboardSidebarProps) {
   const { t } = useTranslation();
+  const visibleNavItems = DASHBOARD_NAV_ITEMS.filter(
+    (item) => item.id !== "logs" || developerMode,
+  );
 
   return (
     <aside
@@ -135,20 +170,24 @@ export function DashboardSidebar({
 
       {/* Nav items */}
       <nav className="flex flex-col gap-1 p-2 shrink-0">
-        {DASHBOARD_NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => (
+        {visibleNavItems.map(({ id, labelKey, icon: Icon, iconColor, iconBg }) => (
           <button
             key={id}
             onClick={() => onTabChange(id)}
             title={collapsed ? t(labelKey) : undefined}
-            className={`flex items-center gap-3 rounded-md transition-colors cursor-pointer ${
-              collapsed ? "justify-center p-2" : "px-3 py-2"
+            className={`flex items-center gap-2.5 rounded-md transition-colors cursor-pointer ${
+              collapsed ? "justify-center p-1.5" : "px-2 py-1.5"
             } ${
               activeTab === id
                 ? "bg-accent text-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
             }`}
           >
-            <Icon className="w-4 h-4 shrink-0" />
+            <div
+              className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}
+            >
+              <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
+            </div>
             {!collapsed && (
               <span className="text-sm font-medium truncate">{t(labelKey)}</span>
             )}

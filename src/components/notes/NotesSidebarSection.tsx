@@ -4,7 +4,6 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
-  FileText,
   Folder,
   FolderPlus,
   Pencil,
@@ -151,7 +150,6 @@ function DragOverlayNoteCard({ note }: DragOverlayNoteCardProps) {
   if (!note) return null;
   return (
     <div className="vt-app flex items-center gap-2 px-3 py-1.5 rounded-md bg-background border shadow-lg text-sm max-w-[240px]">
-      <FileText className="w-3.5 h-3.5 shrink-0 opacity-70" />
       <span className="truncate flex-1">{note.title || "Untitled"}</span>
       {note.favorite ? <Star className="w-3 h-3 fill-current text-yellow-500" /> : null}
     </div>
@@ -169,7 +167,6 @@ function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, 
       onClick={() => onOpen(note)}
       onContextMenu={(e) => onContextMenu(e, note)}
     >
-      <FileText className="w-3.5 h-3.5 shrink-0" />
       <span className="text-xs flex-1 truncate">{note.title}</span>
       <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
         <button

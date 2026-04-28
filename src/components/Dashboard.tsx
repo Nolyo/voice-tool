@@ -206,6 +206,12 @@ export default function Dashboard() {
     }
   }, [transcriptions, selectedTranscription]);
 
+  useEffect(() => {
+    if (activeTab === "logs" && !settings.developer_mode) {
+      setActiveTab("historique");
+    }
+  }, [activeTab, settings.developer_mode]);
+
   return (
     <div className="h-screen flex overflow-hidden bg-background">
       <DashboardSidebar
@@ -240,6 +246,7 @@ export default function Dashboard() {
         onLevelFilterChange={setLogsLevelFilter}
         sourceFilter={logsSourceFilter}
         onSourceFilterChange={setLogsSourceFilter}
+        developerMode={settings.developer_mode}
       />
 
       {/* Main area */}
