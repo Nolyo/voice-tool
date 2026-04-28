@@ -36,6 +36,11 @@ pub struct Transcription {
     /// USD cost of the post-process LLM call, separate from `api_cost` (Whisper).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub post_process_cost: Option<f64>,
+    /// ISO-8601 timestamp set when the user pins this transcription. `None`
+    /// when not pinned. Pinned rows always sort before non-pinned ones in the
+    /// UI, ordered by `pinned_at` desc (most recently pinned first).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub pinned_at: Option<String>,
 }
 
 fn get_transcriptions_dir(app_handle: &AppHandle) -> Result<PathBuf> {
@@ -110,10 +115,20 @@ pub async fn save_transcription(
 
 /// Remove oldest transcription JSONs beyond `keep_last`, deleting the
 /// matching WAV alongside each purged record. Silent on individual file errors.
+///
+/// Pinned rows (`pinned_at` set) are never evicted — the user explicitly asked
+/// to keep them, so they sit outside the cap. Mirrors the frontend
+/// `capHistoryPreservingPins` behavior.
 pub fn cleanup_old_transcriptions(app_handle: &AppHandle, keep_last: usize) -> Result<()> {
     let dir = get_transcriptions_dir(app_handle)?;
 
-    let mut entries: Vec<(PathBuf, String)> = fs::read_dir(&dir)?
+    struct Entry {
+        path: PathBuf,
+        dt: String,
+        pinned: bool,
+    }
+
+    let mut entries: Vec<Entry> = fs::read_dir(&dir)?
         .filter_map(|entry| {
             let entry = entry.ok()?;
             let path = entry.path();
@@ -123,25 +138,39 @@ pub fn cleanup_old_transcriptions(app_handle: &AppHandle, keep_last: usize) -> R
             let content = fs::read_to_string(&path).ok()?;
             let t: Transcription = serde_json::from_str(&content).ok()?;
             let dt = format!("{} {}", t.date, t.time);
-            Some((path, dt))
+            let pinned = t.pinned_at.is_some();
+            Some(Entry { path, dt, pinned })
         })
         .collect();
 
     // Newest first — identical ordering to list_transcriptions.
-    entries.sort_by(|a, b| b.1.cmp(&a.1));
+    entries.sort_by(|a, b| b.dt.cmp(&a.dt));
 
-    for (path, _) in entries.iter().skip(keep_last) {
-        if let Ok(content) = fs::read_to_string(path) {
+    let mut kept = 0usize;
+    for entry in entries {
+        if entry.pinned {
+            // Pinned records sit outside the cap; never purge them.
+            continue;
+        }
+        if kept < keep_last {
+            kept += 1;
+            continue;
+        }
+        if let Ok(content) = fs::read_to_string(&entry.path) {
             if let Ok(t) = serde_json::from_str::<Transcription>(&content) {
                 if let Some(audio_path) = t.audio_path {
                     let _ = fs::remove_file(&audio_path);
                 }
             }
         }
-        if let Err(err) = fs::remove_file(path) {
-            tracing::warn!("Failed to purge transcription {}: {}", path.display(), err);
+        if let Err(err) = fs::remove_file(&entry.path) {
+            tracing::warn!(
+                "Failed to purge transcription {}: {}",
+                entry.path.display(),
+                err
+            );
         } else {
-            tracing::info!("Purged old transcription: {}", path.display());
+            tracing::info!("Purged old transcription: {}", entry.path.display());
         }
     }
 
@@ -257,6 +286,63 @@ pub async fn export_transcriptions(
 
 #[cfg(test)]
 mod tests {
+    use super::Transcription;
+
+    #[test]
+    fn deserialize_legacy_record_without_pinned_at() {
+        // Records written before the pin feature shipped have no `pinnedAt`
+        // key. They must still parse, with `pinned_at` defaulting to None.
+        let json = r#"{
+            "id": "abc-123",
+            "date": "2026-04-29",
+            "time": "09:15:00",
+            "text": "hello world"
+        }"#;
+        let t: Transcription = serde_json::from_str(json).expect("legacy parse");
+        assert_eq!(t.id, "abc-123");
+        assert!(t.pinned_at.is_none());
+    }
+
+    #[test]
+    fn round_trip_with_pinned_at_preserves_value() {
+        let json = r#"{
+            "id": "abc-123",
+            "date": "2026-04-29",
+            "time": "09:15:00",
+            "text": "hello",
+            "pinnedAt": "2026-04-29T10:00:00.000Z"
+        }"#;
+        let t: Transcription = serde_json::from_str(json).expect("parse pinned");
+        assert_eq!(t.pinned_at.as_deref(), Some("2026-04-29T10:00:00.000Z"));
+
+        let re = serde_json::to_string(&t).expect("serialize");
+        assert!(re.contains("\"pinnedAt\":\"2026-04-29T10:00:00.000Z\""));
+    }
+
+    #[test]
+    fn unpinned_record_omits_pinned_at_on_serialize() {
+        // skip_serializing_if = "Option::is_none" must keep legacy files clean
+        // (no spurious `pinnedAt: null` showing up after a save).
+        let t = Transcription {
+            id: "x".into(),
+            date: "2026-04-29".into(),
+            time: "09:15:00".into(),
+            text: "hello".into(),
+            provider: None,
+            duration: None,
+            is_streaming: false,
+            audio_path: None,
+            api_cost: None,
+            transcription_provider: None,
+            original_text: None,
+            post_process_mode: None,
+            post_process_cost: None,
+            pinned_at: None,
+        };
+        let s = serde_json::to_string(&t).expect("serialize");
+        assert!(!s.contains("pinnedAt"), "got: {}", s);
+    }
+
     #[test]
     fn export_extension_whitelist_blocks_unknown() {
         let exts = super::ALLOWED_EXPORT_EXTS;

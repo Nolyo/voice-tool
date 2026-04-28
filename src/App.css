@@ -417,6 +417,8 @@ body.mini-window-body #root {
   --vt-ok: oklch(0.78 0.14 150);
   --vt-ok-soft: oklch(0.78 0.14 150 / 0.13);
   --vt-danger: oklch(0.7 0.2 25);
+  --vt-pin: oklch(0.82 0.16 75);
+  --vt-pin-soft: oklch(0.82 0.16 75 / 0.14);
   --vt-hover-soft: oklch(1 0 0 / 0.025);
   --vt-hover: oklch(1 0 0 / 0.04);
   --vt-hover-strong: oklch(1 0 0 / 0.08);
@@ -997,6 +999,57 @@ body.mini-window-body #root {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Pinned transcriptions ──────────────────────────────────────────────
+ * Honors the row data-pinned="true" attribute on hist-row, the pin button
+ * (visible on hover for unpinned rows, always for pinned), the pinned badge
+ * inline next to provider/postprocess badges, and the dedicated "Pinned"
+ * section header in the timeline.
+ */
+.vt-app .vt-pin-badge {
+  background: var(--vt-pin-soft);
+  color: var(--vt-pin);
+}
+
+.vt-app .vt-pin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--vt-pin);
+}
+
+.vt-app .hist-row[data-pinned="true"] {
+  background: oklch(from var(--vt-pin) l c h / 0.05);
+  box-shadow: inset 2px 0 0 0 var(--vt-pin);
+}
+.vt-app .hist-row[data-pinned="true"]:hover {
+  background: oklch(from var(--vt-pin) l c h / 0.09);
+}
+.vt-app .hist-row[data-pinned="true"][data-selected="true"] {
+  background: oklch(from var(--vt-accent) l c h / 0.1);
+  box-shadow:
+    inset 2px 0 0 0 var(--vt-pin),
+    inset 0 0 0 1px oklch(from var(--vt-accent) l c h / 0.3);
+}
+
+/* The pin toggle stays subtle until hovered, except when active. */
+.vt-app .vt-pin-btn {
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+.vt-app .hist-row:hover .vt-pin-btn,
+.vt-app .hist-row[data-selected="true"] .vt-pin-btn,
+.vt-app .vt-pin-btn[data-pinned="true"],
+.vt-app .vt-pin-btn:focus-visible {
+  opacity: 1;
+}
+.vt-app .vt-pin-btn[data-pinned="true"] {
+  color: var(--vt-pin);
+}
+.vt-app .vt-pin-btn:hover {
+  color: var(--vt-pin);
+  background: var(--vt-pin-soft);
+}
+
 /* ── Export dialog tiles ──────────────────────────────────────────────── */
 .vt-app .vt-format-tile {
   text-align: left;
@@ -1295,6 +1348,8 @@ body.mini-window-body #root {
   --vt-ok: oklch(0.52 0.14 150);
   --vt-ok-soft: oklch(0.52 0.14 150 / 0.12);
   --vt-danger: oklch(0.55 0.22 25);
+  --vt-pin: oklch(0.62 0.18 70);
+  --vt-pin-soft: oklch(0.62 0.18 70 / 0.14);
   --vt-info: oklch(0.5 0.18 240);
   --vt-debug: oklch(0.5 0.02 264);
   --vt-trace: oklch(0.5 0.2 295);

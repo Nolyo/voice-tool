@@ -60,6 +60,7 @@ export default function Dashboard() {
     addTranscription,
     deleteTranscription,
     clearHistory,
+    togglePin,
   } = useTranscriptionHistory(settings.history_keep_last);
   const {
     notes,
@@ -197,12 +198,20 @@ export default function Dashboard() {
       return;
     }
 
-    const stillExists = transcriptions.some(
+    const fresh = transcriptions.find(
       (item) => item.id === selectedTranscription.id,
     );
 
-    if (!stillExists) {
+    if (!fresh) {
       setSelectedTranscription(transcriptions[0]);
+      return;
+    }
+
+    // Keep the detail panel in sync with mutations applied to the row in the
+    // list (pin toggle, future field updates). Identity equality is enough
+    // because hooks return new objects whenever a transcription mutates.
+    if (fresh !== selectedTranscription) {
+      setSelectedTranscription(fresh);
     }
   }, [transcriptions, selectedTranscription]);
 
@@ -320,6 +329,7 @@ export default function Dashboard() {
                       onCloseDetails={handleCloseDetails}
                       onDelete={handleDelete}
                       onClearAll={handleClearAll}
+                      onTogglePin={togglePin}
                     />
                   )}
                   {activeTab === "statistiques" && (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
 export interface Transcription {
@@ -19,6 +19,33 @@ export interface Transcription {
   postProcessMode?: string;
   /** USD cost of the post-process LLM call (separate from `apiCost` which covers Whisper). */
   postProcessCost?: number;
+  /**
+   * ISO timestamp set when the user pins this transcription. `null`/absent
+   * means not pinned. Pinned rows always sort before non-pinned ones, ordered
+   * by `pinnedAt` desc.
+   */
+  pinnedAt?: string | null;
+}
+
+/**
+ * Stable sort: pinned rows first (most recently pinned first), then the rest
+ * by date+time desc. Pure function — exported for unit testing.
+ */
+export function sortTranscriptions(items: Transcription[]): Transcription[] {
+  const dt = (t: Transcription) => `${t.date} ${t.time}`;
+  return [...items].sort((a, b) => {
+    const ap = a.pinnedAt ?? null;
+    const bp = b.pinnedAt ?? null;
+    if (ap && !bp) return -1;
+    if (!ap && bp) return 1;
+    if (ap && bp && ap !== bp) {
+      // Most recently pinned first.
+      return ap < bp ? 1 : -1;
+    }
+    // Both pinned at the same instant, or both unpinned: fall back to
+    // date+time desc (matches backend list_transcriptions ordering).
+    return dt(b).localeCompare(dt(a));
+  });
 }
 
 export function useTranscriptionHistory(historyKeepLast?: number) {
@@ -29,7 +56,7 @@ export function useTranscriptionHistory(historyKeepLast?: number) {
     try {
       setIsLoading(true);
       const result = await invoke<Transcription[]>('list_transcriptions');
-      setTranscriptions(result);
+      setTranscriptions(sortTranscriptions(result));
     } catch (error) {
       console.error('Failed to load transcription history:', error);
     } finally {
@@ -81,9 +108,11 @@ export function useTranscriptionHistory(historyKeepLast?: number) {
       historyKeepLast: historyKeepLast ?? null,
     });
     setTranscriptions(prev => {
-      const next = [newTranscription, ...prev];
+      const next = sortTranscriptions([newTranscription, ...prev]);
       if (typeof historyKeepLast === 'number' && next.length > historyKeepLast) {
-        return next.slice(0, historyKeepLast);
+        // Trim the oldest *unpinned* rows first so a user-pinned record is
+        // never silently evicted by the keep-last cap.
+        return capHistoryPreservingPins(next, historyKeepLast);
       }
       return next;
     });
@@ -106,8 +135,38 @@ export function useTranscriptionHistory(historyKeepLast?: number) {
     if (!existing) return;
     const updated = { ...existing, ...updates };
     await invoke('update_transcription', { transcription: updated });
-    setTranscriptions(prev => prev.map(t => t.id === id ? updated : t));
+    setTranscriptions(prev =>
+      sortTranscriptions(prev.map(t => (t.id === id ? updated : t))),
+    );
   };
+
+  const togglePin = useCallback(async (id: string) => {
+    // Compute optimistic next state from the current closure value so we don't
+    // depend on a stale reference inside concurrent callers.
+    const existing = transcriptions.find(t => t.id === id);
+    if (!existing) return;
+    const isPinned = Boolean(existing.pinnedAt);
+    const nextPinnedAt = isPinned ? null : new Date().toISOString();
+    const updated: Transcription = { ...existing, pinnedAt: nextPinnedAt };
+    setTranscriptions(prev =>
+      sortTranscriptions(prev.map(t => (t.id === id ? updated : t))),
+    );
+    try {
+      await invoke('update_transcription', { transcription: updated });
+    } catch (error) {
+      // Revert on failure so the UI never silently lies to the user.
+      console.error('Failed to toggle pin:', error);
+      setTranscriptions(prev =>
+        sortTranscriptions(prev.map(t => (t.id === id ? existing : t))),
+      );
+      throw error;
+    }
+  }, [transcriptions]);
+
+  const pinnedCount = useMemo(
+    () => transcriptions.reduce((acc, t) => acc + (t.pinnedAt ? 1 : 0), 0),
+    [transcriptions],
+  );
 
   const searchTranscriptions = (query: string): Transcription[] => {
     if (!query.trim()) return transcriptions;
@@ -126,7 +185,32 @@ export function useTranscriptionHistory(historyKeepLast?: number) {
     deleteTranscription,
     clearHistory,
     updateTranscription,
+    togglePin,
+    pinnedCount,
     searchTranscriptions,
     reloadHistory: loadHistory,
   };
+}
+
+/**
+ * Trim `items` down to `keepLast`, preserving every pinned row even if doing
+ * so means the unpinned tail is shorter than expected. Pinned rows are not
+ * counted against the cap because the user explicitly asked to keep them.
+ *
+ * Pure function — exported for unit testing.
+ */
+export function capHistoryPreservingPins(
+  items: Transcription[],
+  keepLast: number,
+): Transcription[] {
+  if (keepLast <= 0) return items.filter(t => Boolean(t.pinnedAt));
+  if (items.length <= keepLast) return items;
+  const pinned: Transcription[] = [];
+  const unpinned: Transcription[] = [];
+  for (const t of items) {
+    if (t.pinnedAt) pinned.push(t);
+    else unpinned.push(t);
+  }
+  const remaining = Math.max(0, keepLast - pinned.length);
+  return sortTranscriptions([...pinned, ...unpinned.slice(0, remaining)]);
 }

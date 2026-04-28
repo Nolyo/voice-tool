@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, Check, Copy, Trash2, Sparkles, Download, Filter } from "lucide-react";
+import { Search, Check, Copy, Trash2, Sparkles, Download, Filter, Pin, PinOff } from "lucide-react";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
 import { isToday, useDateFormatters } from "@/lib/date-format";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
@@ -21,9 +21,10 @@ interface TranscriptionListProps {
   onSelectTranscription: (transcription: Transcription) => void;
   onDelete?: (id: string) => void;
   onClearAll?: () => void;
+  onTogglePin?: (id: string) => void | Promise<void>;
 }
 
-type FilterId = "all" | "today" | "postprocess";
+type FilterId = "all" | "today" | "postprocess" | "pinned";
 
 /**
  * Parse stored "YYYY-MM-DD" + "HH:mm:ss" (FR locale) pair into a Date.
@@ -57,15 +58,26 @@ interface RowProps {
   isLast: boolean;
   onSelect: () => void;
   onDelete?: () => void;
+  onTogglePin?: () => void | Promise<void>;
 }
 
-function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onDelete }: RowProps) {
+function TimelineRow({
+  item,
+  at,
+  isSelected,
+  isFirst,
+  isLast,
+  onSelect,
+  onDelete,
+  onTogglePin,
+}: RowProps) {
   const { t } = useTranslation();
   const { copy, justCopied } = useCopyToClipboard();
   const { formatTime } = useDateFormatters();
   const words = wordsOf(item.text);
   const postProcess = Boolean(item.originalText);
   const source = item.apiCost !== undefined && item.apiCost > 0 ? "api" : "local";
+  const isPinned = Boolean(item.pinnedAt);
 
   return (
     <div
@@ -77,6 +89,7 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onDelete
       data-selected={isSelected}
       data-postprocess={postProcess}
       data-source={source}
+      data-pinned={isPinned}
       onClick={onSelect}
       role="button"
       tabIndex={0}
@@ -95,6 +108,15 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onDelete
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
+          {isPinned && (
+            <span
+              className="inline-flex items-center gap-1 px-1.5 h-4 rounded text-[10px] font-medium vt-pin-badge"
+              title={t("history.pinnedBadge")}
+            >
+              <Pin className="w-2.5 h-2.5" aria-hidden />
+              <span>{t("history.pinnedBadge")}</span>
+            </span>
+          )}
           {source === "api" && item.transcriptionProvider && (
             <span
               className="inline-flex items-center px-1.5 h-4 rounded text-[10px] font-medium"
@@ -146,6 +168,27 @@ function TimelineRow({ item, at, isSelected, isFirst, isLast, onSelect, onDelete
         className="flex items-center gap-0.5 transition"
         style={{ opacity: isSelected ? 1 : undefined }}
       >
+        {onTogglePin && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void onTogglePin();
+            }}
+            className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg vt-pin-btn"
+            data-pinned={isPinned}
+            style={{ color: isPinned ? "var(--vt-pin)" : "var(--vt-fg-3)" }}
+            data-tip={isPinned ? t("history.unpinTooltip") : t("history.pinTooltip")}
+            aria-label={isPinned ? t("history.unpin") : t("history.pin")}
+            aria-pressed={isPinned}
+          >
+            {isPinned ? (
+              <PinOff className="w-3.5 h-3.5" />
+            ) : (
+              <Pin className="w-3.5 h-3.5" />
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={(e) => {
@@ -192,6 +235,7 @@ export function TranscriptionList({
   onSelectTranscription,
   onDelete,
   onClearAll,
+  onTogglePin,
 }: TranscriptionListProps) {
   const { t } = useTranslation();
   const { dayLabel, formatShortDate } = useDateFormatters();
@@ -207,6 +251,11 @@ export function TranscriptionList({
 
   const openExport = useCallback(() => setExportOpen(true), []);
 
+  const pinnedItems = useMemo(
+    () => transcriptions.filter((tr) => Boolean(tr.pinnedAt)),
+    [transcriptions],
+  );
+
   const filtered = useMemo(() => {
     let list = transcriptions;
 
@@ -214,6 +263,8 @@ export function TranscriptionList({
       list = list.filter((tr) => Boolean(tr.originalText));
     } else if (filter === "today") {
       list = list.filter((tr) => isToday(parseAt(tr)));
+    } else if (filter === "pinned") {
+      list = list.filter((tr) => Boolean(tr.pinnedAt));
     }
 
     list = applyAdvFilters(list, advFilters);
@@ -231,6 +282,31 @@ export function TranscriptionList({
 
     return list;
   }, [transcriptions, search, filter, advFilters]);
+
+  /**
+   * Render a dedicated "Pinned" section above the day-grouped timeline only
+   * when the user is in the default unfiltered view (filter=all, no search,
+   * no advanced filter, no current "pinned" filter focus). Otherwise the
+   * pinned rows already appear inline at the top of `filtered` thanks to
+   * `sortTranscriptions`, so a separate section would duplicate them.
+   */
+  const showPinnedSection =
+    pinnedItems.length > 0 &&
+    filter === "all" &&
+    !search.trim() &&
+    advCount === 0;
+
+  /**
+   * Day-grouped list. When a dedicated pinned section is shown, exclude
+   * pinned rows from the day groups to avoid showing them twice.
+   */
+  const dayGroupItems = useMemo(
+    () =>
+      showPinnedSection
+        ? filtered.filter((tr) => !tr.pinnedAt)
+        : filtered,
+    [filtered, showPinnedSection],
+  );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -310,7 +386,7 @@ export function TranscriptionList({
 
   const groups = useMemo(() => {
     const map = new Map<string, { items: Transcription[]; firstAt: Date }>();
-    for (const tr of filtered) {
+    for (const tr of dayGroupItems) {
       const at = parseAt(tr);
       const key = dayLabel(at);
       if (!map.has(key)) {
@@ -319,7 +395,7 @@ export function TranscriptionList({
       map.get(key)!.items.push(tr);
     }
     return [...map.entries()];
-  }, [filtered, dayLabel]);
+  }, [dayGroupItems, dayLabel]);
 
   return (
     <div className="flex flex-col min-w-0">
@@ -369,6 +445,23 @@ export function TranscriptionList({
               <Sparkles className="w-3 h-3" />
               {t("history.filterPostProcessed")}
             </button>
+            {pinnedItems.length > 0 && (
+              <button
+                type="button"
+                className="filter-chip"
+                data-on={filter === "pinned"}
+                onClick={() => setFilter("pinned")}
+                aria-label={t("history.filterPinnedWithCount", {
+                  count: pinnedItems.length,
+                })}
+              >
+                <Pin className="w-3 h-3" />
+                {t("history.filterPinned")}
+                <span className="filter-chip-badge" aria-hidden>
+                  {pinnedItems.length}
+                </span>
+              </button>
+            )}
           </div>
 
           <div className="ml-auto flex items-center gap-1.5 relative">
@@ -435,7 +528,55 @@ export function TranscriptionList({
 
       {/* Timeline */}
       <div className="pb-6">
-        {groups.length === 0 ? (
+        {showPinnedSection && (
+          <div className="mb-1" data-testid="pinned-section">
+            <div className="day-label">
+              <span
+                className="vt-mono text-[10.5px]"
+                style={{ color: "var(--vt-fg-4)" }}
+                aria-hidden
+              >
+                <Pin className="inline-block w-3 h-3" />
+              </span>
+              <div className="day-label-inner">
+                <span className="day-chip vt-pin-chip">
+                  <Pin className="w-3 h-3" aria-hidden />
+                  {t("history.pinnedSection")}
+                </span>
+                <span className="day-chip-count">{pinnedItems.length}</span>
+                <span
+                  className="h-px flex-1"
+                  style={{ background: "var(--vt-border)" }}
+                />
+                <span
+                  className="text-[10.5px]"
+                  style={{ color: "var(--vt-fg-4)" }}
+                >
+                  {t("history.pinnedSectionHint")}
+                </span>
+              </div>
+            </div>
+            <div className="px-2">
+              {pinnedItems.map((item, i) => (
+                <TimelineRow
+                  key={`pinned-${item.id}`}
+                  item={item}
+                  at={parseAt(item)}
+                  isSelected={selectedId === item.id}
+                  isFirst={i === 0}
+                  isLast={i === pinnedItems.length - 1}
+                  onSelect={() => onSelectTranscription(item)}
+                  onDelete={onDelete ? () => onDelete(item.id) : undefined}
+                  onTogglePin={
+                    onTogglePin ? () => onTogglePin(item.id) : undefined
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {groups.length === 0 && !showPinnedSection ? (
           <div className="py-20 text-center">
             <div
               className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
@@ -445,12 +586,16 @@ export function TranscriptionList({
             </div>
             <p className="text-[13.5px]" style={{ color: "var(--vt-fg-2)" }}>
               {search || filter !== "all" || advCount > 0
-                ? t("history.emptySearch")
+                ? filter === "pinned"
+                  ? t("history.pinnedEmpty")
+                  : t("history.emptySearch")
                 : t("history.empty")}
             </p>
             <p className="text-[12px] mt-1" style={{ color: "var(--vt-fg-3)" }}>
               {search || filter !== "all" || advCount > 0
-                ? t("history.emptyNoMatches")
+                ? filter === "pinned"
+                  ? t("history.pinnedEmptySubtitle")
+                  : t("history.emptyNoMatches")
                 : t("history.emptySubtitle")}
             </p>
           </div>
@@ -500,6 +645,9 @@ export function TranscriptionList({
                       isLast={i === group.items.length - 1}
                       onSelect={() => onSelectTranscription(item)}
                       onDelete={onDelete ? () => onDelete(item.id) : undefined}
+                      onTogglePin={
+                        onTogglePin ? () => onTogglePin(item.id) : undefined
+                      }
                     />
                   ))}
                 </div>

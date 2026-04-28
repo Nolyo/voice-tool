@@ -206,7 +206,19 @@
     "filterAll": "Tout",
     "deleteTooltip": "Supprimer",
     "wordsCount_one": "{{count}} mot",
-    "wordsCount_other": "{{count}} mots"
+    "wordsCount_other": "{{count}} mots",
+    "filterPinned": "Épinglées",
+    "filterPinnedWithCount_one": "Épinglée ({{count}})",
+    "filterPinnedWithCount_other": "Épinglées ({{count}})",
+    "pin": "Épingler",
+    "unpin": "Désépingler",
+    "pinTooltip": "Épingler en haut",
+    "unpinTooltip": "Retirer l'épingle",
+    "pinnedBadge": "Épinglée",
+    "pinnedSection": "Épinglées",
+    "pinnedSectionHint": "Toujours en haut, jamais purgées par la limite d'historique.",
+    "pinnedEmpty": "Aucune transcription épinglée",
+    "pinnedEmptySubtitle": "Épingle une transcription pour la garder à portée de main."
   },
   "transcriptionDetails": {
     "noAudio": "Aucun enregistrement audio associé à cette transcription.",

@@ -15,6 +15,8 @@ import {
   Trash2,
   Loader2,
   ChevronRight,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import type { Transcription } from "@/hooks/useTranscriptionHistory";
 import { useSettings } from "@/hooks/useSettings";
@@ -26,6 +28,7 @@ interface TranscriptionDetailsProps {
   transcription: Transcription | null;
   onClose: () => void;
   onDelete?: (id: string) => void;
+  onTogglePin?: (id: string) => void | Promise<void>;
   compact?: boolean;
 }
 
@@ -88,6 +91,7 @@ export function TranscriptionDetails({
   transcription,
   onClose,
   onDelete,
+  onTogglePin,
   compact = false,
 }: TranscriptionDetailsProps) {
   const { t } = useTranslation();
@@ -588,6 +592,37 @@ export function TranscriptionDetails({
           <Download className="w-3.5 h-3.5" />
           <span>{t("transcriptionDetails.exportLabel")}</span>
         </button>
+        {onTogglePin && (
+          <button
+            type="button"
+            className="vt-btn vt-pin-btn"
+            data-pinned={Boolean(transcription.pinnedAt)}
+            onClick={() => void onTogglePin(transcription.id)}
+            data-tip={
+              transcription.pinnedAt
+                ? t("history.unpinTooltip")
+                : t("history.pinTooltip")
+            }
+            aria-label={
+              transcription.pinnedAt ? t("history.unpin") : t("history.pin")
+            }
+            aria-pressed={Boolean(transcription.pinnedAt)}
+          >
+            {transcription.pinnedAt ? (
+              <PinOff
+                className="w-3.5 h-3.5"
+                style={{ color: "var(--vt-pin)" }}
+              />
+            ) : (
+              <Pin className="w-3.5 h-3.5" />
+            )}
+            <span>
+              {transcription.pinnedAt
+                ? t("history.unpin")
+                : t("history.pin")}
+            </span>
+          </button>
+        )}
         {onDelete && (
           <button
             type="button"

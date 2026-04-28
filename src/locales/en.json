@@ -206,7 +206,19 @@
     "filterAll": "All",
     "deleteTooltip": "Delete",
     "wordsCount_one": "{{count}} word",
-    "wordsCount_other": "{{count}} words"
+    "wordsCount_other": "{{count}} words",
+    "filterPinned": "Pinned",
+    "filterPinnedWithCount_one": "Pinned ({{count}})",
+    "filterPinnedWithCount_other": "Pinned ({{count}})",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "pinTooltip": "Pin to top",
+    "unpinTooltip": "Remove pin",
+    "pinnedBadge": "Pinned",
+    "pinnedSection": "Pinned",
+    "pinnedSectionHint": "Always on top, never evicted by the history cap.",
+    "pinnedEmpty": "No pinned transcriptions",
+    "pinnedEmptySubtitle": "Pin a transcription to keep it within reach."
   },
   "transcriptionDetails": {
     "noAudio": "No audio recording associated with this transcription.",
