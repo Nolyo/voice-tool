@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { supabase, AUTH_CALLBACK_URL } from "@/lib/supabase";
 import { isPwnedPassword } from "@/lib/pwned-passwords";
+import { isDisposableDomain } from "@/lib/email-normalize";
 import { VtIcon } from "@/components/settings/vt";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
+import { TurnstileWidget } from "./TurnstileWidget";
 import type { AuthView } from "./AuthModal";
 
 type Mode = "signin" | "signup";
@@ -71,18 +73,24 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const score = useMemo(() => scorePassword(password), [password]);
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!captchaToken) {
+      setError(t("auth.signup.captchaRequired"));
+      return;
+    }
     setLoading(true);
     const { error: signinError } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: AUTH_CALLBACK_URL },
+      options: { emailRedirectTo: AUTH_CALLBACK_URL, captchaToken },
     });
     setLoading(false);
+    setCaptchaToken(null);
     // Generic anti-enumeration response
     setStep("sent");
     if (signinError) {
@@ -112,6 +120,10 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
       setError(t("auth.signup.passwordTooShort"));
       return;
     }
+    if (isDisposableDomain(email)) {
+      setError(t("auth.signup.emailDisposable"));
+      return;
+    }
     setLoading(true);
     const pwned = await isPwnedPassword(password);
     if (pwned) {
@@ -119,15 +131,24 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
       setError(t("auth.signup.passwordPwned"));
       return;
     }
+    if (!captchaToken) {
+      setLoading(false);
+      setError(t("auth.signup.captchaRequired"));
+      return;
+    }
     const { error: signupError } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: AUTH_CALLBACK_URL },
+      options: { emailRedirectTo: AUTH_CALLBACK_URL, captchaToken },
     });
     setLoading(false);
+    setCaptchaToken(null);
+    // Generic anti-enumeration response — even canonical-form collisions stay silent.
+    // The DB trigger (migration 20260601000100) still blocks the actual INSERT;
+    // GoTrue masks it as a 500 we deliberately swallow. See ADR 0011.
     setStep("sent");
     if (signupError) {
-      console.warn("signup error (not shown)", signupError.message);
+      console.warn("signup error (not shown to user)", signupError.message);
     }
   }
 
@@ -171,6 +192,9 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
 
   // Signup ALWAYS uses password (account creation needs a password); no method toggle in signup.
   const showPassword = mode === "signup" || method === "password";
+
+  const captchaRequired = mode === "signup" || (mode === "signin" && method === "magic");
+  const captchaSatisfied = !captchaRequired || !!captchaToken;
 
   return (
     <div className="flex flex-col">
@@ -393,9 +417,19 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
               </div>
             )}
 
+            {captchaRequired && (
+              <div className="my-3 flex justify-center">
+                <TurnstileWidget
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  onExpire={() => setCaptchaToken(null)}
+                  onError={() => setCaptchaToken(null)}
+                />
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={loading || !email}
+              disabled={loading || !email || !captchaSatisfied}
               className="vt-btn-primary w-full justify-center mt-2"
             >
               {mode === "signin" && method === "magic" && <VtIcon.mail />}

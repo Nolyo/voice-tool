@@ -867,7 +867,9 @@
       "strengthStrong": "Strong",
       "submit": "Create my account",
       "success": "If this account didn't exist, a confirmation email has just been sent.",
-      "backToLogin": "I already have an account"
+      "emailDisposable": "This email looks disposable. Please use a permanent address.",
+      "backToLogin": "I already have an account",
+      "captchaRequired": "Please complete the captcha before continuing."
     },
     "passwordReset": {
       "requestTitle": "Reset your password",

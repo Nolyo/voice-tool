@@ -867,7 +867,9 @@
       "strengthStrong": "Fort",
       "submit": "Créer mon compte",
       "success": "Si ce compte n'existait pas, un email vient d'être envoyé pour confirmer.",
-      "backToLogin": "J'ai déjà un compte"
+      "emailDisposable": "Cette adresse email semble jetable. Utilise une adresse permanente.",
+      "backToLogin": "J'ai déjà un compte",
+      "captchaRequired": "Merci de valider le captcha avant de continuer."
     },
     "passwordReset": {
       "requestTitle": "Réinitialiser ton mot de passe",
