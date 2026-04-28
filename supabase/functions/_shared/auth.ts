@@ -1,10 +1,10 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 /** Extrait le user_id depuis le JWT présenté dans Authorization: Bearer <token>.
  *  Retourne { userId, client } où client a les permissions du user (RLS actif). */
 export async function getAuthenticatedUser(req: Request): Promise<
-  | { userId: string; client: ReturnType<typeof createClient>; token: string }
+  | { userId: string; client: SupabaseClient<any, any, any>; token: string }
   | { error: string; status: number }
 > {
   const authHeader = req.headers.get("Authorization");

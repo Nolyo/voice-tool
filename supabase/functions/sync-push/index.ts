@@ -1,26 +1,34 @@
 // deno-lint-ignore-file no-explicit-any
+import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { getAuthenticatedUser } from "../_shared/auth.ts";
 import { PushBodySchema, QUOTA_BYTES } from "./schema.ts";
 
-function json(body: unknown, status = 200): Response {
+export interface SyncPushDeps {
+  authenticate: (req: Request) => Promise<
+    | { userId: string; client: SupabaseClient<any, any, any>; token?: string }
+    | { error: string; status: number }
+  >;
+}
+
+function json(req: Request, body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return preflight();
-  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+export async function handler(req: Request, deps: SyncPushDeps): Promise<Response> {
+  if (req.method === "OPTIONS") return preflight(req);
+  if (req.method !== "POST") return json(req, { error: "method not allowed" }, 405);
 
-  const auth = await getAuthenticatedUser(req);
-  if ("error" in auth) return json({ error: auth.error }, auth.status);
+  const auth = await deps.authenticate(req);
+  if ("error" in auth) return json(req, { error: auth.error }, auth.status);
 
   const raw = await req.json().catch(() => null);
   const parsed = PushBodySchema.safeParse(raw);
   if (!parsed.success) {
-    return json({ error: "invalid body", details: parsed.error.flatten() }, 400);
+    return json(req, { error: "invalid body", details: parsed.error.flatten() }, 400);
   }
   const { operations, device_id } = parsed.data;
 
@@ -115,11 +123,12 @@ Deno.serve(async (req) => {
     target_user: userId,
   });
   if (sizeErr) {
-    return json({ error: "quota check failed", details: sizeErr.message }, 500);
+    return json(req, { error: "quota check failed", details: sizeErr.message }, 500);
   }
   const size = Number(sizeData ?? 0);
   if (size > QUOTA_BYTES) {
     return json(
+      req,
       {
         error: "quota exceeded",
         quota_bytes: QUOTA_BYTES,
@@ -130,5 +139,9 @@ Deno.serve(async (req) => {
     );
   }
 
-  return json({ ok: true, server_time: nowIso, current_bytes: size, results });
-});
+  return json(req, { ok: true, server_time: nowIso, current_bytes: size, results });
+}
+
+if (import.meta.main) {
+  Deno.serve((req) => handler(req, { authenticate: getAuthenticatedUser }));
+}
