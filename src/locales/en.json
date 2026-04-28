@@ -875,7 +875,6 @@
       "submit": "Create my account",
       "success": "If this account didn't exist, a confirmation email has just been sent.",
       "emailDisposable": "This email looks disposable. Please use a permanent address.",
-      "emailAlreadyRegistered": "This email (or a variant) is already registered.",
       "backToLogin": "I already have an account",
       "captchaRequired": "Please complete the captcha before continuing."
     },

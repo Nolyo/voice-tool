@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { supabase, AUTH_CALLBACK_URL } from "@/lib/supabase";
 import { isPwnedPassword } from "@/lib/pwned-passwords";
-import { isDisposableDomain, CANONICAL_COLLISION_ERROR_MARKER } from "@/lib/email-normalize";
+import { isDisposableDomain } from "@/lib/email-normalize";
 import { VtIcon } from "@/components/settings/vt";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 import { TurnstileWidget } from "./TurnstileWidget";
@@ -142,17 +142,14 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
       options: { emailRedirectTo: AUTH_CALLBACK_URL, captchaToken },
     });
     setLoading(false);
-    if (signupError) {
-      // Trigger from migration 20260601000100 raises P0001 with our message.
-      if (signupError.message.includes(CANONICAL_COLLISION_ERROR_MARKER)) {
-        setCaptchaToken(null);
-        setError(t("auth.signup.emailAlreadyRegistered"));
-        return;
-      }
-      console.warn("signup error (not shown)", signupError.message);
-    }
     setCaptchaToken(null);
+    // Generic anti-enumeration response — even canonical-form collisions stay silent.
+    // The DB trigger (migration 20260601000100) still blocks the actual INSERT;
+    // GoTrue masks it as a 500 we deliberately swallow. See ADR 0011.
     setStep("sent");
+    if (signupError) {
+      console.warn("signup error (not shown to user)", signupError.message);
+    }
   }
 
   async function handleGoogle() {
