@@ -260,20 +260,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function upsertDevice(userId: string) {
     try {
       const fp = await invoke<string>("get_or_create_device_id");
-      const osName = typeof navigator !== "undefined" ? navigator.platform || "Unknown" : "Unknown";
-      // TODO(v3.1): include app_version via a Tauri command when exposed.
+      let osName = typeof navigator !== "undefined" ? navigator.platform || "Unknown" : "Unknown";
+      let osVersion: string | null = null;
+      let appVersion: string | null = null;
+      try {
+        const info = await invoke<{ app_version: string; os_name: string; os_version: string }>(
+          "get_device_info",
+        );
+        appVersion = info.app_version;
+        osVersion = info.os_version;
+        if (info.os_name) osName = info.os_name;
+      } catch (e) {
+        flog(`get_device_info failed, falling back to navigator.platform: ${e}`, "warn");
+      }
       const { error } = await supabase.from("user_devices").upsert(
         {
           user_id: userId,
           device_fingerprint: fp,
           os_name: osName,
+          os_version: osVersion,
+          app_version: appVersion,
           last_seen_at: new Date().toISOString(),
         },
         { onConflict: "user_id,device_fingerprint" },
       );
-      if (error) console.warn("upsert user_devices failed", error.message);
+      if (error) flog(`upsert user_devices failed: ${error.message}`, "warn");
     } catch (e) {
-      console.warn("device upsert skipped", e);
+      flog(`device upsert skipped: ${e}`, "warn");
     }
   }
 

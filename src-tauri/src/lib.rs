@@ -91,6 +91,7 @@ pub fn run() {
             commands::model::any_local_model_exists,
             commands::model::delete_local_model,
             commands::system::get_system_info,
+            commands::system::get_device_info,
             commands::files::delete_recording_files,
             commands::ai::ai_process_text,
             commands::ai::post_process_text,

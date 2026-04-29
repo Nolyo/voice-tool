@@ -23,6 +23,22 @@ pub async fn get_system_info() -> SystemInfo {
     }
 }
 
+#[derive(Serialize)]
+pub struct DeviceInfo {
+    pub app_version: String,
+    pub os_name: String,
+    pub os_version: String,
+}
+
+#[tauri::command]
+pub fn get_device_info() -> DeviceInfo {
+    DeviceInfo {
+        app_version: env!("CARGO_PKG_VERSION").to_string(),
+        os_name: System::name().unwrap_or_else(|| "Unknown".to_string()),
+        os_version: System::os_version().unwrap_or_else(|| "Unknown".to_string()),
+    }
+}
+
 fn detect_discrete_gpu() -> (bool, Option<String>) {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::VULKAN | wgpu::Backends::DX12,
@@ -41,5 +57,31 @@ fn detect_discrete_gpu() -> (bool, Option<String>) {
     match discrete {
         Some(a) => (true, Some(a.get_info().name)),
         None => (false, None),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn device_info_app_version_matches_cargo_pkg() {
+        let info = get_device_info();
+        assert_eq!(info.app_version, env!("CARGO_PKG_VERSION"));
+        assert!(!info.app_version.is_empty(), "app_version must not be empty");
+        // user_devices_app_version_len constraint: <= 50 chars.
+        assert!(
+            info.app_version.chars().count() <= 50,
+            "app_version length must fit DB constraint (50 chars)"
+        );
+    }
+
+    #[test]
+    fn device_info_os_fields_present() {
+        let info = get_device_info();
+        // sysinfo may return "Unknown" on minimal/sandboxed environments — accept that
+        // but never an empty string (we always coerce to "Unknown").
+        assert!(!info.os_name.is_empty(), "os_name must never be empty");
+        assert!(!info.os_version.is_empty(), "os_version must never be empty");
     }
 }

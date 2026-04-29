@@ -7,6 +7,7 @@ interface DeviceRow {
   id: string;
   device_fingerprint: string;
   os_name: string | null;
+  os_version: string | null;
   app_version: string | null;
   last_seen_at: string;
 }
@@ -54,7 +55,7 @@ export function DevicesList() {
     }
     const { data } = await supabase
       .from("user_devices")
-      .select("id,device_fingerprint,os_name,app_version,last_seen_at")
+      .select("id,device_fingerprint,os_name,os_version,app_version,last_seen_at")
       .order("last_seen_at", { ascending: false });
     setDevices(data ?? []);
     setLoaded(true);
@@ -158,6 +159,7 @@ export function DevicesList() {
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] font-medium">
                       {d.os_name ?? t("auth.security.unknownOs", { defaultValue: "Appareil inconnu" })}
+                      {d.os_version ? ` ${d.os_version}` : ""}
                       {d.app_version ? ` · ${d.app_version}` : ""}
                     </span>
                     {current && (
