@@ -92,7 +92,7 @@ function realDeps(): Deps {
       const { data, error: listErr } = await (admin.auth.admin as any).mfa.listFactors({ userId });
       if (listErr) return { error: listErr };
       for (const f of data?.factors ?? []) {
-        const { error: delErr } = await (admin.auth.admin as any).mfa.deleteFactor({ id: f.id });
+        const { error: delErr } = await (admin.auth.admin as any).mfa.deleteFactor({ id: f.id, userId });
         if (delErr) return { error: delErr };
       }
       return { error: null };
