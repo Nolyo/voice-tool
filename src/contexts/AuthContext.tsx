@@ -3,10 +3,7 @@ import { type Session, type User } from "@supabase/supabase-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { supabase } from "@/lib/supabase";
-
-function flog(message: string, level: "info" | "warn" | "error" = "info") {
-  invoke("frontend_log", { level, message }).catch(() => {});
-}
+import { flog } from "@/lib/flog";
 
 export type AuthStatus = "loading" | "signed-out" | "signed-in" | "mfa-required";
 
@@ -210,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         `processPayload source=${source} valid=${payload.valid} type=${payload.params.type ?? "<none>"} hasCode=${!!payload.params.code} hasAccessToken=${!!payload.params.access_token}`,
       );
       if (!payload.valid) {
-        console.warn("invalid deep link", payload.reason);
+        flog(`invalid deep link: ${payload.reason ?? "<unknown>"}`, "warn");
         setDeepLinkError(payload.reason ?? "invalid deep link");
         return;
       }
@@ -349,7 +346,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await supabase.auth.signOut();
     } catch (e) {
-      console.warn("supabase signOut failed, clearing local anyway", e);
+      flog(`supabase signOut failed, clearing local anyway: ${String(e)}`, "warn");
     }
     await invoke("clear_refresh_token");
     setStatus("signed-out");
