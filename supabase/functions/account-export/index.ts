@@ -2,12 +2,15 @@
 import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { getAuthenticatedUser } from "../_shared/auth.ts";
+import { isRateLimited } from "../_shared/rate-limit.ts";
 
 export interface AccountExportDeps {
   authenticate: (req: Request) => Promise<
     | { userId: string; client: SupabaseClient<any, any, any>; token?: string }
     | { error: string; status: number }
   >;
+  /** Optional rate-limit gate. Returns true if the request should be rejected. */
+  rateLimit?: (userId: string, client: SupabaseClient<any, any, any>) => Promise<boolean>;
 }
 
 function json(req: Request, body: unknown, status = 200): Response {
@@ -23,6 +26,10 @@ export async function handler(req: Request, deps: AccountExportDeps): Promise<Re
 
   const auth = await deps.authenticate(req);
   if ("error" in auth) return json(req, { error: auth.error }, auth.status);
+
+  if (deps.rateLimit && (await deps.rateLimit(auth.userId, auth.client))) {
+    return json(req, { error: "rate limited" }, 429);
+  }
 
   const { userId, client } = auth;
 
@@ -51,5 +58,11 @@ export async function handler(req: Request, deps: AccountExportDeps): Promise<Re
 }
 
 if (import.meta.main) {
-  Deno.serve((req) => handler(req, { authenticate: getAuthenticatedUser }));
+  Deno.serve((req) =>
+    handler(req, {
+      authenticate: getAuthenticatedUser,
+      // 3 exports / hour per user — full GDPR exports are heavy, this is plenty.
+      rateLimit: (userId, client) => isRateLimited(client, `account-export:${userId}`, 3600, 3),
+    }),
+  );
 }

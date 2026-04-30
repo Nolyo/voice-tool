@@ -171,3 +171,26 @@ Deno.test("includes CORS headers for allowlisted origin", async () => {
   );
   assertEquals(res.headers.get("Access-Control-Allow-Origin"), "tauri://localhost");
 });
+
+Deno.test("returns 429 when rate-limit gate trips", async () => {
+  const handler = await importHandler();
+  let consumeCalled = false;
+  let deleteCalled = false;
+  const res = await handler(
+    makeReq({ authHeader: "Bearer x", body: { code: "abcd-1234" } }),
+    makeDeps({
+      rateLimit: async () => true,
+      consume: async () => {
+        consumeCalled = true;
+        return true;
+      },
+      deleteAllFactors: async () => {
+        deleteCalled = true;
+        return { error: null };
+      },
+    }),
+  );
+  assertEquals(res.status, 429);
+  assertEquals(consumeCalled, false);
+  assertEquals(deleteCalled, false);
+});

@@ -2,6 +2,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { getAuthenticatedUser } from "../_shared/auth.ts";
+import { isRateLimited } from "../_shared/rate-limit.ts";
 
 export interface Deps {
   /** Authenticate the request. Returns `{ userId }` or `{ error, status }`. */
@@ -11,6 +12,8 @@ export interface Deps {
   consume: (userId: string, code: string) => Promise<boolean>;
   /** Delete every MFA factor for the user (requires service-role admin client). */
   deleteAllFactors: (userId: string) => Promise<{ error: { message: string } | null }>;
+  /** Optional rate-limit gate. Returns true if the request should be rejected. */
+  rateLimit?: (userId: string) => Promise<boolean>;
 }
 
 interface Body {
@@ -33,6 +36,10 @@ export async function handler(req: Request, deps: Deps): Promise<Response> {
   const auth = await deps.authenticate(req);
   if ("error" in auth) {
     return jsonResponse(req, { error: auth.error }, auth.status);
+  }
+
+  if (deps.rateLimit && (await deps.rateLimit(auth.userId))) {
+    return jsonResponse(req, { error: "rate limited" }, 429);
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;
@@ -65,6 +72,10 @@ function realDeps(): Deps {
 
   return {
     authenticate: getAuthenticatedUser,
+
+    // 5 attempts / 15 min per user — recovery codes are high-value, locks
+    // out brute force quickly.
+    rateLimit: (userId) => isRateLimited(admin, `recovery-code:${userId}`, 900, 5),
 
     async consume(userId, code) {
       // Service-role variant — picks the user_id from the parameter rather
