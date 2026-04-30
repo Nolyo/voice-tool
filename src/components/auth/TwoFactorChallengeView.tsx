@@ -9,14 +9,36 @@ export function TwoFactorChallengeView() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!mfaChallenge) return;
     setLoading(true);
     setError(null);
+    setInfo(null);
+
     const trimmed = code.trim();
     const isRecovery = !/^\d{6}$/.test(trimmed);
+
+    if (isRecovery) {
+      const { data, error: fnError } = await supabase.functions.invoke<{ ok?: boolean }>(
+        "consume-recovery-code",
+        { body: { code: trimmed } },
+      );
+      setLoading(false);
+      if (fnError || !data?.ok) {
+        setError(t("auth.errors.invalidRecoveryCode"));
+        return;
+      }
+      // Recovery succeeded server-side: factors deleted, session is back to AAL1.
+      // Surface a confirmation and let the auth state refresh — the modal closes
+      // once mfaChallenge is cleared.
+      setInfo(t("auth.twoFactor.challenge.recoverySuccess"));
+      await reevaluateMfa();
+      return;
+    }
+
     const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
       factorId: mfaChallenge.factorId,
       code: trimmed,
@@ -26,12 +48,7 @@ export function TwoFactorChallengeView() {
       setError(t("auth.errors.invalidCredentials"));
       return;
     }
-    // Session is now elevated to aal2; sync status + close the modal.
     await reevaluateMfa();
-    if (isRecovery) {
-      // Fire a notification email reminder — handled by Supabase trigger (Task 20) later.
-      console.info("recovery code consumed");
-    }
   }
 
   return (
@@ -52,6 +69,7 @@ export function TwoFactorChallengeView() {
         className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm tracking-widest"
         aria-label={t("auth.twoFactor.challenge.placeholder")}
       />
+      <p className="text-xs text-muted-foreground">{t("auth.twoFactor.challenge.recoveryHint")}</p>
       <button
         type="submit"
         className="w-full px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50"
@@ -60,6 +78,7 @@ export function TwoFactorChallengeView() {
         {t("auth.twoFactor.challenge.submit")}
       </button>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {info && <p role="status" className="text-sm text-emerald-600">{info}</p>}
     </form>
   );
 }

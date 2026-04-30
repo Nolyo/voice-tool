@@ -898,7 +898,9 @@
         "title": "Vérification en deux étapes",
         "subtitle": "Entre le code de ton application d'authentification, ou un code de récupération.",
         "placeholder": "Code à 6 chiffres ou code de récupération",
-        "submit": "Valider"
+        "submit": "Valider",
+        "recoveryHint": "Tu as perdu ton authenticator ? Saisis un code de récupération ci-dessus.",
+        "recoverySuccess": "Code de récupération validé. La 2FA a été désactivée — pense à la réactiver depuis tes réglages."
       },
       "activation": {
         "stepScan": "1. Scanne ce QR code",
@@ -1008,6 +1010,7 @@
     "errors": {
       "network": "Erreur réseau — réessaie.",
       "invalidCredentials": "Email ou mot de passe incorrect.",
+      "invalidRecoveryCode": "Code de récupération invalide ou déjà utilisé.",
       "linkExpired": "Lien invalide ou expiré. Demande-en un nouveau.",
       "generic": "Une erreur est survenue. Réessaie."
     }
