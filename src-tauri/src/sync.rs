@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 use tracing::{info, warn};
 
@@ -31,6 +31,25 @@ fn backups_dir(app: &AppHandle) -> Result<PathBuf, String> {
         fs::create_dir_all(&dir).map_err(|e| format!("cannot create backups dir: {}", e))?;
     }
     Ok(dir)
+}
+
+/// Resolve `dir/filename` to its canonical form and reject paths that escape
+/// `dir` (e.g. via a symlink). Caller is expected to have already validated
+/// `filename` against string-traversal patterns (`..`, `/`, `\\`, `\0`); this
+/// is an additional defence-in-depth layer that catches symlink-based escapes
+/// the textual check cannot see. Requires the target file to already exist.
+fn safe_existing_path_in(dir: &Path, filename: &str) -> Result<PathBuf, String> {
+    let candidate = dir.join(filename);
+    let canonical = candidate
+        .canonicalize()
+        .map_err(|e| format!("cannot canonicalize backup path: {}", e))?;
+    let dir_canonical = dir
+        .canonicalize()
+        .map_err(|e| format!("cannot canonicalize backups dir: {}", e))?;
+    if !canonical.starts_with(&dir_canonical) {
+        return Err("path escapes backups directory".to_string());
+    }
+    Ok(canonical)
 }
 
 fn rotate_backups(dir: &PathBuf) -> Result<(), String> {
@@ -121,7 +140,7 @@ pub async fn read_local_backup(app: AppHandle, filename: String) -> Result<Strin
         return Err("invalid backup filename".into());
     }
     let dir = backups_dir(&app)?;
-    let path = dir.join(&filename);
+    let path = safe_existing_path_in(&dir, &filename)?;
     fs::read_to_string(&path).map_err(|e| format!("cannot read backup: {}", e))
 }
 
@@ -134,7 +153,7 @@ pub async fn delete_local_backup(app: AppHandle, filename: String) -> Result<(),
         return Err("invalid backup filename".into());
     }
     let dir = backups_dir(&app)?;
-    let path = dir.join(&filename);
+    let path = safe_existing_path_in(&dir, &filename)?;
     fs::remove_file(&path).map_err(|e| format!("cannot delete backup: {}", e))?;
     Ok(())
 }
@@ -202,6 +221,9 @@ pub async fn save_export_to_download(
 
 #[cfg(test)]
 mod tests {
+    use super::safe_existing_path_in;
+    use std::fs;
+
     #[test]
     fn filename_guard_rejects_traversal() {
         // Reproduit la logique guard
@@ -213,5 +235,52 @@ mod tests {
                 f
             );
         }
+    }
+
+    #[test]
+    fn safe_existing_path_returns_canonical_for_real_file() {
+        let tmp = std::env::temp_dir().join(format!(
+            "vt-sync-test-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos(),
+        ));
+        fs::create_dir_all(&tmp).unwrap();
+        let real = tmp.join("pre-sync_real.json");
+        fs::write(&real, b"{}").unwrap();
+
+        let resolved = safe_existing_path_in(&tmp, "pre-sync_real.json").unwrap();
+        assert_eq!(resolved, real.canonicalize().unwrap());
+
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn safe_existing_path_rejects_symlink_escape() {
+        use std::os::unix::fs::symlink;
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let tmp = std::env::temp_dir().join(format!("vt-sync-symlink-{}", nonce));
+        let outside_dir = std::env::temp_dir().join(format!("vt-sync-outside-{}", nonce));
+        fs::create_dir_all(&tmp).unwrap();
+        fs::create_dir_all(&outside_dir).unwrap();
+        let outside_file = outside_dir.join("secret.txt");
+        fs::write(&outside_file, b"top secret").unwrap();
+        let evil = tmp.join("pre-sync_evil.json");
+        symlink(&outside_file, &evil).unwrap();
+
+        let res = safe_existing_path_in(&tmp, "pre-sync_evil.json");
+        assert!(
+            matches!(res, Err(ref e) if e.contains("escapes")),
+            "expected symlink escape to be rejected, got: {:?}",
+            res
+        );
+
+        let _ = fs::remove_dir_all(&tmp);
+        let _ = fs::remove_dir_all(&outside_dir);
     }
 }

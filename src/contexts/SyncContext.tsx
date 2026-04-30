@@ -13,6 +13,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettings } from "@/hooks/useSettings";
 import { extractCloudSettings, syncableSettingsChanged } from "@/lib/sync/mapping";
+import { flog } from "@/lib/flog";
 import { pullAll, pushOperations } from "@/lib/sync/client";
 import {
   enqueue,
@@ -279,7 +280,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       await migrateLegacySnippetsOnce(current.snippets ?? []);
       await migrateLegacyDictionaryOnce(current.dictionary ?? []);
     } catch (e) {
-      console.warn("[sync] legacy migration failed", e);
+      flog(`[sync] legacy migration failed: ${String(e)}`, "warn");
     }
 
     await pullAndApply();
@@ -315,7 +316,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         if (resp.server_time) await setMeta(KEY_LAST_PUSHED_SETTINGS_AT, resp.server_time);
       }
     } catch (e) {
-      console.warn("[sync] initial full push failed", e);
+      flog(`[sync] initial full push failed: ${String(e)}`, "warn");
     }
   }, [pullAndApply, getDeviceId]);
 

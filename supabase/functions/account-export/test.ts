@@ -169,3 +169,13 @@ Deno.test("response from allowed origin includes the origin in Access-Control-Al
   const res = await handler(req, auth);
   assertEquals(res.headers.get("Access-Control-Allow-Origin"), "https://tauri.localhost");
 });
+
+Deno.test("rateLimit returns true: handler short-circuits with 429 + skips reads", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-rl");
+  const req = new Request(ENDPOINT, { method: "POST" });
+  const res = await handler(req, { ...auth, rateLimit: async () => true });
+  assertEquals(res.status, 429);
+  assertEquals((await res.json()).error, "rate limited");
+  assertEquals(auth.selects.length, 0);
+});

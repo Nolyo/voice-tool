@@ -898,7 +898,9 @@
         "title": "Two-step verification",
         "subtitle": "Enter the code from your authenticator app, or a recovery code.",
         "placeholder": "6-digit code or recovery code",
-        "submit": "Verify"
+        "submit": "Verify",
+        "recoveryHint": "Lost your authenticator? Enter a recovery code above.",
+        "recoverySuccess": "Recovery code accepted. Two-factor authentication has been disabled — please re-enable it from your settings."
       },
       "activation": {
         "stepScan": "1. Scan this QR code",
@@ -1008,6 +1010,7 @@
     "errors": {
       "network": "Network error — please try again.",
       "invalidCredentials": "Incorrect email or password.",
+      "invalidRecoveryCode": "Invalid or already-used recovery code.",
       "linkExpired": "Invalid or expired link. Request a new one.",
       "generic": "An error occurred. Try again."
     }
