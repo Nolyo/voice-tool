@@ -59,6 +59,9 @@ reqwest = { version = "0.12", features = ["multipart", "json", "stream"] }
 # OS native keyring (Windows Credential Manager, macOS Keychain, Linux libsecret)
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 
+# Defensive scrubbing of sensitive in-memory secrets (refresh tokens fallback).
+zeroize = "1"
+
 # Local Transcription (native whisper-rs with model caching)
 whisper-rs = { version = "0.14" }
 rubato = "0.15"

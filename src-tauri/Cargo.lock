@@ -6299,6 +6299,7 @@ dependencies = [
  "wgpu",
  "whisper-rs",
  "windows-sys 0.59.0",
+ "zeroize",
 ]
 
 [[package]]
