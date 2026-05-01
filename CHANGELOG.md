@@ -1,3 +1,159 @@
+## [3.0.0] - 2026-05-XX (en préparation)
+
+> Major version. Voice Tool devient **Lexena**. Comptes utilisateurs et synchronisation cloud des settings, dictionnaire et snippets. La promesse de confiance reste intacte : le mode 100% local sans compte demeure gratuit et fonctionnel, et les clés API ne quittent jamais l'appareil.
+
+### ✨ Added — Identité visuelle
+- Rebrand complet **Voice Tool → Lexena** (binaire, identifiant `com.nolyo.lexena`, dossier `%APPDATA%/com.nolyo.lexena/`, scheme deep link `lexena://`)
+- Nouvelle identité visuelle Lexena (icônes, couleurs, design tokens OKLCH, scope `.vt-app`)
+
+### ✨ Added — Comptes utilisateurs (sub-épique 01)
+- Création de compte par **magic link**, **email/password**, ou **Google OAuth**
+- **2FA TOTP optionnel** activable depuis Settings > Sécurité (compatible Google Authenticator, Authy, Bitwarden, 1Password)
+- **10 recovery codes** générés à l'activation 2FA, hashés SHA-256 côté serveur, consommables en cas de perte du device
+- **Captcha Cloudflare Turnstile** au signup et au magic link pour limiter les abus
+- **Vérification anti-pwned** : refus des passwords présents dans le top 10k des mots de passe leakés (liste embarquée, vérif locale)
+- **Indicateur de force du mot de passe** au signup
+- **Anti-énumération** : réponses identiques pour comptes connus et inconnus
+- **Anti-Gmail-aliasing** : `user+tag@gmail.com` et `u.s.e.r@gmail.com` reconnus comme un seul compte
+- **Blocklist domaines jetables** au signup
+- **Email canonical unique** via trigger Postgres (un email réel = un seul compte)
+- Stockage des sessions dans le **keyring OS** (Windows Credential Manager / macOS Keychain / Linux Secret Service) avec fallback memory-only si keyring indisponible
+- **Suivi des devices connectés** : liste consultable dans Settings > Sécurité, avec OS, version d'app, dernière activité
+- **Validation deep link Rust** anti-CSRF : nonce one-time, anti-replay, parsing JWT shape strict
+- Écrans : `AuthModal`, `SignInPanel`, `SignupView`, `ResetPasswordRequest/Confirm`, `TwoFactorActivationFlow`, `TwoFactorChallengeView`, `RecoveryCodesPanel`
+
+### ✨ Added — Synchronisation cloud (sub-épique 02)
+- **Sync opt-in** des settings, du dictionnaire personnel et des snippets via Supabase EU
+- **9 clés scalaires syncables** : thème, langue UI, 3 hotkeys, mode d'insertion, sons, provider transcription, taille modèle local
+- **Last-Write-Wins par item** : conflits multi-device résolus au plus récent timestamp serveur
+- **Soft-delete avec tombstones** pour propager proprement les suppressions
+- **Backup local automatique** avant la première activation de sync
+- **Queue offline persistante** : modifications hors-ligne mises en file FIFO, flush automatique à la reconnexion
+- **Backoff + dead-letter queue** après 5 retries pour ne pas bloquer la queue sur erreur permanente
+- **Banner UI quota dépassé** + page de gestion DLQ
+- **Migration legacy** : les snippets/dico existants côté Tauri Store remontent automatiquement au mount
+- **Edge Functions Supabase** : `sync-push` (validation Zod + quota), `account-export` (export GDPR)
+- **Validation runtime des payloads cloud** côté client (Zod) — données malformées rejetées sans propagation
+- Settings > Compte : toggle activation sync, état temps réel, backups locaux, lien export
+
+### ✨ Added — Suppression de compte GDPR (sub-épique 02)
+- **Bouton "Supprimer mon compte"** dans Settings > Sécurité avec confirmation forte
+- **Grace period 30 jours** : tombstone créée, signOut global immédiat, écran `DeletionPendingScreen` au re-login avec bouton d'annulation
+- **AAL2 obligatoire** si MFA activé : la suppression et l'annulation exigent une élévation TOTP
+- **Cron Postgres quotidien** (`pg_cron` 03:00 UTC) : Edge Function `purge-account-deletions` purge réellement après 30j (cascade FK sur toutes les tables user)
+- **Données locales nettoyées** : caches sync, backups locaux, recovery codes purgés au moment de la demande
+- Données 100% locales (recordings, historique transcriptions, notes) conservées intentionnellement
+
+### ✨ Added — Export GDPR
+- Bouton "Exporter mes données" dans Settings > Compte
+- Génère un JSON contenant `user_settings`, `user_dictionary_words`, `user_snippets`, `user_devices`
+- Conforme art. 20 GDPR (portabilité)
+
+### ✨ Added — Sécurité fondations (sub-épique 00)
+- **Workflow CI `security-audit.yml`** : `pnpm audit` + `cargo audit` bloquants sur HIGH/CRITICAL (PR + cron quotidien)
+- **Workflow CI `secret-scan.yml`** : scanner regex anti-leak (`sb_secret_*`, JWT service_role, PEM, `lsq_*`) sur les bundles frontend ET les binaires Tauri à chaque release
+- **Workflow CI `ci.yml`** : Vitest + cargo test + Deno test + pgtap RLS (90 + 30 + Deno + RLS tests)
+- **Tests pgtap RLS cross-tenant** sur les 5 tables synchronisées + recovery_codes + user_devices
+- **Runbooks opérationnels** : rotation des secrets, test de restore backup, réponse à incident GDPR <72h, purge account deletion, investigation device fingerprint
+- **Registre des traitements GDPR** + base légale par traitement
+- **Bootstraps documentés** : Supabase EU, Cloudflare Pages, checklist 2FA tous comptes ops
+
+### ✨ Added — Notes (continuité v2.x)
+- **Tables Tiptap** dans les notes avec toolbar flottante
+- **Code blocks avec coloration syntaxique** via `lowlight` + sélecteur de langage
+- **Slash command menu** pour insérer des blocs (`/`)
+- **Drag & drop des notes entre dossiers**
+- **Dialog custom de création de dossier** (remplace le `prompt()` natif)
+- **Note-to-note linking** (`@`) + backlinks panel + détection des liens cassés (rappel v2.10.1)
+
+### ✨ Added — Historique
+- **Pinned transcriptions** : épingler les transcriptions importantes en tête de liste
+- **Export avancé + filtres** : recherche, plage de dates, format
+- **Statistics dashboard** : onglet usage statistics avec métriques d'utilisation
+
+### ✨ Added — Audio
+- **Auto-trim silence** au début et à la fin des enregistrements (seuil adaptatif, logging détaillé)
+
+### ✨ Added — UI / UX
+- **Compact layout mode** pour les fenêtres étroites
+- **Logs tab gated derrière developer mode** (Settings > Système)
+- Filtres logs avancés (level + source)
+- **Harmonisation feedback copy** : toast unifié `useCopyToClipboard` sur tous les boutons copier
+- Preview/édition titres dans la mini fenêtre, sync settings au démarrage
+- Slash menu et table toolbar polish
+
+### 🔧 Changed
+- **Architecture AppData** : refactor des chemins de stockage sous `%APPDATA%/com.nolyo.lexena/` avec migration depuis l'ancien `voice-tool/`
+- **Settings sections** réorganisées + navigation simplifiée (Compte, Sécurité, Vocabulaire, etc.)
+- Post-process mode selector simplifié
+- Sidebar dashboard : icônes teintées slate
+- Suppression de l'icône note redondante dans sidebar/tabs
+
+### 🔒 Security
+- **CORS Edge Functions verrouillé** sur les origines Tauri officielles (étaient `*` initialement)
+- **Tests Deno unit** sur les Edge Functions critiques
+- **Hardening 2FA** : élévation AAL2 + challenge TOTP exigés avant désactivation 2FA
+- **Activation 2FA atomique** + `search_path` figé sur `pgcrypto`
+- **PKCE flow** pour magic link / signup / recovery
+- **Rate limiting** : table Postgres + RPC `check_rate_limit`, schedulé en daily purge, révoqué pour les rôles `anon`
+- **Trigger** "nouveau device" : colonne `notified_at` + payload prêt pour Edge Function d'envoi email (envoi réel = follow-up)
+- **Hardening Turnstile** : guard prod build, theme, UX submit
+- **`.gitattributes`** : enforce LF line endings (élimine les warnings CRLF cross-OS)
+- **Pin transitive deps** via `pnpm overrides` (CVE patch)
+- Logs ciblés `lexena_lib=info,warn` (zéro PII serveur côté Edge Functions)
+
+### 🐛 Fixed
+- **Recovery codes consommables** : `consume_recovery_code` RPC élève la session à AAL2 (était unreachable avant le fix `20260601000500`)
+- **2FA recovery flow** : `userId` correctement passé à `admin.mfa.deleteFactor`
+- **Sync** : dequeue par ID après partial-success batch (perdait des opérations)
+- **Sync** : respect du backoff + DLQ après 5 retries
+- **Account deletion** : ne supprime la tombstone que si `deleteUser` a réussi
+- **Account deletion** : signOut global tolérant aux erreurs + alerte avant signOut + a11y
+- **Cron deletion** : utilise `supabase_vault` au lieu de GUCs + `pg_net` activé + `verify_jwt=false`
+- **Notes** : placeholder body caché une fois la note non-vide
+- **i18n** : phrase de confirmation reset password traduite (était hardcodée FR)
+- **Deletion-pending screen** : clés CLDR plurals + bouton mode local + a11y
+- **AuthContext** : `deletionPending` fetch protégé contre les writes async stales
+- **Slash suggestion** : PluginKey distinct pour éviter collision avec NoteLink
+- **Light mode** : support complet du design system `vt-app`
+- **CI** : 4 jobs corrigés (pnpm conflict, deno lockfile, cargo target-dir, pgtap aal)
+- **CI** : libs Linux ajoutées pour cpal/enigo/reqwest (alsa, xdo, ssl)
+
+### 📚 Documentation
+- **18 ADRs v3** figés (`docs/v3/decisions/0001-0012`)
+- **3 sub-épiques figés** (00 sécurité, 01 auth, 02 sync) avec ADR de clôture chacun
+- **Plans d'implémentation** : sub-épique 00, 01, 02, account deletion, post-review fixes, auth hardening
+- **3 checklists E2E manuelles** (auth, sync, account deletion)
+- **Runbooks opérationnels** (5 documents)
+- **Registre GDPR + base légale + bootstraps**
+- **Threat model + matrice d'implémentation** (livrée 2026-05-01)
+
+### 🔧 Internal
+- Lib crate renommé `lexena_lib`
+- `.gitignore` couvre `.mcp.json`, plans intermédiaires
+- Suppression deps non utilisées : `tauri-plugin-fs`, `tauri-plugin-shell`
+- Ajout `bstr`, `normpath`, `opener`, `keyring`, `zod`, `vitest`, `supabase-cli`, `tauri-plugin-deep-link`
+
+### ⚠️ Migration
+- Recordings : auto-migration `voice-tool/recordings/` → `com.nolyo.lexena/recordings/` au premier lancement
+- Pre-rebrand `com.nolyo.voice-tool/recordings/` : copie manuelle requise (pas d'auto-migration depuis l'ancien identifiant)
+- Snippets/dico legacy (`settings.snippets`, `settings.dictionary`) : migration one-shot automatique au mount du recording workflow
+
+### ❌ Removed
+- Section Post Process retirée des settings
+- Stats row redondante dans l'historique
+- Icône note redondante de la sidebar/tabs
+- Anciens MSI et installers portable (un seul installer NSIS distribué — rappel v2.10.0)
+
+### 🗒️ Note
+- v3.0 communiquée comme **"Public Beta"** lors du soft launch
+- Plan Supabase **Free** (Pro reporté post-traction selon posture launch v3.0 free-tier first)
+- **Audit sécurité externe** prévu post-traction (>50 users sync), pas bloquant pour soft launch
+- **Privacy Policy** + **Terms of Service** + **Mentions légales** publics : drafts FR + EN livrés `docs/v3/legal/`, publication en ligne dépend du domaine final (sous-épique 06)
+- **Plan Supabase Pro upgrade** : prérequis pour PITR + DPA officiel + sessions Time-box
+
+---
+
 ## [2.10.1] - 2026-04-22
 
 ### ✨ Added

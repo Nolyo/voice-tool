@@ -23,13 +23,14 @@ Ce dossier est l'**epic story** de la v3 de Voice Tool. Il se construit progress
 
 | Sous-épique | Statut spec | Statut impl | Cible |
 |---|---|---|---|
-| 00 — Threat model & fondations | ✅ Figé 2026-04-22 | 🚧 En cours (plan 2026-04-24) | Bloquant v3.0 |
-| 01 — Auth | ✅ Figé 2026-04-22 | ✅ Livré 2026-04-24 | v3.0 |
-| 02 — Sync settings | ✅ Figé 2026-04-22 | 📝 À planifier | v3.0 |
+| 00 — Threat model & fondations | ✅ Figé 2026-04-22 | ✅ Livré 2026-04-24 (ADR 0012) | Bloquant v3.0 |
+| 01 — Auth | ✅ Figé 2026-04-22 | ✅ Livré 2026-04-24 (ADR 0009) | v3.0 |
+| 02 — Sync settings | ✅ Figé 2026-04-22 | ✅ Livré 2026-04-24 (ADR 0010) | v3.0 |
+| Account deletion (extension de 01/02) | ✅ Figé 2026-04-25 | ✅ Livré 2026-04-25 (ADR 0011) | v3.0 |
 | 03 — Sync notes | 📝 Stub | — | v3.1 |
 | 04 — Billing | 📝 Stub (POC fait) | — | v3.2 |
 | 05 — Managed transcription | 📝 Stub | — | v3.3 |
-| 06 — Onboarding | 📝 Stub | — | v3.1 |
+| 06 — Onboarding | 📝 Stub (intro tour en pause) | — | v3.1 |
 
 Légende statut spec : 📝 stub, 🚧 en cours, ✅ figé.
 Légende statut impl : — non démarré, 📝 à planifier, 🚧 en cours, ✅ livré.
