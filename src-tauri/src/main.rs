@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    voice_tool_lib::run()
+    lexena_lib::run()
 }

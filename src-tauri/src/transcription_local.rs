@@ -434,7 +434,7 @@ mod tests {
 
     #[test]
     fn models_dir_is_under_app_data_dir() {
-        let base = std::env::temp_dir().join("voice-tool-test-models-dir-nol53");
+        let base = std::env::temp_dir().join("lexena-test-models-dir-nol53");
         let _ = fs::remove_dir_all(&base);
 
         let result = models_dir_from_base(base.clone()).expect("models_dir_from_base failed");
@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn models_dir_from_base_is_idempotent() {
-        let base = std::env::temp_dir().join("voice-tool-test-models-dir-nol53-idem");
+        let base = std::env::temp_dir().join("lexena-test-models-dir-nol53-idem");
         let _ = fs::remove_dir_all(&base);
         fs::create_dir_all(base.join("models")).unwrap();
 

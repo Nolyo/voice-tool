@@ -2709,6 +2709,47 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "lexena"
+version = "3.0.0-beta.4"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "cpal",
+ "enigo",
+ "futures-util",
+ "hound",
+ "keyring",
+ "num_cpus",
+ "opener",
+ "parking_lot",
+ "reqwest 0.12.24",
+ "rubato",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-deep-link",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-opener",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-store",
+ "tauri-plugin-updater",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+ "wgpu",
+ "whisper-rs",
+ "windows-sys 0.59.0",
+ "zeroize",
+]
+
+[[package]]
 name = "libappindicator"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6261,47 +6302,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "voice-tool"
-version = "3.0.0-beta.4"
-dependencies = [
- "anyhow",
- "chrono",
- "cpal",
- "enigo",
- "futures-util",
- "hound",
- "keyring",
- "num_cpus",
- "opener",
- "parking_lot",
- "reqwest 0.12.24",
- "rubato",
- "serde",
- "serde_json",
- "sysinfo",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-deep-link",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-opener",
- "tauri-plugin-single-instance",
- "tauri-plugin-store",
- "tauri-plugin-updater",
- "time",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "url",
- "uuid",
- "wgpu",
- "whisper-rs",
- "windows-sys 0.59.0",
- "zeroize",
-]
 
 [[package]]
 name = "vswhom"

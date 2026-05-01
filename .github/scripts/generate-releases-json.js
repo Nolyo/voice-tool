@@ -21,7 +21,7 @@ const __dirname = dirname(__filename);
 
 // Configuration
 const OWNER = "Nolyo";
-const REPO = "voice-tool";
+const REPO = "lexena";
 const OUTPUT_FILE = join(__dirname, "../../docs/releases.json");
 const SCHEMA_VERSION = "1.0";
 

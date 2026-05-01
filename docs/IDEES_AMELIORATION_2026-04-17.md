@@ -246,7 +246,7 @@ API Notion : créer une page, ajouter un bloc… depuis une dictée.
 "Ajoute une tâche : appeler le médecin demain" → création directe.
 
 ### 8.5 🏗️ URL scheme / deep links ❌
-`voice-tool://record?mode=ptt&paste=false` pour déclencher des actions depuis d'autres outils.
+`lexena://record?mode=ptt&paste=false` pour déclencher des actions depuis d'autres outils.
 
 ### 8.6 🏗️ Serveur HTTP local ❌
 L'app expose une API REST/WebSocket locale (localhost:port). Permet à des plugins d'autres apps (VSCode, navigateurs) de s'intégrer.

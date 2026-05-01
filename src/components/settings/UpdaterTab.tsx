@@ -103,7 +103,7 @@ export function UpdaterTab() {
                       const { openUrl } = await import(
                         "@tauri-apps/plugin-opener"
                       );
-                      await openUrl("https://github.com/Nolyo/voice-tool");
+                      await openUrl("https://github.com/Nolyo/lexena");
                     }}
                   >
                     GitHub

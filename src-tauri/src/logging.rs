@@ -46,7 +46,7 @@ where
         // a few technical module names to more user-friendly labels.
         let target = metadata.target();
         let source = {
-            let stripped = target.strip_prefix("voice_tool_lib").unwrap_or(target);
+            let stripped = target.strip_prefix("lexena_lib").unwrap_or(target);
             let stripped = stripped.trim_start_matches("::");
             let first = stripped.split("::").next().unwrap_or("");
             let raw = if first.is_empty() { "app" } else { first };
@@ -113,9 +113,9 @@ pub fn init_logging() -> TauriLogLayer {
     let tauri_layer = TauriLogLayer::new();
 
     // Create a filter that only shows INFO and above for our app, and WARN+ for dependencies.
-    // The lib crate name is `voice_tool_lib` (not `voice_tool`) — without this alignment,
+    // The lib crate name is `lexena_lib` (not `lexena`) — without this alignment,
     // our INFO logs would be dropped.
-    let filter = tracing_subscriber::EnvFilter::new("voice_tool_lib=info,warn");
+    let filter = tracing_subscriber::EnvFilter::new("lexena_lib=info,warn");
 
     // Set up subscriber with both console output and Tauri event emission
     let subscriber = tracing_subscriber::registry()

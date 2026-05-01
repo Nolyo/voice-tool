@@ -157,7 +157,7 @@
 - Posture chiffrement: **server-side, style Notion**
 - Clés API: **jamais syncées**, device-local uniquement
 - Auth: **Email/password + Magic link + Google OAuth**
-- Flow callback: **page web HTTPS + deep link `voice-tool://`**
+- Flow callback: **page web HTTPS + deep link `lexena://`**
 
 ---
 

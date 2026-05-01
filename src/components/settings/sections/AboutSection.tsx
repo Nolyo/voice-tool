@@ -8,7 +8,7 @@ import { type SettingsSectionId } from "../common/SettingsNav";
 import { Callout, SectionHeader, VtIcon } from "../vt";
 
 const ACCENT = "oklch(0.72 0.16 130)";
-const GITHUB_URL = "https://github.com/Nolyo/voice-tool";
+const GITHUB_URL = "https://github.com/Nolyo/lexena";
 
 interface AboutSectionProps {
   onSectionChange?: (id: SettingsSectionId) => void;
