@@ -9,10 +9,12 @@ import { SystemSection } from "./sections/SystemSection";
 import { AppearanceSection } from "./sections/AppearanceSection";
 import { ShortcutsSection } from "./sections/ShortcutsSection";
 import { UpdaterSection } from "./sections/UpdaterSection";
+import { AboutSection } from "./sections/AboutSection";
 import { AccountSection } from "./sections/AccountSection";
 
 interface SettingTabsProps {
   activeSection: SettingsSectionId;
+  onSectionChange?: (id: SettingsSectionId) => void;
 }
 
 /**
@@ -21,7 +23,7 @@ interface SettingTabsProps {
  * Renders only the section selected in the main sidebar. The sub-navigation
  * lives in DashboardSidebar (SettingsSidebarSection).
  */
-export function SettingTabs({ activeSection }: SettingTabsProps) {
+export function SettingTabs({ activeSection, onSectionChange }: SettingTabsProps) {
   const { t } = useTranslation();
   const { isLoaded } = useSettings();
 
@@ -43,6 +45,9 @@ export function SettingTabs({ activeSection }: SettingTabsProps) {
       {activeSection === "section-raccourcis" && <ShortcutsSection />}
       {activeSection === "section-systeme" && <SystemSection />}
       {activeSection === "section-mises-a-jour" && <UpdaterSection />}
+      {activeSection === "section-a-propos" && (
+        <AboutSection onSectionChange={onSectionChange} />
+      )}
       {activeSection === "section-compte" && <AccountSection />}
     </div>
   );

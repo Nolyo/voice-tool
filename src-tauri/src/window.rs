@@ -354,7 +354,7 @@ pub(crate) fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn s
     use tauri::WebviewWindowBuilder;
 
     let mini = WebviewWindowBuilder::new(app, "mini", WebviewUrl::App("mini.html".into()))
-        .title("Voice Tool - Mini")
+        .title("Lexena - Mini")
         .inner_size(DEFAULT_MINI_WIDTH, DEFAULT_MINI_HEIGHT)
         .min_inner_size(180.0, 36.0)
         .resizable(true)

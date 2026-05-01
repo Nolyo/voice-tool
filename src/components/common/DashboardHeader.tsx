@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AudioVisualizer } from "./AudioVisualizer"
+import { LexenaWordmark } from "./LexenaWordmark"
 import { SyncStatusIndicator } from "@/components/SyncStatusIndicator"
 import { useSettings } from "@/hooks/useSettings"
 import type { DashboardTabId } from "@/components/dashboard/DashboardSidebar"
@@ -26,6 +27,7 @@ interface DashboardHeaderProps {
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
   activeTab: DashboardTabId;
+  sidebarCollapsed?: boolean;
 }
 
 const TAB_ICONS: Record<DashboardTabId, LucideIcon> = {
@@ -43,6 +45,7 @@ export function DashboardHeader({
   updateAvailable,
   onUpdateClick,
   activeTab,
+  sidebarCollapsed = false,
 }: DashboardHeaderProps) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -80,12 +83,19 @@ export function DashboardHeader({
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
       <div className="px-5 h-[61px] flex items-center">
         <div className="flex items-center justify-between gap-4 w-full">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 flex-shrink-0">
-              <TabIcon className="w-[18px] h-[18px] text-primary" />
-            </div>
-            <div className="min-w-0 leading-tight">
-              <h1 className="text-[15px] font-semibold text-foreground truncate">{t('header.title')}</h1>
+          <div className="flex items-center gap-3 min-w-0">
+            {sidebarCollapsed && (
+              <>
+                <LexenaWordmark
+                  variant={settings.theme === "light" ? "light" : "dark"}
+                  height={24}
+                  className="flex-shrink-0"
+                />
+                <div className="h-6 w-px bg-border flex-shrink-0" aria-hidden="true" />
+              </>
+            )}
+            <div className="flex items-center gap-1.5 min-w-0 leading-tight">
+              <TabIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
               <p className="text-[11px] text-muted-foreground truncate">{t(`header.subtitle.${activeTab}`)}</p>
             </div>
           </div>
@@ -103,7 +113,11 @@ export function DashboardHeader({
                       : "bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
                   }`}
                 >
-                  <Mic className="w-4 h-4 text-primary-foreground" />
+                  <Mic
+                    className={`w-4 h-4 ${
+                      isRecording ? "text-primary-foreground" : "text-signal-green"
+                    }`}
+                  />
                 </button>
                 {isRecording && (
                   <div className="absolute inset-0 rounded-full border-4 border-destructive animate-ping opacity-75" />

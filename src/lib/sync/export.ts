@@ -9,7 +9,7 @@ export async function downloadAccountExport(): Promise<string> {
   if (!data) throw new Error("empty response from account-export");
   const now = new Date();
   const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const filename = `voice-tool-export_${stamp}.json`;
+  const filename = `lexena-export_${stamp}.json`;
   return invoke<string>("save_export_to_download", {
     payloadJson: JSON.stringify(data, null, 2),
     suggestedFilename: filename,

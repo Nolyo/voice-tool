@@ -125,7 +125,7 @@ export function DangerZone() {
           <div className="text-[13px] font-medium">{t("settings.quitApp")}</div>
           <div className="text-[12px]" style={{ color: "var(--vt-fg-3)" }}>
             {t("settings.system.quitDescription", {
-              defaultValue: "Ferme Voice Tool complètement (pas juste la fenêtre).",
+              defaultValue: "Ferme Lexena complètement (pas juste la fenêtre).",
             })}
           </div>
         </div>

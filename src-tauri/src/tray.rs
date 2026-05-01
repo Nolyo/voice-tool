@@ -1,5 +1,6 @@
 use tauri::{
     Manager,
+    image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
@@ -9,8 +10,11 @@ pub(crate) fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
     let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
 
+    let tray_icon = Image::from_bytes(include_bytes!("../icons/monogram-tray.ico"))
+        .unwrap_or_else(|_| app.default_window_icon().unwrap().clone());
+
     let _tray = TrayIconBuilder::with_id("main-tray")
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(tray_icon)
         .menu(&menu)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "show" => {

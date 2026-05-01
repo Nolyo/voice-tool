@@ -2,7 +2,6 @@ import {
   BarChart3,
   FileText,
   History,
-  Mic,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -10,6 +9,8 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { LexenaWordmark } from "@/components/common/LexenaWordmark";
+import { useSettings } from "@/hooks/useSettings";
 import { NotesSidebarSection } from "@/components/notes/NotesSidebarSection";
 import { SettingsSidebarSection } from "@/components/settings/SettingsSidebarSection";
 import { type SettingsSectionId } from "@/components/settings/common/SettingsNav";
@@ -133,6 +134,8 @@ export function DashboardSidebar({
   developerMode,
 }: DashboardSidebarProps) {
   const { t } = useTranslation();
+  const { settings } = useSettings();
+  const wordmarkVariant = settings.theme === "light" ? "light" : "dark";
   const visibleNavItems = DASHBOARD_NAV_ITEMS.filter(
     (item) => item.id !== "logs" || developerMode,
   );
@@ -150,12 +153,11 @@ export function DashboardSidebar({
         }`}
       >
         {!collapsed && (
-          <>
-            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 flex-shrink-0">
-              <Mic className="w-3.5 h-3.5 text-primary" />
-            </div>
-            <span className="font-semibold text-sm truncate flex-1">{t('header.title')}</span>
-          </>
+          <LexenaWordmark
+            variant={wordmarkVariant}
+            height={22}
+            className="flex-1 min-w-0"
+          />
         )}
         <Button
           variant="ghost"

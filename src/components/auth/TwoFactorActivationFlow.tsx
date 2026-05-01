@@ -200,7 +200,7 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "voice-tool-recovery-codes.txt";
+    a.download = "lexena-recovery-codes.txt";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -210,9 +210,9 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
     if (!w) return;
     w.document.write(`
       <html>
-        <head><title>Voice Tool — recovery codes</title></head>
+        <head><title>Lexena — recovery codes</title></head>
         <body style="font-family: -apple-system, system-ui, sans-serif; padding: 24px;">
-          <h2 style="margin-top: 0;">Voice Tool — recovery codes</h2>
+          <h2 style="margin-top: 0;">Lexena — recovery codes</h2>
           <p style="color: #555;">${t("auth.twoFactor.activation.recoveryWarning")}</p>
           <pre style="font-size: 14px; line-height: 2; letter-spacing: .05em;">${recoveryCodes.join("\n")}</pre>
         </body>
