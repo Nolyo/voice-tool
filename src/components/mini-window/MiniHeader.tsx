@@ -46,7 +46,7 @@ export function MiniHeader({
     <>
       <span
         className={`${dotSize} rounded-full flex-shrink-0 ${
-          isRecording ? "bg-red-400 animate-pulse" : "bg-slate-500/70"
+          isRecording ? "bg-signal-green animate-pulse" : "bg-signal-green/40"
         }`}
       />
       {layout !== "compact" && languageBadge && (

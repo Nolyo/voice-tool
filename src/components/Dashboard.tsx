@@ -316,7 +316,10 @@ export default function Dashboard() {
           ) : (
             <div className="overflow-y-auto h-full">
               {activeTab === "parametres" ? (
-                <SettingTabs activeSection={activeSettingsSection} />
+                <SettingTabs
+                  activeSection={activeSettingsSection}
+                  onSectionChange={setActiveSettingsSection}
+                />
               ) : (
                 <div className="container mx-auto px-6 py-8">
                   {activeTab === "historique" && (

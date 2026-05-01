@@ -270,7 +270,22 @@
       "system": "Système",
       "systemSubtitle": "Démarrage et stockage",
       "updates": "Mises à jour",
-      "updatesSubtitle": "Nouvelles versions"
+      "updatesSubtitle": "Nouvelles versions",
+      "about": "À propos",
+      "aboutSubtitle": "Version, slogan et liens"
+    },
+    "about": {
+      "title": "À propos",
+      "subtitle": "Informations sur l'application Lexena.",
+      "slogan": "Capturez vos idées, précisément.",
+      "sourceCode": "Code source",
+      "sourceCodeDesc": "Le projet est open-source sur GitHub.",
+      "openGithub": "Ouvrir GitHub",
+      "checkUpdates": "Mises à jour",
+      "checkUpdatesDesc": "Vérifier la disponibilité d'une nouvelle version.",
+      "checkUpdatesBtn": "Vérifier les mises à jour",
+      "versionUnavailable": "Version indisponible",
+      "versionErrorTitle": "Impossible de récupérer la version"
     },
     "transcription": {
       "title": "Transcription",

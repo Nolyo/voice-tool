@@ -136,8 +136,8 @@ export function MiniShell() {
             )}
             {status === "success" && (
               <div className="flex items-center gap-2">
-                <span className="text-green-400 text-lg">✓</span>
-                <p className="text-xs text-green-400 font-medium">
+                <span className="text-signal-green text-lg">✓</span>
+                <p className="text-xs text-signal-green font-medium">
                   {t("mini.transcriptionSuccess")}
                 </p>
               </div>

@@ -33,7 +33,7 @@ export function BarsVisualizer({
           easedLevel * (maxHeight - MIN_HEIGHT) * modifier + MIN_HEIGHT;
         const height = isRecording ? dynamicHeight : MIN_HEIGHT;
         const color = isRecording
-          ? "linear-gradient(180deg, rgba(248, 113, 113, 0.95) 0%, rgba(248, 113, 113, 0.6) 100%)"
+          ? "linear-gradient(180deg, rgba(29, 158, 117, 0.95) 0%, rgba(29, 158, 117, 0.6) 100%)"
           : "linear-gradient(180deg, rgba(148, 163, 184, 0.4) 0%, rgba(148, 163, 184, 0.2) 100%)";
 
         return (

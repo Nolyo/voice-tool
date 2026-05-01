@@ -2,6 +2,7 @@ import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BookOpen,
+  Info,
   Keyboard,
   Mic,
   Palette,
@@ -30,6 +31,7 @@ export type SettingsSectionId =
   | "section-raccourcis"
   | "section-systeme"
   | "section-mises-a-jour"
+  | "section-a-propos"
   | "section-compte";
 
 const AUTH_ONLY_IDS = new Set<SettingsSectionId>([]);
@@ -90,6 +92,13 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     iconBg: "bg-sky-500/10",
     titleKey: "settings.nav.updates",
     subtitleKey: "settings.nav.updatesSubtitle",
+  },
+  {
+    id: "section-a-propos",
+    icon: <Info className="w-3.5 h-3.5 text-emerald-500" />,
+    iconBg: "bg-emerald-500/10",
+    titleKey: "settings.nav.about",
+    subtitleKey: "settings.nav.aboutSubtitle",
   },
   {
     id: "section-compte",
