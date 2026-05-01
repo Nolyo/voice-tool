@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Lexena",
   "version": "3.0.0-beta.4",
-  "identifier": "com.nolyo.voice-tool",
+  "identifier": "com.nolyo.lexena",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -28,7 +28,7 @@
         "scope": [
           "$APP/**",
           "$RESOURCE/*",
-          "$APPDATA/com.nolyo.voice-tool/profiles/*/recordings/*"
+          "$APPDATA/com.nolyo.lexena/profiles/*/recordings/*"
         ]
       }
     }
@@ -53,13 +53,13 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["voice-tool"]
+        "schemes": ["lexena"]
       }
     },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1MThCMjZDNzlBMjBDNDAKUldSQURLSjViTElZTlY1cWt4bUhvVnFra01heHpaMmFJOUpYMDgrd3NrcjlnVE5aT0Q1QURScm4K",
       "endpoints": [
-        "https://github.com/Nolyo/voice-tool/releases/latest/download/latest.json"
+        "https://github.com/Nolyo/lexena/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

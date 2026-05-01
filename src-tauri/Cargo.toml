@@ -1,11 +1,11 @@
 [package]
-name = "voice-tool"
+name = "lexena"
 version = "3.0.0-beta.4"
 description = "Transform your voice in text in real-time using AI models."
 authors = ["Yohann JAFFRES <contact@yohann-jaffres.fr>"]
 edition = "2021"
-documentation = "https://github.com/yohannjaffres/voice-tool"
-repository = "https://github.com/yohannjaffres/voice-tool"
+documentation = "https://github.com/yohannjaffres/lexena"
+repository = "https://github.com/yohannjaffres/lexena"
 keywords = ["tauri", "voice-to-text", "ai", "real-time", "audio-processing"]
 license = "MIT OR Apache-2.0"
 
@@ -15,7 +15,7 @@ license = "MIT OR Apache-2.0"
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "voice_tool_lib"
+name = "lexena_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]

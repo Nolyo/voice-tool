@@ -26,7 +26,7 @@ La clé privée a été générée localement dans `src-tauri/private.key` (**NE
 
 2. Copier TOUT le contenu (y compris les lignes BEGIN/END)
 
-3. Aller sur GitHub : `https://github.com/Nolyo/voice-tool/settings/secrets/actions`
+3. Aller sur GitHub : `https://github.com/Nolyo/lexena/settings/secrets/actions`
 
 4. Cliquer sur "New repository secret"
 
@@ -46,7 +46,7 @@ La clé publique est déjà configurée dans `src-tauri/tauri.conf.json` :
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEyQkRFNkUyRjA1MTlGODMKUldTRG4xSHc0dWE5b29ZSDE4Q1V1NzhVVmFuL1hDRlhoQ3p1RnJQMy9DNUlodXlKZmdNRURBU3oK",
       "endpoints": [
-        "https://github.com/Nolyo/voice-tool/releases/latest/download/latest.json"
+        "https://github.com/Nolyo/lexena/releases/latest/download/latest.json"
       ]
     }
   }
@@ -70,11 +70,11 @@ Une fois la clé privée configurée dans GitHub Secrets, le workflow CI/CD s'oc
 
 ```
 Release v2.0.2/
-├── voice-tool-v2.0.2-portable.exe
-├── voice-tool-v2.0.2-setup.exe
-├── voice-tool-v2.0.2-setup.exe.sig         ← Signature NSIS
-├── voice-tool-v2.0.2-setup.msi
-├── voice-tool-v2.0.2-setup.msi.sig         ← Signature MSI
+├── lexena-v2.0.2-portable.exe
+├── lexena-v2.0.2-setup.exe
+├── lexena-v2.0.2-setup.exe.sig         ← Signature NSIS
+├── lexena-v2.0.2-setup.msi
+├── lexena-v2.0.2-setup.msi.sig         ← Signature MSI
 ├── checksums-v2.0.2.txt
 ├── latest.json                             ← Manifeste pour l'updater
 └── releases.json                           ← Pour le site web
@@ -200,7 +200,7 @@ git push origin v2.0.2-test
 
 - [Documentation Tauri Updater](https://v2.tauri.app/plugin/updater/)
 - [API Rust](https://docs.rs/tauri-plugin-updater/)
-- [GitHub Releases](https://github.com/Nolyo/voice-tool/releases)
+- [GitHub Releases](https://github.com/Nolyo/lexena/releases)
 
 ---
 

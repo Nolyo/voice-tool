@@ -97,8 +97,8 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
 
     // Construct endpoint URL based on channel
     let endpoint_url = match channel.as_str() {
-        "beta" => "https://github.com/Nolyo/voice-tool/releases/latest/download/latest-beta.json",
-        _ => "https://github.com/Nolyo/voice-tool/releases/latest/download/latest.json", // Default to stable
+        "beta" => "https://github.com/Nolyo/lexena/releases/latest/download/latest-beta.json",
+        _ => "https://github.com/Nolyo/lexena/releases/latest/download/latest.json", // Default to stable
     };
 
     tracing::info!("Checking for updates on channel '{}' from: {}", channel, endpoint_url);
@@ -168,8 +168,8 @@ pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
 
     // Construct endpoint URL based on channel
     let endpoint_url = match channel.as_str() {
-        "beta" => "https://github.com/Nolyo/voice-tool/releases/latest/download/latest-beta.json",
-        _ => "https://github.com/Nolyo/voice-tool/releases/latest/download/latest.json",
+        "beta" => "https://github.com/Nolyo/lexena/releases/latest/download/latest-beta.json",
+        _ => "https://github.com/Nolyo/lexena/releases/latest/download/latest.json",
     };
 
     tracing::info!("Downloading update from channel '{}': {}", channel, endpoint_url);

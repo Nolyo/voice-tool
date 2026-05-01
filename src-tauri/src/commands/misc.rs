@@ -77,9 +77,9 @@ pub fn type_text_at_cursor(text: String) -> Result<(), String> {
 #[tauri::command]
 pub fn frontend_log(level: String, message: String) -> Result<(), String> {
     match level.as_str() {
-        "warn" => tracing::warn!(target: "voice_tool_lib::frontend", "{}", message),
-        "error" => tracing::error!(target: "voice_tool_lib::frontend", "{}", message),
-        _ => tracing::info!(target: "voice_tool_lib::frontend", "{}", message),
+        "warn" => tracing::warn!(target: "lexena_lib::frontend", "{}", message),
+        "error" => tracing::error!(target: "lexena_lib::frontend", "{}", message),
+        _ => tracing::info!(target: "lexena_lib::frontend", "{}", message),
     }
     Ok(())
 }

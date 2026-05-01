@@ -30,14 +30,14 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-            let has_deep_link = args.iter().any(|a| a.starts_with("voice-tool://"));
+            let has_deep_link = args.iter().any(|a| a.starts_with("lexena://"));
             tracing::info!(
                 "single_instance fired (arg_count={}, has_deep_link={})",
                 args.len(),
                 has_deep_link
             );
             // ─── NEW: route deep-link args to auth handler ────────────────────────────
-            if let Some(url) = args.iter().find(|a| a.starts_with("voice-tool://")) {
+            if let Some(url) = args.iter().find(|a| a.starts_with("lexena://")) {
                 auth::emit_deep_link_event(app, url);
             }
             // ─── Preserve existing behavior (bring window forward) ────────────────────
@@ -152,7 +152,7 @@ pub fn run() {
                 tracing::info!("on_open_url fired (url_count={})", urls.len());
                 for url in urls {
                     let s = url.as_str();
-                    if s.starts_with("voice-tool://") {
+                    if s.starts_with("lexena://") {
                         auth::emit_deep_link_event(&handle, s);
                     }
                 }

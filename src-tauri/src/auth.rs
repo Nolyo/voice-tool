@@ -9,7 +9,7 @@ use crate::state::AppState;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const KEYRING_SERVICE: &str = "voice-tool-v3";
+const KEYRING_SERVICE: &str = "lexena-v3";
 const KEYRING_ACCOUNT_REFRESH_TOKEN: &str = "refresh_token";
 const KEYRING_ACCOUNT_DEVICE_ID: &str = "device_fingerprint";
 
@@ -159,7 +159,7 @@ fn parse_and_validate_deep_link(url: &str) -> DeepLinkPayload {
 /// Validates scheme, host, path, type whitelist, and JWT field shapes.
 fn validate_url_shape(url: &str) -> Result<HashMap<String, String>, &'static str> {
     let parsed = url::Url::parse(url).map_err(|_| "malformed url")?;
-    if parsed.scheme() != "voice-tool" {
+    if parsed.scheme() != "lexena" {
         return Err("wrong scheme");
     }
     if parsed.host_str() != Some("auth") || parsed.path() != "/callback" {
@@ -377,28 +377,28 @@ mod tests {
 
     #[test]
     fn validate_url_shape_rejects_wrong_host() {
-        assert_eq!(validate_url_shape("voice-tool://wrong/callback?type=magiclink"), Err("wrong host/path"));
+        assert_eq!(validate_url_shape("lexena://wrong/callback?type=magiclink"), Err("wrong host/path"));
     }
 
     #[test]
     fn validate_url_shape_rejects_wrong_path() {
-        assert_eq!(validate_url_shape("voice-tool://auth/other?type=magiclink"), Err("wrong host/path"));
+        assert_eq!(validate_url_shape("lexena://auth/other?type=magiclink"), Err("wrong host/path"));
     }
 
     #[test]
     fn validate_url_shape_rejects_missing_type() {
-        assert_eq!(validate_url_shape("voice-tool://auth/callback"), Err("missing type"));
+        assert_eq!(validate_url_shape("lexena://auth/callback"), Err("missing type"));
     }
 
     #[test]
     fn validate_url_shape_rejects_unknown_type() {
-        assert_eq!(validate_url_shape("voice-tool://auth/callback?type=hacker"), Err("type not whitelisted"));
+        assert_eq!(validate_url_shape("lexena://auth/callback?type=hacker"), Err("type not whitelisted"));
     }
 
     #[test]
     fn validate_url_shape_rejects_malformed_jwt() {
         assert_eq!(
-            validate_url_shape("voice-tool://auth/callback?type=magiclink&access_token=not-a-jwt"),
+            validate_url_shape("lexena://auth/callback?type=magiclink&access_token=not-a-jwt"),
             Err("jwt field has wrong shape")
         );
     }
@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn validate_url_shape_accepts_valid_magiclink() {
         let result = validate_url_shape(
-            "voice-tool://auth/callback?type=magiclink&access_token=eyJh.eyJh.signature1234&refresh_token=eyJh.eyJh.signature5678"
+            "lexena://auth/callback?type=magiclink&access_token=eyJh.eyJh.signature1234&refresh_token=eyJh.eyJh.signature5678"
         );
         assert!(result.is_ok());
         let params = result.unwrap();
@@ -416,7 +416,7 @@ mod tests {
     #[test]
     fn validate_url_shape_accepts_valid_oauth_with_state() {
         let result = validate_url_shape(
-            "voice-tool://auth/callback?type=oauth&code=abc123&state=nonce-uuid"
+            "lexena://auth/callback?type=oauth&code=abc123&state=nonce-uuid"
         );
         assert!(result.is_ok());
     }
