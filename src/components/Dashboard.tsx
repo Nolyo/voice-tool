@@ -267,6 +267,7 @@ export default function Dashboard() {
           updateAvailable={updateAvailable}
           onUpdateClick={() => setShowUpdateModal(true)}
           activeTab={activeTab}
+          sidebarCollapsed={sidebarCollapsed}
         />
 
         <SelectedModelMissingBanner

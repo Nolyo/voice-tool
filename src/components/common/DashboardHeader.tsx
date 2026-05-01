@@ -27,6 +27,7 @@ interface DashboardHeaderProps {
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
   activeTab: DashboardTabId;
+  sidebarCollapsed?: boolean;
 }
 
 const TAB_ICONS: Record<DashboardTabId, LucideIcon> = {
@@ -44,6 +45,7 @@ export function DashboardHeader({
   updateAvailable,
   onUpdateClick,
   activeTab,
+  sidebarCollapsed = false,
 }: DashboardHeaderProps) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -82,12 +84,16 @@ export function DashboardHeader({
       <div className="px-5 h-[61px] flex items-center">
         <div className="flex items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-3 min-w-0">
-            <LexenaWordmark
-              variant={settings.theme === "light" ? "light" : "dark"}
-              height={24}
-              className="flex-shrink-0"
-            />
-            <div className="h-6 w-px bg-border flex-shrink-0" aria-hidden="true" />
+            {sidebarCollapsed && (
+              <>
+                <LexenaWordmark
+                  variant={settings.theme === "light" ? "light" : "dark"}
+                  height={24}
+                  className="flex-shrink-0"
+                />
+                <div className="h-6 w-px bg-border flex-shrink-0" aria-hidden="true" />
+              </>
+            )}
             <div className="flex items-center gap-1.5 min-w-0 leading-tight">
               <TabIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
               <p className="text-[11px] text-muted-foreground truncate">{t(`header.subtitle.${activeTab}`)}</p>
