@@ -46,7 +46,7 @@ export function LexenaWordmark({
       >
         lexena
       </text>
-      {showSignalDot && <circle cx="214" cy="6" r="3.5" fill="#1D9E75" />}
+      {showSignalDot && <circle cx="214" cy="18" r="3.5" fill="#1D9E75" />}
     </svg>
   );
 }

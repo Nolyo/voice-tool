@@ -23,7 +23,7 @@
     "done": "Terminé"
   },
   "header": {
-    "title": "Voice Tool",
+    "title": "Lexena",
     "subtitle": {
       "historique": "Historique des dictées",
       "statistiques": "Statistiques d'utilisation",
@@ -461,7 +461,7 @@
       "themeDark": "Sombre",
       "themeLight": "Clair",
       "startWithWindowsHint": "Comportement au lancement de Windows.",
-      "quitDescription": "Ferme Voice Tool complètement (pas juste la fenêtre).",
+      "quitDescription": "Ferme Lexena complètement (pas juste la fenêtre).",
       "developerMode": "Mode développeur",
       "developerModeHint": "Affiche l'onglet Logs dans la barre latérale. Réservé au diagnostic.",
       "danger": {
@@ -532,7 +532,7 @@
     "checkUpdates": "Vérifier les mises à jour",
     "unavailableTitle": "Mises à jour indisponibles",
     "unavailableDesc": "Les mises à jour automatiques ne sont pas disponibles en mode développement.",
-    "upToDate": "Vous êtes à jour ! Vous utilisez déjà la dernière version de Voice Tool.",
+    "upToDate": "Vous êtes à jour ! Vous utilisez déjà la dernière version de Lexena.",
     "newVersionTitle": "Nouvelle version disponible",
     "publishedOn": "Publiée le",
     "install": "Installer",
@@ -871,7 +871,7 @@
       "legal": "En continuant, tu acceptes nos Conditions et notre Politique de confidentialité."
     },
     "login": {
-      "title": "Connecte-toi à Voice Tool",
+      "title": "Connecte-toi à Lexena",
       "subtitle": "Synchronise tes réglages et notes entre tes machines.",
       "magicLinkLabel": "Email",
       "magicLinkPlaceholder": "toi@exemple.com",
@@ -944,7 +944,7 @@
       "deleteAccount": "Supprimer mon compte",
       "deleteAccountWarning": "Cette action est irréversible. Toutes les données synchronisées seront supprimées sous 30 jours.",
       "identityTitle": "Identité",
-      "identityDesc": "Informations de connexion liées à ce compte Voice Tool.",
+      "identityDesc": "Informations de connexion liées à ce compte Lexena.",
       "connectedBadge": "Connecté",
       "changeEmail": "Changer d'email",
       "magicLinkConnection": "Connexion par <0>magic link</0>",
@@ -956,8 +956,8 @@
       "localBackupsTitle": "Sauvegardes locales",
       "localBackupsDesc": "Snapshots pris automatiquement avant chaque sync.",
       "noBackups": "Aucune sauvegarde locale.",
-      "signedOutTitle": "Synchronise Voice Tool sur tous tes appareils",
-      "signedOutBody": "Garde tes snippets, ton dictionnaire et tes préférences alignés entre Windows, macOS et iOS. Voice Tool fonctionne aussi parfaitement sans compte — tout reste local.",
+      "signedOutTitle": "Synchronise Lexena sur tous tes appareils",
+      "signedOutBody": "Garde tes snippets, ton dictionnaire et tes préférences alignés entre Windows, macOS et iOS. Lexena fonctionne aussi parfaitement sans compte — tout reste local.",
       "signedOutSignIn": "Se connecter",
       "signedOutCreate": "Créer un compte",
       "perkServerEncryption": "Server-side hardened",
@@ -1040,7 +1040,7 @@
     "activation": {
       "title": "Activer la synchronisation",
       "no_local_data": "Ton setup est presque vide. La synchronisation va juste récupérer ton état cloud s'il existe, ou démarrer un nouveau profil vide côté cloud.",
-      "has_local_data": "Tu as déjà configuré Voice Tool sur ce device. Que veux-tu faire ?",
+      "has_local_data": "Tu as déjà configuré Lexena sur ce device. Que veux-tu faire ?",
       "choice_upload": "Uploader mon setup actuel (recommandé)",
       "choice_upload_desc": "Tes snippets, hotkeys, dictionnaire seront envoyés au cloud et disponibles sur tes autres devices.",
       "choice_fresh": "Partir d'un setup neuf",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Voice Tool",
+  "productName": "Lexena",
   "version": "3.0.0-beta.4",
   "identifier": "com.nolyo.voice-tool",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Voice Tool",
+        "title": "Lexena",
         "width": 1000,
         "height": 600,
         "minWidth": 1000,

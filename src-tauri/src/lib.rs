@@ -162,7 +162,7 @@ pub fn run() {
             log_layer.set_app_handle(app.handle().clone());
 
             tracing::info!(
-                "Voice Tool v{} started",
+                "Lexena v{} started",
                 app.package_info().version
             );
 

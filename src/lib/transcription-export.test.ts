@@ -29,7 +29,7 @@ describe("buildExportPayload", () => {
       includeMetadata: true,
       includeOriginal: true,
     });
-    expect(out.filename).toMatch(/^voice-tool-export_.*\.txt$/);
+    expect(out.filename).toMatch(/^lexena-export_.*\.txt$/);
     expect(out.mime).toBe("text/plain");
     expect(out.content).toContain("Hello, this is a test.");
     expect(out.content).toContain("OpenAI");
@@ -54,7 +54,7 @@ describe("buildExportPayload", () => {
       includeOriginal: true,
     });
     expect(out.filename).toMatch(/\.md$/);
-    expect(out.content).toMatch(/^# Voice Tool/);
+    expect(out.content).toMatch(/^# Lexena/);
     expect(out.content).toContain("## ");
     expect(out.content).toContain("**Provider :** OpenAI");
   });
@@ -113,7 +113,7 @@ describe("exportTranscriptions invoke", () => {
   });
 
   it("invokes the Tauri command with sanitized payload+filename", async () => {
-    const invokeMock = vi.fn().mockResolvedValue("/Downloads/voice-tool-export_x.txt");
+    const invokeMock = vi.fn().mockResolvedValue("/Downloads/lexena-export_x.txt");
     vi.doMock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 
     const mod = await import("./transcription-export");
@@ -131,7 +131,7 @@ describe("exportTranscriptions invoke", () => {
         payload: expect.stringContaining("Hello, this is a test."),
       }),
     );
-    expect(result.path).toBe("/Downloads/voice-tool-export_x.txt");
+    expect(result.path).toBe("/Downloads/lexena-export_x.txt");
     expect(result.filename).toMatch(/\.txt$/);
   });
 });

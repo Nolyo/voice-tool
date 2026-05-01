@@ -417,7 +417,7 @@ body.mini-window-body #root {
   backdrop-filter: blur(12px);
 }
 
-/* ── Voice Tool design-system tokens & utilities ───────────────────────────
+/* ── Lexena design-system tokens & utilities ──────────────────────────────
  * Scoped under `.vt-app` to avoid leaking into other parts of the app.
  * Shared across Settings, Historique, and future redesigned screens.
  */

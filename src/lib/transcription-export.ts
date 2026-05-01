@@ -60,7 +60,7 @@ function buildTxt(items: Transcription[], opts: ExportOptions): string {
 
 function buildMarkdown(items: Transcription[], opts: ExportOptions): string {
   const lines: string[] = [];
-  lines.push(`# Voice Tool — Export`);
+  lines.push(`# Lexena — Export`);
   lines.push("");
   lines.push(`Exporté le ${new Date().toLocaleString()} · ${items.length} transcription(s)`);
   lines.push("");
@@ -151,7 +151,7 @@ export function buildExportPayload(
     .replace(/[:.]/g, "-")
     .replace("T", "_")
     .slice(0, 19);
-  const base = `voice-tool-export_${stamp}`;
+  const base = `lexena-export_${stamp}`;
   switch (opts.format) {
     case "txt":
       return {
