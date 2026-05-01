@@ -11,34 +11,35 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 use crate::state::AppState;
 
-/// Get the models directory, creating it if it doesn't exist
-pub fn get_models_dir() -> Result<PathBuf> {
-    let app_data = std::env::var("APPDATA")
-        .or_else(|_| std::env::var("HOME"))
-        .context("Could not find application data directory")?;
-
-    let models_dir = PathBuf::from(&app_data)
-        .join("com.nolyo.voice-tool")
-        .join("models");
-
+/// Core path logic: models dir is always `<base>/models`. Extracted for testability.
+fn models_dir_from_base(base: PathBuf) -> Result<PathBuf> {
+    let models_dir = base.join("models");
     if !models_dir.exists() {
         fs::create_dir_all(&models_dir).context("Failed to create models directory")?;
     }
-
     Ok(models_dir)
+}
+
+/// Get the models directory, creating it if it doesn't exist
+pub fn get_models_dir<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<PathBuf> {
+    let base = app
+        .path()
+        .app_data_dir()
+        .context("Could not determine app data directory")?;
+    models_dir_from_base(base)
 }
 
 pub fn get_model_filename(model_type: &str) -> String {
     format!("ggml-{}.bin", model_type.to_lowercase())
 }
 
-pub fn get_model_path(model_type: &str) -> Result<PathBuf> {
-    let dir = get_models_dir()?;
+pub fn get_model_path<R: tauri::Runtime>(app: &AppHandle<R>, model_type: &str) -> Result<PathBuf> {
+    let dir = get_models_dir(app)?;
     Ok(dir.join(get_model_filename(model_type)))
 }
 
-pub fn check_model_exists(model_type: &str) -> bool {
-    if let Ok(path) = get_model_path(model_type) {
+pub fn check_model_exists<R: tauri::Runtime>(app: &AppHandle<R>, model_type: &str) -> bool {
+    if let Ok(path) = get_model_path(app, model_type) {
         path.exists()
     } else {
         false
@@ -46,8 +47,8 @@ pub fn check_model_exists(model_type: &str) -> bool {
 }
 
 /// True if at least one ggml-*.bin file exists in the models directory.
-pub fn any_model_exists() -> bool {
-    let Ok(dir) = get_models_dir() else {
+pub fn any_model_exists<R: tauri::Runtime>(app: &AppHandle<R>) -> bool {
+    let Ok(dir) = get_models_dir(app) else {
         return false;
     };
     let Ok(entries) = fs::read_dir(&dir) else {
@@ -61,8 +62,8 @@ pub fn any_model_exists() -> bool {
 }
 
 /// Delete a downloaded model to free disk space
-pub fn delete_model(model_type: &str) -> Result<()> {
-    let path = get_model_path(model_type)?;
+pub fn delete_model<R: tauri::Runtime>(app: &AppHandle<R>, model_type: &str) -> Result<()> {
+    let path = get_model_path(app, model_type)?;
     if path.exists() {
         fs::remove_file(&path).context("Failed to delete model file")?;
         tracing::info!("Model {} deleted successfully", model_type);
@@ -77,7 +78,7 @@ pub async fn download_model<R: tauri::Runtime>(
     model_type: String,
 ) -> Result<PathBuf> {
     let model_filename = get_model_filename(&model_type);
-    let target_path = get_model_path(&model_type)?;
+    let target_path = get_model_path(&app_handle, &model_type)?;
 
     if target_path.exists() {
         return Ok(target_path);
@@ -130,7 +131,7 @@ pub async fn transcribe_local<R: tauri::Runtime>(
     translate: bool,
     keep_model_in_memory: Option<bool>,
 ) -> Result<String> {
-    let model_path = get_model_path(model_type)?;
+    let model_path = get_model_path(app, model_type)?;
 
     if !model_path.exists() {
         return Err(anyhow!(
@@ -318,7 +319,7 @@ pub fn preload_if_configured(app: &mut tauri::App) {
             return;
         }
 
-        if !check_model_exists(&model_size) {
+        if !check_model_exists(&preload_handle, &model_size) {
             tracing::info!(
                 "Skipping whisper preload (model '{}' not downloaded)",
                 model_size
@@ -337,7 +338,7 @@ pub fn preload_if_configured(app: &mut tauri::App) {
         let state = preload_handle.state::<AppState>();
         let mut cache = state.whisper.cache.lock().await;
 
-        if let Ok(model_path) = get_model_path(&model_size) {
+        if let Ok(model_path) = get_model_path(&preload_handle, &model_size) {
             let path_str = model_path.to_string_lossy().to_string();
             match load_whisper_context(&path_str) {
                 Ok((ctx, is_gpu)) => {
@@ -425,4 +426,34 @@ fn resample_to_16k(audio: &[f32], from_rate: u32) -> Result<Vec<f32>> {
         .map_err(|e| anyhow!("Resampling failed: {:?}", e))?;
 
     Ok(waves_out.into_iter().next().unwrap_or_default())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn models_dir_is_under_app_data_dir() {
+        let base = std::env::temp_dir().join("voice-tool-test-models-dir-nol53");
+        let _ = fs::remove_dir_all(&base);
+
+        let result = models_dir_from_base(base.clone()).expect("models_dir_from_base failed");
+
+        assert_eq!(result, base.join("models"));
+        assert!(result.exists(), "models dir should have been created");
+
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn models_dir_from_base_is_idempotent() {
+        let base = std::env::temp_dir().join("voice-tool-test-models-dir-nol53-idem");
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(base.join("models")).unwrap();
+
+        let result = models_dir_from_base(base.clone());
+        assert!(result.is_ok(), "should succeed even if dir already exists");
+
+        let _ = fs::remove_dir_all(&base);
+    }
 }
