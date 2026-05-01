@@ -3,7 +3,9 @@
 
 Write-Host "Loading signing key..." -ForegroundColor Cyan
 $env:TAURI_SIGNING_PRIVATE_KEY = Get-Content "$PSScriptRoot\..\src-tauri\private.key" -Raw
-$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
+# Password not set here on purpose: Tauri will prompt interactively.
+# If you want to skip the prompt, uncomment and set the real password:
+# $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "your-password-here"
 
 Write-Host "Building application..." -ForegroundColor Cyan
 pnpm tauri build
