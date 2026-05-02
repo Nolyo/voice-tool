@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render } from "@react-email/render";
 import MagicLink, { subject as magicLinkSubject } from "../templates/MagicLink";
 import SignupConfirmation, { subject as signupSubject } from "../templates/SignupConfirmation";
+import PasswordReset, { subject as resetSubject } from "../templates/PasswordReset";
 
 describe("MagicLink template", () => {
   it("exports the expected subject", () => {
@@ -71,5 +72,38 @@ describe("SignupConfirmation template", () => {
     const html = await render(<SignupConfirmation />);
     // apostrophe may be HTML-entity-encoded
     expect(html).toMatch(/didn(?:&#x27;|')?t create a Lexena account/i);
+  });
+});
+
+describe("PasswordReset template", () => {
+  it("exports the expected subject", () => {
+    expect(resetSubject).toBe("Reset your Lexena password");
+  });
+
+  it("renders the H1 'Reset your password'", async () => {
+    const html = await render(<PasswordReset />);
+    expect(html).toContain("Reset your password");
+  });
+
+  it("includes the Liquid placeholder for the confirmation URL, unescaped", async () => {
+    const html = await render(<PasswordReset />);
+    expect(html).toContain("{{ .ConfirmationURL }}");
+    expect(html).not.toContain("&#123;&#123;");
+  });
+
+  it("mentions the 1-hour validity", async () => {
+    const html = await render(<PasswordReset />);
+    expect(html).toMatch(/valid for 1 hour/i);
+  });
+
+  it("warns about session revocation", async () => {
+    const html = await render(<PasswordReset />);
+    expect(html).toMatch(/active sessions on other devices will be revoked/i);
+  });
+
+  it("includes the CTA 'Reset password'", async () => {
+    const html = await render(<PasswordReset />);
+    expect(html).toContain(">Reset password<");
+    expect(html).toContain("</a>");
   });
 });
