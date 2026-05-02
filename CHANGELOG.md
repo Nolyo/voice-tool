@@ -1,271 +1,199 @@
+# Changelog
+
+All notable changes to Lexena (formerly Voice Tool) are documented here.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+> ⚠️ **Versions older than 3.0 are unsupported.** Please upgrade to the latest 3.x release.
+> Full historical release notes for the 2.x line are available on the [GitHub Releases page](https://github.com/Nolyo/voice-tool/releases).
+
+---
+
+## [3.0.0] - 2026-05-XX (in preparation)
+
+> Major release. Voice Tool becomes **Lexena**. User accounts and cloud sync of settings, vocabulary and snippets land. The trust promise stays intact: **the fully local, account-less mode remains free and fully functional, and your API keys never leave your device**.
+
+### Added — Visual identity
+- Full **Voice Tool → Lexena** rebrand: binary, application identifier (`com.nolyo.lexena`), AppData folder (`%APPDATA%/com.nolyo.lexena/`), deep-link scheme (`lexena://`)
+- New Lexena visual identity: icons, color palette, OKLCH-based design tokens, scoped under `.vt-app`
+
+### Added — User accounts (sub-epic 01)
+- Sign up via **magic link**, **email + password**, or **Google OAuth**
+- **Optional 2FA (TOTP)** — toggle from Settings → Security, compatible with Google Authenticator, Authy, Bitwarden, 1Password
+- **10 recovery codes** generated when 2FA is enabled, hashed server-side (SHA-256), single-use
+- **Cloudflare Turnstile captcha** at signup and magic-link request to throttle abuse
+- **Pwned-password check**: passwords found in the embedded top-10k SHA-256 leak list are rejected (offline check, no network round-trip)
+- **Live password-strength meter** at signup
+- **Anti-enumeration**: identical responses for known and unknown accounts at every signup / reset / magic-link path
+- **Anti-Gmail-aliasing**: `user+tag@gmail.com` and `u.s.e.r@gmail.com` are recognized as a single account (Postgres trigger + immutable canonicalization function)
+- **Disposable-domain blocklist** at signup (embedded list, client-side check)
+- Sessions stored in the **OS keyring** (Windows Credential Manager / macOS Keychain / Linux Secret Service) with a memory-only fallback when the keyring is unavailable
+- **Connected devices view** in Settings → Security: OS, app version, last activity, revoke
+- **Rust-side deep-link validation**: anti-CSRF nonce, anti-replay window, strict JWT-shape parsing
+- New screens: `AuthModal`, `SignInPanel`, `SignupView`, `ResetPasswordRequest/Confirm`, `TwoFactorActivationFlow`, `TwoFactorChallengeView`, `RecoveryCodesPanel`
+
+### Added — Cloud sync (sub-epic 02)
+- **Opt-in sync** of settings, personal dictionary and snippets through Supabase EU
+- **9 syncable scalar settings**: theme, UI language, 3 hotkeys, insertion mode, sounds, transcription provider, local model size
+- **Last-Write-Wins per item** to resolve multi-device conflicts via the server timestamp
+- **Soft-delete with tombstones** so deletions propagate cleanly across devices
+- **Automatic local backup** taken before the first sync activation
+- **Persistent offline queue**: changes made offline are FIFO-queued and flushed automatically on reconnect
+- **Backoff + dead-letter queue** after 5 failed retries — never blocks the queue on a permanent error
+- **Quota-exceeded UI banner** + DLQ management screen
+- **Legacy migration**: snippets and dictionary entries that were stored in the legacy Tauri Store are migrated automatically the first time the recording workflow mounts
+- **Edge Functions**: `sync-push` (Zod validation + per-user quota), `account-export` (GDPR Art. 20 export)
+- **Runtime payload validation** (Zod) on every cloud read — malformed data is rejected before reaching the UI
+- Settings → Account: sync activation toggle, real-time sync status, local backup list, export shortcut
+
+### Added — Account deletion (GDPR)
+- **"Delete my account" button** in Settings → Security with a strong confirmation step
+- **30-day grace period**: a tombstone is recorded, global sign-out fires immediately, and any subsequent login lands on `DeletionPendingScreen` with an "undo" button
+- **AAL2 required** when MFA is on: deletion and undo both demand a fresh TOTP elevation
+- **Daily Postgres cron** (`pg_cron`, 03:00 UTC) invokes the `purge-account-deletions` Edge Function which performs the actual purge after 30 days (FK cascade across every user-owned table)
+- **Local data scrubbed** at request time: sync caches, local backups, recovery codes
+- Strictly local data (recordings, transcription history, notes) is intentionally **kept** — it never reached our servers
+
+### Added — GDPR data export
+- "Export my data" button in Settings → Account
+- Generates a JSON containing `user_settings`, `user_dictionary_words`, `user_snippets`, `user_devices`
+- Compliant with GDPR Art. 20 (data portability)
+
+### Added — Security foundations (sub-epic 00)
+- **CI workflow `security-audit.yml`**: `pnpm audit` + `cargo audit` blocking on HIGH/CRITICAL (PRs and daily cron)
+- **CI workflow `secret-scan.yml`**: regex scanner for leaked secrets (`sb_secret_*`, `service_role` JWTs, PEM blocks, `lsq_*`) running on both frontend bundles **and** Tauri binaries at every release
+- **CI workflow `ci.yml`**: Vitest + cargo test + Deno test + pgtap RLS (90 + 30 + Deno + RLS)
+- **Cross-tenant pgtap tests** on the 5 sync tables, `recovery_codes` and `user_devices`
+- **Operational runbooks**: secret rotation, restore-from-backup drill, GDPR <72h incident response, account-deletion purge, device-fingerprint investigation
+- **GDPR processing register** + lawful basis per processing activity
+- **Bootstrap docs**: Supabase EU setup, Cloudflare Pages, ops 2FA enrollment checklist
+
+### Added — Notes (continuation of 2.x)
+- **Tiptap tables** with a floating toolbar
+- **Code blocks with syntax highlighting** via `lowlight` and a per-block language selector
+- **Slash command menu** (`/`) to insert blocks
+- **Drag & drop** for moving notes between folders
+- Custom **folder-creation dialog** (replaces the native browser `prompt()`)
+- Note-to-note linking (`@`) + backlinks panel + broken-link detection (carried over from 2.10.1)
+
+### Added — History
+- **Pin transcriptions** to keep important entries at the top of the list
+- **Advanced export + filters**: text search, date range, format
+- **Statistics dashboard**: usage-statistics tab
+
+### Added — Audio
+- **Auto-trim silence** at the start and end of recordings (adaptive threshold, detailed logging)
+
+### Added — UI / UX
+- **Compact layout mode** for narrow windows
+- Logs tab is now **gated behind developer mode** (Settings → System)
+- Advanced log filters (level + source)
+- Unified copy-to-clipboard feedback (`useCopyToClipboard`) on every copy button
+- Title preview / inline edit in the mini window, settings refresh on startup
+- Slash menu and table-toolbar polish
+
+### Changed
+- **AppData layout**: per-profile data is now consistently rooted at `%APPDATA%/com.nolyo.lexena/profiles/<profile_id>/` (settings, recordings, transcriptions, notes). Profile isolation was introduced in 2.9.0; this release finalizes the layout under the new application identifier.
+- Settings sections reorganized — new **Account** and **Security** tabs (only visible when signed in)
+- Post-process mode selector simplified
+- Sidebar dashboard: tinted slate icons
+- Removed redundant note icon from sidebar / tabs
+
+### Security
+- **Edge Function CORS** locked down to the official Tauri origins (was wildcard during early development)
+- **Deno unit tests** on the critical Edge Functions
+- **2FA hardening**: AAL2 elevation + a fresh TOTP challenge are required to disable 2FA
+- **Atomic 2FA activation** + pinned `search_path` on `pgcrypto`
+- **PKCE flow** for magic link / signup / recovery
+- **Rate limiting**: Postgres table + `check_rate_limit` RPC, daily purge job, revoked from the `anon` role
+- **New-device trigger**: `notified_at` column + payload ready for an Edge Function email send (actual delivery is a follow-up)
+- **Turnstile hardening**: prod-build guard, theme alignment, submit UX
+- `.gitattributes` enforces LF line endings (eliminates cross-OS CRLF warnings)
+- Pinned transitive deps via `pnpm overrides` for CVE patches
+- Targeted log filter `lexena_lib=info,warn` (no PII reaches Edge Function logs)
+
+### Fixed
+- **Recovery codes are actually consumable**: `consume_recovery_code` RPC now elevates the session to AAL2 (was unreachable before the `20260601000500` migration)
+- **2FA recovery flow**: `userId` correctly forwarded to `admin.mfa.deleteFactor`
+- **Sync queue**: dequeue by ID after partial-success batches (operations were being lost)
+- **Sync queue**: respects backoff and moves to DLQ after 5 retries
+- **Account deletion**: only removes the tombstone if `deleteUser` succeeded
+- **Account deletion**: global sign-out is now error-tolerant + a confirmation alert + a11y polish
+- **Deletion cron**: switched from GUCs to `supabase_vault`, `pg_net` enabled, `verify_jwt=false`
+- **Notes**: placeholder body hidden once the note is non-empty
+- **i18n**: reset-password confirmation phrase translated (was hard-coded French)
+- **Deletion-pending screen**: CLDR plural keys + back-to-local-mode button + a11y
+- **AuthContext**: `deletionPending` fetch protected against stale async writes
+- **Slash suggestion**: distinct `PluginKey` to avoid collision with NoteLink
+- **Light mode**: full support across the `vt-app` design system
+- **CI**: 4 jobs fixed (pnpm conflict, deno lockfile, cargo target-dir, pgtap aal)
+- **CI**: Linux libs added for `cpal`/`enigo`/`reqwest` (alsa, xdo, ssl)
+
+### Documentation
+- 12 v3 ADRs frozen (`docs/v3/decisions/0001-0012`)
+- 3 sub-epics frozen (00 security, 01 auth, 02 sync) each with a closure ADR
+- Implementation plans for sub-epic 00, 01, 02, account deletion, post-review fixes, auth hardening
+- 3 manual end-to-end checklists (auth, sync, account deletion)
+- 5 operational runbooks
+- GDPR register + lawful basis + bootstrap guides
+- Threat model + per-measure implementation matrix (delivered 2026-05-01)
+
+### Internal
+- Library crate renamed `lexena_lib`
+- `.gitignore` covers `.mcp.json` and intermediate plan files
+- Removed unused dependencies: `tauri-plugin-fs`, `tauri-plugin-shell`
+- Added: `bstr`, `normpath`, `opener`, `keyring`, `zod`, `vitest`, `supabase-cli`, `tauri-plugin-deep-link`
+
+### Migration notes
+- **Profile data**: existing 2.x users keep their `profiles/<id>/` layout untouched. Fresh 3.0 installs land directly in `%APPDATA%/com.nolyo.lexena/profiles/default/`.
+- **Pre-rebrand installs** (`%APPDATA%/voice-tool/` or `%APPDATA%/com.nolyo.voice-tool/`): no automatic AppData migration across application identifiers — users coming from those installs need to copy their `profiles/` folder manually into `%APPDATA%/com.nolyo.lexena/`. A clean reinstall from 3.0 is the recommended path.
+- **Legacy snippets / dictionary** stored in the old Tauri Store keys (`settings.snippets`, `settings.dictionary`) are migrated automatically the first time the recording workflow mounts.
+
+### Removed
+- Post Process section removed from settings
+- Redundant stats row removed from history
+- Redundant note icon removed from sidebar / tabs
+- MSI and portable installers (single NSIS installer is the only artifact — already since 2.10.0)
+
+### Notes
+- v3.0 ships as **"Public Beta"** during the soft launch
+- Supabase is on the **Free** plan (Pro upgrade deferred until traction per the v3.0 launch posture)
+- **External security audit** scheduled post-traction (>50 sync users); not blocking for soft launch
+- **Privacy Policy / Terms of Service / Legal mentions**: FR + EN drafts shipped under `docs/v3/legal/` — public publication depends on the final domain (sub-epic 06)
+- **Supabase Pro upgrade** is the prerequisite for PITR + signed DPA + time-boxed sessions
+
+---
+
 ## [2.10.1] - 2026-04-22
 
-### ✨ Added
-- New System of dark / light themes with automatic switching based on system preferences.
-- In parameters, you can now delete your data (recordings, transcriptions, notes) without uninstalling the app.
+### Added
+- New system of dark / light themes with automatic switching based on system preferences
+- Settings now lets you delete your data (recordings, transcriptions, notes) without uninstalling the app
 - Note-to-note linking: type `@` in any note to link to another note, with auto-complete by title
 - Broken links (when the target note is deleted) are shown in red with a one-click dialog to recreate the missing note
 - Backlinks panel at the bottom of each note ("Mentioned in") listing all notes that reference it
 - Middle-click to close tabs in notes
 
-### 🐛 Fixed
-- Enhance Markdown handling in AI assistant with Turndown and Marked integration (preserve line breaks, support tables, code blocks, lists)
-
-### 🔧 Changed
-- Improved layout and styling of Transcription history
-
-## [2.10.0] - 2026-04-18
-
-### ✨ Added
-- Universal GPU acceleration via Vulkan backend - local transcription now uses GPU automatically on NVIDIA, AMD, and Intel hardware without requiring any additional installation
-- Automatic CPU fallback when no compatible GPU is detected, ensuring the app runs on any Windows machine
-- Notes tab in sidebar navigation - quick access to notes alongside History, Settings, and Logs
-- Settings sub-navigation in sidebar - select individual settings sections without scrolling through all sections
-- Onboarding wizard for model setup - guides users through initial configuration and model selection on first launch
-- New model supported: Grock (x.com/grock-ai) - an open-source, high-performance speech recognition model with competitive accuracy and speed, providing an alternative to Whisper for api transcription
-- Translation mode now works with the local Whisper engine (previously only reliable with the OpenAI API)
-- Configurable hotkey to toggle translation mode while recording — active only during an active recording so it does not interfere with your other keyboard shortcuts (Settings → Shortcuts → "Toggle translation mode")
-- Redesigned translate button in the mini window with a clearer icon and label (TRAD/EN) instead of the ambiguous "x"
-
-### 🔧 Changed
-- Switched local transcription engine from CUDA to Vulkan - no NVIDIA CUDA runtime required anymore
-- Streamlined installer: only the recommended NSIS setup (voice-tool_x.x.x_x64-setup.exe) is now distributed, removing the MSI and portable variants that caused confusion with auto-updates
-- Redesigned the history panel: recording card is now a compact horizontal banner (full width), transcription details open in a sliding sidebar on the right instead of a fixed side panel
-- Keyboard shortcuts (toggle / push-to-talk) are now displayed directly on the recording card when idle
-- Copy and Listen buttons in the detail sidebar are now side by side
-
-### 🐛 Fixed
-- Translation mode state is now kept in sync between the main window and the mini window in real time — toggling on either side updates the other immediately, no app restart required
-- Removed stray leading punctuation sometimes emitted at the start of English transcriptions
-
-### ℹ️ Note
-- The first transcription after installation may take longer than usual while GPU shaders are compiled and cached - subsequent transcriptions are fast as normal
-
-## [2.9.0] - 2026-04-12
-
-### ✨ Added
-- Rich-text editor for notes with context-sensitive bubble menu - appears on text selection to provide instant access to formatting tools
-- Text formatting options: bold, italic, underline, strikethrough
-- Block formatting: headings H1/H2/H3 with toggle support
-- Lists: bullet lists, ordered lists, task lists (checkboxes) with nested support and Tab/Shift+Tab indentation
-- Link management: inline URL editor with auto-prefix `https://`, preserves existing Ctrl+Click behavior for opening links externally
-- TipTap v3.22.3 rich-text engine with markdown shortcuts (e.g., `# Heading`, `- List`)
-- Welcome note created automatically on first launch showcasing all available formatting (headings, bold, lists, task list, code, separator)
-- Text color picker in bubble menu - 8 color swatches + reset, applies inline color to selected text
-- Background highlight color picker in bubble menu - 8 color swatches + reset, highlights selected text
-- Inline code button in bubble menu for quick code formatting
-
-- Profile system: create and switch between multiple independent profiles (e.g. Personal / Work)
-- Each profile has its own settings (API keys, hotkeys, language…), notes, transcription history and recordings
-- Profile switcher at the bottom of the sidebar - shows current profile avatar with initials
-- Create new profiles directly from the sidebar dropdown
-- Manage profiles dialog: rename and delete profiles
-- Profile switching reloads the interface without restarting the app (works in both dev and production)
-- Automatic one-time migration: existing data moved into a default profile on first launch with this version
-- Shared resources (Whisper models) remain common across all profiles
-
-### 🔧 Changed
-- Redesigned the note opening system
-- Overhauled architecture frontend/backend
-
-## [2.8.0] - 2026-04-11 (beta only)
-
-### ✨ Added
-- Release channel selection in settings - choose between Stable (default) for reliable updates or Beta for early access to new features
-- Direct cursor insertion mode for transcribed text - text now types directly without disrupting your clipboard
-
-### 🔧 Changed
-- Link behavior in notes editor - links now require Ctrl+Click (Cmd+Click on Mac) to open, making it easier to select and copy link text
-- Global navigation moved to a collapsible sidebar (History, Notes, Settings, Logs) replacing the top tab bar, giving each view more vertical space
-
-### 🐛 Fixed
-- Installation error on Windows machines without NVIDIA CUDA runtime - voice-tool.exe now installs successfully on all Windows systems
-
-## [2.7.4] - 2026-04-09
+### Fixed
+- Markdown handling in the AI assistant via Turndown + Marked (preserves line breaks, supports tables, code blocks, lists)
 
 ### Changed
-- Improved app settings storage by moving logs to a dedicated file system, keeping your configuration cleaner and the app running more efficiently
-
-## [2.7.3] - 2026-04-05
-
-### Fixed
-
-- Correction d'un bug invalid date lors de la mise à jour
-
-### Added
-- Ajout d'un bouton de redimmensionnement de la note en demi écran
-- Ajout d'un système de favoris pour les notes
-- Les notes peuvent maintenant contenir des images (copier-coller)
-- Le logiciel ne s'ouvre plus en plusieurs instance si déjà en cours d'exécution
-
-
-
-## [2.7.0] - 2026-04-03
-
-### Added
-
-- Fonctionnalité de notes : éditeur de notes intégré avec onglet dédié dans le tableau de bord
-- Option pour masquer le panneau d'enregistrement dans les paramètres
-- Navigation dans les paramètres améliorée avec une barre latérale et des sections organisées
-
-## [2.6.1] - 2026-04-03
-
-### Added
-
-- Préchargement du modèle Whisper en arrière-plan pour le fournisseur de transcription local (démarrage plus rapide)
-- Enregistrement et désenregistrement dynamique du raccourci d'annulation
-
-## [2.6.0] - 2026-04-03
-
-### Added
-
-- Gestion du vocabulaire : support des snippets et d'un dictionnaire personnalisé
-- Mode local : transcription via Whisper local, gratuit et sans limite
-
-## [2.5.4] - 2026-03-17
-
-### Added
-
-- Ajout du mode local, transcription via Whisper local gratuit et sans limite
-
-## [2.3.1] - 2025-11-22
-
-### Fixed
-
-- Fix de mise à jour automatique
-
-## [2.2.0] - 2025-11-02
-
-### Added
-
-- Mode compact vs étendu pour la mini fenêtre lors du streaming Deepgram
-- Basculement automatique de la mini fenêtre (42px → 150px) au démarrage/arrêt de Deepgram
-- Affichage de la transcription en temps réel dans la mini fenêtre en mode étendu
-- Commande backend `set_mini_window_mode` pour redimensionner la mini fenêtre dynamiquement
-- Support des événements `transcription-interim` et `transcription-final` dans la mini fenêtre
-
-## [2.1.0] - 2025-10-25
-
-- Automatisation des mise à jour
-
-## [2.0.2] - 2025-10-24
-
-- Correction de la CI
-
-## [2.0.1] - 2025-10-24
-
-### Fixed
-
-- Correction d'un bug dans la CI/CD empêchant la génération correcte du fichier `releases.json`
-
-## [2.0.0] - 2025-10-22
-
-### Added
-
-- Application Tauri avec enregistrement audio en temps réel
-- Visualisation des niveaux audio (fenêtre principale + mini fenêtre flottante)
-- Intégration OpenAI Whisper pour la transcription
-- Raccourcis clavier globaux configurables (toggle, push-to-talk, afficher fenêtre)
-- Architecture multi-fenêtres (dashboard + mini visualiseur)
-- Intégration à la barre système avec menu contextuel
-- Persistance des paramètres via Tauri Store
-- Historique des transcriptions avec IndexedDB
-- Auto-collage des transcriptions dans la fenêtre active
-- Sélection du périphérique audio d'entrée
-- Gestion automatique de la migration du répertoire d'enregistrements
-- Effets sonores (début/fin d'enregistrement, succès)
-- Logs structurés depuis Rust vers le frontend
-- Support de plusieurs formats d'installateurs (portable, NSIS, MSI)
-- CI/CD GitHub Actions pour les releases automatiques
-- Génération automatique du fichier `releases.json` pour le site web
-
-### Technical
-
-- Stack: React 19, TypeScript, Tailwind CSS v4
-- Backend: Rust avec cpal pour l'audio
-- Build: Tauri v2, Vite, pnpm
-- Windows uniquement (extensible multi-plateforme)
+- Improved layout and styling of transcription history
 
 ---
 
-## Instructions d'utilisation de ce CHANGELOG
+## [2.0.0 — 2.10.0] — Historical (2025-10-22 → 2026-04-18)
 
-### Quand ajouter une entrée
+The 2.x line introduced the original Voice Tool app and grew it into a full transcription suite.
+**These versions are unsupported as of 3.0.** Highlights:
 
-Ajoutez une entrée **à chaque modification significative** sous la section `[Unreleased]`.
+- **2.10.0** — Universal GPU acceleration via Vulkan (NVIDIA / AMD / Intel) with automatic CPU fallback; settings sub-navigation; first-launch onboarding wizard; translation mode on the local Whisper engine; streamlined NSIS-only installer
+- **2.9.0** — Profile system (multiple independent profiles with isolated settings, notes, history, recordings); Tiptap rich-text notes editor with bubble menu, color picker, highlights and inline code
+- **2.8.0** — Stable / Beta release channels; direct cursor insertion mode that no longer touches the clipboard; collapsible sidebar navigation
+- **2.7.x** — Notes feature (integrated editor, favorites, image paste); single-instance enforcement; dedicated logs file
+- **2.6.x** — Local Whisper transcription (free, unlimited, offline); custom vocabulary (snippets + personal dictionary); background model preloading
+- **2.2.0–2.5.x** — Mini-window streaming modes (Deepgram), real-time interim/final transcription overlay
+- **2.1.0** — Auto-update infrastructure
+- **2.0.0** — Initial Tauri release: real-time recording, audio level visualization (main + floating mini), OpenAI Whisper integration, configurable global hotkeys, system tray, transcription history (IndexedDB), auto-paste, structured logging, NSIS / MSI / portable installers
 
-### Catégories
-
-- **Added** : Nouvelles fonctionnalités
-- **Changed** : Modifications de fonctionnalités existantes
-- **Deprecated** : Fonctionnalités obsolètes (seront supprimées prochainement)
-- **Removed** : Fonctionnalités supprimées
-- **Fixed** : Corrections de bugs
-- **Security** : Corrections de vulnérabilités
-
-### Workflow de release
-
-1. **Pendant le développement** : Ajoutez vos changements sous `[Unreleased]`
-
-2. **Avant une release** :
-
-   ```markdown
-   ## [Unreleased]
-
-   ## [2.1.0] - 2025-11-15
-
-   ### Added
-
-   - Nouveau thème sombre
-   - Support de macOS
-
-   ### Fixed
-
-   - Correction du bug de crash au démarrage
-   ```
-
-3. **Mettez à jour les liens en bas du fichier** :
-   ```markdown
-   [Unreleased]: https://github.com/Nolyo/voice-tool/compare/v2.1.0...HEAD
-   [2.1.0]: https://github.com/Nolyo/voice-tool/compare/v2.0.0...v2.1.0
-   [2.0.0]: https://github.com/Nolyo/voice-tool/releases/tag/v2.0.0
-   ```
-
-### Exemples
-
-```markdown
-### Added
-
-- Nouveau raccourci Ctrl+Shift+R pour redémarrer l'enregistrement
-- Support des langues espagnol et allemand pour la transcription
-- Paramètre pour ajuster la sensibilité du micro
-
-### Changed
-
-- La mini fenêtre est maintenant redimensionnable
-- Amélioration des performances de la visualisation audio (réduction de 30% CPU)
-
-### Fixed
-
-- Correction du crash lors de la déconnexion du micro USB
-- Résolution du problème d'échappement des caractères spéciaux dans les transcriptions
-- La fenêtre principale ne se cache plus au démarrage si `--minimized` n'est pas passé
-
-### Removed
-
-- Suppression du support de Windows 7 (EOL)
-```
-
----
-
-## Liens des versions
-
-[2.7.3]: https://github.com/Nolyo/voice-tool/compare/v2.7.2...HEAD
-[2.7.0]: https://github.com/Nolyo/voice-tool/compare/v2.6.0...v2.7.0
-[2.6.0]: https://github.com/Nolyo/voice-tool/compare/v2.5.4...v2.6.0
-[2.5.4]: https://github.com/Nolyo/voice-tool/compare/v2.5.3...v2.5.4
-[2.5.3]: https://github.com/Nolyo/voice-tool/compare/v2.5.2...v2.5.3
-[2.5.2]: https://github.com/Nolyo/voice-tool/compare/v2.5.1...v2.5.2
-[2.5.1]: https://github.com/Nolyo/voice-tool/compare/v2.5.0...v2.5.1
-[2.5.0]: https://github.com/Nolyo/voice-tool/compare/v2.0.0...v2.5.0
-[2.0.0]: https://github.com/Nolyo/voice-tool/releases/tag/v2.0.0
+For per-version release notes (Added / Changed / Fixed) of any 2.x version, see the [GitHub Releases page](https://github.com/Nolyo/voice-tool/releases).
