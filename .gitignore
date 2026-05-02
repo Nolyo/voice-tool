@@ -10,6 +10,9 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# Email-specific dist is committed for traceability — Vite-built dist remains ignored
+!/dist/emails/
+!/dist/emails/**
 *.local
 
 # Editor directories and files

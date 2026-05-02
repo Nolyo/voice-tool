@@ -360,6 +360,22 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - Checklist E2E : `docs/v3/02-sync-settings-e2e-checklist.md`
 - ADR de clôture : `docs/v3/decisions/0010-sub-epic-02-closure.md`
 
+### V3 Email templates Supabase Auth (livré phase 1, 2026-05-02)
+
+- Source de vérité : `emails/templates/*.tsx` (React Email + `@react-email/components` 1.0.12)
+- 3 templates Supabase Auth : `MagicLink`, `SignupConfirmation`, `PasswordReset` (EN uniquement v3.0)
+- Build : `pnpm email:build` → `dist/emails/*.html` (commités pour traçabilité)
+- Preview : `pnpm email:dev` → `localhost:3001` (nécessite `@react-email/ui` en devDep)
+- Composants partagés : `emails/components/` (Layout, Header, Footer, Button, Heading, Text, SecurityNote, tokens)
+- `tokens.ts` : `colors`, `fontStack` (Inter + fallbacks), `logoUrl` (GitHub raw monogram, placeholder à migrer post-marketing site)
+- Liquid safety : `unescapeLiquid()` dans `build.tsx` post-traite le HTML pour préserver `{{ .ConfirmationURL }}`
+- Tests : 23 vitest (4 tokens + 18 templates + 5 build dont 1 regression `git show HEAD:dist/...`)
+- Procédure de déploiement Supabase : `emails/DEPLOY_SUPABASE.md` (manuel, dashboard)
+- Checklist multi-clients : `emails/COMPATIBILITY.md` (à remplir via Litmus / Email on Acid)
+- Phase 2 prévue : 4 templates Resend via Edge Functions (welcome, new-device, deletion ×2)
+- Spec : `docs/superpowers/specs/2026-05-02-email-templates-supabase-auth-design.md`
+- Plan : `docs/superpowers/plans/2026-05-02-email-templates-supabase-auth.md`
+
 ## Commit and Push
 
 - Use conventional commits: - Format: `<type>: <message>`

@@ -6,6 +6,11 @@
 > **Convention** : versions FR + EN miroir. Variables Supabase entre `{{ }}` (template Liquid).
 > **À relire** : par un copywriter avant publication. Tonalité actuelle : factuelle, sobre, pro-friendly.
 
+> ⚠️ **Phase 1 livrée 2026-05-02** — les 3 templates Supabase Auth (magic link, signup confirmation, password reset) sont implémentés en HTML stylé via React Email.
+> **Source de vérité** : `emails/templates/*.tsx`. Le markdown ci-dessous reste de référence textuelle (FR + EN) pour comparaison et préparation des phases suivantes.
+> **Langue déployée v3.0** : EN uniquement. FR reporté à une phase ultérieure (Edge Function `auth-email-hook` selon `user_settings.ui_language`).
+> **Spec & plan** : `docs/superpowers/specs/2026-05-02-email-templates-supabase-auth-design.md` + `docs/superpowers/plans/2026-05-02-email-templates-supabase-auth.md`.
+
 ---
 
 ## Index des templates
@@ -23,6 +28,9 @@
 ---
 
 ## 1 — Magic link
+
+> ✅ Livré phase 1 (EN). Source de vérité : `emails/templates/MagicLink.tsx`.
+> 🚧 FR différé post-launch (v3.1+).
 
 ### FR
 
@@ -65,6 +73,9 @@ The Lexena team
 ---
 
 ## 2 — Signup confirmation
+
+> ✅ Livré phase 1 (EN). Source de vérité : `emails/templates/SignupConfirmation.tsx`.
+> 🚧 FR différé post-launch (v3.1+).
 
 ### FR
 
@@ -185,6 +196,9 @@ The Lexena team
 ---
 
 ## 4 — Password reset request
+
+> ✅ Livré phase 1 (EN). Source de vérité : `emails/templates/PasswordReset.tsx`.
+> 🚧 FR différé post-launch (v3.1+).
 
 ### FR
 
