@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { promises as fs } from "node:fs";
+import { execSync } from "node:child_process";
 import path from "node:path";
 import { build } from "../build";
 
@@ -55,5 +56,30 @@ describe("build", () => {
     expect(
       reset.startsWith("<!-- Subject: Reset your Lexena password -->"),
     ).toBe(true);
+  });
+});
+
+describe("regression: dist/emails/ is in sync with templates", () => {
+  it("freshly built HTML matches committed dist/emails/", async () => {
+    // Read committed versions from git
+    const slugs = ["magic-link", "signup-confirmation", "password-reset"];
+    const committed: Record<string, string> = {};
+    for (const slug of slugs) {
+      committed[slug] = execSync(`git show HEAD:dist/emails/${slug}.html`, {
+        encoding: "utf8",
+      });
+    }
+
+    // Rebuild
+    await build();
+
+    // Compare
+    for (const slug of slugs) {
+      const fresh = await fs.readFile(
+        path.join(distDir, `${slug}.html`),
+        "utf8",
+      );
+      expect(fresh).toBe(committed[slug]);
+    }
   });
 });
