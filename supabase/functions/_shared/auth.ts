@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
 /** Extrait le user_id depuis le JWT présenté dans Authorization: Bearer <token>.
  *  Retourne { userId, client } où client a les permissions du user (RLS actif). */

@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
 interface Deps {
   cronSecret: string;

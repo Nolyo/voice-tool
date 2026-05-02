@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { type SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 
 /**
  * Returns true if the operation should be rejected (rate-limit exceeded).

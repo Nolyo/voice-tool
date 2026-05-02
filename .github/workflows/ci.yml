@@ -61,9 +61,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v1.x
+          deno-version: v2.x
       - name: Run all tests in supabase/functions
-        run: deno test --allow-env --allow-net supabase/functions/
+        run: deno test --allow-env --allow-net --allow-read --config supabase/functions/deno.json supabase/functions/
 
   pgtap:
     name: Database tests (pgtap)

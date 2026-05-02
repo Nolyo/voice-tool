@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { type SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { getAuthenticatedUser } from "../_shared/auth.ts";
 import { isRateLimited } from "../_shared/rate-limit.ts";
