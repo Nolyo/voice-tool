@@ -17,28 +17,37 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
-  --radius: 0.625rem;
+
+  /* Design system v3 — HUE 162 accent (teal/green-cyan), aligned with marketing site */
+  --radius: 0.75rem;
+  --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-ui: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+
   --signal-green: #1D9E75;
   --signal-green-muted: rgba(29, 158, 117, 0.15);
   --signal-green-subtle: rgba(29, 158, 117, 0.08);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.15 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.15 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.15 0 0);
+  --primary: oklch(0.5 0.13 162);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.005 240);
+  --secondary-foreground: oklch(0.2 0.01 240);
+  --muted: oklch(0.95 0.005 240);
+  --muted-foreground: oklch(0.45 0.01 240);
+  --accent: oklch(0.68 0.14 162);
+  --accent-foreground: oklch(0.99 0 0);
+  --destructive: oklch(0.7 0.2 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.01 240);
+  --input: oklch(0.95 0.005 240);
+  --ring: oklch(0.5 0.13 162);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -46,19 +55,25 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.5 0.13 162);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.5 0.13 162);
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-ui: var(--font-ui);
+  --font-display: var(--font-display);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -91,6 +106,42 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-signal-green: var(--signal-green);
+
+  /* Expose .vt-app tokens as Tailwind colors so utilities like
+   * `bg-vt-panel`, `border-vt-border`, `text-vt-fg-3` resolve at build time. */
+  --color-vt-bg: var(--vt-bg);
+  --color-vt-panel: var(--vt-panel);
+  --color-vt-panel-2: var(--vt-panel-2);
+  --color-vt-surface: var(--vt-surface);
+  --color-vt-surface-hi: var(--vt-surface-hi);
+  --color-vt-border: var(--vt-border);
+  --color-vt-border-strong: var(--vt-border-strong);
+  --color-vt-fg: var(--vt-fg);
+  --color-vt-fg-2: var(--vt-fg-2);
+  --color-vt-fg-3: var(--vt-fg-3);
+  --color-vt-fg-4: var(--vt-fg-4);
+  --color-vt-accent: var(--vt-accent);
+  --color-vt-accent-2: var(--vt-accent-2);
+  --color-vt-violet: var(--vt-violet);
+  --color-vt-cyan: var(--vt-cyan);
+  --color-vt-green: var(--vt-green);
+  --color-vt-warn: var(--vt-warn);
+  --color-vt-ok: var(--vt-ok);
+  --color-vt-danger: var(--vt-danger);
+  --color-vt-pin: var(--vt-pin);
+
+  /* Soft / hover variants — exposed so utilities like `bg-vt-hover`,
+   * `bg-vt-accent-soft`, `text-vt-warn-soft` resolve cleanly. */
+  --color-vt-hover: var(--vt-hover);
+  --color-vt-hover-soft: var(--vt-hover-soft);
+  --color-vt-hover-strong: var(--vt-hover-strong);
+  --color-vt-accent-soft: var(--vt-accent-soft);
+  --color-vt-warn-soft: var(--vt-warn-soft);
+  --color-vt-ok-soft: var(--vt-ok-soft);
+  --color-vt-danger-soft: var(--vt-danger-soft);
+  --color-vt-pin-soft: var(--vt-pin-soft);
+  --color-vt-violet-soft: var(--vt-violet-soft);
+  --color-vt-cyan-soft: var(--vt-cyan-soft);
 }
 
 .dark {
@@ -285,15 +336,15 @@
   text-decoration: line-through;
 }
 
-/* Links — visible, themed */
+/* Links — visible, themed (uses accent token so hue migrates with the design system) */
 .tiptap a {
-  color: oklch(0.6 0.2 240);
+  color: var(--vt-accent-2, oklch(0.5 0.13 162));
   text-decoration: underline;
   cursor: text;
 }
 
 .dark .tiptap a {
-  color: oklch(0.75 0.18 240);
+  color: var(--vt-accent-2, oklch(0.78 0.13 162));
 }
 
 /* Blockquote & code (supported by StarterKit, may appear via markdown shortcuts) */
@@ -335,15 +386,16 @@
   height: 0;
 }
 
-/* Note-link chip — inline reference to another note */
+/* Note-link chip — inline reference to another note. Uses the accent token
+ * so the hue follows the design system. */
 .note-link {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
   padding: 0 0.4rem;
   border-radius: 0.3rem;
-  background: oklch(0.95 0.05 240);
-  color: oklch(0.45 0.18 255);
+  background: oklch(from var(--vt-accent, oklch(0.68 0.14 162)) l c h / 0.14);
+  color: var(--vt-accent-2, oklch(0.5 0.13 162));
   font-size: 0.95em;
   font-weight: 500;
   line-height: 1.5;
@@ -353,14 +405,16 @@
   white-space: nowrap;
 }
 .note-link:hover {
-  background: oklch(0.9 0.08 240);
+  background: oklch(from var(--vt-accent, oklch(0.68 0.14 162)) l c h / 0.22);
 }
-.dark .note-link {
-  background: oklch(0.3 0.1 260 / 50%);
-  color: oklch(0.78 0.15 255);
+.dark .note-link,
+.vt-app .note-link {
+  background: oklch(from var(--vt-accent, oklch(0.68 0.14 162)) l c h / 0.18);
+  color: var(--vt-accent-2, oklch(0.78 0.13 162));
 }
-.dark .note-link:hover {
-  background: oklch(0.35 0.12 260 / 60%);
+.dark .note-link:hover,
+.vt-app .note-link:hover {
+  background: oklch(from var(--vt-accent, oklch(0.68 0.14 162)) l c h / 0.28);
 }
 
 .note-link--broken {
@@ -393,9 +447,11 @@
 
 body.mini-window-body {
   background: transparent !important;
-  color: #f9fafb;
+  color: var(--vt-fg, #f9fafb);
   height: 100%;
   margin: 0;
+  font-family: var(--font-ui, "Inter", ui-sans-serif, system-ui, sans-serif);
+  font-feature-settings: "cv11", "ss01", "ss03";
 }
 
 html:has(body.mini-window-body) {
@@ -407,52 +463,122 @@ body.mini-window-body #root {
   height: 100%;
 }
 
+/* Floating mini window shell — glassmorphic, dark-tuned. Uses design system
+ * shadow + border tokens but keeps a fixed dark backdrop so the window remains
+ * readable regardless of the user's light/dark preference. */
 .mini-shell {
   padding: 6px 16px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(22, 24, 30, 0.92);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45),
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.45),
     0 1px 2px rgba(255, 255, 255, 0.05) inset,
     0 0 0 1px rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(12px);
 }
 
-/* ── Lexena design-system tokens & utilities ──────────────────────────────
- * Scoped under `.vt-app` to avoid leaking into other parts of the app.
- * Shared across Settings, Historique, and future redesigned screens.
+/* ── Lexena design-system v3 tokens & utilities ──────────────────────────
+ * Aligned with the marketing site (voice-tool-web). HUE 162 accent, OKLCH-based.
+ * Scoped under `.vt-app` so the same tokens can power any subtree. The dashboard
+ * root applies this class to inherit dark-mode tokens by default; light mode
+ * is handled by the `:root:not(.dark) .vt-app` block at the end of this file.
  */
-.vt-app {
-  --vt-bg: oklch(0.14 0.015 264);
-  --vt-panel: oklch(0.165 0.018 264);
-  --vt-panel-2: oklch(0.19 0.02 264);
-  --vt-surface: oklch(0.21 0.022 264);
-  --vt-surface-hi: oklch(0.235 0.024 264);
-  --vt-border: oklch(0.27 0.025 264);
-  --vt-border-strong: oklch(0.34 0.03 264);
-  --vt-fg: oklch(0.96 0.005 264);
-  --vt-fg-2: oklch(0.78 0.01 264);
-  --vt-fg-3: oklch(0.6 0.015 264);
-  --vt-fg-4: oklch(0.48 0.015 264);
-  --vt-accent: oklch(0.7 0.17 264);
-  --vt-accent-2: oklch(0.78 0.15 264);
-  --vt-accent-soft: oklch(0.7 0.17 264 / 0.14);
+.vt-app, .vt-scope {
+  --vt-bg: oklch(0.16 0.022 230);
+  --vt-panel: oklch(0.185 0.025 230);
+  --vt-panel-2: oklch(0.21 0.028 230);
+  --vt-surface: oklch(0.235 0.03 230);
+  --vt-surface-hi: oklch(0.26 0.032 230);
+  --vt-border: oklch(0.29 0.032 230);
+  --vt-border-strong: oklch(0.36 0.035 230);
+  --vt-fg: oklch(0.96 0.005 230);
+  --vt-fg-2: oklch(0.78 0.01 230);
+  --vt-fg-3: oklch(0.6 0.015 230);
+  --vt-fg-4: oklch(0.48 0.015 230);
+  --vt-accent: oklch(0.68 0.14 162);
+  --vt-accent-2: oklch(0.78 0.13 162);
+  --vt-accent-soft: oklch(0.68 0.14 162 / 0.14);
   --vt-warn: oklch(0.78 0.14 75);
   --vt-warn-soft: oklch(0.78 0.14 75 / 0.13);
   --vt-ok: oklch(0.78 0.14 150);
   --vt-ok-soft: oklch(0.78 0.14 150 / 0.13);
   --vt-danger: oklch(0.7 0.2 25);
+  --vt-danger-soft: oklch(0.7 0.2 25 / 0.13);
   --vt-pin: oklch(0.82 0.16 75);
   --vt-pin-soft: oklch(0.82 0.16 75 / 0.14);
+  --vt-violet: oklch(0.72 0.17 295);
+  --vt-violet-soft: oklch(0.72 0.17 295 / 0.16);
+  --vt-cyan: oklch(0.72 0.14 205);
+  --vt-cyan-soft: oklch(0.72 0.14 205 / 0.16);
+  --vt-green: oklch(0.74 0.14 150);
   --vt-hover-soft: oklch(1 0 0 / 0.025);
   --vt-hover: oklch(1 0 0 / 0.04);
   --vt-hover-strong: oklch(1 0 0 / 0.08);
   --vt-inset-highlight: oklch(1 0 0 / 0.04);
   --vt-tooltip-bg: oklch(0.1 0 0);
-  --vt-tooltip-fg: oklch(0.96 0.005 264);
+  --vt-tooltip-fg: oklch(0.96 0.005 230);
+
+  --vt-radius-sm: 6px;
+  --vt-radius: 10px;
+  --vt-radius-md: 12px;
+  --vt-radius-lg: 14px;
+  --vt-radius-xl: 16px;
+  --vt-radius-pill: 999px;
+
+  --vt-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --vt-shadow-elevated:
+    0 1px 0 var(--vt-inset-highlight) inset,
+    0 10px 30px -12px rgba(0, 0, 0, 0.5),
+    0 2px 6px -2px rgba(0, 0, 0, 0.3);
+  --vt-shadow-mini:
+    0 12px 32px rgba(0, 0, 0, 0.45),
+    0 1px 2px rgba(255, 255, 255, 0.05) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  --vt-shadow-primary-glow:
+    0 1px 0 oklch(1 0 0 / 0.15) inset,
+    0 6px 18px -6px oklch(from var(--vt-accent) l c h / 0.55);
+
+  background: var(--vt-bg);
   color: var(--vt-fg);
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-feature-settings: "cv11", "ss01", "ss03";
+
+  /* Re-bind the standard Tailwind semantic tokens to the .vt-app palette so
+   * that `bg-background`, `bg-card`, `bg-primary`, `border-border`, etc.
+   * automatically pick up the design system inside this scope. */
+  --background: var(--vt-bg);
+  --foreground: var(--vt-fg);
+  --card: var(--vt-panel-2);
+  --card-foreground: var(--vt-fg);
+  --popover: var(--vt-panel-2);
+  --popover-foreground: var(--vt-fg);
+  --primary: var(--vt-accent);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: var(--vt-surface);
+  --secondary-foreground: var(--vt-fg);
+  --muted: var(--vt-surface);
+  --muted-foreground: var(--vt-fg-3);
+  --accent: var(--vt-accent);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: var(--vt-danger);
+  --destructive-foreground: oklch(1 0 0);
+  --border: var(--vt-border);
+  --input: var(--vt-surface);
+  --ring: var(--vt-accent);
+  --sidebar: var(--vt-panel);
+  --sidebar-foreground: var(--vt-fg);
+  --sidebar-primary: var(--vt-accent);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: var(--vt-surface);
+  --sidebar-accent-foreground: var(--vt-fg);
+  --sidebar-border: var(--vt-border);
+  --sidebar-ring: var(--vt-accent);
+}
+
+::selection {
+  background: oklch(from var(--vt-accent, oklch(0.68 0.14 162)) l c h / 0.3);
+  color: var(--vt-fg, currentColor);
 }
 
 .vt-app .vt-folder-header--drop-active {
@@ -1352,37 +1478,45 @@ body.mini-window-body #root {
 /* ── Light mode overrides for the vt-app token system ───────────────────
  * The .vt-app tokens above are defined with dark-mode values (app default).
  * When the `.dark` class is absent from <html>, override them for light mode.
+ * Aligned with v3 design system — HUE 162 accent, neutral surfaces.
  */
-:root:not(.dark) .vt-app {
-  --vt-bg: oklch(0.985 0.003 264);
-  --vt-panel: oklch(0.965 0.005 264);
+:root:not(.dark) .vt-app,
+:root:not(.dark) .vt-scope {
+  --vt-bg: oklch(0.99 0 0);
+  --vt-panel: oklch(0.97 0.003 230);
   --vt-panel-2: oklch(1 0 0);
-  --vt-surface: oklch(0.965 0.006 264);
-  --vt-surface-hi: oklch(0.935 0.009 264);
-  --vt-border: oklch(0.9 0.008 264);
-  --vt-border-strong: oklch(0.8 0.012 264);
-  --vt-fg: oklch(0.22 0.02 264);
-  --vt-fg-2: oklch(0.38 0.018 264);
-  --vt-fg-3: oklch(0.52 0.015 264);
-  --vt-fg-4: oklch(0.65 0.012 264);
-  --vt-accent: oklch(0.5 0.22 264);
-  --vt-accent-2: oklch(0.4 0.22 264);
-  --vt-accent-soft: oklch(0.5 0.22 264 / 0.12);
+  --vt-surface: oklch(0.965 0.005 230);
+  --vt-surface-hi: oklch(0.935 0.008 230);
+  --vt-border: oklch(0.9 0.008 230);
+  --vt-border-strong: oklch(0.8 0.012 230);
+  --vt-fg: oklch(0.18 0.01 230);
+  --vt-fg-2: oklch(0.36 0.015 230);
+  --vt-fg-3: oklch(0.52 0.012 230);
+  --vt-fg-4: oklch(0.65 0.01 230);
+  --vt-accent: oklch(0.5 0.13 162);
+  --vt-accent-2: oklch(0.42 0.14 162);
+  --vt-accent-soft: oklch(0.5 0.13 162 / 0.12);
   --vt-warn: oklch(0.58 0.16 75);
   --vt-warn-soft: oklch(0.58 0.16 75 / 0.12);
-  --vt-ok: oklch(0.52 0.14 150);
-  --vt-ok-soft: oklch(0.52 0.14 150 / 0.12);
+  --vt-ok: oklch(0.55 0.14 150);
+  --vt-ok-soft: oklch(0.55 0.14 150 / 0.12);
   --vt-danger: oklch(0.55 0.22 25);
+  --vt-danger-soft: oklch(0.55 0.22 25 / 0.1);
   --vt-pin: oklch(0.62 0.18 70);
   --vt-pin-soft: oklch(0.62 0.18 70 / 0.14);
+  --vt-violet: oklch(0.55 0.22 295);
+  --vt-violet-soft: oklch(0.55 0.22 295 / 0.12);
+  --vt-cyan: oklch(0.55 0.14 205);
+  --vt-cyan-soft: oklch(0.55 0.14 205 / 0.12);
+  --vt-green: oklch(0.55 0.14 150);
   --vt-info: oklch(0.5 0.18 240);
-  --vt-debug: oklch(0.5 0.02 264);
+  --vt-debug: oklch(0.5 0.005 230);
   --vt-trace: oklch(0.5 0.2 295);
   --vt-hover-soft: oklch(0 0 0 / 0.025);
   --vt-hover: oklch(0 0 0 / 0.045);
   --vt-hover-strong: oklch(0 0 0 / 0.08);
   --vt-inset-highlight: oklch(0 0 0 / 0.02);
-  --vt-tooltip-bg: oklch(0.2 0.015 264);
+  --vt-tooltip-bg: oklch(0.2 0.015 230);
   --vt-tooltip-fg: oklch(0.97 0 0);
 }
 
@@ -2011,7 +2145,7 @@ body.mini-window-body #root {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: oklch(0.65 0.15 265 / 0.18);
+  background: oklch(from var(--vt-accent) l c h / 0.18);
   content: "";
 }
 
@@ -2021,7 +2155,7 @@ body.mini-window-body #root {
   top: 0;
   bottom: -2px;
   width: 4px;
-  background: oklch(0.65 0.15 265 / 0.6);
+  background: oklch(from var(--vt-accent) l c h / 0.6);
   pointer-events: none;
 }
 
@@ -2039,7 +2173,7 @@ body.mini-window-body #root {
 }
 
 .vt-slash-menu button:focus-visible {
-  outline: 2px solid oklch(0.65 0.15 265 / 0.6);
+  outline: 2px solid oklch(from var(--vt-accent) l c h / 0.6);
   outline-offset: 1px;
 }
 
@@ -2058,4 +2192,81 @@ body.mini-window-body #root {
 
 .vt-app .vt-table-toolbar {
   font-family: inherit;
+}
+
+/* ── Design system v3 — additional typography utilities ──────────────────
+ * `.vt-display` for headings (Geist), `.vt-eyebrow` for small uppercase labels.
+ * `.vt-mono` and `.vt-kbd` already defined above.
+ */
+.vt-display {
+  font-family: var(--font-display, "Geist", "Inter", ui-sans-serif, system-ui, sans-serif);
+  letter-spacing: -0.01em;
+}
+.vt-eyebrow {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--vt-fg-4);
+}
+
+/* ── Design system v3 — distinctive animations ───────────────────────────
+ * Wave bar, blinking caret, pulse ring, pulse dot, fade-up entrance.
+ * Respects prefers-reduced-motion.
+ */
+@keyframes vt-wave-bounce {
+  0%, 100% { transform: scaleY(0.35); }
+  50%      { transform: scaleY(1); }
+}
+@keyframes vt-caret-blink {
+  0%, 50%      { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+@keyframes vt-pulse-ring {
+  0%        { transform: scale(1); opacity: 0.7; }
+  75%, 100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes vt-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+@keyframes vt-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.vt-anim-wave-bar {
+  animation: vt-wave-bounce 1.1s ease-in-out infinite;
+  transform-origin: center;
+}
+.vt-anim-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  vertical-align: text-bottom;
+  background: var(--vt-accent);
+  margin-left: 2px;
+  animation: vt-caret-blink 1.05s steps(1, end) infinite;
+}
+.vt-anim-pulse-ring {
+  animation: vt-pulse-ring 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.vt-anim-pulse-dot {
+  animation: vt-pulse-dot 1.5s ease-in-out infinite;
+}
+.vt-anim-fade-up {
+  animation: vt-fade-up 220ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vt-anim-wave-bar,
+  .vt-anim-caret,
+  .vt-anim-pulse-ring,
+  .vt-anim-pulse-dot,
+  .vt-anim-fade-up {
+    animation: none !important;
+  }
+  .vt-anim-caret {
+    opacity: 1;
+  }
 }

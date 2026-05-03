@@ -250,12 +250,12 @@ export function ProfileSwitcher({
                     </div>
                     <div className="flex items-center gap-1.5 text-[10.5px] mt-0.5">
                       {mfaEnabled ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-500">
+                        <span className="inline-flex items-center gap-1 text-vt-ok">
                           <ShieldCheck className="w-3 h-3" />
                           {t("auth.security.twoFactorEnabled")}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-amber-500">
+                        <span className="inline-flex items-center gap-1 text-vt-warn">
                           <Shield className="w-3 h-3" />
                           {t("auth.security.twoFactorDisabled")}
                         </span>

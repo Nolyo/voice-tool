@@ -15,7 +15,7 @@ import {
 import type { LocalSnippet } from "@/lib/sync/types";
 import { Row, SectionHeader, VtIcon } from "../vt";
 
-const ACCENT = "oklch(0.72 0.17 295)";
+const ACCENT = "var(--vt-violet)";
 
 // UI row type: persisted snippets have a real id; drafts (new rows not yet saved) have id === null.
 interface SnippetRow {
@@ -148,7 +148,7 @@ export function VocabularySection() {
   );
 
   return (
-    <div className="vt-fade-up space-y-5">
+    <div className="vt-anim-fade-up space-y-5">
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
           color={ACCENT}

@@ -59,15 +59,22 @@ export function SelectedModelMissingBanner({ onGoToSettings }: Props) {
   if (!shouldShow) return null;
 
   return (
-    <div className="flex items-center gap-3 border-b border-amber-500/30 bg-amber-500/10 px-6 py-2.5 text-sm text-amber-700 dark:text-amber-400">
+    <div
+      className="flex items-center gap-3 border-b px-6 py-2.5 text-sm vt-anim-fade-up"
+      style={{
+        borderColor: "oklch(from var(--vt-warn) l c h / 0.3)",
+        background: "oklch(from var(--vt-warn) l c h / 0.1)",
+        color: "var(--vt-warn)",
+      }}
+    >
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <div className="flex-1 min-w-0">
         <span className="font-medium">
           {t("modelMissing.titleBefore")}{" "}
-          <code className="font-mono">{settings.local_model_size}</code>{" "}
+          <code className="vt-mono">{settings.local_model_size}</code>{" "}
           {t("modelMissing.titleAfter")}
         </span>{" "}
-        <span className="text-amber-700/80 dark:text-amber-400/80">
+        <span style={{ color: "oklch(from var(--vt-warn) l c h / 0.8)" }}>
           {t("modelMissing.subtitle")}
         </span>
       </div>
@@ -75,7 +82,12 @@ export function SelectedModelMissingBanner({ onGoToSettings }: Props) {
         variant="outline"
         size="sm"
         onClick={onGoToSettings}
-        className="shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+        className="shrink-0"
+        style={{
+          borderColor: "oklch(from var(--vt-warn) l c h / 0.4)",
+          background: "oklch(from var(--vt-warn) l c h / 0.1)",
+          color: "var(--vt-warn)",
+        }}
       >
         {t("modelMissing.manage")}
       </Button>

@@ -71,7 +71,7 @@ export function UpdateModal({ open, onOpenChange, onViewDetails }: UpdateModalPr
 
         {updateInfo.body && (
           <div className="max-h-[200px] overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            <p className="vt-eyebrow mb-2">
               {t('updater.updateModal.releaseNotes')}
             </p>
             <div className="text-sm text-foreground whitespace-pre-wrap">

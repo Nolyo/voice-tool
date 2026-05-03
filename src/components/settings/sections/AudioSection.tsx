@@ -6,7 +6,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useAudioDevices } from "@/hooks/useAudioDevices";
 import { Callout, Row, SectionHeader, Toggle, VtIcon } from "../vt";
 
-const ACCENT = "oklch(0.72 0.17 220)";
+const ACCENT = "var(--vt-cyan)";
 const BAR_COUNT = 24;
 
 export function AudioSection() {
@@ -76,7 +76,7 @@ export function AudioSection() {
   }, [audioLevel, isTesting]);
 
   return (
-    <div className="vt-fade-up space-y-5">
+    <div className="vt-anim-fade-up space-y-5">
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
           color={ACCENT}

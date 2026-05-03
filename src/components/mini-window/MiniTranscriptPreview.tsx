@@ -13,23 +13,23 @@ export function MiniTranscriptPreview({
   const { t } = useTranslation();
 
   let content: string;
-  let className = "text-xs text-slate-400 truncate";
+  let className = "text-xs text-vt-fg-3 truncate";
 
   if (status === "processing") {
     content = t("mini.sendingAudio");
-    className = "text-xs text-slate-300 truncate italic";
+    className = "text-xs text-vt-fg-2 truncate italic";
   } else if (lastTranscript) {
     content = lastTranscript;
-    className = "text-xs text-slate-200 truncate";
+    className = "text-xs text-vt-fg-2 truncate";
   } else {
     content = t("mini.noTranscriptYet", {
       defaultValue: "No transcription yet",
     });
-    className = "text-xs text-slate-500 truncate italic";
+    className = "text-xs text-vt-fg-4 truncate italic";
   }
 
   return (
-    <div className="mt-1 w-full overflow-hidden">
+    <div className="vt-anim-fade-up mt-1 w-full overflow-hidden">
       <p className={className}>{content}</p>
     </div>
   );

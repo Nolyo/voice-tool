@@ -25,7 +25,7 @@ export function TopWords({ words }: TopWordsProps) {
 
   return (
     <div className="vt-card-elevated p-5">
-      <h3 className="text-[14px] font-semibold text-[var(--vt-fg)]">
+      <h3 className="vt-display text-[14px] font-semibold text-[var(--vt-fg)]">
         {t("statistics.topWordsTitle")}
       </h3>
       <p className="text-[12px] text-[var(--vt-fg-3)] mt-0.5 mb-4">
@@ -42,8 +42,8 @@ export function TopWords({ words }: TopWordsProps) {
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border"
               style={{
                 fontSize: `${fontSize}px`,
-                background: `oklch(0.7 0.17 264 / ${0.06 + ratio * 0.18})`,
-                borderColor: `oklch(0.7 0.17 264 / ${0.18 + ratio * 0.4})`,
+                background: `oklch(from var(--vt-accent) l c h / ${0.06 + ratio * 0.18})`,
+                borderColor: `oklch(from var(--vt-accent) l c h / ${0.18 + ratio * 0.4})`,
                 color: "var(--vt-fg)",
               }}
             >

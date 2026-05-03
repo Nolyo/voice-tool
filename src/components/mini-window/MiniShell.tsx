@@ -31,19 +31,21 @@ export function MiniShell() {
     : undefined;
   const layout = useMiniWindowSize();
 
-  // Transparent background for the frameless window
+  // Transparent background for the frameless window. We also apply the
+  // `vt-app` design system scope so MiniHeader/MiniVisualizer/MiniTranscriptPreview
+  // can consume `--vt-*` tokens (accent, fg variants, status colors).
   useEffect(() => {
     const rootEl = document.documentElement;
     const bodyEl = document.body;
     const previousRootBg = rootEl.style.backgroundColor;
     const previousBodyBg = bodyEl.style.backgroundColor;
 
-    bodyEl.classList.add("mini-window-body");
+    bodyEl.classList.add("mini-window-body", "vt-app");
     rootEl.style.backgroundColor = "transparent";
     bodyEl.style.backgroundColor = "transparent";
 
     return () => {
-      bodyEl.classList.remove("mini-window-body");
+      bodyEl.classList.remove("mini-window-body", "vt-app");
       if (previousRootBg) rootEl.style.backgroundColor = previousRootBg;
       else rootEl.style.removeProperty("background-color");
       if (previousBodyBg) bodyEl.style.backgroundColor = previousBodyBg;
@@ -111,9 +113,9 @@ export function MiniShell() {
             data-tauri-drag-region
           >
             {status === "processing" && (
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                <p className="text-xs text-slate-300">
+              <div className="vt-anim-fade-up flex items-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-vt-fg-3 border-t-transparent" />
+                <p className="text-xs text-vt-fg-2">
                   {provider === "Local"
                     ? t("mini.processingLocal")
                     : t("mini.sendingAudio")}
@@ -121,21 +123,24 @@ export function MiniShell() {
               </div>
             )}
             {status === "post-processing" && (
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
-                <p className="text-xs text-violet-300">
+              <div className="vt-anim-fade-up flex items-center gap-2">
+                <div
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent"
+                  style={{ borderColor: "var(--vt-violet)", borderTopColor: "transparent" }}
+                />
+                <p className="text-xs text-vt-violet">
                   {t("mini.postProcessing")}
                 </p>
               </div>
             )}
             {status === "error" && (
-              <div className="flex items-center gap-2">
-                <span className="text-red-400 text-lg">✕</span>
-                <p className="text-xs text-red-400 font-medium">{errorMessage}</p>
+              <div className="vt-anim-fade-up flex items-center gap-2">
+                <span className="text-vt-danger text-lg">✕</span>
+                <p className="text-xs text-vt-danger font-medium">{errorMessage}</p>
               </div>
             )}
             {status === "success" && (
-              <div className="flex items-center gap-2">
+              <div className="vt-anim-fade-up flex items-center gap-2">
                 <span className="text-signal-green text-lg">✓</span>
                 <p className="text-xs text-signal-green font-medium">
                   {t("mini.transcriptionSuccess")}

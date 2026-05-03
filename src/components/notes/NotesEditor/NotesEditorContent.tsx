@@ -40,11 +40,13 @@ export function NotesEditorContent({
 
   if (!hasActiveNote) {
     return (
-      <div className="notes-empty">
+      <div className="notes-empty vt-anim-fade-up">
         <div className="notes-empty-icon">
           <FileText className="w-5 h-5" />
         </div>
-        <span>{t("notes.editor.noNote")}</span>
+        <span className="vt-display text-[15px]" style={{ color: "var(--vt-fg-2)" }}>
+          {t("notes.editor.noNote")}
+        </span>
       </div>
     );
   }

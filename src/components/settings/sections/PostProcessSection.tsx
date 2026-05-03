@@ -9,7 +9,7 @@ import {
   VtIcon,
 } from "../vt";
 
-const ACCENT = "oklch(0.72 0.18 15)";
+const ACCENT = "var(--vt-pin)";
 
 type PostProcessProvider = "OpenAI" | "Groq";
 type PostProcessMode =
@@ -50,7 +50,7 @@ export function PostProcessSection() {
   );
 
   return (
-    <>
+    <div className="vt-anim-fade-up space-y-5">
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
           color={ACCENT}
@@ -68,7 +68,7 @@ export function PostProcessSection() {
                 }}
               >
                 <span
-                  className="w-1.5 h-1.5 rounded-full"
+                  className="vt-anim-pulse-dot w-1.5 h-1.5 rounded-full"
                   style={{
                     background: "var(--vt-accent-2)",
                     boxShadow: "0 0 8px currentColor",
@@ -128,13 +128,13 @@ export function PostProcessSection() {
                     id: "OpenAI" as PostProcessProvider,
                     title: t("settings.postProcess.providerOpenai"),
                     sub: "gpt-4.1-mini",
-                    dot: "oklch(0.72 0.17 155)",
+                    dot: "var(--vt-ok)",
                   },
                   {
                     id: "Groq" as PostProcessProvider,
                     title: t("settings.postProcess.providerGroq"),
                     sub: "llama-3.3-70b",
-                    dot: "oklch(0.72 0.18 15)",
+                    dot: "var(--vt-danger)",
                   },
                 ]}
                 columns={2}
@@ -260,6 +260,6 @@ export function PostProcessSection() {
           })}
         </Callout>
       )}
-    </>
+    </div>
   );
 }

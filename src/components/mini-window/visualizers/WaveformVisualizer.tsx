@@ -75,12 +75,17 @@ export function WaveformVisualizer({
       const midY = H / 2;
       const stepX = W / n;
 
+      // Read live design-system tokens so the waveform inherits the
+      // current theme (teal accent for recording, fg-3 grey when idle).
+      const styles = getComputedStyle(canvas);
+      const accent = styles.getPropertyValue("--vt-accent").trim() || "oklch(0.68 0.14 162)";
+      const fg3 = styles.getPropertyValue("--vt-fg-3").trim() || "oklch(0.6 0.015 230)";
       const strokeColor = isRecording
-        ? "rgba(248, 113, 113, 0.95)"
-        : "rgba(148, 163, 184, 0.5)";
+        ? `oklch(from ${accent} l c h / 0.95)`
+        : `oklch(from ${fg3} l c h / 0.5)`;
       const fillColor = isRecording
-        ? "rgba(248, 113, 113, 0.2)"
-        : "rgba(148, 163, 184, 0.12)";
+        ? `oklch(from ${accent} l c h / 0.22)`
+        : `oklch(from ${fg3} l c h / 0.12)`;
 
       ctx.lineWidth = Math.max(1, Math.round(1.5 * (window.devicePixelRatio || 1)));
       ctx.lineJoin = "round";

@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { buildShortcutFromEvent } from "../common/HotkeyInput";
 import { Callout, Kbd, SectionHeader, VtIcon } from "../vt";
 
-const ACCENT = "oklch(0.7 0.12 250)";
+const ACCENT = "var(--vt-accent)";
 
 type HotkeyKey =
   | "record_hotkey"
@@ -147,7 +147,7 @@ function HotkeyRow({
             <VtIcon.spinner />
           ) : listening ? (
             <span
-              className="text-[12px] animate-pulse"
+              className="text-[12px] vt-anim-pulse-dot"
               style={{ color: "var(--vt-accent-2)" }}
             >
               {t("hotkeyInput.pressKey", {
@@ -255,7 +255,7 @@ export function ShortcutsSection() {
   ];
 
   return (
-    <div className="vt-fade-up space-y-5">
+    <div className="vt-anim-fade-up space-y-5">
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
           color={ACCENT}

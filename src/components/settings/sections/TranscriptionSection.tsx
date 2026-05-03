@@ -12,7 +12,7 @@ import {
   VtIcon,
 } from "../vt";
 
-const ACCENT = "oklch(0.68 0.18 265)";
+const ACCENT = "var(--vt-violet)";
 
 type Provider = "OpenAI" | "Google" | "Local" | "Groq";
 type LocalModel =
@@ -37,19 +37,19 @@ export function TranscriptionSection() {
       id: "OpenAI" as Provider,
       title: t("settings.transcription.providerOpenai"),
       sub: t("settings.transcription.providerOpenaiSub"),
-      dot: "oklch(0.72 0.17 155)",
+      dot: "var(--vt-ok)",
     },
     {
       id: "Groq" as Provider,
       title: t("settings.transcription.providerGroq"),
       sub: t("settings.transcription.providerGroqSub"),
-      dot: "oklch(0.72 0.18 15)",
+      dot: "var(--vt-danger)",
     },
     {
       id: "Local" as Provider,
       title: t("settings.transcription.providerLocal"),
       sub: t("settings.transcription.providerLocalSub"),
-      dot: "oklch(0.72 0.15 250)",
+      dot: "var(--vt-cyan)",
     },
   ];
 
@@ -57,7 +57,7 @@ export function TranscriptionSection() {
   const hasGroqKey = settings.groq_api_key.trim().length > 0;
 
   return (
-    <div className="vt-fade-up space-y-5">
+    <div className="vt-anim-fade-up space-y-5">
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
           color={ACCENT}
@@ -337,7 +337,7 @@ function ApiKeyRow({ name, maskedKey, present }: ApiKeyRowProps) {
     >
       <div className="flex items-center gap-2.5 min-w-0">
         <span
-          className="w-2 h-2 rounded-full shrink-0"
+          className={`w-2 h-2 rounded-full shrink-0 ${present ? "vt-anim-pulse-dot" : ""}`}
           style={
             present
               ? { background: "var(--vt-ok)", boxShadow: "0 0 6px var(--vt-ok)" }

@@ -4,7 +4,7 @@ import { useAutostart } from "@/hooks/useAutostart";
 import { RadioCardList, Row, SectionHeader, Toggle, VtIcon } from "../vt";
 import { DangerZone } from "./DangerZone";
 
-const ACCENT = "oklch(0.72 0.16 75)";
+const ACCENT = "var(--vt-warn)";
 
 type InsertionMode = "cursor" | "clipboard" | "none";
 
@@ -37,7 +37,7 @@ export function SystemSection() {
   );
 
   return (
-    <div className="vt-fade-up space-y-5">
+    <div className="vt-anim-fade-up space-y-5">
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
           color={ACCENT}

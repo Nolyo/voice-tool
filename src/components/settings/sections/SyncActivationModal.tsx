@@ -128,10 +128,24 @@ export function SyncActivationModal({ open, onClose }: Props) {
         )}
 
         <div className="space-y-2">
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+          <div
+            className="rounded-md p-3 text-xs"
+            style={{
+              background: "var(--vt-warn-soft)",
+              border: "1px solid oklch(from var(--vt-warn) l c h / 0.4)",
+              color: "var(--vt-fg-2)",
+            }}
+          >
             {t("sync.activation.api_keys_notice")}
           </div>
-          <div className="rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-xs">
+          <div
+            className="rounded-md p-3 text-xs"
+            style={{
+              background: "oklch(from var(--vt-cyan) l c h / 0.1)",
+              border: "1px solid oklch(from var(--vt-cyan) l c h / 0.4)",
+              color: "var(--vt-fg-2)",
+            }}
+          >
             {t("sync.activation.backup_notice")}
           </div>
         </div>

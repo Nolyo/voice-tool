@@ -102,7 +102,7 @@ export function ProfilesManageDialog({
                   />
                   <button
                     onClick={confirmRename}
-                    className="text-green-500 hover:text-green-400 cursor-pointer"
+                    className="text-vt-ok hover:opacity-80 cursor-pointer"
                     title={t("common.save")}
                   >
                     <Check className="w-4 h-4" />

@@ -13,7 +13,6 @@ import {
   Sparkles,
   Wand2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -214,11 +213,17 @@ function ChoiceStep({
   const { t } = useTranslation();
   return (
     <>
-      <div className="space-y-2 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/10">
-          <Sparkles className="h-6 w-6 text-violet-500" />
+      <div className="space-y-2 text-center vt-anim-fade-up">
+        <div
+          className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
+          style={{
+            background: "oklch(from var(--vt-violet) l c h / 0.14)",
+            color: "var(--vt-violet)",
+          }}
+        >
+          <Sparkles className="h-6 w-6" />
         </div>
-        <DialogPrimitive.Title className="text-xl font-semibold">
+        <DialogPrimitive.Title className="vt-display text-xl font-semibold">
           {t("onboarding.welcomeTitle")}
         </DialogPrimitive.Title>
         <DialogPrimitive.Description className="text-sm text-muted-foreground">
@@ -230,12 +235,12 @@ function ChoiceStep({
         <button
           type="button"
           onClick={onLocal}
-          className={cn(
-            "group flex flex-col gap-2 rounded-lg border-2 border-border bg-card p-5 text-left transition-all cursor-pointer",
-            "hover:border-violet-500/60 hover:bg-violet-500/5 focus:outline-none focus:ring-2 focus:ring-violet-500/40",
-          )}
+          className="group flex flex-col gap-2 rounded-lg border-2 border-border bg-card p-5 text-left transition-all cursor-pointer hover:border-vt-violet/60 focus:outline-none focus:ring-2 focus:ring-vt-violet/40"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-violet-500/10 text-violet-500">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-md text-vt-violet"
+            style={{ background: "oklch(from var(--vt-violet) l c h / 0.12)" }}
+          >
             <HardDrive className="h-5 w-5" />
           </div>
           <div>
@@ -249,12 +254,12 @@ function ChoiceStep({
         <button
           type="button"
           onClick={onApi}
-          className={cn(
-            "group flex flex-col gap-2 rounded-lg border-2 border-border bg-card p-5 text-left transition-all cursor-pointer",
-            "hover:border-sky-500/60 hover:bg-sky-500/5 focus:outline-none focus:ring-2 focus:ring-sky-500/40",
-          )}
+          className="group flex flex-col gap-2 rounded-lg border-2 border-border bg-card p-5 text-left transition-all cursor-pointer hover:border-vt-cyan/60 focus:outline-none focus:ring-2 focus:ring-vt-cyan/40"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-sky-500/10 text-sky-500">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-md text-vt-cyan"
+            style={{ background: "oklch(from var(--vt-cyan) l c h / 0.12)" }}
+          >
             <Cloud className="h-5 w-5" />
           </div>
           <div>
@@ -323,7 +328,7 @@ function LocalStep({
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <DialogPrimitive.Title className="text-xl font-semibold">
+          <DialogPrimitive.Title className="vt-display text-xl font-semibold">
             {t("onboarding.localTitle")}
           </DialogPrimitive.Title>
         </div>
@@ -356,15 +361,28 @@ function LocalStep({
         )}
 
         {detectionFailed && (
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700 dark:text-amber-400">
+          <div
+            className="rounded-md border p-3 text-sm"
+            style={{
+              borderColor: "oklch(from var(--vt-warn) l c h / 0.3)",
+              background: "oklch(from var(--vt-warn) l c h / 0.05)",
+              color: "var(--vt-warn)",
+            }}
+          >
             {t("onboarding.detectionFailed")}
           </div>
         )}
 
         {sysInfo && (
-          <div className="rounded-md border border-violet-500/30 bg-violet-500/5 p-4 space-y-2">
+          <div
+            className="rounded-md border p-4 space-y-2"
+            style={{
+              borderColor: "oklch(from var(--vt-violet) l c h / 0.3)",
+              background: "oklch(from var(--vt-violet) l c h / 0.05)",
+            }}
+          >
             <div className="flex items-start gap-2">
-              <Info className="h-4 w-4 mt-0.5 text-violet-500 shrink-0" />
+              <Info className="h-4 w-4 mt-0.5 text-vt-violet shrink-0" />
               <div className="text-sm">
                 <div className="font-medium text-foreground">
                   {t("onboarding.systemInfoRam", {
@@ -400,7 +418,7 @@ function LocalStep({
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <label className="vt-eyebrow">
           {t("onboarding.modelToDownload")}
         </label>
         <Select
@@ -438,7 +456,7 @@ function LocalStep({
       )}
 
       {downloadError && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive vt-anim-fade-up">
           {t("onboarding.downloadErrorPrefix")} : {downloadError}
         </div>
       )}
@@ -491,7 +509,7 @@ function ApiStep({
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <DialogPrimitive.Title className="text-xl font-semibold">
+          <DialogPrimitive.Title className="vt-display text-xl font-semibold">
             {t("onboarding.apiTitle")}
           </DialogPrimitive.Title>
         </div>
@@ -501,7 +519,7 @@ function ApiStep({
             href="https://platform.openai.com/api-keys"
             target="_blank"
             rel="noreferrer"
-            className="text-sky-500 underline"
+            className="text-vt-cyan underline"
           >
             platform.openai.com
           </a>
@@ -510,7 +528,7 @@ function ApiStep({
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <label className="vt-eyebrow">
           {t("onboarding.apiKeyLabel")}
         </label>
         <Input

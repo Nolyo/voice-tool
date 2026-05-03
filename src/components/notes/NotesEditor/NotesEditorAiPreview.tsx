@@ -18,15 +18,27 @@ export function NotesEditorAiPreview({
   const { t } = useTranslation();
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden vt-anim-fade-up">
       {/* Preview toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b">
-        <span className="text-xs text-primary font-medium">{t('notes.editor.aiPreview.title')}</span>
+      <div
+        className="flex items-center justify-between px-3 py-1.5"
+        style={{
+          background: "var(--vt-accent-soft)",
+          borderBottom: "1px solid var(--vt-border)",
+        }}
+      >
+        <span
+          className="vt-eyebrow"
+          style={{ color: "var(--vt-accent-2)" }}
+        >
+          {t('notes.editor.aiPreview.title')}
+        </span>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 text-xs gap-1 text-primary hover:text-primary"
+            className="h-6 text-xs gap-1"
+            style={{ color: "var(--vt-accent-2)" }}
             onClick={onAccept}
           >
             <Check className="w-3.5 h-3.5" />
@@ -35,7 +47,8 @@ export function NotesEditorAiPreview({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 text-xs gap-1 text-muted-foreground"
+            className="h-6 text-xs gap-1"
+            style={{ color: "var(--vt-fg-3)" }}
             onClick={onDismiss}
           >
             <X className="w-3.5 h-3.5" />
@@ -46,24 +59,51 @@ export function NotesEditorAiPreview({
       {/* Split view: original + result */}
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         {/* Original */}
-        <div className="flex-1 min-h-0 flex flex-col border-b">
-          <div className="px-3 py-1 bg-muted/40 border-b">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        <div
+          className="flex-1 min-h-0 flex flex-col"
+          style={{ borderBottom: "1px solid var(--vt-border)" }}
+        >
+          <div
+            className="px-3 py-1"
+            style={{
+              background: "var(--vt-panel-2)",
+              borderBottom: "1px solid var(--vt-border)",
+            }}
+          >
+            <span className="vt-eyebrow">
               {t('notes.editor.aiPreview.original')}
             </span>
           </div>
-          <div className="flex-1 overflow-auto p-3 text-foreground/50 text-sm leading-relaxed whitespace-pre-wrap">
+          <div
+            className="flex-1 overflow-auto p-3 text-sm leading-relaxed whitespace-pre-wrap"
+            style={{ color: "var(--vt-fg-3)" }}
+          >
             {originalText}
           </div>
         </div>
         {/* Result */}
         <div className="flex-1 min-h-0 flex flex-col">
-          <div className="px-3 py-1 bg-primary/5 border-b">
-            <span className="text-[10px] uppercase tracking-wider text-primary font-medium">
+          <div
+            className="px-3 py-1"
+            style={{
+              background: "var(--vt-accent-soft)",
+              borderBottom: "1px solid var(--vt-border)",
+            }}
+          >
+            <span
+              className="vt-eyebrow"
+              style={{ color: "var(--vt-accent-2)" }}
+            >
               {t('notes.editor.aiPreview.result')}
             </span>
           </div>
-          <div className="flex-1 overflow-auto p-3 bg-primary/5 text-foreground text-sm leading-relaxed whitespace-pre-wrap">
+          <div
+            className="flex-1 overflow-auto p-3 text-sm leading-relaxed whitespace-pre-wrap"
+            style={{
+              background: "var(--vt-accent-soft)",
+              color: "var(--vt-fg)",
+            }}
+          >
             {result}
           </div>
         </div>

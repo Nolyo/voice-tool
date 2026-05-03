@@ -32,7 +32,7 @@ export function StatistiquesTab({ transcriptions }: StatistiquesTabProps) {
           <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-[var(--vt-accent-soft)] text-[var(--vt-accent)] mx-auto">
             <Activity className="w-6 h-6" />
           </div>
-          <h2 className="mt-4 text-[18px] font-semibold text-[var(--vt-fg)]">
+          <h2 className="mt-4 vt-display text-[18px] font-semibold text-[var(--vt-fg)]">
             {t("statistics.emptyTitle")}
           </h2>
           <p className="mt-2 text-[13px] text-[var(--vt-fg-3)] leading-relaxed">
@@ -49,14 +49,14 @@ export function StatistiquesTab({ transcriptions }: StatistiquesTabProps) {
   return (
     <div className="vt-app space-y-5">
       {/* Hero section */}
-      <div>
+      <div className="vt-anim-fade-up">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-4 h-4 text-[var(--vt-accent)]" />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--vt-accent)]">
+          <span className="vt-eyebrow text-[var(--vt-accent)]">
             {t("statistics.heroEyebrow")}
           </span>
         </div>
-        <h2 className="text-[22px] font-semibold tracking-tight text-[var(--vt-fg)]">
+        <h2 className="vt-display text-[22px] font-semibold tracking-tight text-[var(--vt-fg)]">
           {t("statistics.heroTitle")}
         </h2>
         <p className="text-[13.5px] text-[var(--vt-fg-3)] mt-1 max-w-2xl">

@@ -31,36 +31,36 @@ export const DASHBOARD_NAV_ITEMS = [
     id: "historique",
     labelKey: "sidebar.history",
     icon: History,
-    iconColor: "text-slate-400",
-    iconBg: "bg-slate-500/10",
+    iconColor: "text-vt-fg-3",
+    iconBg: "bg-vt-surface",
   },
   {
     id: "statistiques",
     labelKey: "sidebar.statistics",
     icon: BarChart3,
-    iconColor: "text-slate-400",
-    iconBg: "bg-slate-500/10",
+    iconColor: "text-vt-fg-3",
+    iconBg: "bg-vt-surface",
   },
   {
     id: "notes",
     labelKey: "sidebar.notes",
     icon: FileText,
-    iconColor: "text-slate-400",
-    iconBg: "bg-slate-500/10",
+    iconColor: "text-vt-fg-3",
+    iconBg: "bg-vt-surface",
   },
   {
     id: "parametres",
     labelKey: "sidebar.settings",
     icon: Settings,
-    iconColor: "text-slate-400",
-    iconBg: "bg-slate-500/10",
+    iconColor: "text-vt-fg-3",
+    iconBg: "bg-vt-surface",
   },
   {
     id: "logs",
     labelKey: "sidebar.logs",
     icon: ScrollText,
-    iconColor: "text-slate-400",
-    iconBg: "bg-slate-500/10",
+    iconColor: "text-vt-fg-3",
+    iconBg: "bg-vt-surface",
   },
 ] as const;
 
@@ -172,29 +172,47 @@ export function DashboardSidebar({
 
       {/* Nav items */}
       <nav className="flex flex-col gap-1 p-2 shrink-0">
-        {visibleNavItems.map(({ id, labelKey, icon: Icon, iconColor, iconBg }) => (
-          <button
-            key={id}
-            onClick={() => onTabChange(id)}
-            title={collapsed ? t(labelKey) : undefined}
-            className={`flex items-center gap-2.5 rounded-md transition-colors cursor-pointer ${
-              collapsed ? "justify-center p-1.5" : "px-2 py-1.5"
-            } ${
-              activeTab === id
-                ? "bg-accent text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-            }`}
-          >
-            <div
-              className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}
+        {visibleNavItems.map(({ id, labelKey, icon: Icon, iconColor, iconBg }) => {
+          const isActive = activeTab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onTabChange(id)}
+              title={collapsed ? t(labelKey) : undefined}
+              aria-current={isActive ? "page" : undefined}
+              className={`flex items-center gap-2.5 rounded-md transition-colors cursor-pointer ${
+                collapsed ? "justify-center p-1.5" : "px-2 py-1.5"
+              } ${
+                isActive
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              }`}
+              style={
+                isActive ? { background: "var(--vt-accent-soft)" } : undefined
+              }
             >
-              <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
-            </div>
-            {!collapsed && (
-              <span className="text-sm font-medium truncate">{t(labelKey)}</span>
-            )}
-          </button>
-        ))}
+              <div
+                className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
+                  isActive ? "" : iconBg
+                }`}
+                style={
+                  isActive
+                    ? { background: "var(--vt-accent-soft)" }
+                    : undefined
+                }
+              >
+                <Icon
+                  className={`w-3.5 h-3.5 ${
+                    isActive ? "text-vt-accent" : iconColor
+                  }`}
+                />
+              </div>
+              {!collapsed && (
+                <span className="text-sm font-medium truncate">{t(labelKey)}</span>
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Notes section — visible only when the Notes tab is active */}

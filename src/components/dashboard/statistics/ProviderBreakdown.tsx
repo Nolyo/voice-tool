@@ -8,14 +8,14 @@ interface ProviderBreakdownProps {
 }
 
 const PROVIDER_COLOR: Record<string, string> = {
-  openai: "oklch(0.74 0.14 150)",
-  groq: "oklch(0.78 0.14 75)",
-  google: "oklch(0.7 0.17 264)",
-  local: "oklch(0.72 0.18 295)",
+  openai: "var(--vt-green)",
+  groq: "var(--vt-warn)",
+  google: "var(--vt-cyan)",
+  local: "var(--vt-violet)",
 };
 
 function colorFor(key: string): string {
-  return PROVIDER_COLOR[key] ?? "oklch(0.6 0.025 264)";
+  return PROVIDER_COLOR[key] ?? "var(--vt-fg-4)";
 }
 
 export function ProviderBreakdown({ providers, total }: ProviderBreakdownProps) {
@@ -37,7 +37,7 @@ export function ProviderBreakdown({ providers, total }: ProviderBreakdownProps) 
 
   return (
     <div className="vt-card-elevated p-5">
-      <h3 className="text-[14px] font-semibold text-[var(--vt-fg)]">
+      <h3 className="vt-display text-[14px] font-semibold text-[var(--vt-fg)]">
         {t("statistics.providersTitle")}
       </h3>
       <p className="text-[12px] text-[var(--vt-fg-3)] mt-0.5 mb-4">

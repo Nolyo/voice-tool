@@ -88,7 +88,7 @@ export function UpdaterTab() {
           <>
             <Divider />
             <div className="px-5 py-4 flex items-start gap-3">
-              <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-vt-warn mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-foreground">
                   {t('updater.unavailableTitle')}
@@ -119,9 +119,12 @@ export function UpdaterTab() {
         {updateInfo && !updateInfo.available && !error && (
           <>
             <Divider />
-            <div className="px-5 py-3 flex items-center gap-2.5 bg-green-500/5">
-              <Check className="w-4 h-4 text-green-500 shrink-0" />
-              <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+            <div
+              className="px-5 py-3 flex items-center gap-2.5"
+              style={{ background: "var(--vt-ok-soft)" }}
+            >
+              <Check className="w-4 h-4 text-vt-ok shrink-0" />
+              <p className="text-sm text-vt-ok font-medium">
                 {t('updater.upToDate')}
               </p>
             </div>

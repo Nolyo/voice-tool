@@ -26,11 +26,11 @@ import { DangerCard } from "./account/DangerCard";
 import { DevicesList } from "./DevicesList";
 import { DeadLettersDialog } from "./DeadLettersDialog";
 
-const ACCENT_COMPTE = "oklch(0.72 0.17 200)";
-const ACCENT_SYNC = "oklch(0.72 0.17 220)";
-const ACCENT_OK = "oklch(0.72 0.14 150)";
-const ACCENT_WARN = "oklch(0.78 0.14 75)";
-const ACCENT_DATA = "oklch(0.7 0.02 264)";
+const ACCENT_COMPTE = "var(--vt-accent)";
+const ACCENT_SYNC = "var(--vt-cyan)";
+const ACCENT_OK = "var(--vt-ok)";
+const ACCENT_WARN = "var(--vt-warn)";
+const ACCENT_DATA = "var(--vt-fg-3)";
 
 function getInitials(email: string | null | undefined): string {
   if (!email) return "?";
@@ -56,7 +56,7 @@ export function AccountSection() {
   const { status } = useAuth();
 
   return (
-    <div className="vt-fade-up space-y-5">
+    <div className="vt-anim-fade-up space-y-5">
       {status === "signed-in" ? <SignedInBlocks /> : <SignedOutBlock />}
     </div>
   );
@@ -211,7 +211,7 @@ function IdentityCard() {
             }}
           >
             <span
-              className="w-1.5 h-1.5 rounded-full"
+              className="vt-anim-pulse-dot w-1.5 h-1.5 rounded-full"
               style={{
                 background: "var(--vt-ok)",
                 boxShadow: "0 0 6px currentColor",
@@ -465,8 +465,7 @@ function SyncedInventoryGrid() {
           }}
         >
           <div
-            className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-wider mb-1"
-            style={{ color: "var(--vt-fg-4)" }}
+            className="vt-eyebrow flex items-center gap-1.5 mb-1"
           >
             <span style={{ color: "var(--vt-ok)" }}>
               <VtIcon.check />
@@ -836,7 +835,7 @@ function SecurityCard() {
         >
           <DialogContent
             className="vt-app sm:max-w-[420px] p-0 gap-0 overflow-hidden"
-            style={{ background: "oklch(0.13 0.015 264)" }}
+            style={{ background: "var(--vt-bg)" }}
           >
             <DialogTitle className="sr-only">
               {t("auth.security.disableMfa.title")}

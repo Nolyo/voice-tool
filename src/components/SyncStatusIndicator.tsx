@@ -29,18 +29,20 @@ export function SyncStatusIndicator() {
 
   let icon;
   let colorClass = "text-muted-foreground";
+  let pulse = false;
   switch (sync.status) {
     case "idle":
       icon = <CheckCircle2 className="w-4 h-4" />;
-      colorClass = "text-emerald-500";
+      colorClass = "text-vt-green";
       break;
     case "syncing":
       icon = <RefreshCw className="w-4 h-4 animate-spin" />;
-      colorClass = "text-primary";
+      colorClass = "text-vt-accent";
+      pulse = true;
       break;
     case "offline":
       icon = <WifiOff className="w-4 h-4" />;
-      colorClass = "text-amber-500";
+      colorClass = "text-vt-warn";
       break;
     case "error":
       icon = <AlertTriangle className="w-4 h-4" />;
@@ -48,7 +50,7 @@ export function SyncStatusIndicator() {
       break;
     case "quota-exceeded":
       icon = <AlertTriangle className="w-4 h-4" />;
-      colorClass = "text-amber-500";
+      colorClass = "text-vt-warn";
       break;
   }
 
@@ -58,7 +60,7 @@ export function SyncStatusIndicator() {
       onClick={() => void sync.syncNow()}
       title={tip}
       aria-label={tip}
-      className={`inline-flex items-center justify-center rounded-md w-9 h-9 hover:bg-accent transition-colors ${colorClass}`}
+      className={`inline-flex items-center justify-center rounded-md w-9 h-9 hover:bg-accent transition-colors ${colorClass} ${pulse ? "vt-anim-pulse-dot" : ""}`}
     >
       {icon}
     </button>

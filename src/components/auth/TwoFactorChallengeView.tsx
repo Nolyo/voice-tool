@@ -64,7 +64,7 @@ export function TwoFactorChallengeView() {
 
   return (
     <div
-      className="rounded-xl overflow-hidden"
+      className="rounded-xl overflow-hidden vt-anim-fade-up"
       style={{
         background: "var(--vt-panel)",
         border: "1px solid var(--vt-border)",
@@ -84,7 +84,7 @@ export function TwoFactorChallengeView() {
             <VtIcon.shieldCheck />
           </div>
           <div>
-            <div className="text-[14px] font-semibold">
+            <div className="vt-display text-[15px] font-semibold tracking-tight">
               {t("auth.twoFactor.challenge.title")}
             </div>
             <div
@@ -140,7 +140,7 @@ export function TwoFactorChallengeView() {
                 defaultValue: "Code de récupération",
               })}
               disabled={loading}
-              className="w-full h-[52px] rounded-[10px] px-4 text-center vt-mono text-[18px] tracking-[0.2em] uppercase transition disabled:opacity-50"
+              className="vt-auth-recovery-input w-full h-[52px] rounded-[10px] px-4 text-center vt-mono text-[18px] tracking-[0.2em] uppercase transition disabled:opacity-50"
               style={{
                 background: recoveryCode
                   ? "oklch(from var(--vt-accent) l c h / 0.08)"
@@ -152,6 +152,18 @@ export function TwoFactorChallengeView() {
                     : "var(--vt-border)"),
                 color: "var(--vt-fg)",
                 caretColor: "var(--vt-accent)",
+                outline: "none",
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.boxShadow =
+                  "0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25)";
+                e.currentTarget.style.borderColor = "var(--vt-accent)";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.borderColor = recoveryCode
+                  ? "oklch(from var(--vt-accent) l c h / 0.4)"
+                  : "var(--vt-border)";
               }}
             />
           </div>

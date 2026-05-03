@@ -261,7 +261,7 @@ export function SectionHeader({ color, icon, title, description, trailing }: Sec
         {icon}
       </div>
       <div className="flex flex-col min-w-0 flex-1">
-        <h2 className="text-[15px] font-semibold tracking-tight leading-tight">{title}</h2>
+        <h2 className="vt-display text-[15px] font-semibold leading-tight">{title}</h2>
         <p className="text-[12.5px] mt-0.5" style={{ color: "var(--vt-fg-3)" }}>
           {description}
         </p>

@@ -197,7 +197,7 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
   const captchaSatisfied = !captchaRequired || !!captchaToken;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col vt-anim-fade-up">
       {/* Header */}
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-3 pr-12">
         <div
@@ -211,7 +211,7 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
           <VtIcon.mic />
         </div>
         <div className="min-w-0">
-          <div className="text-[14px] font-semibold tracking-tight">
+          <div className="vt-display text-[15px] font-semibold tracking-tight">
             {mode === "signup"
               ? t("auth.signup.title")
               : t("auth.login.title")}
@@ -344,11 +344,20 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t("auth.login.magicLinkPlaceholder")}
-                  className="w-full h-9 pl-9 pr-3 rounded-md text-[13px]"
+                  className="w-full h-9 pl-9 pr-3 rounded-md text-[13px] outline-none transition"
                   style={{
                     background: "var(--vt-surface)",
                     border: "1px solid var(--vt-border)",
                     color: "var(--vt-fg)",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.boxShadow =
+                      "0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25)";
+                    e.currentTarget.style.borderColor = "var(--vt-accent)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.boxShadow = "none";
+                    e.currentTarget.style.borderColor = "var(--vt-border)";
                   }}
                   disabled={loading}
                 />
@@ -378,11 +387,20 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full h-9 pl-9 pr-3 rounded-md text-[13px]"
+                    className="w-full h-9 pl-9 pr-3 rounded-md text-[13px] outline-none transition"
                     style={{
                       background: "var(--vt-surface)",
                       border: "1px solid var(--vt-border)",
                       color: "var(--vt-fg)",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.boxShadow =
+                        "0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25)";
+                      e.currentTarget.style.borderColor = "var(--vt-accent)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.boxShadow = "none";
+                      e.currentTarget.style.borderColor = "var(--vt-border)";
                     }}
                     disabled={loading}
                     aria-describedby={mode === "signup" ? "auth-password-hint" : undefined}

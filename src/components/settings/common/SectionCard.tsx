@@ -18,15 +18,15 @@ export function SectionCard({
   iconBg = "bg-primary/10",
 }: SectionCardProps) {
   return (
-    <div id={id} className="space-y-3 scroll-mt-2 bg-foreground/[0.04] p-3 rounded-lg">
-      <div className="flex items-center gap-3 px-0.5 bg-foreground/[0.06] py-3 rounded-lg px-2">
+    <div id={id} className="space-y-3 scroll-mt-2 bg-vt-surface p-3 rounded-lg">
+      <div className="flex items-center gap-3 px-0.5 bg-vt-surface-hi py-3 rounded-lg px-2">
         <div
           className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}
         >
           {icon}
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-foreground leading-tight">
+          <h3 className="vt-display text-sm font-semibold text-foreground leading-tight">
             {title}
           </h3>
           <p className="text-xs text-muted-foreground">{subtitle}</p>
