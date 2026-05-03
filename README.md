@@ -1,183 +1,120 @@
-# 🎙️ Voice Tool
+<p align="center">
+  <img src="docs/screenshots/statistics.png" alt="Lexena dashboard" width="820">
+</p>
 
-Application desktop de **dictée vocale** propulsée par l'IA. Parlez dans votre micro, et la transcription est automatiquement collée dans la fenêtre active.
+<h1 align="center">Lexena</h1>
 
-## 📋 Sommaire
+<p align="center">
+  AI-powered voice dictation, notes, and personal vocabulary — for your Windows desktop.
+</p>
 
-- [Fonctionnalités](#-fonctionnalités)
-- [Stack technique](#️-stack-technique)
-- [Prérequis](#-prérequis)
-- [Démarrage rapide](#-démarrage-rapide)
-- [Commandes utiles](#-commandes-utiles)
-- [Transcription locale avec Whisper.cpp](#-transcription-locale-avec-whispercpp-optionnel)
-- [Créer une nouvelle release](#-créer-une-nouvelle-release)
-- [Notes importantes](#️-notes-importantes)
+<p align="center">
+  <a href="https://github.com/Nolyo/lexena/releases"><img src="https://img.shields.io/github/v/release/Nolyo/lexena?include_prereleases&label=release" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white" alt="Windows">
+  <img src="https://img.shields.io/badge/built%20with-Tauri%202-24C8DB?logo=tauri&logoColor=white" alt="Tauri 2">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/status-Public%20Beta-orange" alt="Public Beta">
+</p>
 
-## ✨ Fonctionnalités
+> **Lexena 3.0 is in public Beta.** The core experience is stable; we are polishing things and shipping new capabilities frequently.
 
-- 🎤 Enregistrement audio via micro système
-- 📊 Visualisation audio temps réel (fenêtre principale + mini fenêtre flottante)
-- 🗣️ Double transcription : **OpenAI Whisper** (batch) et **Deepgram** (streaming temps réel)
-- 🔤 Transcription locale via **whisper.cpp** (optionnel, sans API)
-- ⌨️ Raccourcis globaux configurables (toggle, push-to-talk, afficher fenêtre)
-- 📋 Auto-collage de la transcription dans la fenêtre active
-- 🔄 Mise à jour automatique avec signature cryptographique
-- 💾 Historique des transcriptions
-- 🖥️ Architecture multi-fenêtres (dashboard + mini visualiseur)
-- 🔔 Intégration barre système (system tray)
+## Highlights
 
-## 🛠️ Stack technique
+- 🎤 **Push-to-talk dictation** with configurable global hotkeys, instant insertion into any active window.
+- 📝 **Built-in notes** — rich text editor with folders, backlinks, code blocks, tables, and task lists.
+- 📊 **Personal dashboard** — streaks, time saved, top words, activity heatmap.
+- 👤 **Multi-profile** — fully isolated workspaces per profile.
+- ☁️ **Optional account & sync** — preferences, dictionary, and snippets follow you across devices.
+- 🔒 **Offline or cloud transcription** — your choice.
+- 📚 **Personal dictionary & snippets** — improve accuracy and expand text on the fly.
+- 🪟 **Floating mini-window**, system-tray integration, and auto-paste.
+- 🔄 **Signed auto-updates** and a 🌍 EN / FR interface.
 
-| Couche | Technologies |
-|--------|-------------|
-| **Frontend** | React 19, TypeScript, Tailwind CSS v4, Vite |
-| **Backend** | Rust, Tauri v2, cpal (audio), enigo (clavier) |
-| **Package manager** | pnpm |
-| **Build/CI** | GitHub Actions, NSIS/MSI/portable |
+## Get Lexena
 
-## 📦 Prérequis
+Head to the [Releases page](https://github.com/Nolyo/lexena/releases) and grab the installer that fits you best — **NSIS** (recommended), **MSI**, or **portable**. Launch it, and you are ready to dictate.
 
-### 1. Node.js
+Sign in to enable sync across your devices, or stay fully local — your choice. Lexena currently runs on **Windows** only.
 
-Téléchargez et installez [Node.js](https://nodejs.org/) (version LTS recommandée).
+## A quick tour
 
-### 2. pnpm
+**Notes — a full editor next to your transcriptions**
+
+<p align="center">
+  <img src="docs/screenshots/notes.png" alt="Lexena notes editor" width="820">
+</p>
+
+**History — every dictation, searchable, exportable**
+
+<p align="center">
+  <img src="docs/screenshots/historic.png" alt="Lexena transcription history" width="820">
+</p>
+
+## What you can do
+
+**Dictate anywhere.** Bind a hotkey, talk into your microphone, and Lexena pastes the transcription straight into the active window — chat, email, code editor, browser.
+
+**Capture and organise.** Keep notes alongside your transcriptions in the built-in editor: folders, backlinks, tables, code blocks, task lists.
+
+**Make it yours.** Tune your personal dictionary for tricky words, define snippets that expand into longer text, customise your hotkeys, theme, and run multiple profiles for different contexts.
+
+## Beta status
+
+Lexena 3.0 is a public Beta — usable every day, but moving fast. New features land regularly and a few rough edges are still being smoothed out.
+
+Found a bug or want to suggest something? [Open an issue](https://github.com/Nolyo/lexena/issues) — feedback shapes the roadmap.
+
+## Build from source
+
+For contributors and curious developers.
+
+### Requirements
+
+- **Node.js** (LTS) and **pnpm**
+- **Rust** toolchain via [rustup](https://rustup.rs/)
+- **Visual Studio Build Tools** with the *Desktop development with C++* workload
+- **LLVM** and **CMake** in your `PATH` — required by `whisper-rs` to build the native Whisper backend (see the *Build Requirements* notes in [`CLAUDE.md`](CLAUDE.md))
+
+### Run and build
 
 ```powershell
-npm install -g pnpm
-```
-
-### 3. Rust
-
-Installez Rust via [rustup](https://rustup.rs/). L'installeur configurera `rustc`, `cargo` et `rustup`.
-
-### 4. Visual Studio Build Tools (Windows)
-
-Rust a besoin du linker MSVC (`link.exe`) pour compiler sur Windows.
-
-1. Téléchargez les [Build Tools for Visual Studio](https://visualstudio.microsoft.com/fr/visual-cpp-build-tools/)
-2. Dans l'installeur, cochez le workload **"Développement Desktop en C++"**
-3. Lancez l'installation
-
-> **💡 Astuce** : L'installeur `rustup` propose normalement d'installer les Build Tools automatiquement. Si vous les avez refusés, suivez les étapes ci-dessus.
-
-> **⚠️ Important** : Après l'installation de Rust et des Build Tools, **relancez votre terminal / VS Code** pour que le PATH soit mis à jour.
-
-### 5. IDE recommandé
-
-- [VS Code](https://code.visualstudio.com/) avec les extensions :
-  - [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
-  - [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-
-## 🚀 Démarrage rapide
-
-```powershell
-# Installer les dépendances
 pnpm install
-
-# Lancer en mode développement
-pnpm tauri dev
-
-# Build de production
-pnpm tauri build
+pnpm tauri dev      # dev (frontend + Rust backend)
+pnpm tauri build    # signed production build
 ```
 
-> La première compilation Rust prend plusieurs minutes (téléchargement et compilation des dépendances). Les suivantes sont rapides grâce au cache.
-
-## 🔧 Commandes utiles
+If the build fails on `cmake` / MAX_PATH errors, disable the Vulkan GPU backend and fall back to CPU:
 
 ```powershell
-# Frontend uniquement (Vite dev server, port 1420)
-pnpm dev
-
-# Build frontend uniquement
-pnpm build
-
-# Vérification Rust (rapide, sans compilation complète)
-cd src-tauri && cargo check
-
-# Générer les clés de signature (une seule fois)
-pnpm tauri signer generate --write-keys src-tauri/private.key --ci -p ""
+pnpm tauri build -- --no-default-features
 ```
 
-## 📡 Transcription locale avec Whisper.cpp (optionnel)
+### Release process
 
-L'application supporte la transcription locale via [whisper.cpp](https://github.com/ggerganov/whisper.cpp) en utilisant le pattern **Sidecar** de Tauri.
-
-### Installation
-
-1. **Télécharger le binaire** depuis les [releases de whisper.cpp](https://github.com/ggerganov/whisper.cpp/releases) :
-   - Windows : `whisper-bin-x64.zip` (contient `whisper-cli.exe`)
-
-2. **Placer le binaire** dans `src-tauri/binaries/` en le renommant :
-
-   ```
-   src-tauri/binaries/
-   ├── whisper-cli-x86_64-pc-windows-msvc.exe
-   └── whisper.dll    # Windows uniquement
-   ```
-
-   > Le suffixe doit correspondre au **target triple** de Rust.
-
-3. **Configuration Tauri** — Le fichier `tauri.conf.json` doit déclarer le sidecar :
-
-   ```json
-   {
-     "bundle": {
-       "externalBin": ["binaries/whisper-cli"]
-     }
-   }
-   ```
-
-### Modèles Whisper
-
-Les modèles sont téléchargés automatiquement depuis Hugging Face lors de la première utilisation. Stockage : `%APPDATA%/com.nolyo.voice-tool/models/`
-
-| Modèle | Taille  | RAM requise |
-|--------|---------|-------------|
-| tiny   | ~75 Mo  | ~1 Go       |
-| base   | ~142 Mo | ~1 Go       |
-| small  | ~466 Mo | ~2 Go       |
-| medium | ~1.5 Go | ~5 Go       |
-| large  | ~3 Go   | ~10 Go      |
-
-## 🚢 Créer une nouvelle release
-
-Toutes les étapes (bump de version, commit, push, build signé, publication GitHub) sont orchestrées par un seul script :
+Releases are orchestrated by a single script:
 
 ```powershell
-# Release stable
-.\scripts\make-release.ps1 -Version 2.10.0
-
-# Release bêta
-.\scripts\make-release.ps1 -Version 2.10.0-beta.1 -Beta
-
-# Dry-run (build inclus, pas de tag ni de release GitHub)
-.\scripts\make-release.ps1 -Version 2.10.0 -DryRun
+.\scripts\make-release.ps1 -Version 3.x.x          # stable
+.\scripts\make-release.ps1 -Version 3.x.x-beta.N -Beta   # beta
 ```
 
-Le script effectue dans l'ordre :
+Update signing keys live in GitHub Secrets — see [`docs/UPDATER_SETUP.md`](docs/UPDATER_SETUP.md) for the full setup.
 
-1. Validation du format de version (`X.Y.Z` stable, `X.Y.Z-beta.N` bêta)
-2. Vérification que la branche est `main` et l'arbre propre
-3. Mise à jour de la version dans `package.json`, `src-tauri/Cargo.toml` et `src-tauri/tauri.conf.json`
-4. Régénération du `Cargo.lock` via `cargo check`
-5. Commit : `chore: bump version to X.Y.Z`
-6. Push vers `origin/main`
-7. Build des installateurs signés (NSIS + portable ; MSI ignoré pour les bêtas)
-8. Création du tag `vX.Y.Z` et push
-9. Publication de la release sur GitHub avec les artefacts, `latest.json` et checksums SHA256
-10. Pour les bêtas : mise à jour de `latest-beta.json` sur la dernière release stable
-11. Régénération de `docs/releases.json`
+## Tech stack
 
-> **Prérequis** : clé privée présente dans `src-tauri/private.key` et `gh` (GitHub CLI) authentifié.
+| Layer        | Technology                                              |
+| ------------ | ------------------------------------------------------- |
+| Frontend     | React 19, TypeScript, Tailwind v4, Vite, Tiptap         |
+| Backend      | Rust, Tauri v2, cpal, enigo, whisper-rs                 |
+| Sync         | Supabase (Auth + Postgres + Edge Functions)             |
+| Distribution | GitHub Releases — NSIS / MSI / portable, signed updates |
 
-> Pour un build signé local **sans** publier de release, utiliser `scripts/build-signed.ps1` à la place.
+## Links
 
-## ⚠️ Notes importantes
+- 🌐 Website: [lexena.app](https://lexena.app) *(coming soon)*
+- 📦 [Releases](https://github.com/Nolyo/lexena/releases)
+- 🐛 [Issues](https://github.com/Nolyo/lexena/issues)
 
-- **Windows uniquement** pour le moment (extensible multi-plateforme)
-- Le développement doit se faire **sous Windows natif** (pas WSL) pour l'accès au microphone
-- Toujours utiliser `pnpm tauri build` pour les builds de production, pas `cargo build` seul
-- L'UI est principalement en **français**
-- Les clés de signature (`src-tauri/private.key`) sont dans les GitHub Secrets — voir [docs/UPDATER_SETUP.md](docs/UPDATER_SETUP.md)
+## License
+
+Released under the [MIT License](LICENSE).
