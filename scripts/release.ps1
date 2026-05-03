@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Local release script for voice-tool. Builds, stages artifacts, creates GitHub release.
+    Local release script for Lexena. Builds, stages artifacts, creates GitHub release.
 
 .PARAMETER Prerelease
     Mark the GitHub release as a prerelease.
@@ -145,7 +145,7 @@ if (Test-Path $cargoConfig) {
 }
 $bundleDir = "$releaseDir\bundle"
 
-$portableSrc = Join-Path $releaseDir "voice-tool.exe"
+$portableSrc = Join-Path $releaseDir "lexena.exe"
 if (-not (Test-Path $portableSrc)) { Write-Fail "Portable EXE not found: $portableSrc" }
 Write-Ok "Portable   : $portableSrc"
 
@@ -164,8 +164,8 @@ Write-Step "Staging artifacts into artifacts\$TAG\"
 $stagingDir = "artifacts\$TAG"
 New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
 
-$portableDest = "$stagingDir\voice-tool-$TAG-portable.exe"
-$nsisExeDest  = "$stagingDir\voice-tool-$TAG-setup.exe"
+$portableDest = "$stagingDir\lexena-$TAG-portable.exe"
+$nsisExeDest  = "$stagingDir\lexena-$TAG-setup.exe"
 
 Copy-Item $portableSrc          $portableDest
 Copy-Item $nsisExeSrc.FullName  $nsisExeDest
@@ -177,7 +177,7 @@ Write-Ok "Staged $((Get-ChildItem $stagingDir).Count) files"
 Write-Step "Building latest.json and latest-beta.json"
 
 $signature   = Get-Content $nsisSigPath -Raw
-$nsisExeName = "voice-tool-$TAG-setup.exe"
+$nsisExeName = "lexena-$TAG-setup.exe"
 $downloadUrl = "https://github.com/Nolyo/lexena/releases/download/$TAG/$nsisExeName"
 $pubDate     = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
 
@@ -247,8 +247,8 @@ See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/$TAG/CHANGELOG.md) for 
 
 ## Downloads
 
-- **voice-tool-$TAG-portable.exe** : Portable version (no installation required)
-- **voice-tool-$TAG-setup.exe** : NSIS installer (recommended)
+- **lexena-$TAG-portable.exe** : Portable version (no installation required)
+- **lexena-$TAG-setup.exe** : NSIS installer (recommended)
 
 Verify file integrity using the provided SHA256 checksums.
 
@@ -263,7 +263,7 @@ if ($Prerelease) {
 
 $ghArgs = @(
     "release", "create", $TAG,
-    "--title", "Voice Tool $TAG",
+    "--title", "Lexena $TAG",
     "--notes", $releaseNotes,
     $portableDest,
     $nsisExeDest,
