@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0",
-  "app_name": "Lexena",
+  "app_name": "Voice Tool",
   "repository": "Nolyo/lexena",
-  "generated_at": "2026-04-27T23:32:38.969Z",
+  "generated_at": "2026-05-03T19:37:09.015Z",
   "latest": {
     "version": "2.10.1",
     "tag": "v2.10.1",
     "published_at": "2026-04-21T08:07:01Z",
     "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.10.1",
-    "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.10.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **lexena-v2.10.1-portable.exe** : Portable version (no installation required)\r\n- **lexena-v2.10.1-setup.exe** : NSIS installer (recommended)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+    "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.10.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.10.1-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.10.1-setup.exe** : NSIS installer (recommended)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
     "windows": {
       "portable": {
         "filename": "voice-tool-v2.10.1-portable.exe",
@@ -34,7 +34,7 @@
       "tag": "v2.10.1",
       "published_at": "2026-04-21T08:07:01Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.10.1",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.10.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **lexena-v2.10.1-portable.exe** : Portable version (no installation required)\r\n- **lexena-v2.10.1-setup.exe** : NSIS installer (recommended)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.10.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.10.1-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.10.1-setup.exe** : NSIS installer (recommended)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.10.1-portable.exe",
@@ -59,7 +59,7 @@
       "tag": "v2.10.0",
       "published_at": "2026-04-18T16:14:03Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.10.0",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.10.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.10.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.10.0-setup.exe** : NSIS installer (recommended)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.10.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.10.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.10.0-setup.exe** : NSIS installer (recommended)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.10.0-portable.exe",
@@ -84,7 +84,7 @@
       "tag": "v2.9.0",
       "published_at": "2026-04-12T15:25:50Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.9.0",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.9.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.9.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.9.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v2.9.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.9.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.9.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.9.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v2.9.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.9.0-portable.exe",
@@ -117,7 +117,7 @@
       "tag": "v2.7.3",
       "published_at": "2026-04-05T13:32:27Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.7.3",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.7.3/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.3-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.3-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.3-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.3/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.3-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.3-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.3-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.7.3-portable.exe",
@@ -150,7 +150,7 @@
       "tag": "v2.7.2",
       "published_at": "2026-04-05T11:55:33Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.7.2",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.7.2/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.2-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.2-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.2-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.2/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.2-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.2-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.2-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.7.2-portable.exe",
@@ -183,7 +183,7 @@
       "tag": "v2.7.1",
       "published_at": "2026-04-03T17:44:28Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.7.1",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.7.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.1-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.1-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.1-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.1-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.1-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.1-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.7.1-portable.exe",
@@ -216,14 +216,14 @@
       "tag": "v2.7.0",
       "published_at": "2026-04-03T13:08:25Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.7.0",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.7.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.0-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.7.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.7.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.7.0-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.7.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.7.0-portable.exe",
           "url": "https://github.com/Nolyo/lexena/releases/download/v2.7.0/voice-tool-v2.7.0-portable.exe",
           "size_bytes": 90724864,
           "size_human": "86.5 MB",
-          "sha256": null,
+          "sha256": "7b4ada93fab8d4e13b2b5d54922dd2be6677c8dddad3e10c58052b3636093172",
           "download_count": 0
         },
         "nsis_installer": {
@@ -231,7 +231,7 @@
           "url": "https://github.com/Nolyo/lexena/releases/download/v2.7.0/voice-tool-v2.7.0-setup.exe",
           "size_bytes": 15561085,
           "size_human": "14.8 MB",
-          "sha256": null,
+          "sha256": "a6f154fb20659022325391a283b6af6cf28424fb89e5dea28de77d2c6264f12f",
           "download_count": 1
         },
         "msi_installer": {
@@ -239,7 +239,7 @@
           "url": "https://github.com/Nolyo/lexena/releases/download/v2.7.0/voice-tool-v2.7.0-setup.msi",
           "size_bytes": 27930624,
           "size_human": "26.6 MB",
-          "sha256": null,
+          "sha256": "11193a8c96aca016119fb30155f0a235904aa3f3dd7ef2ca8128dd48e35d39e8",
           "download_count": 0
         }
       }
@@ -249,7 +249,7 @@
       "tag": "v2.6.1",
       "published_at": "2026-04-03T11:09:21Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.6.1",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.6.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.6.1-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.6.1-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.6.1-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.6.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.6.1-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.6.1-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.6.1-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.6.1-portable.exe",
@@ -282,7 +282,7 @@
       "tag": "v2.6.0",
       "published_at": "2026-04-03T10:18:32Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.6.0",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.6.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.6.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.6.0-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.6.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.6.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.6.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.6.0-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.6.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.6.0-portable.exe",
@@ -315,7 +315,7 @@
       "tag": "v2.5.4",
       "published_at": "2026-03-06T11:18:44Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.5.4",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.5.4/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.5.4-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.5.4-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.5.4-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.5.4/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.5.4-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.5.4-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.5.4-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.5.4-portable.exe",
@@ -348,7 +348,7 @@
       "tag": "v2.5.3",
       "published_at": "2026-03-05T16:33:12Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.5.3",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.5.3/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.5.3-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.5.3-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.5.3-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.5.3/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.5.3-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.5.3-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.5.3-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.5.3-portable.exe",
@@ -381,7 +381,7 @@
       "tag": "v2.5.2",
       "published_at": "2026-03-05T16:12:10Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.5.2",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.5.2/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.5.2-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.5.2-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.5.2-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.5.2/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.5.2-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.5.2-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.5.2-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.5.2-portable.exe",
@@ -414,7 +414,7 @@
       "tag": "v2.5.1",
       "published_at": "2026-03-05T15:02:23Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.5.1",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.5.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.5.1-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.5.1-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.5.1-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.5.1/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.5.1-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.5.1-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.5.1-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.5.1-portable.exe",
@@ -447,7 +447,7 @@
       "tag": "v2.5.0",
       "published_at": "2026-03-05T14:43:43Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.5.0",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.5.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.5.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.5.0-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.5.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.5.0/CHANGELOG.md) for details.\r\n\r\n## Downloads\r\n\r\n- **voice-tool-v2.5.0-portable.exe** : Portable version (no installation required)\r\n- **voice-tool-v2.5.0-setup.exe** : NSIS installer (recommended)\r\n- **voice-tool-v2.5.0-setup.msi** : MSI installer (Windows Installer)\r\n\r\nVerify file integrity using the provided SHA256 checksums.\r\n\r\n## Auto-Update Support\r\n\r\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.5.0-portable.exe",
@@ -480,7 +480,7 @@
       "tag": "v-2.4.0",
       "published_at": "2025-12-21T12:16:32Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.4.0",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.4.0/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.4.0-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.4.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.4.0-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.4.0/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.4.0-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.4.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.4.0-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.4.0-portable.exe",
@@ -488,7 +488,7 @@
           "size_bytes": 19963904,
           "size_human": "19 MB",
           "sha256": "4d739c5f3c9d1d0bb88ec742cf229d89614e85c77cc351f6b22c6dfb3482e6df",
-          "download_count": 2
+          "download_count": 3
         },
         "nsis_installer": {
           "filename": "voice-tool-v-2.4.0-setup.exe",
@@ -505,7 +505,7 @@
       "tag": "v-2.3.5",
       "published_at": "2025-12-18T19:05:24Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.3.5",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.3.5/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.3.5-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.3.5-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.3.5-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.3.5/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.3.5-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.3.5-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.3.5-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.3.5-portable.exe",
@@ -530,7 +530,7 @@
       "tag": "v-2.3.4",
       "published_at": "2025-12-18T18:51:34Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.3.4",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.3.4/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.3.4-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.3.4-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.3.4-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.3.4/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.3.4-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.3.4-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.3.4-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.3.4-portable.exe",
@@ -555,7 +555,7 @@
       "tag": "v-2.3.3",
       "published_at": "2025-11-22T20:01:39Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.3.3",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.3.3/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.3.3-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.3.3-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.3.3-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.3.3/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.3.3-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.3.3-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.3.3-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.3.3-portable.exe",
@@ -580,7 +580,7 @@
       "tag": "v-2.3.1",
       "published_at": "2025-11-22T17:46:04Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.3.1",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.3.1/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.3.1-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.3.1-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.3.1-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.3.1/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.3.1-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.3.1-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.3.1-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.3.1-portable.exe",
@@ -605,7 +605,7 @@
       "tag": "v-2.3.0",
       "published_at": "2025-11-22T15:35:07Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.3.0",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.3.0/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.3.0-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.3.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.3.0-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.3.0/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.3.0-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.3.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.3.0-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.3.0-portable.exe",
@@ -630,7 +630,7 @@
       "tag": "v-2.2.0",
       "published_at": "2025-11-02T13:42:53Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.2.0",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.2.0/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.2.0-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.2.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.2.0-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.2.0/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.2.0-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.2.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.2.0-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.2.0-portable.exe",
@@ -638,7 +638,7 @@
           "size_bytes": 18124288,
           "size_human": "17.3 MB",
           "sha256": "7f4ae1e332f89f04e14cc5f1b180927ad0fd6aec9f207f91cce3bced3a45656a",
-          "download_count": 2
+          "download_count": 3
         },
         "nsis_installer": {
           "filename": "voice-tool-v-2.2.0-setup.exe",
@@ -655,7 +655,7 @@
       "tag": "v-2.1.1",
       "published_at": "2025-10-25T16:40:08Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.1.1",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.1.1/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.1.1-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.1.1-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.1.1-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.1.1/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.1.1-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.1.1-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.1.1-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.1.1-portable.exe",
@@ -680,7 +680,7 @@
       "tag": "v-2.1.0",
       "published_at": "2025-10-25T16:14:06Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.1.0",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.1.0/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.1.0-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.1.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.1.0-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.1.0/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.1.0-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.1.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.1.0-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.1.0-portable.exe",
@@ -696,7 +696,7 @@
           "size_bytes": 4476770,
           "size_human": "4.3 MB",
           "sha256": "1038aaabb166765aab07a0cc86179e534c03ae785aa8c5c9925afaae57622478",
-          "download_count": 2
+          "download_count": 3
         }
       }
     },
@@ -705,7 +705,7 @@
       "tag": "v-2.0.3",
       "published_at": "2025-10-25T11:17:11Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.0.3",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.0.3/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.0.3-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.0.3-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.0.3-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.0.3/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.0.3-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.0.3-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.0.3-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.0.3-portable.exe",
@@ -730,7 +730,7 @@
       "tag": "v-2.0.2",
       "published_at": "2025-10-25T10:32:24Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.0.2",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.0.2/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.0.2-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.0.2-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.0.2-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.0.2/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.0.2-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.0.2-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.0.2-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.\n\n## Auto-Update Support\n\nThis release includes signed update artifacts for automatic in-app updates.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.0.2-portable.exe",
@@ -746,7 +746,7 @@
           "size_bytes": 4476226,
           "size_human": "4.3 MB",
           "sha256": "dae9ab966533995895b6cc3a1ec3aec662fc7646cf25a659ce606100adc9ef50",
-          "download_count": 3
+          "download_count": 4
         }
       }
     },
@@ -755,7 +755,7 @@
       "tag": "v-2.0.1",
       "published_at": "2025-10-24T16:21:15Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v-2.0.1",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v-2.0.1/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.0.1-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.0.1-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.0.1-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v-2.0.1/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v-2.0.1-portable.exe** : Portable version (no installation required)\n- **voice-tool-v-2.0.1-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v-2.0.1-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v-2.0.1-portable.exe",
@@ -780,7 +780,7 @@
       "tag": "fix-ci-push-ci-test",
       "published_at": "2025-10-23T08:38:00Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/fix-ci-push-ci-test",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/fix-ci-push-ci-test/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-fix-ci-push-ci-test-portable.exe** : Portable version (no installation required)\n- **voice-tool-fix-ci-push-ci-test-setup.exe** : NSIS installer (recommended)\n- **voice-tool-fix-ci-push-ci-test-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/fix-ci-push-ci-test/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-fix-ci-push-ci-test-portable.exe** : Portable version (no installation required)\n- **voice-tool-fix-ci-push-ci-test-setup.exe** : NSIS installer (recommended)\n- **voice-tool-fix-ci-push-ci-test-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.",
       "windows": {
         "portable": {
           "filename": "voice-tool-fix-ci-push-ci-test-portable.exe",
@@ -805,7 +805,7 @@
       "tag": "v2.0.0",
       "published_at": "2025-10-22T23:04:51Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v2.0.0",
-      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/v2.0.0/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v2.0.0-portable.exe** : Portable version (no installation required)\n- **voice-tool-v2.0.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v2.0.0-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.",
+      "release_notes": "See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/v2.0.0/CHANGELOG.md) for details.\n\n## Downloads\n\n- **voice-tool-v2.0.0-portable.exe** : Portable version (no installation required)\n- **voice-tool-v2.0.0-setup.exe** : NSIS installer (recommended)\n- **voice-tool-v2.0.0-setup.msi** : MSI installer (Windows Installer)\n\nVerify file integrity using the provided SHA256 checksums.",
       "windows": {
         "portable": {
           "filename": "voice-tool-v2.0.0-portable.exe",
@@ -813,7 +813,7 @@
           "size_bytes": 15619584,
           "size_human": "14.9 MB",
           "sha256": "13609b6683c94264bd81cc9f239bf83c8c4b404ecfa5a9d55fe0805c066a3550",
-          "download_count": 2
+          "download_count": 3
         },
         "nsis_installer": {
           "filename": "voice-tool-v2.0.0-setup.exe",
@@ -830,7 +830,7 @@
       "tag": "v0.3.0",
       "published_at": "2025-09-02T10:30:50Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v0.3.0",
-      "release_notes": "**Full Changelog**: https://github.com/Nolyo/lexena/compare/v0.2.0...v0.3.0",
+      "release_notes": "**Full Changelog**: https://github.com/Nolyo/voice-tool/compare/v0.2.0...v0.3.0",
       "windows": {}
     },
     {
@@ -838,7 +838,7 @@
       "tag": "v0.2.0",
       "published_at": "2025-08-14T08:34:24Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v0.2.0",
-      "release_notes": "## What's Changed\n* Feature/UI customtkinter poc by @Nolyo in https://github.com/Nolyo/lexena/pull/3\n\n\n**Full Changelog**: https://github.com/Nolyo/lexena/compare/v0.1.0...v0.2.0",
+      "release_notes": "## What's Changed\n* Feature/UI customtkinter poc by @Nolyo in https://github.com/Nolyo/voice-tool/pull/3\n\n\n**Full Changelog**: https://github.com/Nolyo/voice-tool/compare/v0.1.0...v0.2.0",
       "windows": {}
     },
     {
@@ -846,7 +846,7 @@
       "tag": "v0.1.0",
       "published_at": "2025-08-08T14:17:47Z",
       "changelog_url": "https://github.com/Nolyo/lexena/releases/tag/v0.1.0",
-      "release_notes": "## What's Changed\n* Refactor/structure-pro by @Nolyo in https://github.com/Nolyo/lexena/pull/1\n* Mep by @Nolyo in https://github.com/Nolyo/lexena/pull/2\n\n## New Contributors\n* @Nolyo made their first contribution in https://github.com/Nolyo/lexena/pull/1\n\n**Full Changelog**: https://github.com/Nolyo/lexena/commits/v0.1.0",
+      "release_notes": "## What's Changed\n* Refactor/structure-pro by @Nolyo in https://github.com/Nolyo/voice-tool/pull/1\n* Mep by @Nolyo in https://github.com/Nolyo/voice-tool/pull/2\n\n## New Contributors\n* @Nolyo made their first contribution in https://github.com/Nolyo/voice-tool/pull/1\n\n**Full Changelog**: https://github.com/Nolyo/voice-tool/commits/v0.1.0",
       "windows": {}
     }
   ]
