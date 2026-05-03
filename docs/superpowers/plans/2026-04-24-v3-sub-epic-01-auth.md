@@ -261,7 +261,7 @@ Auto-déployé par Cloudflare Pages à chaque push sur `main`. Preview sur chaqu
 
 ## Références
 
-- Spec complète : [`docs/v3/01-auth.md`](https://github.com/Nolyo/voice-tool/blob/main/docs/v3/01-auth.md) (repo principal)
+- Spec complète : [`docs/v3/01-auth.md`](https://github.com/Nolyo/lexena/blob/main/docs/v3/01-auth.md) (repo principal)
 - ADR 0005 : flow callback page web + deep link
 - ADR 0007 : Cloudflare Pages + CSP stricte
 ```
@@ -336,7 +336,7 @@ git commit -m "docs(v3): record Cloudflare Pages URL for auth-callback"
     <p id="status">Opening Voice Tool…</p>
     <div id="actions" hidden>
       <button type="button" id="retry-btn">Open Voice Tool</button>
-      <a id="download-link" href="https://github.com/Nolyo/voice-tool/releases/latest" target="_blank" rel="noopener noreferrer">Download Voice Tool</a>
+      <a id="download-link" href="https://github.com/Nolyo/lexena/releases/latest" target="_blank" rel="noopener noreferrer">Download Voice Tool</a>
     </div>
     <p class="small" id="error-msg" hidden></p>
   </main>

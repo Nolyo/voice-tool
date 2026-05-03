@@ -178,12 +178,12 @@ Write-Step "Building latest.json and latest-beta.json"
 
 $signature   = Get-Content $nsisSigPath -Raw
 $nsisExeName = "voice-tool-$TAG-setup.exe"
-$downloadUrl = "https://github.com/Nolyo/voice-tool/releases/download/$TAG/$nsisExeName"
+$downloadUrl = "https://github.com/Nolyo/lexena/releases/download/$TAG/$nsisExeName"
 $pubDate     = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
 
 $latestJson = [ordered]@{
     version   = $VERSION
-    notes     = "See https://github.com/Nolyo/voice-tool/blob/$TAG/CHANGELOG.md"
+    notes     = "See https://github.com/Nolyo/lexena/blob/$TAG/CHANGELOG.md"
     pub_date  = $pubDate
     platforms = [ordered]@{
         "windows-x86_64" = [ordered]@{
@@ -243,7 +243,7 @@ Write-Ok "Tag $TAG pushed"
 Write-Step "Creating GitHub Release $TAG"
 
 $releaseNotes = @"
-See the [CHANGELOG](https://github.com/Nolyo/voice-tool/blob/$TAG/CHANGELOG.md) for details.
+See the [CHANGELOG](https://github.com/Nolyo/lexena/blob/$TAG/CHANGELOG.md) for details.
 
 ## Downloads
 
@@ -277,7 +277,7 @@ if ($Prerelease) { $ghArgs += "--prerelease" }
 gh @ghArgs
 if ($LASTEXITCODE -ne 0) { Write-Fail "gh release create failed" }
 
-Write-Ok "GitHub Release created: https://github.com/Nolyo/voice-tool/releases/tag/$TAG"
+Write-Ok "GitHub Release created: https://github.com/Nolyo/lexena/releases/tag/$TAG"
 
 # --- Step 10b: For prereleases, also push latest-beta.json to the latest stable release ---
 # The beta updater URL resolves to 'releases/latest/download/latest-beta.json'.
@@ -352,4 +352,4 @@ if (-not (Test-Path "$scriptsDir\generate-releases-json.js")) {
 
 Write-Host ""
 Write-Host "[DONE] Release $TAG complete!" -ForegroundColor Green
-Write-Host "       https://github.com/Nolyo/voice-tool/releases/tag/$TAG" -ForegroundColor Green
+Write-Host "       https://github.com/Nolyo/lexena/releases/tag/$TAG" -ForegroundColor Green

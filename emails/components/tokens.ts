@@ -13,7 +13,7 @@ export const fontStack =
   "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 
 export const logoUrl =
-  "https://raw.githubusercontent.com/Nolyo/voice-tool/main/src-tauri/icons/monogram-512.png";
+  "https://raw.githubusercontent.com/Nolyo/lexena/main/src-tauri/icons/monogram-512.png";
 
 export const spacing = {
   xs: "8px",
