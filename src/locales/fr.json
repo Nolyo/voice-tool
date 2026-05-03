@@ -911,10 +911,13 @@
     "twoFactor": {
       "challenge": {
         "title": "Vérification en deux étapes",
-        "subtitle": "Entre le code de ton application d'authentification, ou un code de récupération.",
-        "placeholder": "Code à 6 chiffres ou code de récupération",
+        "subtitle": "Entre le code à 6 chiffres affiché par ton application d'authentification.",
+        "recoverySubtitle": "Saisis l'un de tes codes de récupération pour reprendre la main.",
+        "totpPlaceholder": "Code à 6 chiffres",
+        "recoveryPlaceholder": "Code de récupération",
         "submit": "Valider",
-        "recoveryHint": "Tu as perdu ton authenticator ? Saisis un code de récupération ci-dessus.",
+        "useRecoveryCode": "Utiliser un code de récupération",
+        "useTotp": "Utiliser un code TOTP",
         "recoverySuccess": "Code de récupération validé. La 2FA a été désactivée — pense à la réactiver depuis tes réglages."
       },
       "activation": {

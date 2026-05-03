@@ -911,10 +911,13 @@
     "twoFactor": {
       "challenge": {
         "title": "Two-step verification",
-        "subtitle": "Enter the code from your authenticator app, or a recovery code.",
-        "placeholder": "6-digit code or recovery code",
+        "subtitle": "Enter the 6-digit code from your authenticator app.",
+        "recoverySubtitle": "Enter one of your recovery codes to regain access.",
+        "totpPlaceholder": "6-digit code",
+        "recoveryPlaceholder": "Recovery code",
         "submit": "Verify",
-        "recoveryHint": "Lost your authenticator? Enter a recovery code above.",
+        "useRecoveryCode": "Use a recovery code",
+        "useTotp": "Use a TOTP code",
         "recoverySuccess": "Recovery code accepted. Two-factor authentication has been disabled — please re-enable it from your settings."
       },
       "activation": {

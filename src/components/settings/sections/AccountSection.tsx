@@ -14,14 +14,10 @@ import {
   type BackupMeta,
 } from "@/lib/sync/backups";
 import { TwoFactorActivationFlow } from "@/components/auth/TwoFactorActivationFlow";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { OtpInput } from "@/components/auth/OtpInput";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Callout, SectionHeader, VtIcon } from "../vt";
@@ -838,51 +834,99 @@ function SecurityCard() {
             }
           }}
         >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("auth.security.disableMfa.title")}</DialogTitle>
-              <DialogDescription>
-                {t("auth.security.disableMfa.subtitle")}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2">
-              <Input
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                autoFocus
-                value={aal2Code}
-                onChange={(e) => setAal2Code(e.target.value)}
-                placeholder={t("auth.security.disableMfa.codePlaceholder")}
-                aria-label={t("auth.security.disableMfa.codeLabel")}
-                className="font-mono"
-                disabled={aal2Loading}
-              />
-              {aal2Error && (
-                <p role="alert" className="text-xs text-destructive">
-                  {aal2Error}
-                </p>
-              )}
+          <DialogContent
+            className="vt-app sm:max-w-[420px] p-0 gap-0 overflow-hidden"
+            style={{ background: "oklch(0.13 0.015 264)" }}
+          >
+            <DialogTitle className="sr-only">
+              {t("auth.security.disableMfa.title")}
+            </DialogTitle>
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{
+                background: "var(--vt-panel)",
+                border: "1px solid var(--vt-border)",
+              }}
+            >
+              <div className="px-5 pt-5 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{
+                      background: "oklch(from var(--vt-danger) l c h / 0.15)",
+                      color: "var(--vt-danger)",
+                      boxShadow:
+                        "inset 0 0 0 1px oklch(from var(--vt-danger) l c h / 0.35)",
+                    }}
+                  >
+                    <VtIcon.shield />
+                  </div>
+                  <div>
+                    <div className="text-[14px] font-semibold">
+                      {t("auth.security.disableMfa.title")}
+                    </div>
+                    <div
+                      className="text-[11.5px]"
+                      style={{ color: "var(--vt-fg-3)" }}
+                    >
+                      {t("auth.security.disableMfa.subtitle")}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-5 pb-5">
+                <OtpInput
+                  value={aal2Code}
+                  onChange={setAal2Code}
+                  autoFocus
+                  disabled={aal2Loading}
+                  ariaLabel={t("auth.security.disableMfa.codeLabel")}
+                />
+
+                {aal2Error && (
+                  <p
+                    role="alert"
+                    className="text-[12px] mt-3 text-center"
+                    style={{ color: "var(--vt-danger)" }}
+                  >
+                    {aal2Error}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-2 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAal2PromptFactor(null);
+                      setAal2Code("");
+                      setAal2Error(null);
+                    }}
+                    disabled={aal2Loading}
+                    className="vt-btn flex-1 justify-center"
+                  >
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void confirmAal2AndDisable()}
+                    disabled={aal2Loading || aal2Code.length < 6}
+                    className="vt-btn-primary flex-1 justify-center"
+                    style={{
+                      background: "var(--vt-danger)",
+                      boxShadow:
+                        "0 1px 0 oklch(1 0 0 / 0.15) inset, 0 6px 18px -6px oklch(from var(--vt-danger) l c h / 0.55)",
+                    }}
+                  >
+                    {aal2Loading ? (
+                      <VtIcon.spinner />
+                    ) : (
+                      t("auth.security.disableMfa.confirm")
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
-            <DialogFooter>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setAal2PromptFactor(null);
-                  setAal2Code("");
-                  setAal2Error(null);
-                }}
-                disabled={aal2Loading}
-              >
-                {t("common.cancel")}
-              </Button>
-              <Button
-                onClick={() => void confirmAal2AndDisable()}
-                disabled={aal2Loading || aal2Code.trim().length < 6}
-              >
-                {t("auth.security.disableMfa.confirm")}
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}

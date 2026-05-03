@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { supabase } from "@/lib/supabase";
 import { Callout, VtIcon } from "@/components/settings/vt";
+import { OtpInput } from "./OtpInput";
 
 type Step = 1 | 2 | 3;
 
@@ -75,11 +76,10 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [secretCopied, setSecretCopied] = useState(false);
-  const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
+  const [code, setCode] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     void (async () => {
@@ -110,39 +110,14 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleCodeChange(i: number, v: string) {
-    if (!/^\d?$/.test(v)) return;
-    const next = [...code];
-    next[i] = v;
-    setCode(next);
-    if (v && i < 5) inputRefs.current[i + 1]?.focus();
-  }
-
-  function handleCodeKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Backspace" && !code[i] && i > 0) {
-      inputRefs.current[i - 1]?.focus();
-    }
-  }
-
-  function handleCodePaste(e: React.ClipboardEvent<HTMLInputElement>) {
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!pasted) return;
-    e.preventDefault();
-    const next = ["", "", "", "", "", ""];
-    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
-    setCode(next);
-    inputRefs.current[Math.min(pasted.length, 5)]?.focus();
-  }
-
   async function handleVerify() {
     if (!factorId) return;
-    const joined = code.join("");
-    if (joined.length < 6) return;
+    if (code.length < 6) return;
     setError(null);
     setLoading(true);
     const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
       factorId,
-      code: joined,
+      code,
     });
     if (verifyError) {
       setLoading(false);
@@ -223,7 +198,7 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
     w.print();
   }
 
-  const codeFilled = code.every((c) => c !== "");
+  const codeFilled = code.length === 6;
 
   const stepLabels = [
     t("auth.twoFactor.activation.stepLabelScan", { defaultValue: "Scanner" }),
@@ -489,47 +464,15 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
                   "Saisis le code à 6 chiffres affiché par ton application d'authentification.",
               })}
             </p>
-            <div className="flex items-center gap-2 justify-center my-6">
-              {code.map((c, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    ref={(el) => {
-                      inputRefs.current[i] = el;
-                    }}
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    autoFocus={i === 0}
-                    value={c}
-                    onChange={(e) => handleCodeChange(i, e.target.value)}
-                    onKeyDown={(e) => handleCodeKey(i, e)}
-                    onPaste={i === 0 ? handleCodePaste : undefined}
-                    maxLength={1}
-                    className="w-11 h-[52px] rounded-[10px] text-center vt-mono text-[22px] font-semibold transition"
-                    style={{
-                      background: c
-                        ? "oklch(from var(--vt-accent) l c h / 0.08)"
-                        : "var(--vt-surface)",
-                      border:
-                        "1px solid " +
-                        (c
-                          ? "oklch(from var(--vt-accent) l c h / 0.4)"
-                          : "var(--vt-border)"),
-                      color: "var(--vt-fg)",
-                      caretColor: "var(--vt-accent)",
-                    }}
-                  />
-                  {i === 2 && (
-                    <span
-                      className="text-[20px]"
-                      style={{ color: "var(--vt-fg-4)" }}
-                    >
-                      —
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
+            <OtpInput
+              value={code}
+              onChange={setCode}
+              autoFocus
+              disabled={loading}
+              ariaLabel={t("auth.twoFactor.activation.codePlaceholder", {
+                defaultValue: "Code à 6 chiffres",
+              })}
+            />
             <div
               className="text-center text-[11.5px]"
               style={{ color: "var(--vt-fg-3)" }}

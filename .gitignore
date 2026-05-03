@@ -14,7 +14,7 @@ dist-ssr
 !/dist/emails/
 !/dist/emails/**
 *.local
-
+.env*
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
