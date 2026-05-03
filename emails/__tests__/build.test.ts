@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 import path from "node:path";
 import { build } from "../build";
 
-const distDir = path.resolve(__dirname, "../../dist/emails");
+const distDir = path.resolve(__dirname, "../dist");
 
 describe("build", () => {
   beforeAll(async () => {
@@ -59,13 +59,13 @@ describe("build", () => {
   });
 });
 
-describe("regression: dist/emails/ is in sync with templates", () => {
-  it("freshly built HTML matches committed dist/emails/", async () => {
+describe("regression: emails/dist/ is in sync with templates", () => {
+  it("freshly built HTML matches committed emails/dist/", async () => {
     // Read committed versions from git
     const slugs = ["magic-link", "signup-confirmation", "password-reset"];
     const committed: Record<string, string> = {};
     for (const slug of slugs) {
-      committed[slug] = execSync(`git show HEAD:dist/emails/${slug}.html`, {
+      committed[slug] = execSync(`git show HEAD:emails/dist/${slug}.html`, {
         encoding: "utf8",
       });
     }

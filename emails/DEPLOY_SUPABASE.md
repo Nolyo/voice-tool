@@ -1,13 +1,13 @@
 # Deploy to Supabase Auth — Phase 1
 
-Manual procedure for deploying the 3 compiled HTML templates (`dist/emails/*.html`) into Supabase Auth → Email Templates.
+Manual procedure for deploying the 3 compiled HTML templates (`emails/dist/*.html`) into Supabase Auth → Email Templates.
 
 This step is **operator-only** and cannot be automated from CI without giving CI access to the Supabase Dashboard.
 
 ## Prerequisites
 
 - Access to the Lexena Supabase project Dashboard (admin role).
-- The latest committed `dist/emails/*.html` files on disk.
+- The latest committed `emails/dist/*.html` files on disk.
 - An operator email address you can receive test emails on (Gmail recommended for visual confirmation).
 
 ## Procedure (per template)
@@ -26,9 +26,9 @@ Supabase Dashboard → [project] → Authentication → Email Templates
 
 | File | Supabase template name |
 |---|---|
-| `dist/emails/magic-link.html` | **Magic Link** |
-| `dist/emails/signup-confirmation.html` | **Confirm signup** |
-| `dist/emails/password-reset.html` | **Reset Password** |
+| `emails/dist/magic-link.html` | **Magic Link** |
+| `emails/dist/signup-confirmation.html` | **Confirm signup** |
+| `emails/dist/password-reset.html` | **Reset Password** |
 
 ### 3. Read the subject from the HTML file
 
@@ -98,7 +98,7 @@ After modifying any `.tsx`:
 
 ```bash
 pnpm email:build
-git add dist/emails/ emails/
+git add emails/
 git commit
 ```
 

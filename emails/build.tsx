@@ -43,7 +43,7 @@ function unescapeLiquid(html: string): string {
 
 export async function build(): Promise<void> {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const outDir = path.resolve(here, "../dist/emails");
+  const outDir = path.resolve(here, "./dist");
   await fs.mkdir(outDir, { recursive: true });
 
   for (const { slug, subject, Component } of TEMPLATES) {

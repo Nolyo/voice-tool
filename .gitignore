@@ -8,10 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-/dist/*
+/dist
 dist-ssr
-# Email-specific dist is committed for traceability — Vite-built dist remains ignored
-!/dist/emails/
 *.local
 .env*
 # Editor directories and files

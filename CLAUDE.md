@@ -364,12 +364,12 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 
 - Source de vérité : `emails/templates/*.tsx` (React Email + `@react-email/components` 1.0.12)
 - 3 templates Supabase Auth : `MagicLink`, `SignupConfirmation`, `PasswordReset` (EN uniquement v3.0)
-- Build : `pnpm email:build` → `dist/emails/*.html` (commités pour traçabilité)
+- Build : `pnpm email:build` → `emails/dist/*.html` (commités pour traçabilité, hors du `dist/` Vite pour ne pas être wipé au build frontend)
 - Preview : `pnpm email:dev` → `localhost:3001` (nécessite `@react-email/ui` en devDep)
 - Composants partagés : `emails/components/` (Layout, Header, Footer, Button, Heading, Text, SecurityNote, tokens)
 - `tokens.ts` : `colors`, `fontStack` (Inter + fallbacks), `logoUrl` (GitHub raw monogram, placeholder à migrer post-marketing site)
 - Liquid safety : `unescapeLiquid()` dans `build.tsx` post-traite le HTML pour préserver `{{ .ConfirmationURL }}`
-- Tests : 23 vitest (4 tokens + 18 templates + 5 build dont 1 regression `git show HEAD:dist/...`)
+- Tests : 23 vitest (4 tokens + 18 templates + 5 build dont 1 regression `git show HEAD:emails/dist/...`)
 - Procédure de déploiement Supabase : `emails/DEPLOY_SUPABASE.md` (manuel, dashboard)
 - Checklist multi-clients : `emails/COMPATIBILITY.md` (à remplir via Litmus / Email on Acid)
 - Phase 2 prévue : 4 templates Resend via Edge Functions (welcome, new-device, deletion ×2)

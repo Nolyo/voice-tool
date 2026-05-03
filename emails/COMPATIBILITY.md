@@ -9,7 +9,7 @@ Multi-client rendering tests for the 3 Supabase Auth templates.
 ## How to run the test
 
 1. Start a free trial at Email on Acid OR Litmus (7-day windows are typically enough).
-2. For each of the 3 HTML files in `dist/emails/`, upload it as a campaign / test, OR paste its contents into the in-browser HTML editor of the chosen tool.
+2. For each of the 3 HTML files in `emails/dist/`, upload it as a campaign / test, OR paste its contents into the in-browser HTML editor of the chosen tool.
 3. Run the multi-client preview against at least the clients listed below.
 4. Update the matrix in this file with ✅ / ⚠️ / ❌ per cell.
 5. Commit the updated `COMPATIBILITY.md`.
