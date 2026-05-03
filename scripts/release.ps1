@@ -115,7 +115,7 @@ if (-not $env:VULKAN_SDK) {
 
 $privateKeyContent = Get-Content $privateKey -Raw
 $env:TAURI_SIGNING_PRIVATE_KEY = $privateKeyContent.Trim()
-$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
+# $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
 
 Write-Ok "Cleaning old bundle artifacts to avoid stale files"
 Get-ChildItem "src-tauri\target\release\bundle" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
