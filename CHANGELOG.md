@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 > ⚠️ **Versions older than 3.0 are unsupported.** Please upgrade to the latest 3.x release.
-> Full historical release notes for the 2.x line are available on the [GitHub Releases page](https://github.com/Nolyo/voice-tool/releases).
+> Full historical release notes for the 2.x line are available on the [GitHub Releases page](https://github.com/Nolyo/lexena/releases).
 
 ---
 
@@ -196,4 +196,4 @@ The 2.x line introduced the original Voice Tool app and grew it into a full tran
 - **2.1.0** — Auto-update infrastructure
 - **2.0.0** — Initial Tauri release: real-time recording, audio level visualization (main + floating mini), OpenAI Whisper integration, configurable global hotkeys, system tray, transcription history (IndexedDB), auto-paste, structured logging, NSIS / MSI / portable installers
 
-For per-version release notes (Added / Changed / Fixed) of any 2.x version, see the [GitHub Releases page](https://github.com/Nolyo/voice-tool/releases).
+For per-version release notes (Added / Changed / Fixed) of any 2.x version, see the [GitHub Releases page](https://github.com/Nolyo/lexena/releases).

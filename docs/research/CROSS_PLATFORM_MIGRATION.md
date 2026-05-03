@@ -289,7 +289,7 @@ All Tauri plugins used are cross-platform:
     "updater": {
         "pubkey": "...",
         "endpoints": [
-            "https://github.com/Nolyo/voice-tool/releases/latest/download/latest.json"
+            "https://github.com/Nolyo/lexena/releases/latest/download/latest.json"
         ],
         "windows": {
             "installMode": "passive"
