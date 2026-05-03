@@ -149,7 +149,7 @@ $portableSrc = Join-Path $releaseDir "voice-tool.exe"
 if (-not (Test-Path $portableSrc)) { Write-Fail "Portable EXE not found: $portableSrc" }
 Write-Ok "Portable   : $portableSrc"
 
-$nsisExeSrc = Resolve-Glob "$bundleDir\nsis\Voice Tool_${VERSION}_x64-setup.exe"
+$nsisExeSrc = Resolve-Glob "$bundleDir\nsis\Lexena_${VERSION}_x64-setup.exe"
 if (-not $nsisExeSrc) { Write-Fail "NSIS setup EXE not found for version $VERSION in $bundleDir\nsis\" }
 Write-Ok "NSIS EXE   : $($nsisExeSrc.FullName)"
 
