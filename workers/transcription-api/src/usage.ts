@@ -159,15 +159,5 @@ export async function recordUsageEvent(
     throw new Error(`recordUsageEvent failed: ${error.message}`);
   }
 
-  if (event.source === "trial" && event.kind === "transcription") {
-    const { error: bumpErr } = await sb.rpc("bump_trial_minutes", {
-      p_user_id: event.user_id,
-      p_minutes: event.units,
-    });
-    if (bumpErr) {
-      throw new Error(`trial bump failed: ${bumpErr.message}`);
-    }
-  }
-
   return { event_id: data!.id as string, deduplicated: false };
 }
