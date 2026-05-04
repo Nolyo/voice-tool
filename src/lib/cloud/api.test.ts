@@ -66,6 +66,43 @@ describe("transcribeCloud", () => {
   });
 });
 
+describe("network retry", () => {
+  it("retries on transient network error then succeeds", async () => {
+    (invoke as unknown as ReturnType<typeof vi.fn>)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({
+        text: "ok",
+        duration_ms: 1000,
+        request_id: "r",
+        source: "trial",
+      });
+    const res = await transcribeCloud({
+      samples: Int16Array.from([1]),
+      sampleRate: 16000,
+      jwt: "jwt",
+    });
+    expect(res.text).toBe("ok");
+    expect(invoke).toHaveBeenCalledTimes(2);
+  });
+
+  it("never retries on CloudApiError (api errors)", async () => {
+    (invoke as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce({
+      kind: "api",
+      status: 402,
+      code: "quota_exhausted",
+      message: "out",
+    });
+    await expect(
+      transcribeCloud({
+        samples: Int16Array.from([1]),
+        sampleRate: 16000,
+        jwt: "jwt",
+      }),
+    ).rejects.toBeInstanceOf(CloudApiError);
+    expect(invoke).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("postProcessCloud", () => {
   it("forwards modelTier and language", async () => {
     (invoke as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
