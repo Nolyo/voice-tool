@@ -36,12 +36,11 @@ const TEMPLATES: Record<PostProcessTask, PromptTemplate> = {
 };
 
 // Set lookup, not `in` operator: avoids prototype-chain hits like "toString".
-const VALID_TASKS = new Set<PostProcessTask>([
-  "reformulate",
-  "correct",
-  "email",
-  "summarize",
-]);
+// Derive from TEMPLATES so adding a 5th task can never silently desync the validator
+// (Object.keys returns own enumerable props only — no prototype chain).
+const VALID_TASKS = new Set<PostProcessTask>(
+  Object.keys(TEMPLATES) as PostProcessTask[],
+);
 
 export function getPromptTemplate(task: PostProcessTask): PromptTemplate {
   return TEMPLATES[task];
