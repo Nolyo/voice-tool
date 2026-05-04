@@ -14,6 +14,7 @@ routes = [
 # Uses default workers.dev subdomain
 
 # Secrets are set via `wrangler secret put` — never commit them here.
-# Required: SUPABASE_URL, SUPABASE_SECRET_KEY, SUPABASE_JWT_SECRET,
-#           GROQ_API_KEY, OPENAI_API_KEY
+# Required: SUPABASE_URL, SUPABASE_SECRET_KEY, GROQ_API_KEY, OPENAI_API_KEY
 # (SUPABASE_SECRET_KEY = the new "Secret key" sb_secret_..., NOT the legacy service_role)
+# JWT verification fetches the public key from Supabase's JWKS endpoint
+# (<SUPABASE_URL>/auth/v1/.well-known/jwks.json) — no shared secret needed.

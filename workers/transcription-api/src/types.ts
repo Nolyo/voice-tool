@@ -2,7 +2,6 @@
 export interface Env {
   SUPABASE_URL: string;
   SUPABASE_SECRET_KEY: string;
-  SUPABASE_JWT_SECRET: string;
   GROQ_API_KEY: string;
   OPENAI_API_KEY: string;
 }
