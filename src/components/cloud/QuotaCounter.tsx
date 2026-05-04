@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useUsage } from "@/hooks/useUsage";
 import { useAuth } from "@/hooks/useAuth";
+import { useCloud } from "@/hooks/useCloud";
 
 function daysUntil(iso: string | null): number | null {
   if (!iso) return null;
@@ -11,9 +12,13 @@ function daysUntil(iso: string | null): number | null {
 export function QuotaCounter() {
   const { t } = useTranslation("cloud");
   const { user } = useAuth();
+  const { hasCloudSelected } = useCloud();
   const { trial, monthly_minutes_used, plan, loading } = useUsage();
 
-  if (!user || loading) return null;
+  // Only surface the quota pill when the user actually opted into Lexena
+  // Cloud. Showing it for users still on Local / their own keys would suggest
+  // the cloud is consuming their quota when it isn't.
+  if (!user || !hasCloudSelected || loading) return null;
 
   if (trial.is_active) {
     const days = daysUntil(trial.expires_at);
