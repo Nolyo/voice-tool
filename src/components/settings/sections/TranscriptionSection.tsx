@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
 import { useModelDownload } from "@/hooks/useModelDownload";
@@ -14,7 +15,7 @@ import {
 
 const ACCENT = "var(--vt-violet)";
 
-type Provider = "OpenAI" | "Google" | "Local" | "Groq";
+type Provider = "OpenAI" | "Google" | "Local" | "Groq" | "LexenaCloud";
 type LocalModel =
   | "tiny"
   | "base"
@@ -34,22 +35,44 @@ export function TranscriptionSection() {
 
   const providerOptions = [
     {
+      id: "Local" as Provider,
+      title: t("settings.transcription.providerLocal"),
+      sub: t("settings.transcription.providerLocalSub"),
+      dot: "var(--vt-cyan)",
+    },
+    {
+      id: "LexenaCloud" as Provider,
+      title: t("settings.transcription.providerLexenaCloud"),
+      sub: t("settings.transcription.providerLexenaCloudSub"),
+      dot: "var(--vt-accent)",
+      disabled: true,
+      badge: (
+        <ProviderBadge color="var(--vt-accent)">
+          {t("settings.transcription.providerComingSoonBadge")}
+        </ProviderBadge>
+      ),
+    },
+    {
       id: "OpenAI" as Provider,
       title: t("settings.transcription.providerOpenai"),
       sub: t("settings.transcription.providerOpenaiSub"),
       dot: "var(--vt-ok)",
+      badge: (
+        <ProviderBadge color="var(--vt-warn)">
+          {t("settings.transcription.providerSunsetBadge")}
+        </ProviderBadge>
+      ),
     },
     {
       id: "Groq" as Provider,
       title: t("settings.transcription.providerGroq"),
       sub: t("settings.transcription.providerGroqSub"),
       dot: "var(--vt-danger)",
-    },
-    {
-      id: "Local" as Provider,
-      title: t("settings.transcription.providerLocal"),
-      sub: t("settings.transcription.providerLocalSub"),
-      dot: "var(--vt-cyan)",
+      badge: (
+        <ProviderBadge color="var(--vt-warn)">
+          {t("settings.transcription.providerSunsetBadge")}
+        </ProviderBadge>
+      ),
     },
   ];
 
@@ -77,9 +100,22 @@ export function TranscriptionSection() {
             value={settings.transcription_provider}
             onChange={(v) => updateSetting("transcription_provider", v)}
             options={providerOptions}
-            columns={3}
+            columns={2}
           />
         </Row>
+
+        {(settings.transcription_provider === "OpenAI" ||
+          settings.transcription_provider === "Groq") && (
+          <div className="vt-row">
+            <Callout
+              kind="warn"
+              icon={<VtIcon.alert />}
+              title={t("settings.transcription.sunsetNoticeTitle")}
+            >
+              {t("settings.transcription.sunsetNotice")}
+            </Callout>
+          </div>
+        )}
 
         <Row
           label={t("settings.transcription.language")}
@@ -314,6 +350,26 @@ export function TranscriptionSection() {
         </Row>
       </div>
     </div>
+  );
+}
+
+interface ProviderBadgeProps {
+  color: string;
+  children: ReactNode;
+}
+
+function ProviderBadge({ color, children }: ProviderBadgeProps) {
+  return (
+    <span
+      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide"
+      style={{
+        color,
+        background: `oklch(from ${color} l c h / 0.16)`,
+        border: `1px solid oklch(from ${color} l c h / 0.32)`,
+      }}
+    >
+      {children}
+    </span>
   );
 }
 

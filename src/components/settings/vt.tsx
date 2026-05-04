@@ -491,6 +491,8 @@ interface PickerCardOption<T extends string> {
   title: ReactNode;
   sub?: ReactNode;
   dot?: string;
+  disabled?: boolean;
+  badge?: ReactNode;
 }
 
 interface PickerCardGridProps<T extends string> {
@@ -510,12 +512,17 @@ export function PickerCardGrid<T extends string>({
     <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
       {options.map((p) => {
         const active = value === p.id;
+        const disabled = !!p.disabled;
         return (
           <button
             key={p.id}
             type="button"
-            onClick={() => onChange(p.id)}
-            className="flex items-center gap-3 px-3 h-14 rounded-lg text-left transition"
+            disabled={disabled}
+            onClick={() => {
+              if (disabled) return;
+              onChange(p.id);
+            }}
+            className="flex items-center gap-3 px-3 min-h-14 py-2 rounded-lg text-left transition"
             style={{
               background: active
                 ? "oklch(from var(--vt-accent) l c h / 0.12)"
@@ -525,6 +532,8 @@ export function PickerCardGrid<T extends string>({
                 (active
                   ? "oklch(from var(--vt-accent) l c h / 0.4)"
                   : "var(--vt-border)"),
+              opacity: disabled ? 0.55 : 1,
+              cursor: disabled ? "not-allowed" : "pointer",
             }}
           >
             {p.dot && (
@@ -533,18 +542,26 @@ export function PickerCardGrid<T extends string>({
                 style={{ background: p.dot, boxShadow: `0 0 8px ${p.dot}` }}
               />
             )}
-            <div className="flex flex-col leading-tight min-w-0">
-              <span className="text-[13px] font-medium">{p.title}</span>
+            <div className="flex flex-col leading-tight min-w-0 flex-1">
+              <span className="text-[13px] font-medium truncate">{p.title}</span>
               {p.sub && (
-                <span className="text-[11px] vt-mono" style={{ color: "var(--vt-fg-3)" }}>
+                <span
+                  className="text-[11px] vt-mono truncate"
+                  style={{ color: "var(--vt-fg-3)" }}
+                >
                   {p.sub}
                 </span>
               )}
             </div>
-            {active && (
-              <span className="ml-auto" style={{ color: "var(--vt-accent-2)" }}>
-                <VtIcon.check />
-              </span>
+            {(p.badge || active) && (
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {p.badge}
+                {active && (
+                  <span style={{ color: "var(--vt-accent-2)" }}>
+                    <VtIcon.check />
+                  </span>
+                )}
+              </div>
             )}
           </button>
         );
