@@ -4,7 +4,7 @@
     "module": "ES2022",
     "moduleResolution": "bundler",
     "lib": ["ES2022"],
-    "types": ["@cloudflare/workers-types/2024-09-23"],
+    "types": ["@cloudflare/workers-types"],
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
