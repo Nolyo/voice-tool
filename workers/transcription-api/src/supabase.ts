@@ -1,13 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Env } from "./types";
 
-// Service-role client. Bypasses RLS — use only in trusted Worker context.
-// Never expose this client or its key to the browser/desktop client.
+// Server-side admin client (Supabase "Secret key", successor of legacy service_role).
+// Bypasses RLS — use only in trusted Worker context. Never expose to browser/desktop.
 let cachedClient: SupabaseClient | null = null;
 
 export function getSupabaseAdmin(env: Env): SupabaseClient {
   if (!cachedClient) {
-    cachedClient = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    cachedClient = createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,

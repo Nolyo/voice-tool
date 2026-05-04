@@ -16,7 +16,7 @@
 |---|---|---|
 | `GROQ_API_KEY` | Console Groq > API Keys | Manuelle, à minima trimestrielle |
 | `OPENAI_API_KEY` | Console OpenAI > API Keys | Manuelle, à minima trimestrielle |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard > Settings > API | À synchroniser avec rotation Supabase |
+| `SUPABASE_SECRET_KEY` | Supabase Dashboard > Settings > API | À synchroniser avec rotation Supabase |
 | `SUPABASE_JWT_SECRET` | Supabase Dashboard > Settings > API > JWT Secret | À synchroniser avec rotation Supabase |
 | `SUPABASE_URL` | Supabase Dashboard > Project URL | Stable |
 
