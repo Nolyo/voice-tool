@@ -11,6 +11,7 @@ import { ShortcutsSection } from "./sections/ShortcutsSection";
 import { UpdaterSection } from "./sections/UpdaterSection";
 import { AboutSection } from "./sections/AboutSection";
 import { AccountSection } from "./sections/AccountSection";
+import { CloudSection } from "./sections/CloudSection";
 
 interface SettingTabsProps {
   activeSection: SettingsSectionId;
@@ -49,6 +50,7 @@ export function SettingTabs({ activeSection, onSectionChange }: SettingTabsProps
         <AboutSection onSectionChange={onSectionChange} />
       )}
       {activeSection === "section-compte" && <AccountSection />}
+      {activeSection === "section-cloud" && <CloudSection />}
     </div>
   );
 }

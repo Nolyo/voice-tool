@@ -2,6 +2,7 @@ import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BookOpen,
+  Cloud,
   Info,
   Keyboard,
   Mic,
@@ -32,9 +33,10 @@ export type SettingsSectionId =
   | "section-systeme"
   | "section-mises-a-jour"
   | "section-a-propos"
-  | "section-compte";
+  | "section-compte"
+  | "section-cloud";
 
-const AUTH_ONLY_IDS = new Set<SettingsSectionId>([]);
+const AUTH_ONLY_IDS = new Set<SettingsSectionId>(["section-cloud"]);
 
 export const NAV_ITEM_DEFS: NavItemDef[] = [
   {
@@ -106,6 +108,13 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     iconBg: "bg-vt-accent/10",
     titleKey: "auth.account.sectionTitle",
     subtitleKey: "auth.account.sectionSubtitle",
+  },
+  {
+    id: "section-cloud",
+    icon: <Cloud className="w-3.5 h-3.5 text-vt-cyan" />,
+    iconBg: "bg-vt-cyan/10",
+    titleKey: "settings.nav.cloud",
+    subtitleKey: "settings.nav.cloudSubtitle",
   },
 ];
 

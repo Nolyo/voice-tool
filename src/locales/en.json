@@ -274,7 +274,9 @@
       "updates": "Updates",
       "updatesSubtitle": "New versions",
       "about": "About",
-      "aboutSubtitle": "Version, tagline and links"
+      "aboutSubtitle": "Version, tagline and links",
+      "cloud": "Cloud",
+      "cloudSubtitle": "Trial, quota and subscription"
     },
     "about": {
       "title": "About",
