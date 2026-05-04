@@ -29,7 +29,7 @@
 - **OpenAI Whisper seul** : 10-50x plus lent que Groq, pas un argument vs BYOK user.
 - **Multi-provider exposé à l'user** : friction UX sans gain équivalent.
 - **Rétention temporaire 24-72h pour debug** : zone grise RGPD, contredit la promesse de confiance Lexena.
-- **Llama 3 pour le post-process** : qualité catastrophique sur retour d'expérience direct (cf. mémoire `project_post_process_llm_choice.md`).
+- **Llama 3 pour le post-process** : qualité catastrophique sur retour d'expérience direct du porteur du projet (reformulation, correction, rédaction de mail en français). Aucun autre LLM open-source n'a été testé à ce jour.
 
 ## Liens
 
