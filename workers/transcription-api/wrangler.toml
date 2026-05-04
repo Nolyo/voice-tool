@@ -1,0 +1,18 @@
+name = "lexena-transcription-api"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Production deployment
+[env.production]
+routes = [
+  { pattern = "api.lexena.app/*", zone_name = "lexena.app" }
+]
+
+# Staging on workers.dev
+[env.staging]
+# Uses default workers.dev subdomain
+
+# Secrets are set via `wrangler secret put` — never commit them here.
+# Required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET,
+#           GROQ_API_KEY, OPENAI_API_KEY
