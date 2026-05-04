@@ -3,6 +3,13 @@
 -- construction — if the bump fails the INSERT rolls back, so we never have an
 -- event recorded without the matching trial debit.
 --
+-- DEPLOYMENT: this migration MUST be applied together with the Worker change
+-- that removes the bump_trial_minutes RPC call from recordUsageEvent (see
+-- workers/transcription-api/src/usage.ts). Applying this migration while the
+-- old Worker is still live causes double-debits — the trigger and the RPC will
+-- both run, debiting trial_credits twice per event. Push migration + redeploy
+-- Worker simultaneously, or keep staging quiet during the window.
+--
 -- Pre-existing trg_usage_events_aggregate (which maintains usage_summary) is
 -- untouched. Two triggers, two responsibilities, both fire on INSERT.
 
