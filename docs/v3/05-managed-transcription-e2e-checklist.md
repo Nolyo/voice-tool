@@ -26,6 +26,13 @@
 
 ### S1 — Transcription en mode trial
 
+**Precondition**: the test user must have a `trial_credits` row. The trigger introduced in `20260505100000_atomic_trial_bump.sql` silently no-ops if no row exists, which makes a successful transcription appear to work without exercising the debit. Seed manually before running:
+
+```sql
+INSERT INTO public.trial_credits (user_id, minutes_granted, minutes_consumed)
+VALUES ('<test-user-uuid>', 60, 0);
+```
+
 - [ ] Connecté avec un user qui a un `trial_credits` actif.
 - [ ] Le badge `QuotaCounter` du header affiche "X min d'essai" (ou "Y jours d'essai" selon la métrique la plus contraignante).
 - [ ] Settings → Cloud affiche bien le bloc "Essai gratuit en cours" avec minutes restantes et date d'expiration.

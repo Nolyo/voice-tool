@@ -50,7 +50,7 @@ export const CloudContext = createContext<CloudContextValue>({
   trial: DEFAULT_TRIAL,
   monthly_minutes_used: 0,
   plan: null,
-  usageLoading: true,
+  usageLoading: false,
   refreshUsage: async () => {},
 });
 
