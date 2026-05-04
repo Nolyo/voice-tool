@@ -14,7 +14,7 @@ export interface CloudSettingsData {
     sound_effects: boolean;
   };
   transcription: {
-    provider: "OpenAI" | "Google" | "Local" | "Groq";
+    provider: "OpenAI" | "Google" | "Local" | "Groq" | "LexenaCloud";
     local_model: string;
   };
 }

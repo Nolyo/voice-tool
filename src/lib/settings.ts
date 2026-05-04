@@ -14,7 +14,7 @@ export interface AppSettings {
     trim_silence: boolean;
 
     // Transcription
-    transcription_provider: "OpenAI" | "Google" | "Local" | "Groq";
+    transcription_provider: "OpenAI" | "Google" | "Local" | "Groq" | "LexenaCloud";
     local_model_size: "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo" | "large-v3-turbo-q5_0";
     groq_model: "whisper-large-v3-turbo" | "whisper-large-v3";
     keep_model_in_memory: boolean | null;

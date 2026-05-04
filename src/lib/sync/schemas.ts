@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-// Matches the Edge Function schema — keep in sync with supabase/functions/sync-push/schema.ts
+// Matches the Edge Function schema — keep in sync with supabase/functions/sync-push/schema.ts.
+// "LexenaCloud" is a placeholder accepted client-side; the picker locks the card so it cannot
+// actually be selected and sent. The server schema will be updated when the provider launches.
 
 export const CloudSettingsDataSchema = z.object({
   ui: z.object({
@@ -17,7 +19,7 @@ export const CloudSettingsDataSchema = z.object({
     sound_effects: z.boolean(),
   }),
   transcription: z.object({
-    provider: z.enum(["OpenAI", "Google", "Local", "Groq"]),
+    provider: z.enum(["OpenAI", "Google", "Local", "Groq", "LexenaCloud"]),
     local_model: z.string().max(50),
   }),
 });

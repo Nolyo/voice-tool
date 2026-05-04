@@ -14,7 +14,12 @@ export type WindowStatus =
   | "success"
   | "error";
 
-export type TranscriptionProvider = "OpenAI" | "Google" | "Local" | "Groq";
+export type TranscriptionProvider =
+  | "OpenAI"
+  | "Google"
+  | "Local"
+  | "Groq"
+  | "LexenaCloud";
 
 export type VisualizerMode = "bars" | "waveform";
 
@@ -129,7 +134,8 @@ export function useMiniWindowState() {
               s.transcription_provider === "OpenAI" ||
               s.transcription_provider === "Google" ||
               s.transcription_provider === "Local" ||
-              s.transcription_provider === "Groq"
+              s.transcription_provider === "Groq" ||
+              s.transcription_provider === "LexenaCloud"
             ) {
               setProvider(s.transcription_provider);
             }
