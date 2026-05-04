@@ -41,8 +41,10 @@
   --secondary-foreground: oklch(0.2 0.01 240);
   --muted: oklch(0.95 0.005 240);
   --muted-foreground: oklch(0.45 0.01 240);
-  --accent: oklch(0.68 0.14 162);
-  --accent-foreground: oklch(0.99 0 0);
+  /* `--accent` is a subtle neutral hover tint (shadcn convention). The
+   * brand teal lives in `--primary` and `--vt-accent`. */
+  --accent: oklch(0.95 0.005 240);
+  --accent-foreground: oklch(0.2 0.01 240);
   --destructive: oklch(0.7 0.2 25);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.9 0.01 240);
@@ -559,8 +561,12 @@ body.mini-window-body #root {
   --secondary-foreground: var(--vt-fg);
   --muted: var(--vt-surface);
   --muted-foreground: var(--vt-fg-3);
-  --accent: var(--vt-accent);
-  --accent-foreground: oklch(1 0 0);
+  /* `--accent` follows shadcn convention: a subtle neutral hover tint
+   * (Button outline/ghost, Select item, Dialog close, Sidebar row...).
+   * The bright brand color stays available via `--primary` and direct
+   * `var(--vt-accent)` references. */
+  --accent: var(--vt-surface-hi);
+  --accent-foreground: var(--vt-fg);
   --destructive: var(--vt-danger);
   --destructive-foreground: oklch(1 0 0);
   --border: var(--vt-border);
