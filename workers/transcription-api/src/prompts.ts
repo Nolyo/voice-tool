@@ -35,10 +35,18 @@ const TEMPLATES: Record<PostProcessTask, PromptTemplate> = {
   },
 };
 
+// Set lookup, not `in` operator: avoids prototype-chain hits like "toString".
+const VALID_TASKS = new Set<PostProcessTask>([
+  "reformulate",
+  "correct",
+  "email",
+  "summarize",
+]);
+
 export function getPromptTemplate(task: PostProcessTask): PromptTemplate {
   return TEMPLATES[task];
 }
 
-export function isValidTask(task: string): task is PostProcessTask {
-  return task in TEMPLATES;
+export function isValidTask(task: unknown): task is PostProcessTask {
+  return typeof task === "string" && VALID_TASKS.has(task as PostProcessTask);
 }
