@@ -487,6 +487,13 @@ export function useRecordingWorkflow({
                     : null;
               if (key) {
                 toast.error(tRef.current(`cloud:${key}`));
+              } else {
+                // Generic fallback for statuses without a dedicated i18n key
+                // (e.g. 400 bad_request, 413, 415). Outer catch will skip the
+                // alert because we already surfaced this to the user.
+                toast.error(
+                  tRef.current("errors.transcriptionError", { error: err.message }),
+                );
               }
             }
             throw err;
@@ -560,7 +567,11 @@ export function useRecordingWorkflow({
       } catch (error) {
         console.error("Transcription error:", error);
         await emit("transcription-error", { error: String(error) });
-        alert(tRef.current('errors.transcriptionError', { error }));
+        // CloudApiError was already toasted by the cloud branch above; the
+        // alert below is for genuine local-path bugs / unhandled failures.
+        if (!(error instanceof CloudApiError)) {
+          alert(tRef.current('errors.transcriptionError', { error }));
+        }
         await invoke("log_separator");
       } finally {
         setIsTranscribing(false);
