@@ -54,10 +54,10 @@ export async function handleTranscribe(
 
   let result;
   try {
-    result = await transcribeWithGroq(blob, env, { language: lang });
+    result = await transcribeWithGroq(blob, env, { language: lang, filename: "audio.wav" });
   } catch (err) {
     if (err instanceof GroqError) {
-      return errorResponse("provider_unavailable", `groq error ${err.status}`);
+      return errorResponse("provider_unavailable", err.message);
     }
     throw err;
   }
