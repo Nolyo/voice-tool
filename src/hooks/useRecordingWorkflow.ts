@@ -19,6 +19,10 @@ import type {
   RecordingResult,
   TranscriptionInvokeResult,
 } from "@/lib/types";
+import { useCloud } from "@/hooks/useCloud";
+import { supabase } from "@/lib/supabase";
+import { transcribeCloud } from "@/lib/cloud/api";
+import { CloudApiError } from "@/lib/cloud/errors";
 
 type AddTranscription = (
   text: string,
@@ -163,6 +167,10 @@ export function useRecordingWorkflow({
   const { t } = useTranslation();
   const tRef = useRef(t);
   useEffect(() => { tRef.current = t; }, [t]);
+
+  const { mode: cloudMode } = useCloud();
+  const cloudModeRef = useRef(cloudMode);
+  useEffect(() => { cloudModeRef.current = cloudMode; }, [cloudMode]);
 
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -319,31 +327,73 @@ export function useRecordingWorkflow({
         } catch (e) {
           console.warn("[recording vocab refresh failed]", e);
         }
+        const useCloudPath = cloudModeRef.current === "cloud";
+        let cloudJwt: string | undefined;
+        if (useCloudPath) {
+          const { data } = await supabase.auth.getSession();
+          cloudJwt = data.session?.access_token;
+        }
+        const effectiveProviderLabel = useCloudPath && cloudJwt
+          ? "Cloud"
+          : settings.transcription_provider;
+
         await emit("transcription-start", {
-          provider: settings.transcription_provider,
+          provider: effectiveProviderLabel,
         });
-        const providerApiKey =
-          settings.transcription_provider === "Groq"
-            ? settings.groq_api_key
-            : settings.openai_api_key;
-        const result = await invoke<TranscriptionInvokeResult>(
-          "transcribe_audio",
-          {
-            audioSamples: audioData,
-            sampleRate: sampleRate,
-            apiKey: providerApiKey,
-            language: settings.language,
-            keepLast: settings.recordings_keep_last,
-            provider: settings.transcription_provider,
-            localModelSize: settings.local_model_size,
-            dictionary: syncDictionaryRef.current.join(", "),
-            initialPrompt: settings.whisper_initial_prompt ?? "",
-            translate: settings.translate_mode,
-            keepModelInMemory: settings.keep_model_in_memory,
-            groqModel: settings.groq_model,
-            trimSilence: settings.trim_silence,
-          },
-        );
+
+        let result: TranscriptionInvokeResult;
+        let cloudUsedSeconds: number | null = null;
+
+        if (useCloudPath && cloudJwt) {
+          try {
+            const cloud = await transcribeCloud({
+              samples: Int16Array.from(audioData),
+              sampleRate: sampleRate,
+              language: settings.language,
+              jwt: cloudJwt,
+              idempotencyKey: crypto.randomUUID(),
+            });
+            result = { text: cloud.text, audioPath: "" };
+            cloudUsedSeconds = cloud.duration_ms / 1000;
+          } catch (err) {
+            if (err instanceof CloudApiError) {
+              const key = err.isQuotaIssue()
+                ? "errors.quota_exhausted"
+                : err.isAuthIssue()
+                  ? "errors.auth_expired"
+                  : err.isProviderUnavailable()
+                    ? "errors.provider_unavailable"
+                    : null;
+              if (key) {
+                toast.error(tRef.current(`cloud:${key}`));
+              }
+            }
+            throw err;
+          }
+        } else {
+          const providerApiKey =
+            settings.transcription_provider === "Groq"
+              ? settings.groq_api_key
+              : settings.openai_api_key;
+          result = await invoke<TranscriptionInvokeResult>(
+            "transcribe_audio",
+            {
+              audioSamples: audioData,
+              sampleRate: sampleRate,
+              apiKey: providerApiKey,
+              language: settings.language,
+              keepLast: settings.recordings_keep_last,
+              provider: settings.transcription_provider,
+              localModelSize: settings.local_model_size,
+              dictionary: syncDictionaryRef.current.join(", "),
+              initialPrompt: settings.whisper_initial_prompt ?? "",
+              translate: settings.translate_mode,
+              keepModelInMemory: settings.keep_model_in_memory,
+              groqModel: settings.groq_model,
+              trimSilence: settings.trim_silence,
+            },
+          );
+        }
 
         console.log("Transcription:", result.text);
 
@@ -353,9 +403,10 @@ export function useRecordingWorkflow({
         const processed = await maybePostProcess(result.text, settings, tRef.current);
         const finalText = processed.text;
 
-        const durationSeconds = audioData.length / sampleRate;
+        const durationSeconds = cloudUsedSeconds ?? audioData.length / sampleRate;
         const durationMinutes = durationSeconds / 60;
         const apiCost = (() => {
+          if (cloudUsedSeconds !== null) return 0;
           switch (settings.transcription_provider) {
             case "Local":
               return 0;
@@ -377,7 +428,7 @@ export function useRecordingWorkflow({
           processed.mode,
           processed.cost,
           durationSeconds,
-          settings.transcription_provider,
+          effectiveProviderLabel,
         );
 
         await emit("transcription-success", { text: finalText });
