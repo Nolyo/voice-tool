@@ -943,9 +943,6 @@ body.mini-window-body #root {
   gap: 14px;
   align-items: center;
   padding: 18px 16px 6px 16px;
-  position: sticky;
-  top: 0;
-  z-index: 2;
   background: linear-gradient(to bottom, var(--vt-bg) 70%, transparent);
 }
 .vt-app .day-label-inner {

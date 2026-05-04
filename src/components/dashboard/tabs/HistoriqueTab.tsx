@@ -7,6 +7,7 @@ interface HistoriqueTabProps {
   selectedTranscription: Transcription | null;
   isSidebarOpen: boolean;
   isCompact: boolean;
+  scrollParent: HTMLElement | null;
   onSelectTranscription: (transcription: Transcription) => void;
   onCloseDetails: () => void;
   onDelete: (id: string) => void;
@@ -24,6 +25,7 @@ export function HistoriqueTab({
   selectedTranscription,
   isSidebarOpen,
   isCompact,
+  scrollParent,
   onSelectTranscription,
   onCloseDetails,
   onDelete,
@@ -50,6 +52,7 @@ export function HistoriqueTab({
         <TranscriptionList
           transcriptions={transcriptions}
           selectedId={isSidebarOpen ? selectedTranscription?.id : undefined}
+          scrollParent={scrollParent}
           onSelectTranscription={onSelectTranscription}
           onDelete={onDelete}
           onClearAll={onClearAll}
