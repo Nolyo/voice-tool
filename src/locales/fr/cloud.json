@@ -32,6 +32,9 @@
   "errors": {
     "provider_unavailable": "Le service de transcription cloud est temporairement indisponible. Réessayez dans quelques instants.",
     "quota_exhausted": "Votre quota cloud est épuisé. Passez à un plan payant pour continuer.",
-    "auth_expired": "Votre session a expiré. Reconnectez-vous pour utiliser le cloud."
+    "auth_expired": "Votre session a expiré. Reconnectez-vous pour utiliser le cloud.",
+    "signin_required": "Lexena Cloud nécessite un compte. Connectez-vous ou choisissez un autre fournisseur dans les paramètres.",
+    "not_eligible": "Aucun essai ni abonnement actif. Choisissez un autre fournisseur dans les paramètres ou souscrivez un plan.",
+    "post_process_custom_unsupported": "Le mode personnalisé n'est pas disponible en cloud. La transcription brute a été conservée."
   }
 }

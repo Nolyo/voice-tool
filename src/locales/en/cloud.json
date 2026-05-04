@@ -32,6 +32,9 @@
   "errors": {
     "provider_unavailable": "The cloud transcription service is temporarily unavailable. Please try again shortly.",
     "quota_exhausted": "Your cloud quota is exhausted. Subscribe to keep using cloud.",
-    "auth_expired": "Your session expired. Sign in again to use the cloud."
+    "auth_expired": "Your session expired. Sign in again to use the cloud.",
+    "signin_required": "Lexena Cloud requires an account. Sign in or pick another provider in settings.",
+    "not_eligible": "No active trial or subscription. Pick another provider in settings or subscribe to a plan.",
+    "post_process_custom_unsupported": "Custom mode isn't available on cloud. Kept the raw transcription."
   }
 }
