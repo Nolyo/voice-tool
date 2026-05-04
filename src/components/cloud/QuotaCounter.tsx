@@ -1,0 +1,46 @@
+import { useTranslation } from "react-i18next";
+import { useUsage } from "@/hooks/useUsage";
+import { useAuth } from "@/hooks/useAuth";
+
+function daysUntil(iso: string | null): number | null {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime() - Date.now();
+  return ms > 0 ? Math.ceil(ms / (24 * 3600 * 1000)) : 0;
+}
+
+export function QuotaCounter() {
+  const { t } = useTranslation("cloud");
+  const { user } = useAuth();
+  const { trial, monthly_minutes_used, plan, loading } = useUsage();
+
+  if (!user || loading) return null;
+
+  if (trial.is_active) {
+    const days = daysUntil(trial.expires_at);
+    const showMinutes = days === null || trial.minutes_remaining < days * 2;
+    return (
+      <div
+        className="text-xs vt-mono text-muted-foreground px-2 py-1 rounded-md border border-border bg-card/40"
+        title={t("trial.tooltip")}
+      >
+        {showMinutes
+          ? t("trial.minutes_remaining", { count: Math.floor(trial.minutes_remaining) })
+          : t("trial.days_remaining", { count: days ?? 0 })}
+      </div>
+    );
+  }
+
+  if (plan) {
+    const remaining = Math.max(plan.quota_minutes - monthly_minutes_used, 0);
+    return (
+      <div
+        className="text-xs vt-mono text-muted-foreground px-2 py-1 rounded-md border border-border bg-card/40"
+        title={t("plan.tooltip", { plan: plan.plan })}
+      >
+        {t("plan.minutes_remaining", { count: Math.floor(remaining) })}
+      </div>
+    );
+  }
+
+  return null;
+}
