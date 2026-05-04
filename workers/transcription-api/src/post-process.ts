@@ -24,14 +24,14 @@ export async function handlePostProcess(
   try {
     body = (await req.json()) as PostProcessBody;
   } catch {
-    return errorResponse("internal", "invalid JSON body");
+    return errorResponse("bad_request", "invalid JSON body");
   }
 
   if (!isValidTask(body.task)) {
-    return errorResponse("internal", `unknown task: ${body.task}`);
+    return errorResponse("bad_request", `unknown task: ${body.task}`);
   }
   if (typeof body.text !== "string" || !body.text.trim()) {
-    return errorResponse("internal", "missing or empty 'text'");
+    return errorResponse("bad_request", "missing or empty 'text'");
   }
   if (body.text.length > MAX_INPUT_CHARS) {
     return errorResponse("payload_too_large", `text too long (max ${MAX_INPUT_CHARS} chars)`);

@@ -2,6 +2,7 @@ export type ErrorCode =
   | "missing_auth"
   | "invalid_auth"
   | "expired_auth"
+  | "bad_request"
   | "quota_exhausted"
   | "trial_expired"
   | "payload_too_large"
@@ -19,6 +20,7 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
   missing_auth: 401,
   invalid_auth: 401,
   expired_auth: 401,
+  bad_request: 400,
   quota_exhausted: 402,
   trial_expired: 402,
   payload_too_large: 413,

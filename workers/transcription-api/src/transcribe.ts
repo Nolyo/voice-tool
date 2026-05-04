@@ -24,13 +24,13 @@ export async function handleTranscribe(
   try {
     form = await req.formData();
   } catch {
-    return errorResponse("internal", "expected multipart/form-data body");
+    return errorResponse("bad_request", "expected multipart/form-data body");
   }
 
   const audio = form.get("audio");
   // FormDataEntryValue is `string | File | null` ; we want File (which extends Blob).
   if (audio === null || typeof audio === "string") {
-    return errorResponse("internal", "missing 'audio' part");
+    return errorResponse("bad_request", "missing 'audio' part");
   }
   const blob: Blob = audio;
   const language = form.get("language");
