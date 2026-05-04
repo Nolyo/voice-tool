@@ -63,9 +63,11 @@ interface PostProcessOutcome {
  *
  * `cloudPath` short-circuits the local-key check (cloud post-process doesn't
  * need a user-provided API key) but still respects the enabled flag and the
- * empty-text guard. Custom mode is unsupported on the cloud path so we treat
- * it as "would run something", letting `maybePostProcessCloud` toast the
- * warning to the user instead of silently skipping the step.
+ * empty-text guard. Custom mode is excluded from the cloud-path gate because
+ * the cloud worker rejects it; the warning toast still surfaces from
+ * `maybePostProcessCloud` when the call site invokes it, so the user-facing
+ * behavior is unchanged — only the redundant `post-process-start` event is
+ * suppressed.
  */
 function shouldPostProcess(
   originalText: string,
@@ -76,6 +78,8 @@ function shouldPostProcess(
   if (!originalText.trim()) return false;
 
   if (cloudPath) {
+    // Cloud post-process does not support custom mode (server-validated).
+    if (settings.post_process_mode === "custom") return false;
     return true;
   }
 
@@ -522,8 +526,6 @@ export function useRecordingWorkflow({
             },
           );
         }
-
-        console.log("Transcription:", result.text);
 
         const cloudPostProcess = useCloudPath && Boolean(cloudJwt);
         if (shouldPostProcess(result.text, settings, cloudPostProcess)) {
