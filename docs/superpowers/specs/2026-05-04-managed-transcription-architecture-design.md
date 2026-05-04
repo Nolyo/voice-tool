@@ -13,6 +13,12 @@
 
 Le spec premium offer du 2026-04-27 (`docs/superpowers/specs/2026-04-27-v3-premium-offer-design.md`) a acté que les plans Starter (5€/mois, 400 min) et Pro (9€/mois, 1000 min) reposent sur un **service de transcription managée + post-process IA** côté Lexena. Sans ce service, l'offre payante n'existe pas. Conséquence : le sous-épique `05-managed-transcription`, initialement cadré pour v3.3, est ramené en v3.2 et livré simultanément avec le billing.
 
+### Note sur le phasage (révision 2026-05-04)
+
+Le brainstorming du 2026-05-04 a acté un ajustement du phasage initial (cf. `EPIC.md` à mettre à jour ultérieurement) : la sync notes (sous-épique 03, anciennement v3.1) est **décalée post-launch public**. v3.0 actuelle reste en bêta indéfiniment et le **prochain chantier = bundle 04 + 05**, qui constitue la **release de launch public** (déclenchant la communication marketing). Le label "v3.2" est conservé dans le présent doc et les ADR à venir comme identifiant de cette release de launch, sans engagement de numérotation finale.
+
+Conséquence pour le présent design : aucune. Les 5 décisions architecturales sont indépendantes de la version label.
+
 Le présent document fige les **5 décisions architecturales fondamentales** qui débloquent l'écriture du plan d'implémentation v3.2. Il couvre **uniquement la phase 1** (proxy léger sans modèle hébergé). Une éventuelle phase 2 (self-host Whisper sur GPU) est mentionnée comme orientation post-launch sans engagement de design.
 
 Contraintes de cadrage retenues :
