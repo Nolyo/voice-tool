@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import {
   Mic,
-  Download,
   FileText,
   History,
   ScrollText,
@@ -12,8 +11,6 @@ import {
   BarChart3,
   type LucideIcon,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { AudioVisualizer } from "./AudioVisualizer"
 import { LexenaWordmark } from "./LexenaWordmark"
 import { SyncStatusIndicator } from "@/components/SyncStatusIndicator"
@@ -24,8 +21,6 @@ interface DashboardHeaderProps {
   isRecording: boolean;
   isTranscribing?: boolean;
   onToggleRecording: () => void;
-  updateAvailable?: boolean;
-  onUpdateClick?: () => void;
   activeTab: DashboardTabId;
   sidebarCollapsed?: boolean;
 }
@@ -42,8 +37,6 @@ export function DashboardHeader({
   isRecording,
   isTranscribing = false,
   onToggleRecording,
-  updateAvailable,
-  onUpdateClick,
   activeTab,
   sidebarCollapsed = false,
 }: DashboardHeaderProps) {
@@ -147,22 +140,6 @@ export function DashboardHeader({
             </div>
 
             <SyncStatusIndicator />
-
-            {updateAvailable && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={onUpdateClick}
-                className="gap-2 shadow-[var(--vt-shadow-primary-glow)]"
-              >
-                <Download className="w-4 h-4" />
-                <span>{t('header.newVersion')}</span>
-                <Badge variant="secondary" className="ml-1 bg-white/20 text-white border-0">
-                  {t('common.new')}
-                </Badge>
-              </Button>
-            )}
-
           </div>
         </div>
       </div>

@@ -46,7 +46,9 @@
     "settings": "Paramètres",
     "logs": "Logs",
     "expandMenu": "Déplier le menu",
-    "collapseMenu": "Replier le menu"
+    "collapseMenu": "Replier le menu",
+    "updateAvailable": "Mise à jour disponible",
+    "updateAvailableTooltip": "Mise à jour {{version}} disponible"
   },
   "statistics": {
     "heroEyebrow": "Tableau de bord",

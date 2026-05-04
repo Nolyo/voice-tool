@@ -27,6 +27,23 @@ interface UpdaterContextType {
 
 const UpdaterContext = createContext<UpdaterContextType | undefined>(undefined);
 
+// Dev-only mock: set VITE_MOCK_UPDATE_AVAILABLE=true in .env.local to force
+// the "update available" UI without a real release. Tree-shaken in prod.
+const MOCK_UPDATE =
+  import.meta.env.DEV &&
+  import.meta.env.VITE_MOCK_UPDATE_AVAILABLE === "true";
+
+const MOCK_UPDATE_INFO: UpdateInfo = {
+  version: "99.0.0-mock",
+  date: new Date().toISOString(),
+  body:
+    "## Mocked release notes\n" +
+    "- This is a fake update used to preview the sidebar banner and modal.\n" +
+    "- Set VITE_MOCK_UPDATE_AVAILABLE=false (or remove the var) to disable.\n" +
+    "- Clicking 'Install now' will be a no-op in this mode.",
+  available: true,
+};
+
 export function UpdaterProvider({ children }: { children: ReactNode }) {
   const updater = useUpdater();
   const { settings, isLoaded } = useSettings();
@@ -95,13 +112,25 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
     return info;
   }, [updater]);
 
+  const effectiveUpdateAvailable = MOCK_UPDATE ? true : updateAvailable;
+  const effectiveUpdateInfo = MOCK_UPDATE
+    ? MOCK_UPDATE_INFO
+    : updater.updateInfo;
+  const effectiveDownloadAndInstall = MOCK_UPDATE
+    ? async () => {
+        console.warn(
+          "[UpdaterContext] Mock mode — downloadAndInstall is a no-op.",
+        );
+      }
+    : updater.downloadAndInstall;
+
   return (
     <UpdaterContext.Provider
       value={{
-        updateAvailable,
-        updateInfo: updater.updateInfo,
+        updateAvailable: effectiveUpdateAvailable,
+        updateInfo: effectiveUpdateInfo,
         checkForUpdates,
-        downloadAndInstall: updater.downloadAndInstall,
+        downloadAndInstall: effectiveDownloadAndInstall,
         isChecking: updater.isChecking,
         isDownloading: updater.isDownloading,
         downloadProgress: updater.downloadProgress,

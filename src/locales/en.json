@@ -46,7 +46,9 @@
     "settings": "Settings",
     "logs": "Logs",
     "expandMenu": "Expand menu",
-    "collapseMenu": "Collapse menu"
+    "collapseMenu": "Collapse menu",
+    "updateAvailable": "Update available",
+    "updateAvailableTooltip": "Update {{version}} available"
   },
   "statistics": {
     "heroEyebrow": "Dashboard",

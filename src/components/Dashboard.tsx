@@ -54,7 +54,7 @@ export default function Dashboard() {
     settings,
     settingsLoaded,
   );
-  const { updateAvailable, showUpdateModal, setShowUpdateModal } =
+  const { updateAvailable, updateInfo, showUpdateModal, setShowUpdateModal } =
     useUpdaterContext();
   const {
     transcriptions,
@@ -260,6 +260,9 @@ export default function Dashboard() {
         sourceFilter={logsSourceFilter}
         onSourceFilterChange={setLogsSourceFilter}
         developerMode={settings.developer_mode}
+        updateAvailable={updateAvailable}
+        updateVersion={updateInfo?.version ?? null}
+        onOpenUpdateModal={() => setShowUpdateModal(true)}
       />
 
       {/* Main area */}
@@ -268,8 +271,6 @@ export default function Dashboard() {
           isRecording={isRecording}
           isTranscribing={isTranscribing}
           onToggleRecording={handleToggleRecording}
-          updateAvailable={updateAvailable}
-          onUpdateClick={() => setShowUpdateModal(true)}
           activeTab={activeTab}
           sidebarCollapsed={sidebarCollapsed}
         />
@@ -354,7 +355,10 @@ export default function Dashboard() {
       <UpdateModal
         open={showUpdateModal}
         onOpenChange={setShowUpdateModal}
-        onViewDetails={() => setActiveTab("parametres")}
+        onViewDetails={() => {
+          setActiveTab("parametres");
+          setActiveSettingsSection("section-mises-a-jour");
+        }}
       />
 
       {showOnboarding && <OnboardingWizard onComplete={recheckOnboarding} />}

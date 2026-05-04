@@ -2,12 +2,10 @@
 
 import { useTranslation } from "react-i18next";
 import { Download, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -41,68 +39,116 @@ export function UpdateModal({ open, onOpenChange, onViewDetails }: UpdateModalPr
     onViewDetails();
   };
 
-  // Format date if available
-  const locale = i18n.language === 'en' ? 'en-US' : 'fr-FR';
+  const locale = i18n.language === "en" ? "en-US" : "fr-FR";
   const formattedDate = updateInfo.date
     ? new Date(updateInfo.date).toLocaleDateString(locale, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       })
     : null;
 
+  const bodyLines = updateInfo.body ? updateInfo.body.split("\n") : [];
+  const bodyPreview = bodyLines.slice(0, 10).join("\n");
+  const hasMoreLines = bodyLines.length > 10;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Download className="w-5 h-5 text-primary" />
-            {t('updater.updateModal.title')}
-          </DialogTitle>
-          <DialogDescription className="text-left">
-            {t('updater.updateModal.versionReady', { version: updateInfo.version })}
-            {formattedDate && (
-              <span className="block mt-1 text-xs text-muted-foreground">
-                {t('updater.updateModal.publishedOn')} {formattedDate}
-              </span>
-            )}
-          </DialogDescription>
-        </DialogHeader>
-
-        {updateInfo.body && (
-          <div className="max-h-[200px] overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
-            <p className="vt-eyebrow mb-2">
-              {t('updater.updateModal.releaseNotes')}
-            </p>
-            <div className="text-sm text-foreground whitespace-pre-wrap">
-              {updateInfo.body.split('\n').slice(0, 10).join('\n')}
-              {updateInfo.body.split('\n').length > 10 && (
-                <span className="block mt-2 text-xs text-muted-foreground italic">
-                  {t('updater.updateModal.viewFullDetails')}
-                </span>
-              )}
-            </div>
+      <DialogContent className="vt-app sm:max-w-[520px] border-0 bg-transparent p-0 shadow-none">
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: "var(--vt-bg)",
+            border: "1px solid var(--vt-border)",
+            boxShadow: "var(--vt-shadow-elevated)",
+          }}
+        >
+          <div className="px-6 pt-6 pb-2">
+            <DialogHeader>
+              <DialogTitle
+                className="vt-display text-[16px] font-semibold flex items-center gap-2"
+                style={{ color: "var(--vt-fg)" }}
+              >
+                <Download
+                  className="w-4 h-4"
+                  style={{ color: "var(--vt-accent)" }}
+                />
+                {t("updater.updateModal.title")}
+              </DialogTitle>
+              <DialogDescription
+                className="text-[12.5px] text-left"
+                style={{ color: "var(--vt-fg-3)" }}
+              >
+                {t("updater.updateModal.versionReady", {
+                  version: updateInfo.version,
+                })}
+                {formattedDate && (
+                  <span
+                    className="block mt-1 text-[11.5px]"
+                    style={{ color: "var(--vt-fg-4)" }}
+                  >
+                    {t("updater.updateModal.publishedOn")} {formattedDate}
+                  </span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
           </div>
-        )}
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={handleViewDetails}
-            className="gap-2"
-          >
-            <ExternalLink className="w-4 h-4" />
-            {t('updater.updateModal.viewDetails')}
-          </Button>
-          <Button
-            onClick={handleInstall}
-            disabled={isDownloading}
-            className="gap-2 bg-primary hover:bg-primary/90"
-          >
-            <Download className="w-4 h-4" />
-            {isDownloading ? t('updater.updateModal.downloading') : t('updater.updateModal.installNow')}
-          </Button>
-        </DialogFooter>
+          {updateInfo.body && (
+            <div className="px-6 pb-2">
+              <div
+                className="rounded-xl p-3 max-h-[200px] overflow-y-auto"
+                style={{
+                  background: "var(--vt-panel)",
+                  border: "1px solid var(--vt-border)",
+                }}
+              >
+                <p
+                  className="text-[10.5px] uppercase tracking-wide font-medium mb-2"
+                  style={{ color: "var(--vt-fg-3)" }}
+                >
+                  {t("updater.updateModal.releaseNotes")}
+                </p>
+                <div
+                  className="text-[12.5px] whitespace-pre-wrap"
+                  style={{ color: "var(--vt-fg-2)" }}
+                >
+                  {bodyPreview}
+                  {hasMoreLines && (
+                    <span
+                      className="block mt-2 text-[11px] italic"
+                      style={{ color: "var(--vt-fg-3)" }}
+                    >
+                      {t("updater.updateModal.viewFullDetails")}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 px-6 py-4">
+            <button
+              type="button"
+              onClick={handleViewDetails}
+              className="vt-btn vt-btn-sm"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              {t("updater.updateModal.viewDetails")}
+            </button>
+            <button
+              type="button"
+              onClick={handleInstall}
+              disabled={isDownloading}
+              className="vt-btn vt-btn-sm vt-btn-primary"
+            >
+              <Download className="w-3.5 h-3.5" />
+              {isDownloading
+                ? t("updater.updateModal.downloading")
+                : t("updater.updateModal.installNow")}
+            </button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

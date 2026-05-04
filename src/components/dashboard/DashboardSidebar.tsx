@@ -25,6 +25,7 @@ import { ProfileSwitcher } from "./ProfileSwitcher";
 import { HistoriqueSidebarSection } from "./HistoriqueSidebarSection";
 import { StatistiquesSidebarSection } from "./StatistiquesSidebarSection";
 import { LogsSidebarSection } from "./LogsSidebarSection";
+import { UpdateAvailableBanner } from "./UpdateAvailableBanner";
 
 export const DASHBOARD_NAV_ITEMS = [
   {
@@ -100,6 +101,9 @@ interface DashboardSidebarProps {
   sourceFilter: string | null;
   onSourceFilterChange: (next: string | null) => void;
   developerMode: boolean;
+  updateAvailable: boolean;
+  updateVersion: string | null;
+  onOpenUpdateModal: () => void;
 }
 
 export function DashboardSidebar({
@@ -132,6 +136,9 @@ export function DashboardSidebar({
   sourceFilter,
   onSourceFilterChange,
   developerMode,
+  updateAvailable,
+  updateVersion,
+  onOpenUpdateModal,
 }: DashboardSidebarProps) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -274,6 +281,17 @@ export function DashboardSidebar({
         !(activeTab === "logs" && !collapsed) && (
           <div className="flex-1" />
         )}
+
+      {/* Update banner — sits just above the profile switcher when an update is available */}
+      {updateAvailable && updateVersion && (
+        <div className="shrink-0 px-2 pb-2">
+          <UpdateAvailableBanner
+            collapsed={collapsed}
+            version={updateVersion}
+            onClick={onOpenUpdateModal}
+          />
+        </div>
+      )}
 
       {/* Profile switcher — always at the very bottom */}
       <div className="border-t border-border shrink-0 p-2">
