@@ -9,6 +9,12 @@ const ENV = {
   OPENAI_API_KEY: "openai_test",
 } as const;
 
+// Argument-blind by design: .eq(column, value) calls are accepted but their
+// arguments are not asserted. This keeps the mock readable for the priority
+// logic under test (which doesn't depend on filter columns being correct).
+// If you add tests that DO need to validate filter arguments — e.g. ensuring
+// a refactor doesn't drop the year_month filter on usage_summary — switch to
+// vi.fn() per .eq() and assert the call arguments explicitly.
 /**
  * Build a chainable Supabase query mock that resolves to {data, error}.
  * Each call to .from(table).select(...).eq(...)[.eq(...)...].maybeSingle()
@@ -117,9 +123,9 @@ describe("checkQuotaForTranscription priority", () => {
         subscriptions: { data: null, error: null },
       }),
     );
-    await expect(
-      checkQuotaForTranscription(ENV, "u1"),
-    ).rejects.toBeInstanceOf(QuotaExhausted);
+    const err = await checkQuotaForTranscription(ENV, "u1").catch((e) => e);
+    expect(err).toBeInstanceOf(QuotaExhausted);
+    expect((err as QuotaExhausted).reason).toBe("no_active_subscription");
   });
 
   it("denies when subscription expired even if quota would allow", async () => {
@@ -136,9 +142,9 @@ describe("checkQuotaForTranscription priority", () => {
         usage_summary: { data: { units_total: 0 }, error: null },
       }),
     );
-    await expect(
-      checkQuotaForTranscription(ENV, "u1"),
-    ).rejects.toBeInstanceOf(QuotaExhausted);
+    const err = await checkQuotaForTranscription(ENV, "u1").catch((e) => e);
+    expect(err).toBeInstanceOf(QuotaExhausted);
+    expect((err as QuotaExhausted).reason).toBe("no_active_subscription");
   });
 
   it("denies when overage hard cap is reached", async () => {
@@ -155,8 +161,19 @@ describe("checkQuotaForTranscription priority", () => {
         usage_summary: { data: { units_total: 1400 }, error: null }, // 400 over the 300 cap
       }),
     );
-    await expect(
-      checkQuotaForTranscription(ENV, "u1"),
-    ).rejects.toBeInstanceOf(QuotaExhausted);
+    const err = await checkQuotaForTranscription(ENV, "u1").catch((e) => e);
+    expect(err).toBeInstanceOf(QuotaExhausted);
+    expect((err as QuotaExhausted).reason).toBe("hard_cap_reached");
+  });
+
+  it("propagates trial_status fetch errors", async () => {
+    (createClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockSupabaseChain({
+        trial_status: { data: null, error: { message: "db unavailable" } },
+      }),
+    );
+    await expect(checkQuotaForTranscription(ENV, "u1")).rejects.toThrow(
+      /trial_status fetch failed: db unavailable/,
+    );
   });
 });
