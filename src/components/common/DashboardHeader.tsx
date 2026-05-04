@@ -113,11 +113,7 @@ export function DashboardHeader({
                       : "bg-primary hover:bg-primary/90 shadow-[var(--vt-shadow-primary-glow)]"
                   }`}
                 >
-                  <Mic
-                    className={`w-4 h-4 ${
-                      isRecording ? "text-primary-foreground" : "text-signal-green"
-                    }`}
-                  />
+                  <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
                 {isRecording && (
                   <>
