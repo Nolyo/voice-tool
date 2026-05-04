@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(4);
+SELECT plan(6);
 
 INSERT INTO auth.users (id, email)
 VALUES ('11111111-1111-1111-1111-111111111111', 'a@test.local');
@@ -37,6 +37,41 @@ SELECT is(
   (SELECT count(*) FROM public.usage_summary)::int,
   2,
   'two summary rows: one per (year_month, kind)'
+);
+
+-- ─── Trial bump trigger ─────────────────────────────────────────────────────
+-- The 2 transcription events above (1.0 + 2.5 = 3.5 min) were inserted with
+-- source='trial' so the new trigger should have debited trial_credits.
+-- The post_process event was 'trial' too but units_unit='tokens' → no bump.
+
+INSERT INTO public.trial_credits (user_id, minutes_granted, minutes_consumed)
+VALUES ('11111111-1111-1111-1111-111111111111', 60, 0);
+
+-- Re-insert one transcription event to trigger the bump (the events above
+-- ran before trial_credits row existed).
+INSERT INTO public.usage_events
+  (user_id, kind, units, units_unit, model, provider, source)
+VALUES
+  ('11111111-1111-1111-1111-111111111111', 'transcription', 0.5, 'minutes', 'whisper-large-v3-turbo', 'groq', 'trial');
+
+SELECT is(
+  (SELECT minutes_consumed FROM public.trial_credits
+   WHERE user_id = '11111111-1111-1111-1111-111111111111')::numeric,
+  0.5::numeric,
+  'trigger debited trial_credits by event units'
+);
+
+-- Non-trial event must NOT debit.
+INSERT INTO public.usage_events
+  (user_id, kind, units, units_unit, model, provider, source)
+VALUES
+  ('11111111-1111-1111-1111-111111111111', 'transcription', 1.0, 'minutes', 'whisper-large-v3-turbo', 'groq', 'quota');
+
+SELECT is(
+  (SELECT minutes_consumed FROM public.trial_credits
+   WHERE user_id = '11111111-1111-1111-1111-111111111111')::numeric,
+  0.5::numeric,
+  'non-trial event did not bump trial_credits'
 );
 
 SELECT * FROM finish();
