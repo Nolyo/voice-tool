@@ -61,15 +61,15 @@ function currentYearMonth(): string {
 
 export function CloudProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const { settings } = useSettings();
+  const { settings: { transcription_provider } } = useSettings();
 
   const [eligible, setEligible] = useState(false);
   const [trial, setTrial] = useState<TrialStatus>(DEFAULT_TRIAL);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
   const [plan, setPlan] = useState<UsagePlan | null>(null);
-  const [usageLoading, setUsageLoading] = useState(true);
+  const [usageLoading, setUsageLoading] = useState(false);
 
-  const hasCloudSelected = settings.transcription_provider === "LexenaCloud";
+  const hasCloudSelected = transcription_provider === "LexenaCloud";
 
   const refreshUsage = useCallback(async () => {
     if (!user) {
@@ -127,15 +127,18 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     return eligible ? "cloud" : "local";
   }, [user, eligible, hasCloudSelected]);
 
-  const value: CloudContextValue = {
-    mode,
-    isCloudEligible: eligible,
-    hasCloudSelected,
-    trial,
-    monthly_minutes_used: monthlyUsed,
-    plan,
-    usageLoading,
-    refreshUsage,
-  };
+  const value = useMemo<CloudContextValue>(
+    () => ({
+      mode,
+      isCloudEligible: eligible,
+      hasCloudSelected,
+      trial,
+      monthly_minutes_used: monthlyUsed,
+      plan,
+      usageLoading,
+      refreshUsage,
+    }),
+    [mode, eligible, hasCloudSelected, trial, monthlyUsed, plan, usageLoading, refreshUsage],
+  );
   return <CloudContext.Provider value={value}>{children}</CloudContext.Provider>;
 }
