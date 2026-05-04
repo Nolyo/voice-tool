@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, Check, Copy, Trash2, Sparkles, Download, Filter, Pin, PinOff } from "lucide-react";
+import { Search, Trash2, Sparkles, Download, Filter, Pin } from "lucide-react";
+import { GroupedVirtuoso, type GroupedVirtuosoHandle } from "react-virtuoso";
 import { type Transcription } from "@/hooks/useTranscriptionHistory";
 import { isToday, useDateFormatters } from "@/lib/date-format";
-import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { ExportDialog } from "./ExportDialog";
+import { TimelineRow } from "./TimelineRow";
 import {
   AdvancedFiltersPopover,
   EMPTY_ADV_FILTERS,
@@ -18,6 +20,7 @@ import {
 interface TranscriptionListProps {
   transcriptions: Transcription[];
   selectedId?: string;
+  scrollParent: HTMLElement | null;
   onSelectTranscription: (transcription: Transcription) => void;
   onDelete?: (id: string) => void;
   onClearAll?: () => void;
@@ -49,180 +52,43 @@ function wordsOf(text: string): number {
   return text.trim() ? text.trim().split(/\s+/).length : 0;
 }
 
-/* ── Row ────────────────────────────────────────────────────────────── */
-interface RowProps {
-  item: Transcription;
-  at: Date;
-  isSelected: boolean;
-  isFirst: boolean;
-  isLast: boolean;
-  onSelect: () => void;
-  onDelete?: () => void;
-  onTogglePin?: () => void | Promise<void>;
+/* ── DayLabel ──────────────────────────────────────────────────────── */
+interface DayLabelProps {
+  label: string;
+  firstAt: Date;
+  count: number;
+  totalWords: number;
+  totalDuration: number;
 }
 
-function TimelineRow({
-  item,
-  at,
-  isSelected,
-  isFirst,
-  isLast,
-  onSelect,
-  onDelete,
-  onTogglePin,
-}: RowProps) {
+function DayLabel({
+  label,
+  firstAt,
+  count,
+  totalWords,
+  totalDuration,
+}: DayLabelProps) {
   const { t } = useTranslation();
-  const { copy, justCopied } = useCopyToClipboard();
-  const { formatTime } = useDateFormatters();
-  const words = wordsOf(item.text);
-  const postProcess = Boolean(item.originalText);
-  const source = item.apiCost !== undefined && item.apiCost > 0 ? "api" : "local";
-  const isPinned = Boolean(item.pinnedAt);
-
+  const { formatShortDate } = useDateFormatters();
   return (
-    <div
-      className={
-        "hist-row group" +
-        (isFirst ? " hist-rail-first" : "") +
-        (isLast ? " hist-rail-last" : "")
-      }
-      data-selected={isSelected}
-      data-postprocess={postProcess}
-      data-source={source}
-      data-pinned={isPinned}
-      onClick={onSelect}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
-    >
-      <div className="vt-mono text-[11.5px] hist-time" style={{ color: "var(--vt-fg-3)" }}>
-        {formatTime(at)}
-      </div>
-      <div className="hist-dot">
-        <span className="hist-dot-circle" />
-      </div>
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          {isPinned && (
-            <span
-              className="inline-flex items-center gap-1 px-1.5 h-4 rounded text-[10px] font-medium vt-pin-badge"
-              title={t("history.pinnedBadge")}
-            >
-              <Pin className="w-2.5 h-2.5" aria-hidden />
-              <span>{t("history.pinnedBadge")}</span>
-            </span>
-          )}
-          {source === "api" && item.transcriptionProvider && (
-            <span
-              className="inline-flex items-center px-1.5 h-4 rounded text-[10px] font-medium"
-              style={{
-                background: "oklch(from var(--vt-cyan) l c h / 0.16)",
-                color: "var(--vt-cyan)",
-              }}
-              title={t("history.legendApiCloud")}
-            >
-              {item.transcriptionProvider}
-            </span>
-          )}
-          {postProcess && (
-            <span
-              className="inline-flex items-center gap-1 px-1.5 h-4 rounded text-[10px] font-medium"
-              style={{
-                background: "oklch(from var(--vt-violet) l c h / 0.16)",
-                color: "var(--vt-violet)",
-              }}
-              title={t("history.postProcessedBadge")}
-            >
-              <Sparkles className="w-2.5 h-2.5" aria-hidden />
-              <span>IA</span>
-            </span>
-          )}
-          <span className="text-[11px]" style={{ color: "var(--vt-fg-4)" }}>
-            {item.duration !== undefined && item.duration > 0 && (
-              <>
-                <span className="vt-mono">{durFmt(item.duration)}</span>
-                <span className="mx-1.5">·</span>
-              </>
-            )}
-            <span className="vt-mono">
-              {t("history.wordsCount", { count: words })}
-            </span>
-            {item.apiCost !== undefined && item.apiCost > 0 && (
-              <>
-                <span className="mx-1.5">·</span>
-                <span className="vt-mono">${item.apiCost.toFixed(4)}</span>
-              </>
-            )}
-          </span>
-        </div>
-        <div className="text-[13px] truncate" style={{ color: "var(--vt-fg)" }}>
-          {item.text.split("\n")[0] || item.text}
-        </div>
-      </div>
-      <div
-        className="flex items-center gap-0.5 transition"
-        style={{ opacity: isSelected ? 1 : undefined }}
+    <div className="day-label">
+      <span
+        className="vt-mono text-[10.5px]"
+        style={{ color: "var(--vt-fg-4)" }}
       >
-        {onTogglePin && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              void onTogglePin();
-            }}
-            className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg vt-pin-btn"
-            data-pinned={isPinned}
-            style={{ color: isPinned ? "var(--vt-pin)" : "var(--vt-fg-3)" }}
-            data-tip={isPinned ? t("history.unpinTooltip") : t("history.pinTooltip")}
-            aria-label={isPinned ? t("history.unpin") : t("history.pin")}
-            aria-pressed={isPinned}
-          >
-            {isPinned ? (
-              <PinOff className="w-3.5 h-3.5" />
-            ) : (
-              <Pin className="w-3.5 h-3.5" />
-            )}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            copy(item.text);
-          }}
-          className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg"
-          style={{ color: justCopied ? "var(--vt-ok)" : "var(--vt-fg-3)" }}
-          data-tip={justCopied ? t("common.copied") : t("transcriptionDetails.copy")}
-          aria-label={t("transcriptionDetails.copy")}
-        >
-          {justCopied ? (
-            <Check className="w-3.5 h-3.5" />
-          ) : (
-            <Copy className="w-3.5 h-3.5" />
-          )}
-        </button>
-        {onDelete && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (confirm(t("history.deleteConfirm"))) {
-                onDelete();
-              }
-            }}
-            className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg hover:text-destructive"
-            style={{ color: "var(--vt-fg-3)" }}
-            data-tip={t("history.deleteTooltip")}
-            aria-label={t("history.deleteConfirm")}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
+        {formatShortDate(firstAt)}
+      </span>
+      <div className="day-label-inner">
+        <span className="day-chip">{label}</span>
+        <span className="day-chip-count">{count}</span>
+        <span
+          className="h-px flex-1"
+          style={{ background: "var(--vt-border)" }}
+        />
+        <span className="text-[10.5px]" style={{ color: "var(--vt-fg-4)" }}>
+          {t("history.wordsCount", { count: totalWords })}
+          {totalDuration > 0 && <> · {durFmt(totalDuration)}</>}
+        </span>
       </div>
     </div>
   );
@@ -232,20 +98,22 @@ function TimelineRow({
 export function TranscriptionList({
   transcriptions,
   selectedId,
+  scrollParent,
   onSelectTranscription,
   onDelete,
   onClearAll,
   onTogglePin,
 }: TranscriptionListProps) {
   const { t } = useTranslation();
-  const { dayLabel, formatShortDate } = useDateFormatters();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 200);
   const [filter, setFilter] = useState<FilterId>("all");
   const [advFilters, setAdvFilters] = useState<AdvancedFilters>(EMPTY_ADV_FILTERS);
   const [advFiltersOpen, setAdvFiltersOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const advFilterBtnRef = useRef<HTMLButtonElement>(null);
+  const virtuosoRef = useRef<GroupedVirtuosoHandle>(null);
 
   const advCount = countActiveAdvFilters(advFilters);
 
@@ -269,19 +137,20 @@ export function TranscriptionList({
 
     list = applyAdvFilters(list, advFilters);
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    const q = debouncedSearch.trim();
+    if (q) {
+      const ql = q.toLowerCase();
       list = list.filter(
         (tr) =>
-          tr.text.toLowerCase().includes(q) ||
-          (tr.originalText ?? "").toLowerCase().includes(q) ||
-          tr.date.includes(search) ||
-          tr.time.includes(search),
+          tr.text.toLowerCase().includes(ql) ||
+          (tr.originalText ?? "").toLowerCase().includes(ql) ||
+          tr.date.includes(q) ||
+          tr.time.includes(q),
       );
     }
 
     return list;
-  }, [transcriptions, search, filter, advFilters]);
+  }, [transcriptions, debouncedSearch, filter, advFilters]);
 
   /**
    * Render a dedicated "Pinned" section above the day-grouped timeline only
@@ -293,7 +162,7 @@ export function TranscriptionList({
   const showPinnedSection =
     pinnedItems.length > 0 &&
     filter === "all" &&
-    !search.trim() &&
+    !debouncedSearch.trim() &&
     advCount === 0;
 
   /**
@@ -306,6 +175,60 @@ export function TranscriptionList({
         ? filtered.filter((tr) => !tr.pinnedAt)
         : filtered,
     [filtered, showPinnedSection],
+  );
+
+  const { dayLabel } = useDateFormatters();
+
+  /**
+   * Group items by day label. Result is an ordered array kept in sync with
+   * the iteration order of `dayGroupItems` (the source list is already
+   * sorted, so groups appear in chronological order of first occurrence).
+   */
+  const groups = useMemo(() => {
+    const map = new Map<string, { items: Transcription[]; firstAt: Date }>();
+    for (const tr of dayGroupItems) {
+      const at = parseAt(tr);
+      const key = dayLabel(at);
+      if (!map.has(key)) {
+        map.set(key, { items: [], firstAt: at });
+      }
+      map.get(key)!.items.push(tr);
+    }
+    return [...map.entries()];
+  }, [dayGroupItems, dayLabel]);
+
+  const groupCounts = useMemo(() => groups.map(([, g]) => g.items.length), [groups]);
+
+  /** Cumulative offsets so we can map an absolute virtual index to a local one. */
+  const groupStartOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    let acc = 0;
+    for (const c of groupCounts) {
+      offsets.push(acc);
+      acc += c;
+    }
+    return offsets;
+  }, [groupCounts]);
+
+  /** Map an item id to its absolute index inside the virtualised list. */
+  const indexOfItem = useCallback(
+    (id: string): number => {
+      for (let g = 0; g < groups.length; g++) {
+        const items = groups[g][1].items;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].id === id) return groupStartOffsets[g] + i;
+        }
+      }
+      return -1;
+    },
+    [groups, groupStartOffsets],
+  );
+
+  const handleSelect = useCallback(
+    (item: Transcription) => {
+      onSelectTranscription(item);
+    },
+    [onSelectTranscription],
   );
 
   useEffect(() => {
@@ -352,17 +275,36 @@ export function TranscriptionList({
           ? -1
           : filtered.findIndex((tr) => tr.id === selectedId);
 
+      const scrollSelected = (item: Transcription) => {
+        // Pinned items are rendered in their own non-virtualised section above
+        // the timeline, so they're already visible — no scroll needed.
+        if (showPinnedSection && item.pinnedAt) return;
+        const absIdx = indexOfItem(item.id);
+        if (absIdx >= 0) {
+          virtuosoRef.current?.scrollToIndex({
+            index: absIdx,
+            align: "center",
+            behavior: "auto",
+          });
+        }
+      };
+
       if (e.key === "ArrowDown") {
-        if (target === searchInputRef.current) e.preventDefault();
-        else e.preventDefault();
+        e.preventDefault();
         const next = filtered[Math.min(filtered.length - 1, currentIdx + 1)];
-        if (next) onSelectTranscription(next);
+        if (next) {
+          onSelectTranscription(next);
+          scrollSelected(next);
+        }
         return;
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
         const prev = filtered[Math.max(0, currentIdx - 1)];
-        if (prev) onSelectTranscription(prev);
+        if (prev) {
+          onSelectTranscription(prev);
+          scrollSelected(prev);
+        }
         return;
       }
       if (e.key === "Delete" && onDelete && selectedId) {
@@ -382,20 +324,59 @@ export function TranscriptionList({
     t,
     transcriptions.length,
     openExport,
+    showPinnedSection,
+    indexOfItem,
   ]);
 
-  const groups = useMemo(() => {
-    const map = new Map<string, { items: Transcription[]; firstAt: Date }>();
-    for (const tr of dayGroupItems) {
-      const at = parseAt(tr);
-      const key = dayLabel(at);
-      if (!map.has(key)) {
-        map.set(key, { items: [], firstAt: at });
-      }
-      map.get(key)!.items.push(tr);
-    }
-    return [...map.entries()];
-  }, [dayGroupItems, dayLabel]);
+  /* itemContent renders one row using its absolute index + group index. */
+  const renderItem = useCallback(
+    (absoluteIndex: number, groupIndex: number) => {
+      const group = groups[groupIndex];
+      if (!group) return null;
+      const items = group[1].items;
+      const localIndex = absoluteIndex - groupStartOffsets[groupIndex];
+      const item = items[localIndex];
+      if (!item) return null;
+      return (
+        <div className="px-2">
+          <TimelineRow
+            item={item}
+            at={parseAt(item)}
+            isSelected={selectedId === item.id}
+            isFirst={localIndex === 0}
+            isLast={localIndex === items.length - 1}
+            onSelect={handleSelect}
+            onDelete={onDelete}
+            onTogglePin={onTogglePin}
+          />
+        </div>
+      );
+    },
+    [groups, groupStartOffsets, selectedId, handleSelect, onDelete, onTogglePin],
+  );
+
+  const renderGroup = useCallback(
+    (groupIndex: number) => {
+      const group = groups[groupIndex];
+      if (!group) return null;
+      const [label, g] = group;
+      const totalWords = g.items.reduce((a, tr) => a + wordsOf(tr.text), 0);
+      const totalDuration = g.items.reduce(
+        (a, tr) => a + (tr.duration ?? 0),
+        0,
+      );
+      return (
+        <DayLabel
+          label={label}
+          firstAt={g.firstAt}
+          count={g.items.length}
+          totalWords={totalWords}
+          totalDuration={totalDuration}
+        />
+      );
+    },
+    [groups],
+  );
 
   return (
     <div className="flex flex-col min-w-0">
@@ -526,136 +507,89 @@ export function TranscriptionList({
 
       </div>
 
-      {/* Timeline */}
-      <div className="pb-6">
-        {showPinnedSection && (
-          <div className="mb-1" data-testid="pinned-section">
-            <div className="day-label">
-              <span
-                className="vt-mono text-[10.5px]"
-                style={{ color: "var(--vt-fg-4)" }}
-                aria-hidden
-              >
-                <Pin className="inline-block w-3 h-3" />
-              </span>
-              <div className="day-label-inner">
-                <span className="day-chip vt-pin-chip">
-                  <Pin className="w-3 h-3" aria-hidden />
-                  {t("history.pinnedSection")}
-                </span>
-                <span className="day-chip-count">{pinnedItems.length}</span>
-                <span
-                  className="h-px flex-1"
-                  style={{ background: "var(--vt-border)" }}
-                />
-                <span
-                  className="text-[10.5px]"
-                  style={{ color: "var(--vt-fg-4)" }}
-                >
-                  {t("history.pinnedSectionHint")}
-                </span>
-              </div>
-            </div>
-            <div className="px-2">
-              {pinnedItems.map((item, i) => (
-                <TimelineRow
-                  key={`pinned-${item.id}`}
-                  item={item}
-                  at={parseAt(item)}
-                  isSelected={selectedId === item.id}
-                  isFirst={i === 0}
-                  isLast={i === pinnedItems.length - 1}
-                  onSelect={() => onSelectTranscription(item)}
-                  onDelete={onDelete ? () => onDelete(item.id) : undefined}
-                  onTogglePin={
-                    onTogglePin ? () => onTogglePin(item.id) : undefined
-                  }
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {groups.length === 0 && !showPinnedSection ? (
-          <div className="py-20 text-center">
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-              style={{ background: "var(--vt-hover)", color: "var(--vt-fg-4)" }}
+      {/* Pinned section (small, kept un-virtualised) */}
+      {showPinnedSection && (
+        <div className="mb-1" data-testid="pinned-section">
+          <div className="day-label">
+            <span
+              className="vt-mono text-[10.5px]"
+              style={{ color: "var(--vt-fg-4)" }}
+              aria-hidden
             >
-              <Search className="w-5 h-5" />
+              <Pin className="inline-block w-3 h-3" />
+            </span>
+            <div className="day-label-inner">
+              <span className="day-chip vt-pin-chip">
+                <Pin className="w-3 h-3" aria-hidden />
+                {t("history.pinnedSection")}
+              </span>
+              <span className="day-chip-count">{pinnedItems.length}</span>
+              <span
+                className="h-px flex-1"
+                style={{ background: "var(--vt-border)" }}
+              />
+              <span
+                className="text-[10.5px]"
+                style={{ color: "var(--vt-fg-4)" }}
+              >
+                {t("history.pinnedSectionHint")}
+              </span>
             </div>
-            <p className="text-[13.5px]" style={{ color: "var(--vt-fg-2)" }}>
-              {search || filter !== "all" || advCount > 0
-                ? filter === "pinned"
-                  ? t("history.pinnedEmpty")
-                  : t("history.emptySearch")
-                : t("history.empty")}
-            </p>
-            <p className="text-[12px] mt-1" style={{ color: "var(--vt-fg-3)" }}>
-              {search || filter !== "all" || advCount > 0
-                ? filter === "pinned"
-                  ? t("history.pinnedEmptySubtitle")
-                  : t("history.emptyNoMatches")
-                : t("history.emptySubtitle")}
-            </p>
           </div>
-        ) : (
-          groups.map(([label, group]) => {
-            const groupWords = group.items.reduce(
-              (a, tr) => a + wordsOf(tr.text),
-              0,
-            );
-            const groupDur = group.items.reduce(
-              (a, tr) => a + (tr.duration ?? 0),
-              0,
-            );
-            return (
-              <div key={label} className="mb-1">
-                <div className="day-label">
-                  <span
-                    className="vt-mono text-[10.5px]"
-                    style={{ color: "var(--vt-fg-4)" }}
-                  >
-                    {formatShortDate(group.firstAt)}
-                  </span>
-                  <div className="day-label-inner">
-                    <span className="day-chip">{label}</span>
-                    <span className="day-chip-count">{group.items.length}</span>
-                    <span
-                      className="h-px flex-1"
-                      style={{ background: "var(--vt-border)" }}
-                    />
-                    <span
-                      className="text-[10.5px]"
-                      style={{ color: "var(--vt-fg-4)" }}
-                    >
-                      {t("history.wordsCount", { count: groupWords })}
-                      {groupDur > 0 && <> · {durFmt(groupDur)}</>}
-                    </span>
-                  </div>
-                </div>
-                <div className="px-2">
-                  {group.items.map((item, i) => (
-                    <TimelineRow
-                      key={item.id}
-                      item={item}
-                      at={parseAt(item)}
-                      isSelected={selectedId === item.id}
-                      isFirst={i === 0}
-                      isLast={i === group.items.length - 1}
-                      onSelect={() => onSelectTranscription(item)}
-                      onDelete={onDelete ? () => onDelete(item.id) : undefined}
-                      onTogglePin={
-                        onTogglePin ? () => onTogglePin(item.id) : undefined
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+          <div className="px-2">
+            {pinnedItems.map((item, i) => (
+              <TimelineRow
+                key={`pinned-${item.id}`}
+                item={item}
+                at={parseAt(item)}
+                isSelected={selectedId === item.id}
+                isFirst={i === 0}
+                isLast={i === pinnedItems.length - 1}
+                onSelect={handleSelect}
+                onDelete={onDelete}
+                onTogglePin={onTogglePin}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Virtualised day-grouped timeline */}
+      {groups.length === 0 && !showPinnedSection ? (
+        <div className="py-20 text-center">
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+            style={{ background: "var(--vt-hover)", color: "var(--vt-fg-4)" }}
+          >
+            <Search className="w-5 h-5" />
+          </div>
+          <p className="text-[13.5px]" style={{ color: "var(--vt-fg-2)" }}>
+            {search || filter !== "all" || advCount > 0
+              ? filter === "pinned"
+                ? t("history.pinnedEmpty")
+                : t("history.emptySearch")
+              : t("history.empty")}
+          </p>
+          <p className="text-[12px] mt-1" style={{ color: "var(--vt-fg-3)" }}>
+            {search || filter !== "all" || advCount > 0
+              ? filter === "pinned"
+                ? t("history.pinnedEmptySubtitle")
+                : t("history.emptyNoMatches")
+              : t("history.emptySubtitle")}
+          </p>
+        </div>
+      ) : (
+        groups.length > 0 && (
+          <GroupedVirtuoso
+            ref={virtuosoRef}
+            customScrollParent={scrollParent ?? undefined}
+            groupCounts={groupCounts}
+            groupContent={renderGroup}
+            itemContent={renderItem}
+            increaseViewportBy={400}
+          />
+        )
+      )}
 
       {transcriptions.length > 0 && (
         <div

@@ -47,6 +47,7 @@ export default function Dashboard() {
   const [logsLevelFilter, setLogsLevelFilter] =
     useState<LevelFilter>(ALL_LEVELS_ON);
   const [logsSourceFilter, setLogsSourceFilter] = useState<string | null>(null);
+  const [tabScrollEl, setTabScrollEl] = useState<HTMLDivElement | null>(null);
 
   const { settings, isLoaded: settingsLoaded } = useSettings();
   const { showOnboarding, recheck: recheckOnboarding } = useOnboardingCheck(
@@ -161,12 +162,15 @@ export default function Dashboard() {
     [notes, handleOpenNote],
   );
 
-  const handleDelete = async (id: string) => {
-    if (selectedTranscription?.id === id) {
-      setSelectedTranscription(null);
-    }
-    await deleteTranscription(id);
-  };
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (selectedTranscription?.id === id) {
+        setSelectedTranscription(null);
+      }
+      await deleteTranscription(id);
+    },
+    [selectedTranscription?.id, deleteTranscription],
+  );
 
   const handleClearAll = async () => {
     setSelectedTranscription(null);
@@ -315,7 +319,7 @@ export default function Dashboard() {
               onSourceFilterChange={setLogsSourceFilter}
             />
           ) : (
-            <div className="overflow-y-auto h-full">
+            <div ref={setTabScrollEl} className="overflow-y-auto h-full">
               {activeTab === "parametres" ? (
                 <SettingTabs
                   activeSection={activeSettingsSection}
@@ -329,6 +333,7 @@ export default function Dashboard() {
                       selectedTranscription={selectedTranscription}
                       isSidebarOpen={isSidebarOpen}
                       isCompact={isCompact}
+                      scrollParent={tabScrollEl}
                       onSelectTranscription={handleSelectTranscription}
                       onCloseDetails={handleCloseDetails}
                       onDelete={handleDelete}
