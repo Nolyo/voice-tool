@@ -1,11 +1,24 @@
 use std::fmt;
 use std::io::Cursor;
+use std::sync::OnceLock;
+use std::time::Duration;
 
 use reqwest::multipart::{Form, Part};
 use serde::{Deserialize, Serialize};
 
 fn api_base() -> &'static str {
     option_env!("LEXENA_CLOUD_API_BASE").unwrap_or("https://api.lexena.app")
+}
+
+static CLOUD_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+fn cloud_client() -> &'static reqwest::Client {
+    CLOUD_CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(Duration::from_secs(120))
+            .build()
+            .expect("failed to build cloud reqwest client")
+    })
 }
 
 #[derive(Debug)]
@@ -175,8 +188,7 @@ pub async fn transcribe_audio_cloud(
         form = form.text("language", lang);
     }
 
-    let client = reqwest::Client::new();
-    let mut req = client
+    let mut req = cloud_client()
         .post(format!("{}/transcribe", api_base()))
         .bearer_auth(&jwt)
         .multipart(form);
@@ -205,8 +217,7 @@ pub async fn post_process_cloud(
         "language": language,
         "model_tier": model_tier,
     });
-    let client = reqwest::Client::new();
-    let mut req = client
+    let mut req = cloud_client()
         .post(format!("{}/post-process", api_base()))
         .bearer_auth(&jwt)
         .json(&body);
