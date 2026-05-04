@@ -7,6 +7,7 @@ Procédures opérationnelles pour la v3 (rotation secrets, backup, incident).
 - [`secrets-rotation.md`](secrets-rotation.md) — rotation JWT secret, webhook LS, service role key, clé updater
 - [`backup-restore-test.md`](backup-restore-test.md) — test trimestriel de restauration Supabase
 - [`incident-response.md`](incident-response.md) — plan incident + notification GDPR <72h
+- [`managed-transcription.md`](managed-transcription.md) — Worker Cloudflare api.lexena.app, providers Groq/OpenAI, monitoring + incidents
 
 ## Convention
 
