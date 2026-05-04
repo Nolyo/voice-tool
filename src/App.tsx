@@ -28,17 +28,17 @@ function AppShell() {
 
 function App() {
   return (
-    <CloudProvider>
-      <ProfilesProvider>
-        <SettingsProvider>
+    <ProfilesProvider>
+      <SettingsProvider>
+        <CloudProvider>
           <SyncProvider>
             <UpdaterProvider>
               <AppShell />
             </UpdaterProvider>
           </SyncProvider>
-        </SettingsProvider>
-      </ProfilesProvider>
-    </CloudProvider>
+        </CloudProvider>
+      </SettingsProvider>
+    </ProfilesProvider>
   );
 }
 
