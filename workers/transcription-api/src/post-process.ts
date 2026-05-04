@@ -39,8 +39,11 @@ export async function handlePostProcess(
   const tier: OpenAIModelTier = body.model_tier === "full" ? "full" : "mini";
 
   // Eligibility: post_process is gated by *any* of trial active OR active subscription.
-  const trial = await fetchTrialStatus(env, user.user_id);
-  const sub = await fetchSubscriptionState(env, user.user_id);
+  // Parallel fetch — neither read depends on the other.
+  const [trial, sub] = await Promise.all([
+    fetchTrialStatus(env, user.user_id),
+    fetchSubscriptionState(env, user.user_id),
+  ]);
   const eligible = trial.is_active || sub.status === "active";
   if (!eligible) {
     return errorResponse("quota_exhausted", "no active trial or subscription");
