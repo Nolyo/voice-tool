@@ -58,7 +58,10 @@ export async function handlePostProcess(
     result = await chatCompletion(template.system, userPrompt, env, tier);
   } catch (err) {
     if (err instanceof OpenAIError) {
-      return errorResponse("provider_unavailable", `openai ${err.status}`);
+      if (err.status >= 500 || err.retryable) {
+        return errorResponse("provider_unavailable", `openai ${err.status}`);
+      }
+      return errorResponse("bad_request", `openai rejected request: ${err.status}`);
     }
     throw err;
   }

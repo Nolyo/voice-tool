@@ -69,6 +69,8 @@ describe("authenticate", () => {
     const token = await makeToken(privateKey, kid, {
       sub: "user-123",
       email: "user@test.local",
+      iss: "https://test.supabase.co/auth/v1",
+      aud: "authenticated",
       exp: Math.floor(Date.now() / 1000) + 60,
     });
     const req = new Request("https://api.test/transcribe", {
@@ -94,6 +96,8 @@ describe("authenticate", () => {
 
     const token = await makeToken(privateKey, kid, {
       sub: "user-123",
+      iss: "https://test.supabase.co/auth/v1",
+      aud: "authenticated",
       exp: Math.floor(Date.now() / 1000) - 10,
     });
     const req = new Request("https://api.test/transcribe", {
@@ -109,7 +113,12 @@ describe("authenticate", () => {
     // Hand-craft a token with alg=HS256 — signature does not matter; the alg gate trips first.
     const headerB64 = b64url(JSON.stringify({ alg: "HS256", typ: "JWT", kid: "k" }));
     const payloadB64 = b64url(
-      JSON.stringify({ sub: "u", exp: Math.floor(Date.now() / 1000) + 60 }),
+      JSON.stringify({
+        sub: "u",
+        iss: "https://test.supabase.co/auth/v1",
+        aud: "authenticated",
+        exp: Math.floor(Date.now() / 1000) + 60,
+      }),
     );
     const sig = b64url("nope");
     const token = `${headerB64}.${payloadB64}.${sig}`;
@@ -130,6 +139,8 @@ describe("authenticate", () => {
 
     const token = await makeToken(priv1, kid, {
       sub: "user-123",
+      iss: "https://test.supabase.co/auth/v1",
+      aud: "authenticated",
       exp: Math.floor(Date.now() / 1000) + 60,
     });
     const req = new Request("https://api.test/transcribe", {
@@ -154,6 +165,8 @@ describe("authenticate", () => {
     const { privateKey } = await generateKeypair();
     const token = await makeToken(privateKey, "kid-missing", {
       sub: "user-123",
+      iss: "https://test.supabase.co/auth/v1",
+      aud: "authenticated",
       exp: Math.floor(Date.now() / 1000) + 60,
     });
     const req = new Request("https://api.test/transcribe", {
@@ -165,5 +178,45 @@ describe("authenticate", () => {
     expect(err.code).toBe("invalid");
     // First call to populate cache, second forced refresh on unknown kid.
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects token with wrong iss", async () => {
+    const { privateKey, jwk } = await generateKeypair();
+    const kid = "kid-1";
+    mockJwksFetch({ keys: [{ ...jwk, kid, kty: "EC", crv: "P-256" }] });
+
+    const token = await makeToken(privateKey, kid, {
+      sub: "user-123",
+      iss: "https://evil.supabase.co/auth/v1",
+      aud: "authenticated",
+      exp: Math.floor(Date.now() / 1000) + 60,
+    });
+    const req = new Request("https://api.test/transcribe", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const err = await authenticate(req, ENV).catch((e) => e);
+    expect(err.name).toBe("AuthError");
+    expect(err.code).toBe("invalid");
+  });
+
+  it("rejects token with wrong aud", async () => {
+    const { privateKey, jwk } = await generateKeypair();
+    const kid = "kid-1";
+    mockJwksFetch({ keys: [{ ...jwk, kid, kty: "EC", crv: "P-256" }] });
+
+    const token = await makeToken(privateKey, kid, {
+      sub: "user-123",
+      iss: "https://test.supabase.co/auth/v1",
+      aud: "anon",
+      exp: Math.floor(Date.now() / 1000) + 60,
+    });
+    const req = new Request("https://api.test/transcribe", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const err = await authenticate(req, ENV).catch((e) => e);
+    expect(err.name).toBe("AuthError");
+    expect(err.code).toBe("invalid");
   });
 });

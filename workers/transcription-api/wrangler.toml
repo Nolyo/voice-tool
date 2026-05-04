@@ -1,6 +1,6 @@
 name = "lexena-transcription-api"
 main = "src/index.ts"
-compatibility_date = "2026-05-01"
+compatibility_date = "2026-05-05"
 compatibility_flags = ["nodejs_compat"]
 
 # Production deployment

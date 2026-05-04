@@ -21,6 +21,8 @@ interface JwtPayload {
   sub?: unknown;
   email?: unknown;
   exp?: unknown;
+  iss?: unknown;
+  aud?: unknown;
   [key: string]: unknown;
 }
 
@@ -102,7 +104,7 @@ async function getKeyForKid(env: Env, kid: string): Promise<CryptoKey> {
   }
   const key = jwksCache!.byKid.get(kid);
   if (!key) {
-    // Force one refresh in case Supabase rotated keys mid-request.
+    // Force a fresh JWKS fetch in case the kid is missing from the cached set (key rotation).
     jwksCache = await loadJwks(env);
     const refreshed = jwksCache.byKid.get(kid);
     if (!refreshed) {
@@ -169,6 +171,14 @@ export async function authenticate(
 
   if (typeof payload.sub !== "string" || !payload.sub) {
     throw new AuthError("missing sub claim", "invalid");
+  }
+
+  const expectedIss = `${env.SUPABASE_URL.replace(/\/$/, "")}/auth/v1`;
+  if (payload.iss !== expectedIss) {
+    throw new AuthError(`invalid iss: ${String(payload.iss)}`, "invalid");
+  }
+  if (payload.aud !== "authenticated") {
+    throw new AuthError(`invalid aud: ${String(payload.aud)}`, "invalid");
   }
 
   return {

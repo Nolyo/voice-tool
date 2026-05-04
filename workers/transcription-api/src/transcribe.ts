@@ -20,6 +20,17 @@ export async function handleTranscribe(
 ): Promise<Response> {
   const idempotencyKey = req.headers.get("Idempotency-Key") ?? undefined;
 
+  // Pre-check Content-Length before parsing the body — avoids buffering a
+  // multi-GB payload through formData() just to reject it. Header may lie,
+  // so the post-parse blob.size check below remains as belt-and-suspenders.
+  const contentLength = req.headers.get("content-length");
+  if (contentLength !== null) {
+    const len = Number.parseInt(contentLength, 10);
+    if (Number.isFinite(len) && len > MAX_AUDIO_BYTES) {
+      return errorResponse("payload_too_large", `audio exceeds ${MAX_AUDIO_BYTES} bytes`);
+    }
+  }
+
   let form: FormData;
   try {
     form = await req.formData();
@@ -38,8 +49,9 @@ export async function handleTranscribe(
   if (blob.size > MAX_AUDIO_BYTES) {
     return errorResponse("payload_too_large", `audio exceeds ${MAX_AUDIO_BYTES} bytes`);
   }
-  if (blob.type && !ALLOWED_MIME.has(blob.type)) {
-    return errorResponse("unsupported_format", `unsupported mime: ${blob.type}`);
+  const mime = blob.type || "audio/wav"; // frontend default when type is absent
+  if (!ALLOWED_MIME.has(mime)) {
+    return errorResponse("unsupported_format", `unsupported mime: ${blob.type || "(empty)"}`);
   }
 
   let quota;
