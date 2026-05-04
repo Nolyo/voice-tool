@@ -159,7 +159,7 @@ export function HotkeyInput({
           {isSaving ? (
             <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
           ) : isListening ? (
-            <span className="text-[11px] text-primary font-medium animate-pulse whitespace-nowrap">
+            <span className="text-[11px] text-primary font-medium vt-anim-pulse-dot whitespace-nowrap">
               {t('hotkeyInput.pressKey')}
             </span>
           ) : tokens.length > 0 ? (

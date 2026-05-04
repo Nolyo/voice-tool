@@ -11,7 +11,7 @@ import {
   VtIcon,
 } from "../vt";
 
-const ACCENT = "oklch(0.72 0.16 130)";
+const ACCENT = "var(--vt-cyan)";
 
 type Channel = "stable" | "beta";
 
@@ -72,7 +72,7 @@ export function UpdaterSection() {
   const hasUpdate = !!updateInfo?.available;
 
   return (
-    <div className="vt-fade-up space-y-5">
+    <div className="vt-anim-fade-up space-y-5">
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
           color={ACCENT}

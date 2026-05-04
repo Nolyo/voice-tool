@@ -18,11 +18,11 @@ interface LogsSidebarSectionProps {
 }
 
 const LEVELS: { id: LogLevel; label: string; color: string }[] = [
-  { id: "error", label: "ERROR", color: "oklch(0.7 0.2 25)" },
-  { id: "warn", label: "WARN", color: "oklch(0.78 0.14 75)" },
-  { id: "info", label: "INFO", color: "oklch(0.72 0.15 240)" },
-  { id: "debug", label: "DEBUG", color: "oklch(0.7 0.02 264)" },
-  { id: "trace", label: "TRACE", color: "oklch(0.72 0.17 295)" },
+  { id: "error", label: "ERROR", color: "var(--vt-danger)" },
+  { id: "warn", label: "WARN", color: "var(--vt-warn)" },
+  { id: "info", label: "INFO", color: "var(--vt-info, oklch(0.72 0.15 240))" },
+  { id: "debug", label: "DEBUG", color: "var(--vt-debug, oklch(0.7 0.02 230))" },
+  { id: "trace", label: "TRACE", color: "var(--vt-trace, var(--vt-violet))" },
 ];
 
 function SectionTitle({ children }: { children: React.ReactNode }) {

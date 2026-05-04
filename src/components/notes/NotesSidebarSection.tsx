@@ -149,9 +149,18 @@ type DragOverlayNoteCardProps = { note: NoteMeta | null };
 function DragOverlayNoteCard({ note }: DragOverlayNoteCardProps) {
   if (!note) return null;
   return (
-    <div className="vt-app flex items-center gap-2 px-3 py-1.5 rounded-md bg-background border shadow-lg text-sm max-w-[240px]">
+    <div
+      className="vt-app flex items-center gap-2 px-3 py-1.5 rounded-md shadow-lg text-sm max-w-[240px]"
+      style={{
+        background: "var(--vt-panel-2)",
+        border: "1px solid var(--vt-border)",
+        color: "var(--vt-fg)",
+      }}
+    >
       <span className="truncate flex-1">{note.title || "Untitled"}</span>
-      {note.favorite ? <Star className="w-3 h-3 fill-current text-yellow-500" /> : null}
+      {note.favorite ? (
+        <Star className="w-3 h-3 fill-current" style={{ color: "var(--vt-pin)" }} />
+      ) : null}
     </div>
   );
 }
@@ -159,20 +168,47 @@ function DragOverlayNoteCard({ note }: DragOverlayNoteCardProps) {
 function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, onRequestDelete, onContextMenu, t }: NoteItemProps) {
   return (
     <div
-      className={`group relative flex items-center gap-1.5 ${indented ? "pl-8 pr-3" : "px-3"} py-1.5 cursor-pointer transition-colors ${
+      className={`vt-notes-tree-item group relative flex items-center gap-1.5 ${indented ? "pl-8 pr-3" : "px-3"} py-1.5 cursor-pointer transition-colors`}
+      data-active={isActive}
+      style={
         isActive
-          ? "bg-accent text-foreground border-l-2 border-primary"
-          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-      }`}
+          ? {
+              background: "var(--vt-accent-soft)",
+              color: "var(--vt-accent-2)",
+              borderLeft: "2px solid var(--vt-accent)",
+            }
+          : { color: "var(--vt-fg-3)" }
+      }
       onClick={() => onOpen(note)}
       onContextMenu={(e) => onContextMenu(e, note)}
+      onMouseOver={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.background = "var(--vt-hover)";
+          e.currentTarget.style.color = "var(--vt-fg)";
+        }
+      }}
+      onMouseOut={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.background = "";
+          e.currentTarget.style.color = "var(--vt-fg-3)";
+        }
+      }}
     >
       <span className="text-xs flex-1 truncate">{note.title}</span>
       <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
         <button
-          className={`p-0.5 rounded hover:bg-background transition-colors ${
-            note.favorite ? "text-yellow-400" : "text-muted-foreground/60 hover:text-yellow-400"
-          }`}
+          className="p-0.5 rounded transition-colors"
+          style={{
+            color: note.favorite ? "var(--vt-pin)" : "var(--vt-fg-4)",
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.background = "var(--vt-hover-strong)";
+            e.currentTarget.style.color = "var(--vt-pin)";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = "";
+            e.currentTarget.style.color = note.favorite ? "var(--vt-pin)" : "var(--vt-fg-4)";
+          }}
           onClick={(e) => {
             e.stopPropagation();
             onToggleFavorite(note.id);
@@ -182,7 +218,16 @@ function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, 
           <Star className={`w-3 h-3 ${note.favorite ? "fill-current" : ""}`} />
         </button>
         <button
-          className="p-0.5 rounded hover:bg-background text-muted-foreground/60 hover:text-destructive transition-colors"
+          className="p-0.5 rounded transition-colors"
+          style={{ color: "var(--vt-fg-4)" }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.background = "var(--vt-hover-strong)";
+            e.currentTarget.style.color = "var(--vt-danger)";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = "";
+            e.currentTarget.style.color = "var(--vt-fg-4)";
+          }}
           onClick={(e) => {
             e.stopPropagation();
             onRequestDelete(note);
@@ -240,7 +285,7 @@ function FolderSection({
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       <div
-        className={`group flex items-center gap-1.5 px-3 py-1 hover:bg-accent/30 transition-colors${isDropActive ? ' vt-folder-header--drop-active' : ''}`}
+        className={`vt-notes-folder-row vt-hover-bg group flex items-center gap-1.5 px-3 py-1 transition-colors${isDropActive ? ' vt-folder-header--drop-active' : ''}`}
         {...listeners}
       >
         <button
@@ -248,21 +293,30 @@ function FolderSection({
           onClick={onToggle}
         >
           {collapsed ? (
-            <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
+            <ChevronRight className="w-3 h-3 shrink-0" style={{ color: "var(--vt-fg-4)" }} />
           ) : (
-            <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
+            <ChevronDown className="w-3 h-3 shrink-0" style={{ color: "var(--vt-fg-4)" }} />
           )}
-          <Folder className="w-3 h-3 text-muted-foreground shrink-0" />
-          <span className="text-xs text-muted-foreground select-none truncate">
+          <Folder className="w-3 h-3 shrink-0" style={{ color: "var(--vt-fg-4)" }} />
+          <span className="text-xs select-none truncate" style={{ color: "var(--vt-fg-3)" }}>
             {folder.name}
           </span>
-          <span className="text-[10px] text-muted-foreground/60 select-none shrink-0">
+          <span className="text-[10px] select-none shrink-0" style={{ color: "var(--vt-fg-4)" }}>
             ({notes.length})
           </span>
         </button>
         <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
           <button
-            className="p-0.5 rounded hover:bg-background text-muted-foreground/60 hover:text-foreground transition-colors"
+            className="p-0.5 rounded transition-colors"
+            style={{ color: "var(--vt-fg-4)" }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = "var(--vt-hover-strong)";
+              e.currentTarget.style.color = "var(--vt-fg)";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = "";
+              e.currentTarget.style.color = "var(--vt-fg-4)";
+            }}
             onClick={(e) => {
               e.stopPropagation();
               onCreateNoteIn(folder.id);
@@ -272,7 +326,16 @@ function FolderSection({
             <Plus className="w-3 h-3" />
           </button>
           <button
-            className="p-0.5 rounded hover:bg-background text-muted-foreground/60 hover:text-foreground transition-colors"
+            className="p-0.5 rounded transition-colors"
+            style={{ color: "var(--vt-fg-4)" }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = "var(--vt-hover-strong)";
+              e.currentTarget.style.color = "var(--vt-fg)";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = "";
+              e.currentTarget.style.color = "var(--vt-fg-4)";
+            }}
             onClick={(e) => {
               e.stopPropagation();
               onRename(folder.id, folder.name);
@@ -282,7 +345,16 @@ function FolderSection({
             <Pencil className="w-3 h-3" />
           </button>
           <button
-            className="p-0.5 rounded hover:bg-background text-muted-foreground/60 hover:text-destructive transition-colors"
+            className="p-0.5 rounded transition-colors"
+            style={{ color: "var(--vt-fg-4)" }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = "var(--vt-hover-strong)";
+              e.currentTarget.style.color = "var(--vt-danger)";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = "";
+              e.currentTarget.style.color = "var(--vt-fg-4)";
+            }}
             onClick={(e) => {
               e.stopPropagation();
               onRequestDelete(folder);
@@ -771,19 +843,24 @@ export function NotesSidebarSection({
   };
 
   return (
-    <div className="vt-notes-tree flex flex-col border-t border-border overflow-hidden flex-1 min-h-0">
+    <div
+      className="vt-notes-tree flex flex-col overflow-hidden flex-1 min-h-0"
+      style={{ borderTop: "1px solid var(--vt-border)" }}
+    >
       {/* Search input + new-note button + new-folder button */}
       <div className="flex items-center gap-1 px-2 py-2 shrink-0">
         <Input
           placeholder={t('notes.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
-          className="h-7 text-xs text-foreground flex-1"
+          className="h-7 text-xs flex-1"
+          style={{ color: "var(--vt-fg)" }}
         />
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          className="h-7 w-7 shrink-0"
+          style={{ color: "var(--vt-fg-3)" }}
           onClick={() => onCreateNote(null)}
           title={t('notes.newNote')}
         >
@@ -792,7 +869,8 @@ export function NotesSidebarSection({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          className="h-7 w-7 shrink-0"
+          style={{ color: "var(--vt-fg-3)" }}
           onClick={handleCreateFolder}
           title={t('notes.folders.newFolder')}
         >
@@ -805,7 +883,10 @@ export function NotesSidebarSection({
         {/* Search results: flat list, ignores folder grouping */}
         {isSearching ? (
           displayedNotes.length === 0 ? (
-            <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+            <div
+              className="px-3 py-4 text-center text-xs"
+              style={{ color: "var(--vt-fg-3)" }}
+            >
               {t('notes.emptySearch')}
             </div>
           ) : (
@@ -835,19 +916,28 @@ export function NotesSidebarSection({
             {showFavoritesSection && (
               <div>
                 <button
-                  className="flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors"
+                  className="vt-notes-folder-row vt-hover-bg flex items-center gap-1.5 px-3 py-1 w-full text-left transition-colors"
                   onClick={toggleFavorites}
                 >
                   {favoritesCollapsed ? (
-                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                    <ChevronRight className="w-3 h-3" style={{ color: "var(--vt-fg-4)" }} />
                   ) : (
-                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                    <ChevronDown className="w-3 h-3" style={{ color: "var(--vt-fg-4)" }} />
                   )}
-                  <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                  <span className="text-xs text-muted-foreground select-none">
+                  <Star
+                    className="w-3 h-3 fill-current"
+                    style={{ color: "var(--vt-pin)" }}
+                  />
+                  <span
+                    className="text-xs select-none vt-eyebrow"
+                    style={{ color: "var(--vt-fg-3)", letterSpacing: "0.06em" }}
+                  >
                     {t('notes.favorites')}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/60 select-none">
+                  <span
+                    className="text-[10px] select-none"
+                    style={{ color: "var(--vt-fg-4)" }}
+                  >
                     ({favoriteNotes.length})
                   </span>
                 </button>
@@ -872,19 +962,25 @@ export function NotesSidebarSection({
             {showRecentsSection && (
               <div>
                 <button
-                  className="flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors"
+                  className="vt-notes-folder-row vt-hover-bg flex items-center gap-1.5 px-3 py-1 w-full text-left transition-colors"
                   onClick={toggleRecents}
                 >
                   {recentsCollapsed ? (
-                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                    <ChevronRight className="w-3 h-3" style={{ color: "var(--vt-fg-4)" }} />
                   ) : (
-                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                    <ChevronDown className="w-3 h-3" style={{ color: "var(--vt-fg-4)" }} />
                   )}
-                  <Clock className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground select-none">
+                  <Clock className="w-3 h-3" style={{ color: "var(--vt-fg-4)" }} />
+                  <span
+                    className="text-xs select-none vt-eyebrow"
+                    style={{ color: "var(--vt-fg-3)", letterSpacing: "0.06em" }}
+                  >
                     {t('notes.recent')}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/60 select-none">
+                  <span
+                    className="text-[10px] select-none"
+                    style={{ color: "var(--vt-fg-4)" }}
+                  >
                     ({recentNotes.length})
                   </span>
                 </button>
@@ -939,7 +1035,7 @@ export function NotesSidebarSection({
             <div>
               {folders.length > 0 && (
                 <button
-                  className={`flex items-center gap-1.5 px-3 py-1 w-full text-left hover:bg-accent/30 transition-colors${
+                  className={`vt-notes-folder-row vt-hover-bg flex items-center gap-1.5 px-3 py-1 w-full text-left transition-colors${
                     activeType === 'note' &&
                     overContainerId === ROOT_CONTAINER_ID &&
                     originContainerId !== ROOT_CONTAINER_ID
@@ -949,20 +1045,29 @@ export function NotesSidebarSection({
                   onClick={toggleRoot}
                 >
                   {rootCollapsed ? (
-                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                    <ChevronRight className="w-3 h-3" style={{ color: "var(--vt-fg-4)" }} />
                   ) : (
-                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                    <ChevronDown className="w-3 h-3" style={{ color: "var(--vt-fg-4)" }} />
                   )}
-                  <span className="text-xs text-muted-foreground select-none">
+                  <span
+                    className="text-xs select-none vt-eyebrow"
+                    style={{ color: "var(--vt-fg-3)", letterSpacing: "0.06em" }}
+                  >
                     {t('notes.folders.unfiled')}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/60 select-none">
+                  <span
+                    className="text-[10px] select-none"
+                    style={{ color: "var(--vt-fg-4)" }}
+                  >
                     ({rootNotes.length})
                   </span>
                 </button>
               )}
               {!rootCollapsed && rootNotes.length === 0 && folders.length === 0 && (
-                <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                <div
+                  className="px-3 py-4 text-center text-xs"
+                  style={{ color: "var(--vt-fg-3)" }}
+                >
                   {t('notes.empty')}
                 </div>
               )}

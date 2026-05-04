@@ -111,13 +111,13 @@ export function ExportDialog({
           style={{
             background: "var(--vt-bg)",
             border: "1px solid var(--vt-border)",
-            boxShadow: "var(--vt-shadow-lg)",
+            boxShadow: "var(--vt-shadow-elevated)",
           }}
         >
           <div className="px-6 pt-6 pb-2">
             <DialogHeader>
               <DialogTitle
-                className="text-[16px] font-semibold"
+                className="vt-display text-[16px] font-semibold"
                 style={{ color: "var(--vt-fg)" }}
               >
                 {t("history.export.title")}

@@ -109,18 +109,17 @@ export function DashboardHeader({
                   disabled={isTranscribing}
                   className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-70 ${
                     isRecording
-                      ? "bg-destructive shadow-lg shadow-destructive/50 scale-110"
-                      : "bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
+                      ? "bg-destructive scale-110 shadow-[0_0_0_3px_oklch(from_var(--vt-danger)_l_c_h_/_0.25),0_8px_24px_-8px_oklch(from_var(--vt-danger)_l_c_h_/_0.6)]"
+                      : "bg-primary hover:bg-primary/90 shadow-[var(--vt-shadow-primary-glow)]"
                   }`}
                 >
-                  <Mic
-                    className={`w-4 h-4 ${
-                      isRecording ? "text-primary-foreground" : "text-signal-green"
-                    }`}
-                  />
+                  <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
                 {isRecording && (
-                  <div className="absolute inset-0 rounded-full border-4 border-destructive animate-ping opacity-75" />
+                  <>
+                    <div className="absolute inset-0 rounded-full border-2 border-destructive opacity-60 vt-anim-pulse-ring pointer-events-none" />
+                    <div className="absolute inset-0 rounded-full border-4 border-destructive animate-ping opacity-50 pointer-events-none" />
+                  </>
                 )}
               </div>
 
@@ -129,15 +128,15 @@ export function DashboardHeader({
                   <p className="text-sm font-medium text-foreground">{statusLabel}</p>
                   {isRecording && (
                     <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
-                      <span className="text-xs font-mono text-muted-foreground">
+                      <div className="w-1.5 h-1.5 rounded-full bg-destructive vt-anim-pulse-dot" />
+                      <span className="text-xs vt-mono text-muted-foreground">
                         {formatDuration(duration)}
                       </span>
                     </div>
                   )}
                 </div>
                 {!isRecording && !isTranscribing && (
-                  <p className="text-[11px] text-muted-foreground/70 font-mono mt-0.5">
+                  <p className="text-[11px] text-muted-foreground/70 vt-mono mt-0.5">
                     {t('recording.shortcutsHint', {
                       toggle: settings.record_hotkey,
                       ptt: settings.ptt_hotkey,
@@ -154,7 +153,7 @@ export function DashboardHeader({
                 variant="default"
                 size="sm"
                 onClick={onUpdateClick}
-                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                className="gap-2 shadow-[var(--vt-shadow-primary-glow)]"
               >
                 <Download className="w-4 h-4" />
                 <span>{t('header.newVersion')}</span>

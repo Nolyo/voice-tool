@@ -49,14 +49,17 @@ export function RecordingCard({ isRecording, isTranscribing = false, onToggleRec
             onClick={onToggleRecording}
             className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${
               isRecording
-                ? "bg-destructive shadow-lg shadow-destructive/50 scale-110"
-                : "bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
+                ? "bg-destructive scale-110 shadow-[0_0_0_4px_oklch(from_var(--vt-danger)_l_c_h_/_0.25),0_10px_28px_-8px_oklch(from_var(--vt-danger)_l_c_h_/_0.6)]"
+                : "bg-primary hover:bg-primary/90 shadow-[var(--vt-shadow-primary-glow)]"
             }`}
           >
             <Mic className="w-6 h-6 text-primary-foreground" />
           </button>
           {isRecording && (
-            <div className="absolute inset-0 rounded-full border-4 border-destructive animate-ping opacity-75" />
+            <>
+              <div className="absolute inset-0 rounded-full border-2 border-destructive opacity-60 vt-anim-pulse-ring pointer-events-none" />
+              <div className="absolute inset-0 rounded-full border-4 border-destructive animate-ping opacity-50 pointer-events-none" />
+            </>
           )}
         </div>
 
@@ -72,8 +75,8 @@ export function RecordingCard({ isRecording, isTranscribing = false, onToggleRec
             </p>
             {isRecording && (
               <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
-                <span className="text-xs font-mono text-muted-foreground">{formatDuration(duration)}</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-destructive vt-anim-pulse-dot" />
+                <span className="text-xs vt-mono text-muted-foreground">{formatDuration(duration)}</span>
               </div>
             )}
           </div>
@@ -85,7 +88,7 @@ export function RecordingCard({ isRecording, isTranscribing = false, onToggleRec
                 : t('recording.idleDetail')}
           </p>
           {!isRecording && !isTranscribing && (
-            <p className="text-xs text-muted-foreground/60 font-mono mt-0.5">
+            <p className="text-xs text-muted-foreground/60 vt-mono mt-0.5">
               {t('recording.shortcutsHint', {
                 toggle: settings.record_hotkey,
                 ptt: settings.ptt_hotkey,

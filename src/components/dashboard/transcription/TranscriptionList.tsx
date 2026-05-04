@@ -121,8 +121,8 @@ function TimelineRow({
             <span
               className="inline-flex items-center px-1.5 h-4 rounded text-[10px] font-medium"
               style={{
-                background: "oklch(0.72 0.14 205 / 0.16)",
-                color: "oklch(0.72 0.14 205)",
+                background: "oklch(from var(--vt-cyan) l c h / 0.16)",
+                color: "var(--vt-cyan)",
               }}
               title={t("history.legendApiCloud")}
             >
@@ -133,8 +133,8 @@ function TimelineRow({
             <span
               className="inline-flex items-center gap-1 px-1.5 h-4 rounded text-[10px] font-medium"
               style={{
-                background: "oklch(0.72 0.17 295 / 0.16)",
-                color: "oklch(0.72 0.17 295)",
+                background: "oklch(from var(--vt-violet) l c h / 0.16)",
+                color: "var(--vt-violet)",
               }}
               title={t("history.postProcessedBadge")}
             >
@@ -215,7 +215,7 @@ function TimelineRow({
                 onDelete();
               }
             }}
-            className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg hover:text-red-400"
+            className="w-7 h-7 rounded-md flex items-center justify-center vt-hover-bg hover:text-destructive"
             style={{ color: "var(--vt-fg-3)" }}
             data-tip={t("history.deleteTooltip")}
             aria-label={t("history.deleteConfirm")}

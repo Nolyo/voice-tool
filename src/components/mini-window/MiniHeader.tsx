@@ -46,23 +46,40 @@ export function MiniHeader({
     <>
       <span
         className={`${dotSize} rounded-full flex-shrink-0 ${
-          isRecording ? "bg-signal-green animate-pulse" : "bg-signal-green/40"
+          isRecording
+            ? "bg-vt-danger vt-anim-pulse-dot"
+            : "bg-signal-green/40"
         }`}
+        style={
+          isRecording
+            ? {
+                boxShadow:
+                  "0 0 8px oklch(from var(--vt-danger) l c h / 0.6)",
+              }
+            : undefined
+        }
       />
       {layout !== "compact" && languageBadge && (
-        <span className="flex-shrink-0 rounded bg-slate-700/40 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-300">
+        <span
+          className="vt-mono flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-vt-fg-3"
+          style={{
+            background: "oklch(from var(--vt-surface) l c h / 0.55)",
+            border: "1px solid var(--vt-border)",
+          }}
+        >
           {languageBadge}
         </span>
       )}
       {isRecording ? (
         <span
-          className={`w-auto min-w-[3rem] text-right font-mono ${timerSize} text-slate-300 tabular-nums flex-shrink-0`}
+          className={`vt-mono w-auto min-w-[3rem] text-right ${timerSize} tabular-nums flex-shrink-0`}
+          style={{ color: "var(--vt-accent-2)" }}
         >
           {formatTime(recordingTime)}
         </span>
       ) : (
         <span
-          className={`w-auto min-w-[3rem] text-right font-mono ${timerSize} text-slate-500 italic flex-shrink-0`}
+          className={`vt-mono w-auto min-w-[3rem] text-right ${timerSize} text-vt-fg-4 italic tabular-nums flex-shrink-0`}
         >
           00:00
         </span>
@@ -76,11 +93,23 @@ export function MiniHeader({
             ? t("mini.postProcessOn")
             : t("mini.postProcessOff")
         }
-        className={`inline-flex items-center justify-center p-1.5 rounded flex-shrink-0 transition-colors ${
+        className={`inline-flex items-center justify-center p-1.5 rounded flex-shrink-0 transition-colors border ${
           postProcessEnabled
-            ? "bg-violet-500/30 text-violet-300 border border-violet-500/50 hover:bg-violet-500/40"
-            : "bg-slate-700/30 text-slate-400 border border-slate-600/40 hover:bg-slate-700/50 hover:text-slate-200"
+            ? "text-vt-violet"
+            : "text-vt-fg-3 hover:text-vt-fg-2"
         }`}
+        style={
+          postProcessEnabled
+            ? {
+                background: "var(--vt-violet-soft)",
+                borderColor:
+                  "oklch(from var(--vt-violet) l c h / 0.55)",
+              }
+            : {
+                background: "oklch(from var(--vt-surface) l c h / 0.45)",
+                borderColor: "var(--vt-border)",
+              }
+        }
         title={
           postProcessEnabled
             ? t("mini.postProcessOn")
@@ -102,13 +131,30 @@ export function MiniHeader({
               ? t("mini.translateModeOn")
               : t("mini.translateModeOff")
         }
-        className={`inline-flex items-center justify-center p-1.5 rounded flex-shrink-0 transition-colors ${
+        className={`inline-flex items-center justify-center p-1.5 rounded flex-shrink-0 transition-colors border ${
           translateDisabled
-            ? "bg-slate-800/40 text-slate-600 border border-slate-700/40 opacity-50 cursor-not-allowed"
+            ? "text-vt-fg-4 opacity-50 cursor-not-allowed"
             : translateMode
-              ? "bg-blue-500/30 text-blue-300 border border-blue-500/50 hover:bg-blue-500/40"
-              : "bg-slate-700/30 text-slate-400 border border-slate-600/40 hover:bg-slate-700/50 hover:text-slate-200"
+              ? "text-vt-accent-2"
+              : "text-vt-fg-3 hover:text-vt-fg-2"
         }`}
+        style={
+          translateDisabled
+            ? {
+                background: "oklch(from var(--vt-surface) l c h / 0.3)",
+                borderColor:
+                  "oklch(from var(--vt-border) l c h / 0.5)",
+              }
+            : translateMode
+              ? {
+                  background: "var(--vt-accent-soft)",
+                  borderColor: "var(--vt-accent)",
+                }
+              : {
+                  background: "oklch(from var(--vt-surface) l c h / 0.45)",
+                  borderColor: "var(--vt-border)",
+                }
+        }
         title={
           translateDisabled
             ? translateDisabledReason ?? t("mini.translateModeOff")

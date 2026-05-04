@@ -53,14 +53,13 @@ export function AuthModal() {
       }}
     >
       <DialogContent
-        className="vt-app sm:max-w-[420px] p-0 gap-0 border-[var(--vt-border-strong)] overflow-hidden"
-        style={{ background: "oklch(0.13 0.015 264)" }}
+        className="vt-app sm:max-w-[420px] p-0 gap-0 border-[var(--vt-border-strong)] bg-[var(--vt-panel-2)] overflow-hidden"
       >
         <DialogTitle className="sr-only">{t("auth.modal.title")}</DialogTitle>
         {deepLinkError && (
           <div
             role="alert"
-            className="mx-5 mt-4 rounded-md p-3 text-[12px] flex items-start gap-2"
+            className="mx-5 mt-4 rounded-md p-3 text-[12px] flex items-start gap-2 vt-anim-fade-up"
             style={{
               background: "var(--vt-danger-soft)",
               border: "1px solid oklch(from var(--vt-danger) l c h / 0.35)",

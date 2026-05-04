@@ -74,7 +74,7 @@ export function ApiConfigDialog() {
               {t('apiConfig.getHelp')}{" "}
               <button
                 type="button"
-                className="text-blue-500 underline hover:text-blue-400 cursor-pointer inline"
+                className="text-primary underline hover:text-primary/80 cursor-pointer inline"
                 onClick={async (e) => {
                   e.preventDefault();
                   const { openUrl } = await import("@tauri-apps/plugin-opener");
@@ -104,7 +104,7 @@ export function ApiConfigDialog() {
               {t('apiConfig.getHelp')}{" "}
               <button
                 type="button"
-                className="text-blue-500 underline hover:text-blue-400 cursor-pointer inline"
+                className="text-primary underline hover:text-primary/80 cursor-pointer inline"
                 onClick={async (e) => {
                   e.preventDefault();
                   const { openUrl } = await import("@tauri-apps/plugin-opener");

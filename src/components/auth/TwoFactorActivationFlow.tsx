@@ -208,7 +208,7 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
 
   return (
     <div
-      className="rounded-xl overflow-hidden"
+      className="rounded-xl overflow-hidden vt-anim-fade-up"
       style={{
         background: "var(--vt-panel)",
         border: "1px solid var(--vt-border)",
@@ -229,7 +229,7 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
               <VtIcon.shieldCheck />
             </div>
             <div>
-              <div className="text-[14px] font-semibold">
+              <div className="vt-display text-[15px] font-semibold tracking-tight">
                 {t("auth.security.enable2fa")}
               </div>
               <div className="text-[11.5px]" style={{ color: "var(--vt-fg-3)" }}>
@@ -311,7 +311,7 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
       {/* Body */}
       <div className="px-5 pb-5">
         {step === 1 && (
-          <div className="vt-fade-up">
+          <div className="vt-anim-fade-up">
             <p
               className="text-[12.5px] leading-relaxed mb-4"
               style={{ color: "var(--vt-fg-2)" }}
@@ -337,7 +337,13 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
                     className="w-[168px] h-[168px] block"
                   />
                 ) : (
-                  <div className="w-[168px] h-[168px] flex items-center justify-center bg-gray-100 text-gray-500 text-xs">
+                  <div
+                    className="w-[168px] h-[168px] flex items-center justify-center text-xs"
+                    style={{
+                      background: "var(--vt-surface)",
+                      color: "var(--vt-fg-4)",
+                    }}
+                  >
                     …
                   </div>
                 )}
@@ -454,7 +460,7 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
         )}
 
         {step === 2 && (
-          <div className="vt-fade-up">
+          <div className="vt-anim-fade-up">
             <p
               className="text-[12.5px] leading-relaxed mb-4"
               style={{ color: "var(--vt-fg-2)" }}
@@ -525,7 +531,7 @@ export function TwoFactorActivationFlow({ onDone, onCancel }: Props) {
         )}
 
         {step === 3 && (
-          <div className="vt-fade-up">
+          <div className="vt-anim-fade-up">
             <Callout
               kind="warn"
               icon={<VtIcon.alert />}

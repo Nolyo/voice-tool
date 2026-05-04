@@ -148,7 +148,7 @@ export function DevicesList() {
                 <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                   style={{
-                    background: "oklch(1 0 0 / 0.04)",
+                    background: "var(--vt-hover)",
                     color: "var(--vt-fg-2)",
                     border: "1px solid var(--vt-border)",
                   }}

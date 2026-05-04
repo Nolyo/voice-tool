@@ -12,8 +12,8 @@ import {
   VtIcon,
 } from "../vt";
 
-const ACCENT_APPEARANCE = "oklch(0.72 0.16 320)";
-const ACCENT_MINI = "oklch(0.72 0.17 175)";
+const ACCENT_APPEARANCE = "var(--vt-pin)";
+const ACCENT_MINI = "var(--vt-accent)";
 const BAR_COUNT = 16;
 
 type VisualizerMode = "bars" | "waveform";
@@ -75,7 +75,7 @@ export function AppearanceSection() {
   const showTranscript = settings.show_transcription_in_mini_window;
 
   return (
-    <div className="vt-fade-up space-y-5">
+    <div className="vt-anim-fade-up space-y-5">
       {/* Interface : thème + langue UI */}
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
@@ -147,7 +147,7 @@ export function AppearanceSection() {
           <div
             className="rounded-2xl p-4 flex items-center justify-center"
             style={{
-              background: "oklch(0.1 0.01 264)",
+              background: "var(--vt-bg)",
               border: "1px solid var(--vt-border)",
               minHeight: 120,
             }}
@@ -155,10 +155,10 @@ export function AppearanceSection() {
             <div
               className="flex items-center gap-3 px-4 py-2.5 rounded-xl"
               style={{
-                background: "oklch(0.16 0.02 264 / 0.92)",
-                border: "1px solid oklch(1 0 0 / 0.08)",
+                background: "oklch(from var(--vt-panel) l c h / 0.92)",
+                border: "1px solid var(--vt-inset-highlight)",
                 backdropFilter: "blur(12px)",
-                boxShadow: "0 12px 32px rgba(0,0,0,.45)",
+                boxShadow: "var(--vt-shadow-mini)",
               }}
             >
               <div

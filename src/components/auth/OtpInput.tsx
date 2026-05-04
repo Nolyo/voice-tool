@@ -88,6 +88,18 @@ export function OtpInput({
                   : "var(--vt-border)"),
               color: "var(--vt-fg)",
               caretColor: "var(--vt-accent)",
+              outline: "none",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.boxShadow =
+                "0 0 0 3px oklch(from var(--vt-accent) l c h / 0.25)";
+              e.currentTarget.style.borderColor = "var(--vt-accent)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.boxShadow = "none";
+              e.currentTarget.style.borderColor = c
+                ? "oklch(from var(--vt-accent) l c h / 0.4)"
+                : "var(--vt-border)";
             }}
           />
           {i === midSeparator - 1 && length > 2 && (

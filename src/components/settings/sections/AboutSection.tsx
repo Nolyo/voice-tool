@@ -7,7 +7,7 @@ import { LexenaWordmark } from "@/components/common/LexenaWordmark";
 import { type SettingsSectionId } from "../common/SettingsNav";
 import { Callout, SectionHeader, VtIcon } from "../vt";
 
-const ACCENT = "oklch(0.72 0.16 130)";
+const ACCENT = "var(--vt-green)";
 const GITHUB_URL = "https://github.com/Nolyo/lexena";
 
 interface AboutSectionProps {
@@ -50,7 +50,7 @@ export function AboutSection({ onSectionChange }: AboutSectionProps) {
   };
 
   return (
-    <div className="vt-fade-up space-y-5">
+    <div className="vt-anim-fade-up space-y-5">
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
         <SectionHeader
           color={ACCENT}

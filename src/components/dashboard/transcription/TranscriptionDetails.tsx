@@ -241,7 +241,7 @@ export function TranscriptionDetails({
 
   const at = parseAt(transcription);
   const postProcess = Boolean(transcription.originalText);
-  const accent = postProcess ? "oklch(0.72 0.17 295)" : "var(--vt-accent)";
+  const accent = postProcess ? "var(--vt-violet)" : "var(--vt-accent)";
   const durationSec = transcription.duration ?? 0;
   const canListen =
     Boolean(transcription.audioPath) && settings.enable_history_audio_preview;
@@ -273,7 +273,7 @@ export function TranscriptionDetails({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="text-[14.5px] font-semibold tracking-tight">
+            <h2 className="vt-display text-[14.5px] font-semibold tracking-tight">
               {dayLabel(at)} · {formatTime(at)}
             </h2>
             <span
@@ -313,8 +313,8 @@ export function TranscriptionDetails({
                 <span
                   className="vt-mono text-[10.5px] px-1.5 py-0.5 rounded"
                   style={{
-                    background: "oklch(0.72 0.17 295 / 0.16)",
-                    color: "oklch(0.78 0.15 295)",
+                    background: "oklch(from var(--vt-violet) l c h / 0.16)",
+                    color: "var(--vt-violet)",
                   }}
                 >
                   {t(
@@ -459,20 +459,20 @@ export function TranscriptionDetails({
               setShowOriginal((v) => !v);
             }}
             className="flex items-center gap-2.5 px-5 py-2.5 vt-trace"
-            style={{ background: "oklch(0.72 0.17 295 / 0.06)" }}
+            style={{ background: "oklch(from var(--vt-violet) l c h / 0.06)" }}
           >
             <span
               className="w-5 h-5 rounded-md flex items-center justify-center"
               style={{
-                background: "oklch(0.72 0.17 295 / 0.18)",
-                color: "oklch(0.72 0.17 295)",
+                background: "oklch(from var(--vt-violet) l c h / 0.18)",
+                color: "var(--vt-violet)",
               }}
             >
               <Sparkles className="w-3 h-3" />
             </span>
             <span
               className="text-[12px] font-medium"
-              style={{ color: "oklch(0.72 0.17 295)" }}
+              style={{ color: "var(--vt-violet)" }}
             >
               {t("transcriptionDetails.postProcessTitle")}
               {transcription.postProcessMode && (
@@ -486,7 +486,7 @@ export function TranscriptionDetails({
             </span>
             <span
               className="vt-chev ml-auto"
-              style={{ color: "oklch(0.72 0.17 295)" }}
+              style={{ color: "var(--vt-violet)" }}
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </span>
@@ -494,7 +494,7 @@ export function TranscriptionDetails({
           {transcription.originalText && (
             <div
               className="px-5 py-3"
-              style={{ background: "oklch(0.72 0.17 295 / 0.03)" }}
+              style={{ background: "oklch(from var(--vt-violet) l c h / 0.03)" }}
             >
               <div
                 className="text-[10.5px] uppercase tracking-wider mb-1.5"
@@ -558,7 +558,7 @@ export function TranscriptionDetails({
                     : `$${transcription.apiCost.toFixed(5)}`}
                 </span>
               </div>
-              <div className="flex justify-between" style={{ color: "oklch(0.72 0.17 295)" }}>
+              <div className="flex justify-between" style={{ color: "var(--vt-violet)" }}>
                 <span>{t("transcriptionDetails.costPostProcess")}</span>
                 <span>${transcription.postProcessCost.toFixed(5)}</span>
               </div>

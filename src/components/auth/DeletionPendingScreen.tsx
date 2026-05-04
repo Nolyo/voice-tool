@@ -51,7 +51,7 @@ export function DeletionPendingScreen() {
   return (
     <div className="vt-app min-h-screen flex items-center justify-center p-8">
       <div
-        className="vt-card-sectioned max-w-[520px] w-full"
+        className="vt-card-sectioned max-w-[520px] w-full vt-anim-fade-up"
         style={{
           borderColor: "oklch(from var(--vt-danger) l c h / 0.4)",
         }}
@@ -63,7 +63,7 @@ export function DeletionPendingScreen() {
           }}
         >
           <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 relative"
             style={{
               background: "oklch(from var(--vt-danger) l c h / 0.15)",
               color: "var(--vt-danger)",
@@ -83,10 +83,17 @@ export function DeletionPendingScreen() {
               <path d="M12 9v4M12 17h.01" />
               <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
             </svg>
+            <span
+              className="vt-anim-pulse-dot absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
+              style={{
+                background: "var(--vt-danger)",
+                boxShadow: "0 0 0 2px var(--vt-panel-2)",
+              }}
+            />
           </div>
           <div className="flex-1">
             <h1
-              className="text-[18px] font-semibold"
+              className="vt-display text-[18px] font-semibold tracking-tight"
               style={{ color: "var(--vt-danger)" }}
             >
               {t("auth.deletion_pending.title")}

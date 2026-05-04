@@ -27,24 +27,27 @@ export function BarsVisualizer({
   );
 
   return (
-    <div className="flex h-full flex-1 items-end gap-[3px] px-2">
+    <div className="flex h-full flex-1 items-center gap-[3px] px-2">
       {barModifiers.map((modifier, i) => {
         const dynamicHeight =
           easedLevel * (maxHeight - MIN_HEIGHT) * modifier + MIN_HEIGHT;
         const height = isRecording ? dynamicHeight : MIN_HEIGHT;
         const color = isRecording
-          ? "linear-gradient(180deg, rgba(29, 158, 117, 0.95) 0%, rgba(29, 158, 117, 0.6) 100%)"
-          : "linear-gradient(180deg, rgba(148, 163, 184, 0.4) 0%, rgba(148, 163, 184, 0.2) 100%)";
+          ? "linear-gradient(180deg, oklch(from var(--vt-accent) l c h / 0.95) 0%, oklch(from var(--vt-accent) l c h / 0.55) 100%)"
+          : "linear-gradient(180deg, oklch(from var(--vt-fg-3) l c h / 0.4) 0%, oklch(from var(--vt-fg-3) l c h / 0.2) 100%)";
 
         return (
           <div
             key={i}
-            className="rounded-full transition-all duration-150 ease-out"
+            className={`rounded-full transition-all duration-150 ease-out ${
+              isRecording ? "vt-anim-wave-bar" : ""
+            }`}
             style={{
               width: "2.5px",
               height: `${height}px`,
               backgroundImage: color,
               transitionDelay: `${i * 0.03}s`,
+              animationDelay: isRecording ? `${i * 60}ms` : undefined,
             }}
           />
         );

@@ -34,7 +34,7 @@ export function ActivityChart({ buckets }: ActivityChartProps) {
     <div className="vt-card-elevated p-5">
       <div className="flex items-end justify-between gap-3 mb-4">
         <div>
-          <h3 className="text-[14px] font-semibold text-[var(--vt-fg)]">
+          <h3 className="vt-display text-[14px] font-semibold text-[var(--vt-fg)]">
             {t("statistics.activity30Title")}
           </h3>
           <p className="text-[12px] text-[var(--vt-fg-3)] mt-0.5">
@@ -84,7 +84,7 @@ export function ActivityChart({ buckets }: ActivityChartProps) {
                         ? "var(--vt-accent)"
                         : isToday
                           ? "var(--vt-accent-2)"
-                          : `oklch(0.7 0.17 264 / ${0.35 + ratio * 0.5})`,
+                          : `oklch(from var(--vt-accent) l c h / ${0.35 + ratio * 0.5})`,
                   outline: isToday ? "1px solid var(--vt-accent)" : undefined,
                   outlineOffset: -1,
                 }}

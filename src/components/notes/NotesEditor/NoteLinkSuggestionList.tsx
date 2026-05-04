@@ -54,36 +54,61 @@ export const NoteLinkSuggestionList = forwardRef<
   }));
 
   return (
-    <div className="w-72 max-h-64 overflow-y-auto bg-popover text-popover-foreground border rounded-md shadow-lg p-1 z-[9999]">
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+    <div
+      className="vt-app w-72 max-h-64 overflow-y-auto rounded-md shadow-lg p-1 z-[9999]"
+      style={{
+        background: "var(--vt-panel-2)",
+        border: "1px solid var(--vt-border)",
+        color: "var(--vt-fg)",
+      }}
+    >
+      <div
+        className="px-2 py-1 vt-eyebrow"
+        style={{ color: "var(--vt-fg-4)" }}
+      >
         {query
           ? t("notes.link.searchResults", { query })
           : t("notes.link.recentNotes")}
       </div>
       {items.length === 0 ? (
-        <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+        <div
+          className="px-2 py-3 text-xs text-center"
+          style={{ color: "var(--vt-fg-3)" }}
+        >
           {t("notes.link.noMatch")}
         </div>
       ) : (
-        items.map((note, index) => (
-          <button
-            key={note.id}
-            type="button"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              selectItem(index);
-            }}
-            onMouseEnter={() => setSelectedIndex(index)}
-            className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs text-left rounded-sm transition-colors ${
-              index === selectedIndex ? "bg-accent text-accent-foreground" : ""
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate">
-              {note.title || t("notes.editor.untitled")}
-            </span>
-          </button>
-        ))
+        items.map((note, index) => {
+          const isActive = index === selectedIndex;
+          return (
+            <button
+              key={note.id}
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                selectItem(index);
+              }}
+              onMouseEnter={() => setSelectedIndex(index)}
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-left rounded-sm transition-colors"
+              style={
+                isActive
+                  ? {
+                      background: "var(--vt-accent-soft)",
+                      color: "var(--vt-accent-2)",
+                    }
+                  : undefined
+              }
+            >
+              <FileText
+                className="w-3.5 h-3.5 shrink-0"
+                style={{ color: isActive ? "var(--vt-accent-2)" : "var(--vt-fg-4)" }}
+              />
+              <span className="truncate">
+                {note.title || t("notes.editor.untitled")}
+              </span>
+            </button>
+          );
+        })
       )}
     </div>
   );

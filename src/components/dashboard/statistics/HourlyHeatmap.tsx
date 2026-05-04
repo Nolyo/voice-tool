@@ -37,7 +37,7 @@ export function HourlyHeatmap({ matrix }: HourlyHeatmapProps) {
     <div className="vt-card-elevated p-5">
       <div className="flex items-end justify-between gap-3 mb-4">
         <div>
-          <h3 className="text-[14px] font-semibold text-[var(--vt-fg)]">
+          <h3 className="vt-display text-[14px] font-semibold text-[var(--vt-fg)]">
             {t("statistics.heatmapTitle")}
           </h3>
           <p className="text-[12px] text-[var(--vt-fg-3)] mt-0.5">
@@ -102,7 +102,7 @@ export function HourlyHeatmap({ matrix }: HourlyHeatmapProps) {
                         background:
                           v === 0
                             ? "var(--vt-hover)"
-                            : `oklch(0.7 0.17 264 / ${0.18 + ratio * 0.7})`,
+                            : `oklch(from var(--vt-accent) l c h / ${0.18 + ratio * 0.7})`,
                         outline: isHover
                           ? "1px solid var(--vt-accent-2)"
                           : undefined,
@@ -125,7 +125,7 @@ export function HourlyHeatmap({ matrix }: HourlyHeatmapProps) {
           <span
             key={i}
             className="w-3 h-3 rounded-[3px]"
-            style={{ background: `oklch(0.7 0.17 264 / ${r})` }}
+            style={{ background: `oklch(from var(--vt-accent) l c h / ${r})` }}
           />
         ))}
         <span className="text-[10.5px] text-[var(--vt-fg-4)]">
