@@ -43,6 +43,9 @@ interface JwksCache {
 }
 
 const JWKS_TTL_MS = 60 * 60 * 1000; // 1h
+// Cache is per-isolate: Workers reuse module state across requests on the same
+// isolate but every cold-start spawns a fresh isolate with an empty cache. Worst
+// case is a few extra JWKS fetches across the cluster — never a stale-key risk.
 let jwksCache: JwksCache | null = null;
 
 function base64UrlDecode(input: string): Uint8Array {

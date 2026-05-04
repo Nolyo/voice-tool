@@ -4,7 +4,7 @@ export type ErrorCode =
   | "expired_auth"
   | "quota_exhausted"
   | "trial_expired"
-  | "audio_too_large"
+  | "payload_too_large"
   | "unsupported_format"
   | "provider_unavailable"
   | "internal";
@@ -21,7 +21,7 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
   expired_auth: 401,
   quota_exhausted: 402,
   trial_expired: 402,
-  audio_too_large: 413,
+  payload_too_large: 413,
   unsupported_format: 415,
   provider_unavailable: 502,
   internal: 500,

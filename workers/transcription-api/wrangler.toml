@@ -9,10 +9,6 @@ routes = [
   { pattern = "api.lexena.app/*", zone_name = "lexena.app" }
 ]
 
-# Staging on workers.dev
-[env.staging]
-# Uses default workers.dev subdomain
-
 # Secrets are set via `wrangler secret put` — never commit them here.
 # Required: SUPABASE_URL, SUPABASE_SECRET_KEY, GROQ_API_KEY, OPENAI_API_KEY
 # (SUPABASE_SECRET_KEY = the new "Secret key" sb_secret_..., NOT the legacy service_role)

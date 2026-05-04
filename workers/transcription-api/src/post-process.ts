@@ -34,7 +34,7 @@ export async function handlePostProcess(
     return errorResponse("internal", "missing or empty 'text'");
   }
   if (body.text.length > MAX_INPUT_CHARS) {
-    return errorResponse("audio_too_large", `text too long (max ${MAX_INPUT_CHARS} chars)`);
+    return errorResponse("payload_too_large", `text too long (max ${MAX_INPUT_CHARS} chars)`);
   }
   const tier: OpenAIModelTier = body.model_tier === "full" ? "full" : "mini";
 

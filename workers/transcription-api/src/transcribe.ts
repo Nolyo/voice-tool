@@ -36,7 +36,7 @@ export async function handleTranscribe(
   const language = form.get("language");
   const lang = typeof language === "string" ? language.slice(0, 2) : undefined;
   if (blob.size > MAX_AUDIO_BYTES) {
-    return errorResponse("audio_too_large", `audio exceeds ${MAX_AUDIO_BYTES} bytes`);
+    return errorResponse("payload_too_large", `audio exceeds ${MAX_AUDIO_BYTES} bytes`);
   }
   if (blob.type && !ALLOWED_MIME.has(blob.type)) {
     return errorResponse("unsupported_format", `unsupported mime: ${blob.type}`);

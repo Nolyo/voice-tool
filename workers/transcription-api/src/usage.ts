@@ -77,6 +77,14 @@ export async function fetchSubscriptionState(
 /**
  * Determine which "wallet" to debit for a transcription request.
  * Priority: trial > quota > overage > deny.
+ *
+ * Race note: this read+later-insert is best-effort, not serialized. Two
+ * concurrent transcriptions from the same user can each see "1 minute
+ * remaining" and each consume 1, leaving the trial 1 minute over. The CHECK
+ * constraint on trial_credits (consumed <= granted * 1.05) caps the slop at
+ * 5%; beyond that the trigger raises and the second event rolls back. Cost of
+ * a typical race is well under a cent of Groq spend — accepted as a tradeoff
+ * vs. the latency cost of a pessimistic lock.
  */
 export async function checkQuotaForTranscription(
   env: Env,
