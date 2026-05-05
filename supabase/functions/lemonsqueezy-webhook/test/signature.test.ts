@@ -30,3 +30,9 @@ Deno.test("accepts valid signature", async () => {
   const ok = await verifySignature(body, sig, secret);
   assertEquals(ok, true);
 });
+
+Deno.test("rejects malformed hex signature", async () => {
+  const { verifySignature } = await import("../index.ts");
+  const ok = await verifySignature("body", "zzzzz", "test_secret");
+  assertEquals(ok, false);
+});

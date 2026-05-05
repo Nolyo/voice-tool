@@ -1,7 +1,8 @@
 -- Étend le stub `subscriptions` (livré 20260504100400) au schéma complet
--- Lemon Squeezy. Le webhook upserte sur `provider_subscription_id`. Les
--- lectures côté client passent par RLS owner-only ; les écritures sont
--- exclusivement service-role (webhook).
+-- Lemon Squeezy. Le webhook upserte sur `user_id` (PK du stub) — une seule
+-- ligne par utilisateur, le réabonnement écrase la précédente. Les lectures
+-- côté client passent par RLS owner-only ; les écritures sont exclusivement
+-- service-role (webhook).
 --
 -- Décision : ADR 0013 (premium offer).
 
@@ -46,12 +47,15 @@ ALTER TABLE public.subscriptions
   ADD COLUMN IF NOT EXISTS raw_payload JSONB,
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
--- 5. provider_subscription_id : unique, identifie la subscription LS.
+-- 5. provider_subscription_id : identifie la subscription LS côté provider.
+-- Pas de contrainte unique : la PK est `user_id` (cf. stub), donc une
+-- réinscription après expiration upserte la même row avec un nouveau
+-- provider_subscription_id. Index non-unique pour les lookups support.
 -- Nullable jusqu'à backfill (aucun row à backfiller — projet à zéro user).
 ALTER TABLE public.subscriptions
   ADD COLUMN IF NOT EXISTS provider_subscription_id TEXT;
 
-CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_provider_subscription_id_unique
+CREATE INDEX IF NOT EXISTS subscriptions_provider_subscription_id_idx
   ON public.subscriptions(provider_subscription_id)
   WHERE provider_subscription_id IS NOT NULL;
 
@@ -76,5 +80,11 @@ CREATE TRIGGER subscriptions_set_updated_at
 REVOKE INSERT, UPDATE, DELETE ON public.subscriptions FROM authenticated;
 REVOKE INSERT, UPDATE, DELETE ON public.subscriptions FROM anon;
 
+-- 9. Renomme `overage_rate_cents` → `overage_rate_eur_per_minute`. La colonne
+-- stocke des euros par minute (ex : 0.03), pas des cents — corriger le nom
+-- hérité du stub avant que d'autres consommateurs ne s'y rattachent.
+ALTER TABLE public.subscriptions
+  RENAME COLUMN overage_rate_cents TO overage_rate_eur_per_minute;
+
 COMMENT ON TABLE public.subscriptions IS
-  'Abonnements Lemon Squeezy. Écrit uniquement par le webhook Edge Function lemonsqueezy-webhook (service-role). Lecture owner-only via RLS. Cf. ADR 0013.';
+  'Abonnements Lemon Squeezy : une ligne par user (user_id PK). Le webhook upserte sur user_id ; un réabonnement écrase la row précédente. Écrit uniquement par l''Edge Function lemonsqueezy-webhook (service-role). Lecture owner-only via RLS. Cf. ADR 0013.';

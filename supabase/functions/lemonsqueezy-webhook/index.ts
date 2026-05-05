@@ -13,7 +13,7 @@
 //
 // Cf. ADR 0013 et plan billing 2026-05-05.
 
-import { createClient } from "npm:@supabase/supabase-js@2.45.4";
+import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 
 const HEADER_SIGNATURE = "x-signature";
 const HEADER_EVENT = "x-event-name";
@@ -107,7 +107,7 @@ type SubscriptionRow = {
   provider_subscription_id: string;
   provider_variant_id: string | null;
   quota_minutes: number;
-  overage_rate_cents: number;
+  overage_rate_eur_per_minute: number;
   current_period_end: string;
   renews_at: string | null;
   expires_at: string | null;
@@ -115,9 +115,9 @@ type SubscriptionRow = {
   raw_payload: unknown;
 };
 
-const PLAN_QUOTAS: Record<Plan, { quota_minutes: number; overage_rate_cents: number }> = {
-  starter: { quota_minutes: 400, overage_rate_cents: 0.03 },
-  pro: { quota_minutes: 1000, overage_rate_cents: 0.02 },
+const PLAN_QUOTAS: Record<Plan, { quota_minutes: number; overage_rate_eur_per_minute: number }> = {
+  starter: { quota_minutes: 400, overage_rate_eur_per_minute: 0.03 },
+  pro: { quota_minutes: 1000, overage_rate_eur_per_minute: 0.02 },
 };
 
 export function planFromVariantId(variantId: string): Plan | null {
@@ -169,7 +169,7 @@ export function buildSubscriptionRow(payload: LemonSqueezyPayload): Subscription
     provider_subscription_id: subscriptionId,
     provider_variant_id: variantId,
     quota_minutes: quotas.quota_minutes,
-    overage_rate_cents: quotas.overage_rate_cents,
+    overage_rate_eur_per_minute: quotas.overage_rate_eur_per_minute,
     current_period_end: currentPeriodEnd,
     renews_at: renewsAt,
     expires_at: (attrs.ends_at as string | null) ?? null,
@@ -218,37 +218,58 @@ export async function handleWebhook(req: Request): Promise<Response> {
     return json({ error: "missing_webhook_id" }, 400);
   }
 
-  // Tenter d'enregistrer le webhook_id. Si conflit (déjà traité), short-circuit.
-  const { error: idemError } = await supabase
+  // Read-only idempotency check : si le webhook_id est déjà dans le ledger,
+  // on a déjà traité avec succès — short-circuit. L'écriture du ledger se
+  // fait APRÈS l'upsert pour éviter de marquer un webhook idempotent quand
+  // l'upsert échoue (sinon LS retry → 200 idempotent → state jamais persisté).
+  const { data: alreadyProcessed } = await supabase
     .from("processed_webhooks")
-    .insert({ webhook_id: webhookId, event_name: eventName });
+    .select("webhook_id")
+    .eq("webhook_id", webhookId)
+    .maybeSingle();
 
-  if (idemError && idemError.code !== "23505") {
-    // 23505 = unique_violation = déjà traité, on retourne 200 idempotent.
-    console.error(`[webhook] processed_webhooks insert failed:`, idemError);
-    return json({ error: "idempotency_db_error", detail: idemError.message }, 500);
-  }
-  if (idemError?.code === "23505") {
+  if (alreadyProcessed) {
     console.log(`[webhook] duplicate webhook_id ${webhookId}, returning 200`);
     return json({ ok: true, event: eventName, idempotent: true }, 200);
   }
 
-  // order_created : pas de mutation subscriptions.
+  // order_created : pas de mutation subscriptions, on insère juste le ledger
+  // pour éviter les retries répétés.
   if (eventName === "order_created") {
     console.log(`[webhook] order_created: order ${payload.data?.id}`);
+    const { error: orderLedgerError } = await supabase
+      .from("processed_webhooks")
+      .insert({ webhook_id: webhookId, event_name: eventName });
+    if (orderLedgerError && orderLedgerError.code !== "23505") {
+      console.warn(`[webhook] order_created ledger insert failed:`, orderLedgerError);
+    }
     return json({ ok: true, event: eventName }, 200);
   }
 
   const row = buildSubscriptionRow(payload);
   if (!row) return json({ error: "missing_required_fields_or_unknown_variant" }, 400);
 
-  const { error } = await supabase
+  // Upsert FIRST. Idempotent par construction (même payload → même row).
+  // Conflit sur user_id (PK du stub) : une réinscription remplace la row.
+  const { error: upsertError } = await supabase
     .from("subscriptions")
-    .upsert(row, { onConflict: "provider_subscription_id" });
+    .upsert(row, { onConflict: "user_id" });
 
-  if (error) {
-    console.error(`[webhook] upsert failed:`, error);
-    return json({ error: "db_upsert_failed", detail: error.message }, 500);
+  if (upsertError) {
+    console.error(`[webhook] upsert failed:`, upsertError);
+    return json({ error: "db_upsert_failed", detail: upsertError.message }, 500);
+  }
+
+  // Marque le webhook_id comme traité APRÈS l'upsert. Une race entre deux
+  // retries concurrents peut produire un 23505 ici — c'est OK, l'upsert est
+  // déjà idempotent et un seul retry « gagne » l'insert ledger.
+  const { error: ledgerError } = await supabase
+    .from("processed_webhooks")
+    .insert({ webhook_id: webhookId, event_name: eventName });
+
+  if (ledgerError && ledgerError.code !== "23505") {
+    // Non fatal : la subscription est déjà persistée. On log et on continue.
+    console.warn(`[webhook] ledger insert failed (non-fatal):`, ledgerError);
   }
 
   return json(
