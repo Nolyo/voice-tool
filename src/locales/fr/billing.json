@@ -1,0 +1,67 @@
+{
+  "title": "Choisis ton plan",
+  "subtitle": "Tu peux changer ou annuler à tout moment depuis tes paramètres.",
+  "cycle": {
+    "monthly": "Mensuel",
+    "annual": "Annuel",
+    "annual_savings": "-18%"
+  },
+  "plans": {
+    "starter": {
+      "name": "Starter",
+      "tagline": "L'essentiel pour démarrer.",
+      "features": [
+        "400 minutes de transcription cloud par mois",
+        "Post-process IA inclus",
+        "Sync settings sur tous tes appareils"
+      ]
+    },
+    "pro": {
+      "name": "Pro",
+      "tagline": "Pour les utilisateurs intensifs.",
+      "features": [
+        "1000 minutes de transcription cloud par mois",
+        "Post-process IA inclus",
+        "Sync settings sur tous tes appareils",
+        "Tarif overage réduit"
+      ]
+    }
+  },
+  "price_per_month": "{{price}}€/mois",
+  "price_per_year": "{{price}}€/an",
+  "cta": "S'abonner",
+  "redirecting": "Redirection vers le paiement…",
+  "expiration": {
+    "trial_title": "Ton essai est terminé",
+    "trial_body": "Tes 60 minutes ou 30 jours d'essai sont arrivés à échéance. Choisis un plan pour continuer en cloud, ou bascule en local.",
+    "subscription_title": "Ton abonnement Lexena a expiré",
+    "subscription_body": "Tu peux le renouveler ou continuer en local.",
+    "renew_cta": "Renouveler",
+    "switch_local_cta": "Continuer en local",
+    "later_cta": "Plus tard"
+  },
+  "welcome": {
+    "title": "Bienvenue sur Lexena",
+    "subtitle": "Comment veux-tu commencer ?",
+    "branch_a": {
+      "badge": "Recommandé",
+      "title": "Créer un compte gratuit",
+      "features": [
+        "60 minutes d'essai du service cloud",
+        "Post-process IA inclus (reformulation, correction, mail…)",
+        "Rapide sur tout PC, même modeste",
+        "Sans carte bancaire"
+      ],
+      "cta": "Créer mon compte"
+    },
+    "branch_b": {
+      "title": "Continuer en local uniquement",
+      "features": [
+        "Gratuit, illimité, 100% offline, open source",
+        "Transcription brute uniquement (pas de post-process IA)",
+        "Performances dépendantes de ton matériel"
+      ],
+      "cta": "Continuer en local"
+    }
+  }
+}

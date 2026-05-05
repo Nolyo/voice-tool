@@ -4,6 +4,8 @@ import fr from "./locales/fr.json";
 import en from "./locales/en.json";
 import frCloud from "./locales/fr/cloud.json";
 import enCloud from "./locales/en/cloud.json";
+import frBilling from "./locales/fr/billing.json";
+import enBilling from "./locales/en/billing.json";
 
 const SAVED_LANG_KEY = "uiLanguage";
 
@@ -12,13 +14,13 @@ const detectedLang = navigator.language.startsWith("en") ? "en" : "fr";
 
 i18n.use(initReactI18next).init({
   resources: {
-    fr: { translation: fr, cloud: frCloud },
-    en: { translation: en, cloud: enCloud },
+    fr: { translation: fr, cloud: frCloud, billing: frBilling },
+    en: { translation: en, cloud: enCloud, billing: enBilling },
   },
   lng: savedLang || detectedLang,
   fallbackLng: "fr",
   supportedLngs: ["fr", "en"],
-  ns: ["translation", "cloud"],
+  ns: ["translation", "cloud", "billing"],
   defaultNS: "translation",
   interpolation: {
     escapeValue: false,

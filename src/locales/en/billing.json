@@ -1,0 +1,67 @@
+{
+  "title": "Pick your plan",
+  "subtitle": "You can change or cancel at any time from your settings.",
+  "cycle": {
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "annual_savings": "-18%"
+  },
+  "plans": {
+    "starter": {
+      "name": "Starter",
+      "tagline": "The essentials to get started.",
+      "features": [
+        "400 minutes of cloud transcription per month",
+        "AI post-processing included",
+        "Settings sync across all your devices"
+      ]
+    },
+    "pro": {
+      "name": "Pro",
+      "tagline": "For intensive users.",
+      "features": [
+        "1000 minutes of cloud transcription per month",
+        "AI post-processing included",
+        "Settings sync across all your devices",
+        "Reduced overage rate"
+      ]
+    }
+  },
+  "price_per_month": "{{price}}€/mo",
+  "price_per_year": "{{price}}€/yr",
+  "cta": "Subscribe",
+  "redirecting": "Redirecting to checkout…",
+  "expiration": {
+    "trial_title": "Your trial has ended",
+    "trial_body": "Your 60 minutes or 30 days of trial have expired. Pick a plan to keep using cloud, or switch to local.",
+    "subscription_title": "Your Lexena subscription has expired",
+    "subscription_body": "You can renew it, or keep using Lexena locally.",
+    "renew_cta": "Renew",
+    "switch_local_cta": "Keep using local",
+    "later_cta": "Later"
+  },
+  "welcome": {
+    "title": "Welcome to Lexena",
+    "subtitle": "How do you want to start?",
+    "branch_a": {
+      "badge": "Recommended",
+      "title": "Create a free account",
+      "features": [
+        "60 minutes of cloud service trial",
+        "AI post-processing included (rewriting, correction, mail…)",
+        "Fast on any PC, even modest hardware",
+        "No credit card required"
+      ],
+      "cta": "Create my account"
+    },
+    "branch_b": {
+      "title": "Continue with local only",
+      "features": [
+        "Free, unlimited, 100% offline, open source",
+        "Raw transcription only (no AI post-processing)",
+        "Performance depends on your hardware"
+      ],
+      "cta": "Continue with local"
+    }
+  }
+}

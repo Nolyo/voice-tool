@@ -1,6 +1,7 @@
 mod audio;
 mod audio_trim;
 mod auth;
+mod billing;
 mod chat;
 mod cloud;
 mod commands;
@@ -145,6 +146,7 @@ pub fn run() {
             sync::save_export_to_download,
             cloud::transcribe_audio_cloud,
             cloud::post_process_cloud,
+            billing::open_checkout,
         ])
         .setup(move |app| {
             // ─── Deep-link: subscribe to live on_open_url events ──────────────────────
