@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(7);
+SELECT plan(9);
 
 -- ─── Sanity ─────────────────────────────────────────────────────────────────
 
@@ -11,6 +11,11 @@ SELECT has_function(
 SELECT has_trigger(
   'auth', 'users', 'grant_trial_on_user_insert',
   'AFTER INSERT trigger on auth.users exists'
+);
+
+SELECT has_trigger(
+  'auth', 'users', 'grant_trial_on_email_confirmed',
+  'AFTER UPDATE trigger on auth.users exists'
 );
 
 -- ─── Scenario 1: OAuth / signup with confirmations off ──────────────────────
@@ -25,6 +30,13 @@ SELECT is(
    WHERE user_id = '11111111-1111-1111-1111-111111111111')::numeric,
   60::numeric,
   'scenario 1: trial granted on INSERT with email_confirmed_at set'
+);
+
+SELECT ok(
+  (SELECT expires_at FROM public.trial_credits
+   WHERE user_id = '11111111-1111-1111-1111-111111111111')
+  BETWEEN NOW() + INTERVAL '29 days 23 hours' AND NOW() + INTERVAL '30 days 1 hour',
+  'scenario 1: expires_at is approximately NOW() + 30 days'
 );
 
 -- ─── Scenario 2: email signup not yet verified ──────────────────────────────

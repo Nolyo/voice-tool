@@ -29,12 +29,14 @@ $$;
 
 REVOKE ALL ON FUNCTION public.grant_trial_credits() FROM PUBLIC;
 
+DROP TRIGGER IF EXISTS grant_trial_on_user_insert ON auth.users;
 CREATE TRIGGER grant_trial_on_user_insert
   AFTER INSERT ON auth.users
   FOR EACH ROW
   WHEN (NEW.email_confirmed_at IS NOT NULL)
   EXECUTE FUNCTION public.grant_trial_credits();
 
+DROP TRIGGER IF EXISTS grant_trial_on_email_confirmed ON auth.users;
 CREATE TRIGGER grant_trial_on_email_confirmed
   AFTER UPDATE OF email_confirmed_at ON auth.users
   FOR EACH ROW
