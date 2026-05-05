@@ -1,6 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { useUsage } from "@/hooks/useUsage";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { SubscribeButton } from "@/components/billing/SubscribeButton";
+
+const LEMON_SQUEEZY_PORTAL_URL =
+  (import.meta.env.VITE_LEMON_SQUEEZY_PORTAL_URL as string | undefined) ??
+  "https://app.lemonsqueezy.com/my-orders";
 
 export function CloudSection() {
   const { t } = useTranslation("cloud");
@@ -73,6 +79,33 @@ export function CloudSection() {
           {!trial.is_active && !plan && (
             <p className="text-sm text-muted-foreground">{t("settings.nothing_active")}</p>
           )}
+
+          <section className="space-y-3 border-t pt-5">
+            <h3 className="text-[13px] font-semibold">
+              {t("settings.section.plan_title")}
+            </h3>
+            {plan ? (
+              <div className="rounded-md border p-4 text-sm">
+                <p>
+                  {t("settings.section.current_plan", {
+                    tier: plan.plan,
+                    quota: plan.quota_minutes,
+                  })}
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-3">
+                  <a
+                    href={LEMON_SQUEEZY_PORTAL_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t("settings.section.manage_cta")}
+                  </a>
+                </Button>
+              </div>
+            ) : (
+              <SubscribeButton />
+            )}
+          </section>
 
           <div>
             <button onClick={() => refresh()} className="vt-btn">

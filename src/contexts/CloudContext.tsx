@@ -1,4 +1,5 @@
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettings } from "@/hooks/useSettings";
@@ -119,6 +120,20 @@ export function CloudProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshUsage();
+  }, [refreshUsage]);
+
+  // Refresh subscription/trial state when the user returns from a successful
+  // Lemon Squeezy checkout. The Rust deep-link handler emits this event when
+  // it receives `lexena://billing/success`. By the time the webhook has been
+  // processed by Supabase, the next `refreshUsage()` should observe the new
+  // `subscriptions.status = 'active'` row.
+  useEffect(() => {
+    const unlistenPromise = listen("billing-checkout-completed", () => {
+      void refreshUsage();
+    });
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten()).catch(() => {});
+    };
   }, [refreshUsage]);
 
   const mode: CloudMode = useMemo(() => {

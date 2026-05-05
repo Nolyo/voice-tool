@@ -27,6 +27,11 @@
       "quota_minutes": "Included minutes this month",
       "minutes_used": "Minutes consumed",
       "minutes_remaining": "Minutes remaining"
+    },
+    "section": {
+      "plan_title": "Subscription",
+      "current_plan": "{{tier}} plan — {{quota}} minutes included per month",
+      "manage_cta": "Manage subscription"
     }
   },
   "errors": {

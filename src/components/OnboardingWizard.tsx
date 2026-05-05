@@ -5,12 +5,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import {
   ArrowLeft,
-  Cloud,
   Download,
-  HardDrive,
   Info,
   Loader2,
-  Sparkles,
   Wand2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,7 +24,11 @@ import { useSettings } from "@/hooks/useSettings";
 import type { AppSettings } from "@/lib/settings";
 
 type ModelSize = AppSettings["settings"]["local_model_size"];
-type Step = "choice" | "local" | "api";
+// "choice" step removed in v3.2 (sub-epic 04 phase 3): the WelcomeScreen now
+// owns the cloud-vs-local choice. This wizard is invoked only as the local
+// sub-flow (and retains the api step as an internal switch-target reachable
+// from `onSwitchToApi` for the post-detection escape hatch).
+type Step = "local" | "api";
 
 interface SystemInfo {
   total_ram_gb: number;
@@ -48,10 +49,21 @@ function recommendModel(info: SystemInfo): ModelSize | "api" {
   return "large-v3-turbo";
 }
 
-export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
+export function OnboardingWizard({
+  onComplete,
+  onBack,
+}: {
+  onComplete: () => void;
+  /**
+   * Optional escape hatch. When set, the local step shows a back arrow that
+   * calls this — used by `WelcomeScreen` to let the user return to the
+   * cloud-vs-local choice. When absent, no back arrow is rendered.
+   */
+  onBack?: () => void;
+}) {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
-  const [step, setStep] = useState<Step>("choice");
+  const [step, setStep] = useState<Step>("local");
 
   const modelOptions = useMemo<ModelOption[]>(
     () => [
@@ -99,15 +111,16 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
     };
   }, []);
 
-  const chooseLocal = useCallback(async () => {
-    await updateSetting("transcription_provider", "Local");
-    setStep("local");
-  }, [updateSetting]);
-
-  const chooseApi = useCallback(async () => {
-    await updateSetting("transcription_provider", "OpenAI");
-    setStep("api");
-  }, [updateSetting]);
+  // Default the wizard to the Local provider since that's the only branch
+  // that still lands here in v3.2 (cloud goes through WelcomeScreen → Auth).
+  // The api step is reachable via `onSwitchToApi` from LocalStep's
+  // recommendation banner; mirror the original effect there if needed.
+  useEffect(() => {
+    if (settings.transcription_provider !== "Local") {
+      void updateSetting("transcription_provider", "Local");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const runDetection = useCallback(async () => {
     setIsDetecting(true);
@@ -167,9 +180,6 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          {step === "choice" && (
-            <ChoiceStep onLocal={chooseLocal} onApi={chooseApi} />
-          )}
           {step === "local" && (
             <LocalStep
               modelOptions={modelOptions}
@@ -184,7 +194,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
               isDownloading={isDownloading}
               downloadProgress={downloadProgress}
               downloadError={downloadError}
-              onBack={() => setStep("choice")}
+              onBack={onBack}
               onSwitchToApi={() => setStep("api")}
             />
           )}
@@ -194,83 +204,12 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
               onChangeApiKey={setApiKey}
               onSave={handleSaveApiKey}
               isSaving={apiSaving}
-              onBack={() => setStep("choice")}
+              onBack={() => setStep("local")}
             />
           )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
-  );
-}
-
-function ChoiceStep({
-  onLocal,
-  onApi,
-}: {
-  onLocal: () => void;
-  onApi: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <>
-      <div className="space-y-2 text-center vt-anim-fade-up">
-        <div
-          className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
-          style={{
-            background: "oklch(from var(--vt-violet) l c h / 0.14)",
-            color: "var(--vt-violet)",
-          }}
-        >
-          <Sparkles className="h-6 w-6" />
-        </div>
-        <DialogPrimitive.Title className="vt-display text-xl font-semibold">
-          {t("onboarding.welcomeTitle")}
-        </DialogPrimitive.Title>
-        <DialogPrimitive.Description className="text-sm text-muted-foreground">
-          {t("onboarding.welcomeSubtitle")}
-        </DialogPrimitive.Description>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={onLocal}
-          className="group flex flex-col gap-2 rounded-lg border-2 border-border bg-card p-5 text-left transition-all cursor-pointer hover:border-vt-violet/60 focus:outline-none focus:ring-2 focus:ring-vt-violet/40"
-        >
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-md text-vt-violet"
-            style={{ background: "oklch(from var(--vt-violet) l c h / 0.12)" }}
-          >
-            <HardDrive className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="font-semibold">{t("onboarding.choiceLocalTitle")}</div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t("onboarding.choiceLocalDesc")}
-            </p>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={onApi}
-          className="group flex flex-col gap-2 rounded-lg border-2 border-border bg-card p-5 text-left transition-all cursor-pointer hover:border-vt-cyan/60 focus:outline-none focus:ring-2 focus:ring-vt-cyan/40"
-        >
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-md text-vt-cyan"
-            style={{ background: "oklch(from var(--vt-cyan) l c h / 0.12)" }}
-          >
-            <Cloud className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="font-semibold">{t("onboarding.choiceApiTitle")}</div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t("onboarding.choiceApiDesc")}
-            </p>
-          </div>
-        </button>
-      </div>
-    </>
   );
 }
 
@@ -302,7 +241,8 @@ function LocalStep({
   isDownloading: boolean;
   downloadProgress: number;
   downloadError: string | null;
-  onBack: () => void;
+  /** When undefined, no back arrow is rendered. */
+  onBack?: () => void;
   onSwitchToApi: () => void;
 }) {
   const { t } = useTranslation();
@@ -320,14 +260,16 @@ function LocalStep({
     <>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-muted-foreground hover:text-foreground"
-            disabled={isDownloading}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-muted-foreground hover:text-foreground"
+              disabled={isDownloading}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          )}
           <DialogPrimitive.Title className="vt-display text-xl font-semibold">
             {t("onboarding.localTitle")}
           </DialogPrimitive.Title>
