@@ -38,16 +38,21 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 /// Unknown paths fall through to the auth handler (which will reject them as
 /// `wrong host/path`); this keeps the routing cheap and the rejection logged.
 fn route_deep_link<R: Runtime>(app: &AppHandle<R>, url: &str) {
-    if url.starts_with("lexena://billing/success") {
-        tracing::info!(target: "billing", "billing/success deep link received");
-        if let Err(e) = app.emit("billing-checkout-completed", ()) {
-            tracing::warn!("failed to emit billing-checkout-completed: {}", e);
+    if let Ok(parsed) = url::Url::parse(url) {
+        if parsed.scheme() == "lexena"
+            && parsed.host_str() == Some("billing")
+            && parsed.path() == "/success"
+        {
+            tracing::info!(target: "billing", "billing/success deep link received");
+            if let Err(e) = app.emit("billing-checkout-completed", ()) {
+                tracing::warn!("failed to emit billing-checkout-completed: {}", e);
+            }
+            if let Some(main) = app.get_webview_window("main") {
+                let _ = main.show();
+                let _ = main.set_focus();
+            }
+            return;
         }
-        if let Some(main) = app.get_webview_window("main") {
-            let _ = main.show();
-            let _ = main.set_focus();
-        }
-        return;
     }
     auth::emit_deep_link_event(app, url);
 }
