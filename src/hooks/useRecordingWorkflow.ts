@@ -19,6 +19,11 @@ import type {
   RecordingResult,
   TranscriptionInvokeResult,
 } from "@/lib/types";
+import { useCloud } from "@/hooks/useCloud";
+import { supabase } from "@/lib/supabase";
+import { transcribeCloud, postProcessCloud } from "@/lib/cloud/api";
+import { CloudApiError } from "@/lib/cloud/errors";
+import type { PostProcessTask } from "@/lib/cloud/types";
 
 type AddTranscription = (
   text: string,
@@ -55,13 +60,28 @@ interface PostProcessOutcome {
  * Returns true when post-processing would actually run for the given text and
  * settings. Extracted so callers can emit a mini-window "post-process-start"
  * event only when the UI will effectively show a post-process phase.
+ *
+ * `cloudPath` short-circuits the local-key check (cloud post-process doesn't
+ * need a user-provided API key) but still respects the enabled flag and the
+ * empty-text guard. Custom mode is excluded from the cloud-path gate because
+ * the cloud worker rejects it; the warning toast still surfaces from
+ * `maybePostProcessCloud` when the call site invokes it, so the user-facing
+ * behavior is unchanged — only the redundant `post-process-start` event is
+ * suppressed.
  */
 function shouldPostProcess(
   originalText: string,
   settings: AppSettings["settings"],
+  cloudPath: boolean = false,
 ): boolean {
   if (!settings.post_process_enabled) return false;
   if (!originalText.trim()) return false;
+
+  if (cloudPath) {
+    // Cloud post-process does not support custom mode (server-validated).
+    if (settings.post_process_mode === "custom") return false;
+    return true;
+  }
 
   const provider = settings.post_process_provider;
   const apiKey =
@@ -75,6 +95,95 @@ function shouldPostProcess(
     return false;
   }
   return true;
+}
+
+/**
+ * Maps the local UI's post-process mode to the cloud worker's task taxonomy.
+ * Returns `null` when the mode has no cloud equivalent (only "custom" today)
+ * — the caller surfaces a warning and keeps the raw transcription.
+ */
+function mapModeToCloudTask(mode: string): PostProcessTask | null {
+  switch (mode) {
+    case "auto":
+    case "formal":
+    case "casual":
+      return "reformulate";
+    case "grammar":
+      return "correct";
+    case "email":
+      return "email";
+    case "summary":
+    case "list":
+      return "summarize";
+    case "custom":
+    default:
+      return null;
+  }
+}
+
+async function maybePostProcessCloud(
+  originalText: string,
+  settings: AppSettings["settings"],
+  jwt: string,
+  translate: (key: string, opts?: Record<string, unknown>) => string,
+): Promise<PostProcessOutcome> {
+  if (!settings.post_process_enabled) return { text: originalText };
+
+  const trimmed = originalText.trim();
+  if (!trimmed) return { text: originalText };
+
+  const task = mapModeToCloudTask(settings.post_process_mode);
+  if (!task) {
+    // Only "custom" lands here today — cloud has no way to honor a user
+    // prompt. Keep the raw transcription and tell the user why.
+    toast.warning(translate("cloud:errors.post_process_custom_unsupported"));
+    return { text: originalText };
+  }
+
+  try {
+    const result = await postProcessCloud({
+      task,
+      text: trimmed,
+      language: settings.language,
+      jwt,
+    });
+    const cleaned = result.text?.trim();
+    if (!cleaned || cleaned === trimmed) {
+      return { text: originalText };
+    }
+    return {
+      text: cleaned,
+      originalText: trimmed,
+      mode: settings.post_process_mode,
+      // Cloud post-process is billed in tokens against the user's plan / trial,
+      // not in USD against their API key — no apiCost passthrough.
+      cost: 0,
+    };
+  } catch (err) {
+    if (err instanceof CloudApiError) {
+      const key = err.isQuotaIssue()
+        ? "errors.quota_exhausted"
+        : err.isAuthIssue()
+          ? "errors.auth_expired"
+          : err.isProviderUnavailable()
+            ? "errors.provider_unavailable"
+            : null;
+      if (key) {
+        toast.error(translate(`cloud:${key}`));
+      } else {
+        toast.error(
+          translate("postProcess.error", { error: err.message }),
+        );
+      }
+    } else {
+      toast.error(
+        translate("postProcess.error", {
+          error: typeof err === "string" ? err : String(err),
+        }),
+      );
+    }
+    return { text: originalText };
+  }
 }
 
 async function maybePostProcess(
@@ -163,6 +272,14 @@ export function useRecordingWorkflow({
   const { t } = useTranslation();
   const tRef = useRef(t);
   useEffect(() => { tRef.current = t; }, [t]);
+
+  const { mode: cloudMode, hasCloudSelected, isCloudEligible } = useCloud();
+  const cloudModeRef = useRef(cloudMode);
+  const hasCloudSelectedRef = useRef(hasCloudSelected);
+  const isCloudEligibleRef = useRef(isCloudEligible);
+  useEffect(() => { cloudModeRef.current = cloudMode; }, [cloudMode]);
+  useEffect(() => { hasCloudSelectedRef.current = hasCloudSelected; }, [hasCloudSelected]);
+  useEffect(() => { isCloudEligibleRef.current = isCloudEligible; }, [isCloudEligible]);
 
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -319,43 +436,110 @@ export function useRecordingWorkflow({
         } catch (e) {
           console.warn("[recording vocab refresh failed]", e);
         }
+
+        // Hard-stop when the user picked LexenaCloud but isn't actually able
+        // to use it. We refuse silently falling back to local — the local
+        // path doesn't know what to do with provider="LexenaCloud" and would
+        // either crash or use a wrong key.
+        if (hasCloudSelectedRef.current && cloudModeRef.current !== "cloud") {
+          const { data } = await supabase.auth.getSession();
+          const hasSession = Boolean(data.session?.access_token);
+          const key = !hasSession
+            ? "errors.signin_required"
+            : "errors.not_eligible";
+          toast.error(tRef.current(`cloud:${key}`));
+          await emit("transcription-error", { error: tRef.current(`cloud:${key}`) });
+          return;
+        }
+
+        const useCloudPath = cloudModeRef.current === "cloud";
+        let cloudJwt: string | undefined;
+        if (useCloudPath) {
+          const { data } = await supabase.auth.getSession();
+          cloudJwt = data.session?.access_token;
+        }
+        const effectiveProviderLabel = useCloudPath && cloudJwt
+          ? "Cloud"
+          : settings.transcription_provider;
+
         await emit("transcription-start", {
-          provider: settings.transcription_provider,
+          provider: effectiveProviderLabel,
         });
-        const providerApiKey =
-          settings.transcription_provider === "Groq"
-            ? settings.groq_api_key
-            : settings.openai_api_key;
-        const result = await invoke<TranscriptionInvokeResult>(
-          "transcribe_audio",
-          {
-            audioSamples: audioData,
-            sampleRate: sampleRate,
-            apiKey: providerApiKey,
-            language: settings.language,
-            keepLast: settings.recordings_keep_last,
-            provider: settings.transcription_provider,
-            localModelSize: settings.local_model_size,
-            dictionary: syncDictionaryRef.current.join(", "),
-            initialPrompt: settings.whisper_initial_prompt ?? "",
-            translate: settings.translate_mode,
-            keepModelInMemory: settings.keep_model_in_memory,
-            groqModel: settings.groq_model,
-            trimSilence: settings.trim_silence,
-          },
-        );
 
-        console.log("Transcription:", result.text);
+        let result: TranscriptionInvokeResult;
+        let cloudUsedSeconds: number | null = null;
 
-        if (shouldPostProcess(result.text, settings)) {
+        if (useCloudPath && cloudJwt) {
+          try {
+            const cloud = await transcribeCloud({
+              samples: Int16Array.from(audioData),
+              sampleRate: sampleRate,
+              language: settings.language,
+              jwt: cloudJwt,
+              idempotencyKey: crypto.randomUUID(),
+            });
+            result = { text: cloud.text, audioPath: "" };
+            cloudUsedSeconds = cloud.duration_ms / 1000;
+          } catch (err) {
+            if (err instanceof CloudApiError) {
+              const key = err.isQuotaIssue()
+                ? "errors.quota_exhausted"
+                : err.isAuthIssue()
+                  ? "errors.auth_expired"
+                  : err.isProviderUnavailable()
+                    ? "errors.provider_unavailable"
+                    : null;
+              if (key) {
+                toast.error(tRef.current(`cloud:${key}`));
+              } else {
+                // Generic fallback for statuses without a dedicated i18n key
+                // (e.g. 400 bad_request, 413, 415). Outer catch will skip the
+                // alert because we already surfaced this to the user.
+                toast.error(
+                  tRef.current("errors.transcriptionError", { error: err.message }),
+                );
+              }
+            }
+            throw err;
+          }
+        } else {
+          const providerApiKey =
+            settings.transcription_provider === "Groq"
+              ? settings.groq_api_key
+              : settings.openai_api_key;
+          result = await invoke<TranscriptionInvokeResult>(
+            "transcribe_audio",
+            {
+              audioSamples: audioData,
+              sampleRate: sampleRate,
+              apiKey: providerApiKey,
+              language: settings.language,
+              keepLast: settings.recordings_keep_last,
+              provider: settings.transcription_provider,
+              localModelSize: settings.local_model_size,
+              dictionary: syncDictionaryRef.current.join(", "),
+              initialPrompt: settings.whisper_initial_prompt ?? "",
+              translate: settings.translate_mode,
+              keepModelInMemory: settings.keep_model_in_memory,
+              groqModel: settings.groq_model,
+              trimSilence: settings.trim_silence,
+            },
+          );
+        }
+
+        const cloudPostProcess = useCloudPath && Boolean(cloudJwt);
+        if (shouldPostProcess(result.text, settings, cloudPostProcess)) {
           await emit("post-process-start");
         }
-        const processed = await maybePostProcess(result.text, settings, tRef.current);
+        const processed = cloudPostProcess
+          ? await maybePostProcessCloud(result.text, settings, cloudJwt!, tRef.current)
+          : await maybePostProcess(result.text, settings, tRef.current);
         const finalText = processed.text;
 
-        const durationSeconds = audioData.length / sampleRate;
+        const durationSeconds = cloudUsedSeconds ?? audioData.length / sampleRate;
         const durationMinutes = durationSeconds / 60;
         const apiCost = (() => {
+          if (cloudUsedSeconds !== null) return 0;
           switch (settings.transcription_provider) {
             case "Local":
               return 0;
@@ -377,7 +561,7 @@ export function useRecordingWorkflow({
           processed.mode,
           processed.cost,
           durationSeconds,
-          settings.transcription_provider,
+          effectiveProviderLabel,
         );
 
         await emit("transcription-success", { text: finalText });
@@ -385,7 +569,11 @@ export function useRecordingWorkflow({
       } catch (error) {
         console.error("Transcription error:", error);
         await emit("transcription-error", { error: String(error) });
-        alert(tRef.current('errors.transcriptionError', { error }));
+        // CloudApiError was already toasted by the cloud branch above; the
+        // alert below is for genuine local-path bugs / unhandled failures.
+        if (!(error instanceof CloudApiError)) {
+          alert(tRef.current('errors.transcriptionError', { error }));
+        }
         await invoke("log_separator");
       } finally {
         setIsTranscribing(false);

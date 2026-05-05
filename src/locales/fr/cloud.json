@@ -1,0 +1,40 @@
+{
+  "trial": {
+    "minutes_remaining_one": "{{count}} min d'essai",
+    "minutes_remaining_other": "{{count}} min d'essai",
+    "days_remaining_one": "{{count}} jour d'essai",
+    "days_remaining_other": "{{count}} jours d'essai",
+    "tooltip": "Crédit d'essai cloud — passez à un plan payant pour continuer après expiration."
+  },
+  "plan": {
+    "minutes_remaining_one": "{{count}} min restantes",
+    "minutes_remaining_other": "{{count}} min restantes",
+    "tooltip": "Plan {{plan}} — minutes incluses ce mois-ci."
+  },
+  "settings": {
+    "heading": "Service cloud Lexena",
+    "signin_required": "Connectez-vous pour accéder au service cloud.",
+    "loading": "Chargement…",
+    "nothing_active": "Aucun essai ni abonnement actif. La transcription cloud est désactivée.",
+    "refresh": "Rafraîchir",
+    "trial": {
+      "heading": "Essai gratuit en cours",
+      "minutes_remaining": "Minutes restantes",
+      "expires_at": "Expire le"
+    },
+    "plan": {
+      "heading": "Plan {{plan}}",
+      "quota_minutes": "Minutes incluses ce mois",
+      "minutes_used": "Minutes consommées",
+      "minutes_remaining": "Minutes restantes"
+    }
+  },
+  "errors": {
+    "provider_unavailable": "Le service de transcription cloud est temporairement indisponible. Réessayez dans quelques instants.",
+    "quota_exhausted": "Votre quota cloud est épuisé. Passez à un plan payant pour continuer.",
+    "auth_expired": "Votre session a expiré. Reconnectez-vous pour utiliser le cloud.",
+    "signin_required": "Lexena Cloud nécessite un compte. Connectez-vous ou choisissez un autre fournisseur dans les paramètres.",
+    "not_eligible": "Aucun essai ni abonnement actif. Choisissez un autre fournisseur dans les paramètres ou souscrivez un plan.",
+    "post_process_custom_unsupported": "Le mode personnalisé n'est pas disponible en cloud. La transcription brute a été conservée."
+  }
+}

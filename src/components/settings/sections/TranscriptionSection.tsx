@@ -45,10 +45,9 @@ export function TranscriptionSection() {
       title: t("settings.transcription.providerLexenaCloud"),
       sub: t("settings.transcription.providerLexenaCloudSub"),
       dot: "var(--vt-accent)",
-      disabled: true,
       badge: (
         <ProviderBadge color="var(--vt-accent)">
-          {t("settings.transcription.providerComingSoonBadge")}
+          {t("settings.transcription.providerBetaBadge")}
         </ProviderBadge>
       ),
     },

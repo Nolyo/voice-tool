@@ -14,6 +14,7 @@ import {
 import { AudioVisualizer } from "./AudioVisualizer"
 import { LexenaWordmark } from "./LexenaWordmark"
 import { SyncStatusIndicator } from "@/components/SyncStatusIndicator"
+import { QuotaCounter } from "@/components/cloud/QuotaCounter"
 import { useSettings } from "@/hooks/useSettings"
 import type { DashboardTabId } from "@/components/dashboard/DashboardSidebar"
 
@@ -139,6 +140,7 @@ export function DashboardHeader({
               </div>
             </div>
 
+            <QuotaCounter />
             <SyncStatusIndicator />
           </div>
         </div>

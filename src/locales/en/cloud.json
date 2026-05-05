@@ -1,0 +1,40 @@
+{
+  "trial": {
+    "minutes_remaining_one": "{{count}} trial min",
+    "minutes_remaining_other": "{{count}} trial min",
+    "days_remaining_one": "{{count}} trial day",
+    "days_remaining_other": "{{count}} trial days",
+    "tooltip": "Cloud trial credit — subscribe to keep using cloud after expiry."
+  },
+  "plan": {
+    "minutes_remaining_one": "{{count}} min left",
+    "minutes_remaining_other": "{{count}} min left",
+    "tooltip": "{{plan}} plan — included minutes this month."
+  },
+  "settings": {
+    "heading": "Lexena cloud service",
+    "signin_required": "Sign in to access the cloud service.",
+    "loading": "Loading…",
+    "nothing_active": "No active trial or subscription. Cloud transcription is disabled.",
+    "refresh": "Refresh",
+    "trial": {
+      "heading": "Free trial in progress",
+      "minutes_remaining": "Minutes remaining",
+      "expires_at": "Expires on"
+    },
+    "plan": {
+      "heading": "{{plan}} plan",
+      "quota_minutes": "Included minutes this month",
+      "minutes_used": "Minutes consumed",
+      "minutes_remaining": "Minutes remaining"
+    }
+  },
+  "errors": {
+    "provider_unavailable": "The cloud transcription service is temporarily unavailable. Please try again shortly.",
+    "quota_exhausted": "Your cloud quota is exhausted. Subscribe to keep using cloud.",
+    "auth_expired": "Your session expired. Sign in again to use the cloud.",
+    "signin_required": "Lexena Cloud requires an account. Sign in or pick another provider in settings.",
+    "not_eligible": "No active trial or subscription. Pick another provider in settings or subscribe to a plan.",
+    "post_process_custom_unsupported": "Custom mode isn't available on cloud. Kept the raw transcription."
+  }
+}

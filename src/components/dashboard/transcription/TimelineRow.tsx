@@ -43,7 +43,19 @@ function TimelineRowImpl({
   const { formatTime } = useDateFormatters();
   const words = wordsOf(item.text);
   const postProcess = Boolean(item.originalText);
-  const source = item.apiCost !== undefined && item.apiCost > 0 ? "api" : "local";
+  // "api" covers any remote infra (paid provider OR Lexena Cloud). Cloud
+  // transcriptions land with apiCost=0 (zero user cost), so we can't rely on
+  // cost alone — check the provider label first, then fall back to cost for
+  // legacy records that predate transcriptionProvider.
+  const provider = item.transcriptionProvider;
+  const source =
+    provider === "Local"
+      ? "local"
+      : provider
+        ? "api"
+        : item.apiCost !== undefined && item.apiCost > 0
+          ? "api"
+          : "local";
   const isPinned = Boolean(item.pinnedAt);
 
   return (

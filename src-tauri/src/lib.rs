@@ -2,6 +2,7 @@ mod audio;
 mod audio_trim;
 mod auth;
 mod chat;
+mod cloud;
 mod commands;
 mod folders;
 mod hotkeys;
@@ -142,6 +143,8 @@ pub fn run() {
             sync::delete_local_backup,
             sync::delete_all_local_backups,
             sync::save_export_to_download,
+            cloud::transcribe_audio_cloud,
+            cloud::post_process_cloud,
         ])
         .setup(move |app| {
             // ─── Deep-link: subscribe to live on_open_url events ──────────────────────

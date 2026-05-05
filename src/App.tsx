@@ -1,6 +1,7 @@
 import "./App.css";
 import Dashboard from "./components/Dashboard";
 import { DeletionPendingScreen } from "./components/auth/DeletionPendingScreen";
+import { CloudProvider } from "./contexts/CloudContext";
 import { ProfilesProvider } from "./contexts/ProfilesContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { SyncProvider } from "./contexts/SyncContext";
@@ -29,11 +30,13 @@ function App() {
   return (
     <ProfilesProvider>
       <SettingsProvider>
-        <SyncProvider>
-          <UpdaterProvider>
-            <AppShell />
-          </UpdaterProvider>
-        </SyncProvider>
+        <CloudProvider>
+          <SyncProvider>
+            <UpdaterProvider>
+              <AppShell />
+            </UpdaterProvider>
+          </SyncProvider>
+        </CloudProvider>
       </SettingsProvider>
     </ProfilesProvider>
   );
