@@ -43,6 +43,12 @@ pub async fn open_checkout(
 
     let mut url = url::Url::parse(&checkout_url)
         .map_err(|e| CheckoutError::InvalidUrl(e.to_string()))?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err(CheckoutError::InvalidUrl(format!(
+            "scheme not allowed: {}",
+            url.scheme()
+        )));
+    }
     {
         let mut q = url.query_pairs_mut();
         q.append_pair("checkout[custom][user_id]", &user_id);
@@ -53,7 +59,7 @@ pub async fn open_checkout(
     }
     let final_url = url.to_string();
 
-    info!(target = "billing", user_id = %user_id, "opening Lemon Squeezy checkout");
+    info!(target = "billing", "opening Lemon Squeezy checkout");
 
     app.opener()
         .open_url(&final_url, None::<&str>)
