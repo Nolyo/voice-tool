@@ -14,22 +14,11 @@ export function SubscribeButton() {
 
   const handleSubscribe = async (tier: PlanTier) => {
     if (!user) return;
-    const plan = PLANS[`${tier}_${cycle}`];
-
-    if (plan.variant_id === "PLACEHOLDER" || plan.checkout_url.includes("PLACEHOLDER")) {
-      console.error(
-        `[billing] PLACEHOLDER detected for ${tier}_${cycle}. Set VITE_LS_${tier.toUpperCase()}_${cycle.toUpperCase()}_VARIANT_ID and VITE_LS_${tier.toUpperCase()}_${cycle.toUpperCase()}_SLUG.`,
-      );
-      return;
-    }
-
     setLoadingTier(tier);
     try {
-      await openCheckout({
-        plan,
-        user_id: user.id,
-        email: user.email ?? undefined,
-      });
+      await openCheckout({ tier, cycle });
+    } catch (err) {
+      console.error("[billing] checkout failed:", err);
     } finally {
       setLoadingTier(null);
     }

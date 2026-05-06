@@ -4,37 +4,49 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
 
+const { invokeFn } = vi.hoisted(() => ({ invokeFn: vi.fn() }));
+vi.mock("@/lib/supabase", () => ({
+  supabase: { functions: { invoke: invokeFn } },
+}));
+
 import { invoke } from "@tauri-apps/api/core";
 import { openCheckout } from "./checkout";
-import { PLANS } from "./plans";
 
 describe("openCheckout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("invokes open_checkout with snake_case arg names", async () => {
+  it("invokes the create-checkout Edge Function with plan/cycle then opens the returned url", async () => {
+    invokeFn.mockResolvedValueOnce({
+      data: { checkout_url: "https://lexena.lemonsqueezy.com/buy/abc" },
+      error: null,
+    });
     (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      opened_url: "https://lemonsqueezy.com/buy/foo?checkout[custom][user_id]=abc",
+      opened_url: "https://lexena.lemonsqueezy.com/buy/abc",
     });
 
-    const result = await openCheckout({
-      plan: PLANS.starter_monthly,
-      user_id: "abc",
-      email: "alice@example.com",
-    });
+    const result = await openCheckout({ tier: "starter", cycle: "monthly" });
 
+    expect(invokeFn).toHaveBeenCalledWith("lemonsqueezy-create-checkout", {
+      body: { plan: "starter", cycle: "monthly" },
+    });
     expect(invoke).toHaveBeenCalledWith("open_checkout", {
-      checkoutUrl: PLANS.starter_monthly.checkout_url,
-      userId: "abc",
-      email: "alice@example.com",
+      checkoutUrl: "https://lexena.lemonsqueezy.com/buy/abc",
     });
     expect(result.opened_url).toContain("lemonsqueezy.com");
   });
 
-  it("passes null email when not provided", async () => {
-    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ opened_url: "x" });
-    await openCheckout({ plan: PLANS.pro_annual, user_id: "u1" });
-    expect(invoke).toHaveBeenCalledWith("open_checkout", expect.objectContaining({ email: null }));
+  it("throws when the Edge Function returns an error", async () => {
+    invokeFn.mockResolvedValueOnce({ data: null, error: { message: "ls_api_error" } });
+    await expect(openCheckout({ tier: "pro", cycle: "annual" })).rejects.toThrow(
+      /create_checkout_failed/,
+    );
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("throws when the Edge Function returns no url", async () => {
+    invokeFn.mockResolvedValueOnce({ data: {}, error: null });
+    await expect(openCheckout({ tier: "pro", cycle: "monthly" })).rejects.toThrow(/missing url/);
   });
 });

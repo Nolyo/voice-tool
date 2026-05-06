@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 
-// Stub localStorage / navigator before any module under test loads, since
-// `@/i18n` (transitively imported by SubscribeButton via useTranslation init)
-// reads them at module load time. jsdom provides them by default but we keep
-// this defensive stub in line with src/components/settings/sections/AccountSection.aal2-disable.test.ts.
 vi.hoisted(() => {
   const store = new Map<string, string>();
   const localStorageStub = {
@@ -46,31 +42,12 @@ vi.mock("@/lib/billing/checkout", () => ({
   openCheckout: vi.fn().mockResolvedValue({ opened_url: "https://ls/x" }),
 }));
 
-// Import the i18n config so useTranslation("billing") returns real strings.
 import "@/i18n";
 import { openCheckout } from "@/lib/billing/checkout";
+import { SubscribeButton } from "./SubscribeButton";
 
-describe("SubscribeButton (with stubbed env)", () => {
-  // PLANS is built at module-init time from `import.meta.env.VITE_LS_*`.
-  // Stub the env vars BEFORE importing SubscribeButton so the resulting
-  // plans have real (non-PLACEHOLDER) variant_ids/slugs.
-  beforeAll(async () => {
-    vi.stubEnv("VITE_LS_STARTER_MONTHLY_VARIANT_ID", "111");
-    vi.stubEnv("VITE_LS_STARTER_MONTHLY_SLUG", "starter-monthly");
-    vi.stubEnv("VITE_LS_STARTER_ANNUAL_VARIANT_ID", "112");
-    vi.stubEnv("VITE_LS_STARTER_ANNUAL_SLUG", "starter-annual");
-    vi.stubEnv("VITE_LS_PRO_MONTHLY_VARIANT_ID", "211");
-    vi.stubEnv("VITE_LS_PRO_MONTHLY_SLUG", "pro-monthly");
-    vi.stubEnv("VITE_LS_PRO_ANNUAL_VARIANT_ID", "212");
-    vi.stubEnv("VITE_LS_PRO_ANNUAL_SLUG", "pro-annual");
-  });
-
-  afterAll(() => {
-    vi.unstubAllEnvs();
-  });
-
+describe("SubscribeButton", () => {
   it("toggles between monthly and annual cycle", async () => {
-    const { SubscribeButton } = await import("./SubscribeButton");
     render(<SubscribeButton />);
     expect(screen.getByRole("button", { name: /Mensuel|Monthly/i })).toHaveAttribute(
       "aria-pressed",
@@ -83,36 +60,20 @@ describe("SubscribeButton (with stubbed env)", () => {
     );
   });
 
-  it("calls openCheckout with the selected plan", async () => {
-    const { SubscribeButton } = await import("./SubscribeButton");
+  it("calls openCheckout with the selected tier and cycle", async () => {
     render(<SubscribeButton />);
     fireEvent.click(screen.getAllByRole("button", { name: /S'abonner|Subscribe/i })[0]);
     await waitFor(() =>
-      expect(openCheckout).toHaveBeenCalledWith(
-        expect.objectContaining({ user_id: "u1", email: "alice@test.local" }),
-      ),
+      expect(openCheckout).toHaveBeenCalledWith({ tier: "starter", cycle: "monthly" }),
     );
   });
-});
 
-describe("SubscribeButton (PLACEHOLDER guard)", () => {
-  it("does not call openCheckout when variant_id is PLACEHOLDER", async () => {
-    // Force PLACEHOLDER state by unstubbing env vars and resetting the module
-    // graph so plans.ts re-evaluates with the `?? "PLACEHOLDER"` fallback.
-    vi.unstubAllEnvs();
-    vi.resetModules();
-
-    const { SubscribeButton } = await import("./SubscribeButton");
-    const checkoutMod = await import("@/lib/billing/checkout");
-    const openCheckoutMock = vi.mocked(checkoutMod.openCheckout);
-    openCheckoutMock.mockClear();
-
-    const consoleErr = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("uses the annual cycle after toggling", async () => {
     render(<SubscribeButton />);
-    fireEvent.click(screen.getAllByRole("button", { name: /S'abonner|Subscribe/i })[0]);
-    await new Promise((r) => setTimeout(r, 0));
-    expect(openCheckoutMock).not.toHaveBeenCalled();
-    expect(consoleErr).toHaveBeenCalledWith(expect.stringContaining("PLACEHOLDER"));
-    consoleErr.mockRestore();
+    fireEvent.click(screen.getByRole("button", { name: /Annuel|Annual/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /S'abonner|Subscribe/i })[1]);
+    await waitFor(() =>
+      expect(openCheckout).toHaveBeenCalledWith({ tier: "pro", cycle: "annual" }),
+    );
   });
 });
