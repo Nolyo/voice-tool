@@ -6,12 +6,19 @@ export interface CheckoutOpenResult {
   opened_url: string;
 }
 
-/**
- * Crée un checkout Lemon Squeezy à la volée via l'Edge Function dédiée,
- * puis ouvre l'URL retournée dans le navigateur par défaut. Le user_id
- * est attaché côté serveur dans `checkout_data.custom`, donc le webhook
- * peut rattacher l'abonnement sans qu'on le passe en query string.
- */
+async function describeFunctionsError(error: unknown): Promise<string> {
+  // supabase-js wraps non-2xx responses in FunctionsHttpError, which carries
+  // the original Response on `.context`. Without unwrapping, the message is
+  // a generic "Edge Function returned a non-2xx status code", which makes
+  // diagnosis impossible in production builds where DevTools is unavailable.
+  const ctx = (error as { context?: Response }).context;
+  if (ctx instanceof Response) {
+    const body = await ctx.text().catch(() => "");
+    return `${ctx.status} ${body || ctx.statusText}`;
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 export async function openCheckout(params: {
   tier: PlanTier;
   cycle: BillingCycle;
@@ -20,7 +27,10 @@ export async function openCheckout(params: {
     "lemonsqueezy-create-checkout",
     { body: { plan: params.tier, cycle: params.cycle } },
   );
-  if (error) throw new Error(`create_checkout_failed: ${error.message}`);
+  if (error) {
+    const detail = await describeFunctionsError(error);
+    throw new Error(`create_checkout_failed: ${detail}`);
+  }
   if (!data?.checkout_url) throw new Error("create_checkout_failed: missing url");
 
   return await invoke<CheckoutOpenResult>("open_checkout", {

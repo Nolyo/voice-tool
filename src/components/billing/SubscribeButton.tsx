@@ -11,14 +11,18 @@ export function SubscribeButton() {
   const { user } = useAuth();
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
   const [loadingTier, setLoadingTier] = useState<PlanTier | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubscribe = async (tier: PlanTier) => {
     if (!user) return;
+    setErrorMessage(null);
     setLoadingTier(tier);
     try {
       await openCheckout({ tier, cycle });
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error("[billing] checkout failed:", err);
+      setErrorMessage(msg);
     } finally {
       setLoadingTier(null);
     }
@@ -54,6 +58,15 @@ export function SubscribeButton() {
           <span className="ml-2 text-xs opacity-75">{t("cycle.annual_savings")}</span>
         </button>
       </div>
+
+      {errorMessage && (
+        <div
+          role="alert"
+          className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+        >
+          <code className="break-all">{errorMessage}</code>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {(["starter", "pro"] as PlanTier[]).map((tier) => {
