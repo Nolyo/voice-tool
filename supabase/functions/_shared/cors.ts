@@ -1,9 +1,11 @@
 // Allowlist of origins permitted to call our Edge Functions.
-// - tauri://localhost      → macOS / Linux Tauri webview
-// - https://tauri.localhost → Windows WebView2
-// - http://localhost:1420  → Vite dev server (pnpm dev)
+// - tauri://localhost       → macOS / Linux Tauri webview
+// - http(s)://tauri.localhost → Windows WebView2 (scheme depends on Tauri
+//   version; recent builds use http, older ones used https)
+// - http://localhost:1420   → Vite dev server (pnpm dev)
 const ALLOWED_ORIGINS: ReadonlySet<string> = new Set([
   "tauri://localhost",
+  "http://tauri.localhost",
   "https://tauri.localhost",
   "http://localhost:1420",
 ]);
