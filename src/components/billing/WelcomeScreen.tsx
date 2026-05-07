@@ -39,7 +39,7 @@ export function WelcomeScreen({ onComplete }: { onComplete: () => void }) {
   }) as string[];
 
   const handleBranchA = () => {
-    openAuthModal("signup");
+    openAuthModal();
     // Once the auth modal is open, the user will either sign up (and become
     // signed-in), or close the modal and re-trigger first-run. Either way,
     // we close this dialog so the user can interact with the AuthModal.

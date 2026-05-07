@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
-import { SignInPanel } from "./SignInPanel";
+import { UnifiedAuthForm } from "./UnifiedAuthForm";
 import { ResetPasswordRequestView } from "./ResetPasswordRequestView";
 import { ResetPasswordConfirmView } from "./ResetPasswordConfirmView";
 import { TwoFactorChallengeView } from "./TwoFactorChallengeView";
@@ -19,7 +19,6 @@ export function AuthModal() {
     isAuthModalOpen,
     closeAuthModal,
     mfaChallenge,
-    initialAuthMode,
     deepLinkError,
     clearDeepLinkError,
   } = useAuth();
@@ -85,7 +84,7 @@ export function AuthModal() {
           </div>
         )}
         {view === "signin" && (
-          <SignInPanel onNavigate={setView} initialMode={initialAuthMode} />
+          <UnifiedAuthForm onNavigate={setView} />
         )}
         {view === "reset-request" && (
           <div className="p-5">

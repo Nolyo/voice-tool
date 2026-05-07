@@ -57,13 +57,13 @@ import "@/i18n";
 import { WelcomeScreen } from "./WelcomeScreen";
 
 describe("WelcomeScreen", () => {
-  it("opens auth modal in signup mode on branch A click", () => {
+  it("opens auth modal on branch A click", () => {
     const onComplete = vi.fn();
     render(<WelcomeScreen onComplete={onComplete} />);
     fireEvent.click(
       screen.getByRole("button", { name: /Créer mon compte|Create my account/i }),
     );
-    expect(openAuthModal).toHaveBeenCalledWith("signup");
+    expect(openAuthModal).toHaveBeenCalledWith();
     expect(onComplete).toHaveBeenCalled();
   });
 
