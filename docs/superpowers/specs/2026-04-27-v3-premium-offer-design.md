@@ -26,7 +26,7 @@ Le sous-épique `04-billing` était cadré comme stub avec une question critique
 | Q1 | Positionnement | Deux modes mutuellement exclusifs : **local gratuit illimité** OU **cloud Voice Tool payant**. Retrait BYOK (OpenAI/Groq) au lancement v3.2. |
 | Q2 | Frontière free / paid | Local = transcription brute (whisper-rs). Cloud payant = transcription managée + post-process IA. Sync settings reste gratuite pour tous. |
 | Q3 | Modèle tarifaire | Abonnement mensuel à quota inclus + dépassement payant. Plan unique dupliqué en deux tiers (Starter / Pro). Pas de plan illimité (risque de marge). |
-| Q4 | Grille tarifaire | **Starter** : 5€/mois (49€/an) — 400 min — 0,03€/min dépassement. **Pro** : 9€/mois (89€/an) — 1000 min — 0,02€/min. Annuel à -18%. |
+| Q4 | Grille tarifaire | **Starter** : 5€/mois (49€/an) — Lorsque je clique sur subscribe min — 0,03€/min dépassement. **Pro** : 9€/mois (89€/an) — 1000 min — 0,02€/min. Annuel à -18%. |
 | Q5 | Essai gratuit | 60 min de crédit cloud + 30 jours calendaires. Premier des deux qui s'épuise termine l'essai. Sans CB demandée. |
 | Q6 | Déclenchement essai | À la **vérification email** (compte actif). Si email jamais vérifié → pas de crédit, pas d'horloge. |
 | Q7 | Comportement à expiration | Hard expiry au jour J (pas de grâce — Lemon Squeezy gère déjà les retry CB). Popup à la prochaine action cloud avec liens "Renouveler" / "Télécharger modèle local". |
