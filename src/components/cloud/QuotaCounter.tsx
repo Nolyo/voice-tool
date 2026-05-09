@@ -13,7 +13,7 @@ export function QuotaCounter() {
   const { t } = useTranslation("cloud");
   const { user } = useAuth();
   const { hasCloudSelected } = useCloud();
-  const { trial, monthly_minutes_used, plan, loading } = useUsage();
+  const { trial, monthly_minutes_breakdown, plan, loading } = useUsage();
 
   // Only surface the quota pill when the user actually opted into Lexena
   // Cloud. Showing it for users still on Local / their own keys would suggest
@@ -36,7 +36,10 @@ export function QuotaCounter() {
   }
 
   if (plan) {
-    const remaining = Math.max(plan.quota_minutes - monthly_minutes_used, 0);
+    const remaining = Math.max(
+      plan.quota_minutes - Math.floor(monthly_minutes_breakdown.quota),
+      0,
+    );
     return (
       <div
         className="text-xs vt-mono text-muted-foreground px-2 py-1 rounded-md border border-border bg-card/40"
