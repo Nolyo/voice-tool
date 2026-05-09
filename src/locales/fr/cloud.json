@@ -33,7 +33,7 @@
     },
     "section": {
       "plan_title": "Abonnement",
-      "current_plan": "Plan {{tier}} — {{quota}} minutes incluses par mois",
+      "current_plan": "Abonnement {{tier}} — {{quota}} minutes incluses par mois",
       "manage_cta": "Gérer mon abonnement"
     }
   },
