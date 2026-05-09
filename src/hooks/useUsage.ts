@@ -1,9 +1,15 @@
 import { useContext } from "react";
-import { CloudContext, type TrialStatus, type UsagePlan } from "@/contexts/CloudContext";
+import {
+  CloudContext,
+  type TrialStatus,
+  type UsagePlan,
+} from "@/contexts/CloudContext";
+import type { MonthlyBreakdown } from "@/lib/usage/breakdown";
 
 interface UsageData {
   trial: TrialStatus;
   monthly_minutes_used: number;
+  monthly_minutes_breakdown: MonthlyBreakdown;
   plan: UsagePlan | null;
   loading: boolean;
   refresh: () => Promise<void>;
@@ -18,6 +24,7 @@ export function useUsage(): UsageData {
   return {
     trial: ctx.trial,
     monthly_minutes_used: ctx.monthly_minutes_used,
+    monthly_minutes_breakdown: ctx.monthly_minutes_breakdown,
     plan: ctx.plan,
     loading: ctx.usageLoading,
     refresh: ctx.refreshUsage,
