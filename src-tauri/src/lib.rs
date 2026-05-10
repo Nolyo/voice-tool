@@ -128,7 +128,6 @@ pub fn run() {
             commands::system::get_device_info,
             commands::files::delete_recording_files,
             commands::ai::ai_process_text,
-            commands::ai::post_process_text,
             notes::list_notes,
             notes::read_note,
             notes::create_note,

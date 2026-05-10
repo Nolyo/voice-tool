@@ -25,10 +25,12 @@ export function MiniShell() {
     language,
     provider,
   } = useMiniWindowState();
-  const translateDisabled = provider === "Groq";
-  const translateDisabledReason = translateDisabled
-    ? t("mini.translateUnsupportedGroq")
-    : undefined;
+  // Translate mode is supported on every active provider (Local + Cloud) since
+  // Phase A retired Groq Whisper. Keep the variable wired for downstream props
+  // in case a future provider needs to opt out.
+  void provider;
+  const translateDisabled = false;
+  const translateDisabledReason: string | undefined = undefined;
   const layout = useMiniWindowSize();
 
   // Transparent background for the frameless window. We also apply the

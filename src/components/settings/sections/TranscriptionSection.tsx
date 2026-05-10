@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
 import { useModelDownload } from "@/hooks/useModelDownload";
-import { ApiConfigDialog } from "@/components/common/ApiConfigDialog";
 import {
-  Callout,
   PickerCardGrid,
   Row,
   SectionHeader,
@@ -15,7 +13,7 @@ import {
 
 const ACCENT = "var(--vt-violet)";
 
-type Provider = "OpenAI" | "Google" | "Local" | "Groq" | "LexenaCloud";
+type Provider = "Local" | "LexenaCloud";
 type LocalModel =
   | "tiny"
   | "base"
@@ -51,32 +49,7 @@ export function TranscriptionSection() {
         </ProviderBadge>
       ),
     },
-    {
-      id: "OpenAI" as Provider,
-      title: t("settings.transcription.providerOpenai"),
-      sub: t("settings.transcription.providerOpenaiSub"),
-      dot: "var(--vt-ok)",
-      badge: (
-        <ProviderBadge color="var(--vt-warn)">
-          {t("settings.transcription.providerSunsetBadge")}
-        </ProviderBadge>
-      ),
-    },
-    {
-      id: "Groq" as Provider,
-      title: t("settings.transcription.providerGroq"),
-      sub: t("settings.transcription.providerGroqSub"),
-      dot: "var(--vt-danger)",
-      badge: (
-        <ProviderBadge color="var(--vt-warn)">
-          {t("settings.transcription.providerSunsetBadge")}
-        </ProviderBadge>
-      ),
-    },
   ];
-
-  const hasOpenaiKey = settings.openai_api_key.trim().length > 0;
-  const hasGroqKey = settings.groq_api_key.trim().length > 0;
 
   return (
     <div className="vt-anim-fade-up space-y-5">
@@ -90,10 +63,7 @@ export function TranscriptionSection() {
 
         <Row
           label={t("settings.transcription.provider")}
-          hint={t("settings.transcription.providerHint", {
-            defaultValue:
-              "Change le service de transcription. Chacun a ses compromis vitesse / coût / confidentialité.",
-          })}
+          hint={t("settings.transcription.providerHint")}
         >
           <PickerCardGrid
             value={settings.transcription_provider}
@@ -102,19 +72,6 @@ export function TranscriptionSection() {
             columns={2}
           />
         </Row>
-
-        {(settings.transcription_provider === "OpenAI" ||
-          settings.transcription_provider === "Groq") && (
-          <div className="vt-row">
-            <Callout
-              kind="warn"
-              icon={<VtIcon.alert />}
-              title={t("settings.transcription.sunsetNoticeTitle")}
-            >
-              {t("settings.transcription.sunsetNotice")}
-            </Callout>
-          </div>
-        )}
 
         <Row
           label={t("settings.transcription.language")}
@@ -135,47 +92,6 @@ export function TranscriptionSection() {
             <option value="de-DE">{t("settings.transcription.languageDe")}</option>
           </select>
         </Row>
-
-        {(settings.transcription_provider === "OpenAI" ||
-          settings.transcription_provider === "Groq") && (
-          <div className="vt-row">
-            <Callout
-              kind="warn"
-              icon={<VtIcon.alert />}
-              title={t("settings.transcription.paidWarningTitle", {
-                defaultValue: "Service payant",
-              })}
-            >
-              {t("settings.transcription.paidWarning")}
-            </Callout>
-          </div>
-        )}
-
-        {settings.transcription_provider === "Groq" && (
-          <Row
-            label={t("settings.transcription.groqModel")}
-            hint={t("settings.transcription.groqInfo")}
-          >
-            <select
-              className="vt-select"
-              value={settings.groq_model}
-              onChange={(e) =>
-                updateSetting(
-                  "groq_model",
-                  e.target.value as "whisper-large-v3-turbo" | "whisper-large-v3",
-                )
-              }
-              style={{ maxWidth: 320 }}
-            >
-              <option value="whisper-large-v3-turbo">
-                {t("settings.transcription.groqModelTurbo")} ⭐
-              </option>
-              <option value="whisper-large-v3">
-                {t("settings.transcription.groqModelLargeV3")}
-              </option>
-            </select>
-          </Row>
-        )}
 
         {settings.transcription_provider === "Local" && (
           <>
@@ -308,30 +224,6 @@ export function TranscriptionSection() {
         )}
 
         <Row
-          label={t("settings.transcription.apiKeysLabel", {
-            defaultValue: "Clés API",
-          })}
-          hint={t("settings.transcription.apiKeyHelp")}
-          align="start"
-        >
-          <div className="flex flex-col gap-2">
-            <ApiKeyRow
-              name="OpenAI"
-              maskedKey={settings.openai_api_key}
-              present={hasOpenaiKey}
-            />
-            <ApiKeyRow
-              name="Groq"
-              maskedKey={settings.groq_api_key}
-              present={hasGroqKey}
-            />
-            <div className="mt-1">
-              <ApiConfigDialog />
-            </div>
-          </div>
-        </Row>
-
-        <Row
           label={t("settings.transcription.smartFormatting")}
           hint={t("settings.transcription.smartFormattingHint")}
         >
@@ -369,52 +261,5 @@ function ProviderBadge({ color, children }: ProviderBadgeProps) {
     >
       {children}
     </span>
-  );
-}
-
-interface ApiKeyRowProps {
-  name: string;
-  maskedKey: string;
-  present: boolean;
-}
-
-function ApiKeyRow({ name, maskedKey, present }: ApiKeyRowProps) {
-  const { t } = useTranslation();
-  const masked =
-    maskedKey.length > 8
-      ? `${maskedKey.slice(0, 3)}${"•".repeat(Math.max(0, maskedKey.length - 6))}${maskedKey.slice(-3)}`
-      : undefined;
-
-  return (
-    <div
-      className="flex items-center justify-between px-3 h-11 rounded-lg"
-      style={{ background: "var(--vt-surface)", border: "1px solid var(--vt-border)" }}
-    >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span
-          className={`w-2 h-2 rounded-full shrink-0 ${present ? "vt-anim-pulse-dot" : ""}`}
-          style={
-            present
-              ? { background: "var(--vt-ok)", boxShadow: "0 0 6px var(--vt-ok)" }
-              : { background: "var(--vt-fg-4)" }
-          }
-        />
-        <span className="text-[13px] font-medium">{name}</span>
-        {present ? (
-          <span
-            className="vt-mono text-[11px] truncate"
-            style={{ color: "var(--vt-fg-4)" }}
-          >
-            {masked}
-          </span>
-        ) : (
-          <span className="text-[11px]" style={{ color: "var(--vt-fg-4)" }}>
-            {t("settings.transcription.apiKeyMissing", {
-              defaultValue: "Non configurée",
-            })}
-          </span>
-        )}
-      </div>
-    </div>
   );
 }

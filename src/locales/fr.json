@@ -35,8 +35,6 @@
   },
   "postProcess": {
     "processing": "Post-traitement IA en cours...",
-    "missingKey": "Clé API manquante pour le post-traitement. Renseigne-la dans les paramètres.",
-    "missingCustomPrompt": "Instruction personnalisée vide. Remplis-la dans l'onglet Post Process.",
     "error": "Post-traitement IA échoué : {{error}}"
   },
   "sidebar": {
@@ -127,7 +125,7 @@
     "transcribing": "Transcription en cours...",
     "recording": "Enregistrement en cours...",
     "clickToStart": "Cliquez pour commencer",
-    "transcribingDetail": "Traitement de votre audio avec OpenAI Whisper...",
+    "transcribingDetail": "Traitement de votre audio…",
     "recordingDetail": "Parlez clairement dans votre microphone",
     "idleDetail": "Votre transcription apparaîtra automatiquement",
     "shortcutsHint": "{{toggle}} · Maintenir {{ptt}}"
@@ -295,26 +293,16 @@
       "title": "Transcription",
       "subtitle": "Convertir ta voix en texte",
       "provider": "Fournisseur",
-      "providerOpenai": "OpenAI Whisper",
       "providerLocal": "Local",
-      "providerGroq": "Groq (Cloud)",
       "providerLexenaCloud": "Lexena Cloud",
       "providerLexenaCloudSub": "infra Lexena · sans clé API",
       "providerComingSoonBadge": "Bientôt",
       "providerBetaBadge": "Bêta",
-      "providerSunsetBadge": "Retiré bientôt",
-      "sunsetNoticeTitle": "Fournisseur bientôt retiré",
-      "sunsetNotice": "OpenAI et Groq seront retirés des fournisseurs de transcription dans une prochaine version. Bascule sur Local (gratuit, hors-ligne) ou Lexena Cloud.",
-      "groqInfo": "Whisper ultra-rapide hébergé sur Groq. Nécessite une clé API Groq.",
-      "groqModel": "Modèle Groq",
-      "groqModelTurbo": "whisper-large-v3-turbo (le plus rapide, le moins cher)",
-      "groqModelLargeV3": "whisper-large-v3 (le plus précis)",
       "language": "Langue",
       "languageFr": "Français",
       "languageEn": "English",
       "languageEs": "Español",
       "languageDe": "Deutsch",
-      "paidWarning": "Ce service est payant à l'usage. Utilisez le mode Local pour une transcription gratuite et privée.",
       "whisperModel": "Modèle Whisper",
       "modelTiny": "Tiny (39 MB) - Très Rapide",
       "modelBase": "Base (74 MB) - Recommandé",
@@ -333,16 +321,9 @@
       "keepModelInMemoryAuto": "Auto",
       "translateMode": "Mode Traduction",
       "translateModeDesc": "Parler en français, écrire en anglais",
-      "translateOpenaiInfo": "Utilise OpenAI Whisper pour traduire vers l'anglais",
-      "apiKeyHelp": "Utilisé par la transcription en ligne et l'assistant IA dans les notes. Non requis si vous utilisez uniquement la transcription locale.",
-      "providerHint": "Change le service de transcription. Chacun a ses compromis vitesse / coût / confidentialité.",
+      "providerHint": "Change le service de transcription. Local est gratuit et tourne sur ta machine ; Lexena Cloud passe par notre infra managée.",
       "languageHint": "Langue parlée principale. Améliore la précision de la transcription.",
       "whisperModelHint": "Plus le modèle est grand, plus il est précis mais lent et lourd.",
-      "paidWarningTitle": "Service payant",
-      "apiKeysLabel": "Clés API",
-      "apiKeyMissing": "Non configurée",
-      "providerOpenaiSub": "whisper-1 · qualité",
-      "providerGroqSub": "whisper-v3 · rapide",
       "providerLocalSub": "hors-ligne · CPU/GPU",
       "smartFormatting": "Formatage intelligent (ponctuation, majuscules, espaces)",
       "smartFormattingHint": "Corrige majuscules, ponctuation et espaces sur la sortie Whisper."
@@ -375,25 +356,16 @@
     },
     "postProcess": {
       "title": "Post Process",
-      "subtitle": "Reformate la transcription avec une IA (OpenAI ou Groq)",
+      "subtitle": "Reformate la transcription avec l'IA Lexena Cloud",
       "enable": "Activer le post-traitement IA",
-      "enableDesc": "Après chaque transcription, le texte est repassé par une IA selon le mode choisi.",
+      "enableDesc": "Après chaque transcription, le texte est repassé par notre IA selon le mode choisi.",
       "delayWarning": "Un appel IA ajoute 1 à 3 secondes avant que le texte soit inséré.",
-      "provider": "Fournisseur IA",
-      "providerOpenai": "OpenAI",
-      "providerGroq": "Groq",
-      "missingKey": "Clé API {{provider}} manquante. Configure-la dans l'onglet Transcription avant d'activer ce mode.",
       "mode": "Mode de reformatage",
-      "customPrompt": "Instruction personnalisée",
-      "customPromptPlaceholder": "Ex : Transforme la dictée en note Jira avec des sections 'Contexte', 'Travail à faire', 'Critères d'acceptation'.",
-      "customPromptRequired": "Saisis une instruction avant d'utiliser ce mode.",
       "delayWarningTitle": "Latence supplémentaire",
-      "providerHint": "Service appelé pour la reformulation.",
-      "missingKeyTitle": "Clé API manquante",
       "modeHint": "Détermine le style appliqué à la sortie.",
-      "customPromptHint": "Instruction utilisée par l'IA sur chaque dictée.",
-      "keyActiveTitle": "Clé {{provider}} active",
-      "keyActiveBody": "Le post-traitement s'appliquera après chaque transcription.",
+      "cloudUpsellTitle": "Disponible avec Lexena Cloud",
+      "cloudUpsellBody": "Le post-traitement IA est inclus dans les offres payantes (essai ou abonnement actif).",
+      "cloudUpsellCta": "Voir les offres",
       "modes": {
         "auto": {
           "label": "Auto (détection contextuelle)",
@@ -422,10 +394,6 @@
         "grammar": {
           "label": "Correction grammaticale",
           "desc": "Corrige l'orthographe et la grammaire sans reformuler le fond."
-        },
-        "custom": {
-          "label": "Personnalisé",
-          "desc": "Utilise ta propre instruction IA."
         }
       }
     },
@@ -572,16 +540,6 @@
       "installNow": "Installer maintenant"
     }
   },
-  "apiConfig": {
-    "button": "Configurer les accès API...",
-    "title": "Configuration des accès API",
-    "description": "Entrez vos clés API pour les services de transcription. Ces clés sont stockées localement de manière sécurisée.",
-    "openaiKey": "OpenAI API Key",
-    "openaiKeyPlaceholder": "sk-...",
-    "groqKey": "Clé API Groq",
-    "groqKeyPlaceholder": "gsk_...",
-    "getHelp": "Obtenir une clé sur"
-  },
   "notes": {
     "title": "Notes",
     "newNote": "Nouvelle note",
@@ -723,7 +681,6 @@
     "sendingAudio": "Envoi de l'audio...",
     "processingLocal": "Traitement de l'audio...",
     "postProcessing": "Post-traitement IA...",
-    "translateUnsupportedGroq": "Traduction indisponible avec Groq Whisper",
     "transcriptionSuccess": "Transcription réussie",
     "recordingHint": "Enregistrement…",
     "noTranscriptYet": "Aucune transcription pour l'instant"
@@ -766,11 +723,9 @@
   },
   "onboarding": {
     "welcomeTitle": "Bienvenue ! Configurons la transcription",
-    "welcomeSubtitle": "Pour commencer, choisis comment transcrire tes enregistrements.",
+    "welcomeSubtitle": "Télécharge un modèle local pour transcrire gratuitement et hors-ligne.",
     "choiceLocalTitle": "Local (recommandé)",
     "choiceLocalDesc": "Gratuit, offline, tourne sur ton PC. Nécessite de télécharger un modèle (entre 39 MB et 3 GB).",
-    "choiceApiTitle": "API OpenAI",
-    "choiceApiDesc": "Qualité maximale, requiert internet et une clé API OpenAI (payant à l'usage).",
     "localTitle": "Choisis ton modèle local",
     "localSubtitle": "Le bouton ci-dessous analyse ta machine (RAM, GPU) et te propose le modèle le plus adapté.",
     "analyzing": "Analyse en cours...",
@@ -780,9 +735,7 @@
     "gpuDetected": "GPU discret détecté",
     "gpuDetectedNamed": "GPU discret détecté ({{name}})",
     "noGpu": "pas de GPU discret",
-    "recommendApi": "Ton PC risque d'être limité pour le mode local. On te conseille d'utiliser l'API OpenAI.",
     "recommendationLabel": "Recommandation",
-    "switchToApi": "Passer au mode API",
     "modelToDownload": "Modèle à télécharger",
     "tipLabel": "Astuce",
     "tipBody": "si les transcriptions sont trop lentes, essaie un modèle plus petit. Si ton PC tient la charge, monte d'un cran. À toi de trouver le bon équilibre qualité / vitesse.",
@@ -790,11 +743,6 @@
     "downloadErrorPrefix": "Erreur",
     "downloading": "Téléchargement...",
     "downloadButton": "Télécharger le modèle",
-    "apiTitle": "Configure ton API OpenAI",
-    "apiSubtitleBefore": "Saisis ta clé API OpenAI. Tu peux en créer une sur",
-    "apiKeyLabel": "Clé API",
-    "saving": "Enregistrement...",
-    "save": "Valider",
     "modelQuantizedSuffix": "(quantifié)"
   },
   "modelMissing": {
@@ -1053,7 +1001,7 @@
       "choice_upload_desc": "Tes snippets, hotkeys, dictionnaire seront envoyés au cloud et disponibles sur tes autres devices.",
       "choice_fresh": "Partir d'un setup neuf",
       "choice_fresh_desc": "Ton setup local sera remplacé par l'état cloud existant. Un backup est conservé localement.",
-      "api_keys_notice": "⚠️ Tes clés API (OpenAI, Groq, Google) ne sont jamais synchronisées. Tu les re-saisiras sur tes autres devices.",
+      "api_keys_notice": "⚠️ Les éventuelles clés API locales ne sont jamais synchronisées. Tu les re-saisiras sur tes autres devices.",
       "backup_notice": "ℹ️ Un backup local de ton état actuel est créé automatiquement dans tous les cas.",
       "activate": "Activer",
       "activating": "Activation…"

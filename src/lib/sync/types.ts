@@ -14,6 +14,10 @@ export interface CloudSettingsData {
     sound_effects: boolean;
   };
   transcription: {
+    // Wide enum kept for backward-compat when pulling settings from older clients
+    // that may still hold "OpenAI" | "Google" | "Groq". applyCloudSettings clamps
+    // these legacy values to "Local" before applying. New writes only emit
+    // "Local" | "LexenaCloud".
     provider: "OpenAI" | "Google" | "Local" | "Groq" | "LexenaCloud";
     local_model: string;
   };

@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
+import { useCloud } from "@/hooks/useCloud";
 import {
   Callout,
-  PickerCardGrid,
   Row,
   SectionHeader,
   Toggle,
@@ -11,7 +11,6 @@ import {
 
 const ACCENT = "var(--vt-pin)";
 
-type PostProcessProvider = "OpenAI" | "Groq";
 type PostProcessMode =
   | "auto"
   | "list"
@@ -19,20 +18,12 @@ type PostProcessMode =
   | "formal"
   | "casual"
   | "summary"
-  | "grammar"
-  | "custom";
+  | "grammar";
 
 export function PostProcessSection() {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
-
-  const provider = settings.post_process_provider;
-  const apiKey =
-    provider === "OpenAI" ? settings.openai_api_key : settings.groq_api_key;
-  const hasApiKey = apiKey.trim().length > 0;
-  const missingCustomPrompt =
-    settings.post_process_mode === "custom" &&
-    settings.post_process_custom_prompt.trim().length === 0;
+  const { isCloudEligible } = useCloud();
 
   const modes: PostProcessMode[] = [
     "auto",
@@ -42,7 +33,6 @@ export function PostProcessSection() {
     "casual",
     "summary",
     "grammar",
-    "custom",
   ];
   const recommendedLabel = t("common.recommended", { defaultValue: "Recommandé" });
   const activeModeDesc = t(
@@ -58,7 +48,7 @@ export function PostProcessSection() {
           title={t("settings.postProcess.title")}
           description={t("settings.postProcess.subtitle")}
           trailing={
-            settings.post_process_enabled ? (
+            settings.post_process_enabled && isCloudEligible ? (
               <div
                 className="flex items-center gap-2 text-[11px] px-2.5 h-7 rounded-md vt-mono"
                 style={{
@@ -85,22 +75,38 @@ export function PostProcessSection() {
           hint={t("settings.postProcess.enableDesc")}
         >
           <Toggle
-            on={settings.post_process_enabled}
-            onClick={() =>
+            on={settings.post_process_enabled && isCloudEligible}
+            disabled={!isCloudEligible}
+            onClick={() => {
+              if (!isCloudEligible) return;
               updateSetting(
                 "post_process_enabled",
                 !settings.post_process_enabled,
-              )
-            }
+              );
+            }}
             label={
-              settings.post_process_enabled
-                ? t("common.enabled", { defaultValue: "Activé" })
-                : t("common.disabled", { defaultValue: "Désactivé" })
+              !isCloudEligible
+                ? t("common.disabled", { defaultValue: "Désactivé" })
+                : settings.post_process_enabled
+                  ? t("common.enabled", { defaultValue: "Activé" })
+                  : t("common.disabled", { defaultValue: "Désactivé" })
             }
           />
         </Row>
 
-        {settings.post_process_enabled && (
+        {!isCloudEligible && (
+          <div className="vt-row">
+            <Callout
+              kind="info"
+              icon={<VtIcon.sparkle />}
+              title={t("settings.postProcess.cloudUpsellTitle")}
+            >
+              {t("settings.postProcess.cloudUpsellBody")}
+            </Callout>
+          </div>
+        )}
+
+        {isCloudEligible && settings.post_process_enabled && (
           <>
             <div className="vt-row" style={{ background: "var(--vt-hover-soft)" }}>
               <Callout
@@ -113,52 +119,6 @@ export function PostProcessSection() {
                 {t("settings.postProcess.delayWarning")}
               </Callout>
             </div>
-
-            <Row
-              label={t("settings.postProcess.provider")}
-              hint={t("settings.postProcess.providerHint", {
-                defaultValue: "Service appelé pour la reformulation.",
-              })}
-            >
-              <PickerCardGrid
-                value={provider}
-                onChange={(v) => updateSetting("post_process_provider", v)}
-                options={[
-                  {
-                    id: "OpenAI" as PostProcessProvider,
-                    title: t("settings.postProcess.providerOpenai"),
-                    sub: "gpt-4.1-mini",
-                    dot: "var(--vt-ok)",
-                  },
-                  {
-                    id: "Groq" as PostProcessProvider,
-                    title: t("settings.postProcess.providerGroq"),
-                    sub: "llama-3.3-70b",
-                    dot: "var(--vt-danger)",
-                  },
-                ]}
-                columns={2}
-              />
-            </Row>
-
-            {!hasApiKey && (
-              <div className="vt-row">
-                <Callout
-                  kind="danger"
-                  icon={<VtIcon.alert />}
-                  title={t("settings.postProcess.missingKeyTitle", {
-                    defaultValue: "Clé API manquante",
-                  })}
-                >
-                  {t("settings.postProcess.missingKey", {
-                    provider:
-                      provider === "OpenAI"
-                        ? t("settings.postProcess.providerOpenai")
-                        : t("settings.postProcess.providerGroq"),
-                  })}
-                </Callout>
-              </div>
-            )}
 
             <Row
               label={t("settings.postProcess.mode")}
@@ -195,71 +155,9 @@ export function PostProcessSection() {
                 </span>
               </div>
             </Row>
-
-            {settings.post_process_mode === "custom" && (
-              <Row
-                label={t("settings.postProcess.customPrompt")}
-                hint={
-                  missingCustomPrompt
-                    ? t("settings.postProcess.customPromptRequired")
-                    : t("settings.postProcess.customPromptHint", {
-                        defaultValue: "Instruction utilisée par l'IA sur chaque dictée.",
-                      })
-                }
-                align="start"
-              >
-                <div
-                  className="rounded-lg overflow-hidden"
-                  style={{
-                    border: "1px solid var(--vt-border)",
-                    background: "var(--vt-surface)",
-                  }}
-                >
-                  <div
-                    className="flex items-center justify-between px-3 py-1.5 border-b"
-                    style={{
-                      borderColor: "var(--vt-border)",
-                      background: "var(--vt-hover-soft)",
-                    }}
-                  >
-                    <span
-                      className="vt-mono text-[11px]"
-                      style={{ color: "var(--vt-fg-3)" }}
-                    >
-                      prompt.md
-                    </span>
-                  </div>
-                  <textarea
-                    className="w-full p-3 bg-transparent focus:outline-none vt-mono text-[12.5px] resize-none"
-                    rows={5}
-                    value={settings.post_process_custom_prompt}
-                    onChange={(e) =>
-                      updateSetting("post_process_custom_prompt", e.target.value)
-                    }
-                    placeholder={t("settings.postProcess.customPromptPlaceholder")}
-                    style={{ color: "var(--vt-fg)" }}
-                  />
-                </div>
-              </Row>
-            )}
           </>
         )}
       </div>
-
-      {settings.post_process_enabled && hasApiKey && (
-        <Callout
-          kind="ok"
-          icon={<VtIcon.check />}
-          title={t("settings.postProcess.keyActiveTitle", {
-            defaultValue: `Clé ${provider} active`,
-            provider,
-          })}
-        >
-          {t("settings.postProcess.keyActiveBody", {
-            defaultValue: "Le post-traitement s'appliquera après chaque transcription.",
-          })}
-        </Callout>
-      )}
     </div>
   );
 }
