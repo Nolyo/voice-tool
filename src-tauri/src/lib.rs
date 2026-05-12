@@ -1,7 +1,7 @@
 mod audio;
 mod audio_trim;
 mod auth;
-mod chat;
+mod billing;
 mod cloud;
 mod commands;
 mod folders;
@@ -22,7 +22,39 @@ mod window;
 // Re-export for transcription_local compatibility
 pub use state::{AppState, WhisperCache, WhisperState};
 
-use tauri::Manager;
+use tauri::{AppHandle, Emitter, Manager, Runtime};
+
+/// Route a `lexena://...` URL to the appropriate subsystem.
+///
+/// Today we recognize two destinations:
+/// - `lexena://auth/callback?...` — Supabase Auth (magiclink, oauth, signup, recovery, email_change).
+///   Forwarded to `auth::emit_deep_link_event` which validates the URL shape, buffers
+///   the payload for cold-start, and emits `auth-deep-link-received`.
+/// - `lexena://billing/success` — Lemon Squeezy checkout success redirect.
+///   Emits `billing-checkout-completed` (no payload) so the `CloudContext` can
+///   re-fetch subscription state, and brings the main window forward.
+///
+/// Unknown paths fall through to the auth handler (which will reject them as
+/// `wrong host/path`); this keeps the routing cheap and the rejection logged.
+fn route_deep_link<R: Runtime>(app: &AppHandle<R>, url: &str) {
+    if let Ok(parsed) = url::Url::parse(url) {
+        if parsed.scheme() == "lexena"
+            && parsed.host_str() == Some("billing")
+            && parsed.path() == "/success"
+        {
+            tracing::info!(target: "billing", "billing/success deep link received");
+            if let Err(e) = app.emit("billing-checkout-completed", ()) {
+                tracing::warn!("failed to emit billing-checkout-completed: {}", e);
+            }
+            if let Some(main) = app.get_webview_window("main") {
+                let _ = main.show();
+                let _ = main.set_focus();
+            }
+            return;
+        }
+    }
+    auth::emit_deep_link_event(app, url);
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -37,9 +69,9 @@ pub fn run() {
                 args.len(),
                 has_deep_link
             );
-            // ─── NEW: route deep-link args to auth handler ────────────────────────────
+            // ─── Route deep-link args (auth or billing) ───────────────────────────────
             if let Some(url) = args.iter().find(|a| a.starts_with("lexena://")) {
-                auth::emit_deep_link_event(app, url);
+                route_deep_link(app, url);
             }
             // ─── Preserve existing behavior (bring window forward) ────────────────────
             if let Some(window) = app.get_webview_window("main") {
@@ -94,8 +126,6 @@ pub fn run() {
             commands::system::get_system_info,
             commands::system::get_device_info,
             commands::files::delete_recording_files,
-            commands::ai::ai_process_text,
-            commands::ai::post_process_text,
             notes::list_notes,
             notes::read_note,
             notes::create_note,
@@ -145,6 +175,8 @@ pub fn run() {
             sync::save_export_to_download,
             cloud::transcribe_audio_cloud,
             cloud::post_process_cloud,
+            cloud::notes_assist_cloud,
+            billing::open_checkout,
         ])
         .setup(move |app| {
             // ─── Deep-link: subscribe to live on_open_url events ──────────────────────
@@ -156,7 +188,7 @@ pub fn run() {
                 for url in urls {
                     let s = url.as_str();
                     if s.starts_with("lexena://") {
-                        auth::emit_deep_link_event(&handle, s);
+                        route_deep_link(&handle, s);
                     }
                 }
             });

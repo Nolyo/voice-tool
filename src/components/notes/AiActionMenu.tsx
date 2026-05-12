@@ -8,12 +8,19 @@ interface AiActionMenuProps {
   onAction: (systemPrompt: string) => void;
   isLoading: boolean;
   disabled: boolean;
+  /**
+   * Reason displayed as a native tooltip (`title`) when the menu is disabled.
+   * Used to surface the cloud-eligibility upsell without rendering a separate
+   * banner.
+   */
+  disabledReason?: string;
 }
 
 export function AiActionMenu({
   onAction,
   isLoading,
   disabled,
+  disabledReason,
 }: AiActionMenuProps) {
   const { t } = useTranslation();
   const aiActions = getAI_ACTIONS();
@@ -63,6 +70,7 @@ export function AiActionMenu({
         size="sm"
         className="h-7 text-xs gap-1 text-foreground"
         disabled={disabled || isLoading}
+        title={disabled && disabledReason ? disabledReason : undefined}
         onClick={() => setIsOpen(!isOpen)}
       >
         {isLoading ? (

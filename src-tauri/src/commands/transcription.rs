@@ -5,9 +5,7 @@ use serde::Serialize;
 use tauri::AppHandle;
 
 use crate::audio_trim;
-use crate::transcription::{
-    cleanup_old_recordings, save_audio_to_wav, transcribe_with_groq, transcribe_with_openai,
-};
+use crate::transcription::{cleanup_old_recordings, save_audio_to_wav};
 use crate::transcription_local;
 
 #[derive(Serialize)]
@@ -22,24 +20,20 @@ pub async fn transcribe_audio(
     app_handle: AppHandle,
     audio_samples: Vec<i16>,
     sample_rate: u32,
-    api_key: String,
     language: String,
     keep_last: usize,
-    provider: Option<String>,
     local_model_size: Option<String>,
     dictionary: Option<String>,
     initial_prompt: Option<String>,
     translate: Option<bool>,
     keep_model_in_memory: Option<bool>,
-    groq_model: Option<String>,
     trim_silence: Option<bool>,
 ) -> Result<TranscriptionResponse, String> {
     let translate = translate.unwrap_or(false);
     tracing::info!(
-        "transcribe_audio called with {} samples at {} Hz (Provider: {:?}, Translate: {})",
+        "transcribe_audio called with {} samples at {} Hz (Local, Translate: {})",
         audio_samples.len(),
         sample_rate,
-        provider,
         translate
     );
 
@@ -71,50 +65,23 @@ pub async fn transcribe_audio(
         (true, false) => dict.to_string(),
         (true, true) => String::new(),
     };
-    let effective_provider = provider.as_deref();
 
-    let transcription_result = if effective_provider == Some("Local") {
-        let model = local_model_size.unwrap_or_else(|| "base".to_string());
-        transcription_local::transcribe_local(
-            &app_handle,
-            &audio_samples,
-            sample_rate,
-            &model,
-            &language,
-            &combined_prompt,
-            translate,
-            keep_model_in_memory,
-        )
-        .await
-        .map_err(|e| {
-            tracing::error!("Local transcription failed: {}", e);
-            format!("Local transcription failed: {}", e)
-        })
-    } else if effective_provider == Some("Groq") {
-        let model = groq_model.unwrap_or_else(|| "whisper-large-v3-turbo".to_string());
-        transcribe_with_groq(
-            &wav_path,
-            &api_key,
-            &language,
-            &combined_prompt,
-            translate,
-            &model,
-        )
-        .await
-        .map_err(|e| {
-            tracing::error!("Groq transcription failed: {}", e);
-            format!("Groq transcription failed: {}", e)
-        })
-    } else {
-        transcribe_with_openai(&wav_path, &api_key, &language, &combined_prompt, translate)
-            .await
-            .map_err(|e| {
-                tracing::error!("Transcription failed: {}", e);
-                format!("Transcription failed: {}", e)
-            })
-    };
-
-    let transcription = transcription_result?;
+    let model = local_model_size.unwrap_or_else(|| "base".to_string());
+    let transcription = transcription_local::transcribe_local(
+        &app_handle,
+        &audio_samples,
+        sample_rate,
+        &model,
+        &language,
+        &combined_prompt,
+        translate,
+        keep_model_in_memory,
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Local transcription failed: {}", e);
+        format!("Local transcription failed: {}", e)
+    })?;
 
     let _ = cleanup_old_recordings(&app_handle, keep_last);
 

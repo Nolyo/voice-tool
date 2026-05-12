@@ -5,6 +5,7 @@ import { type FolderMeta } from "@/hooks/useFolders";
 import { useNotesEditorInstance } from "@/hooks/useNotesEditorInstance";
 import { useAiAssistant } from "@/hooks/useAiAssistant";
 import { useLinkEditor } from "@/hooks/useLinkEditor";
+import { useCloud } from "@/hooks/useCloud";
 import { ConfirmDeleteDialog } from "../ConfirmDeleteDialog";
 import { NotesEditorTitleBar } from "./NotesEditorTitleBar";
 import { NotesEditorContent } from "./NotesEditorContent";
@@ -29,7 +30,6 @@ interface NotesEditorProps {
   onRecreateLinkedNote: (title: string) => Promise<string>;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
   onCreateFolder: (name: string) => Promise<FolderMeta>;
-  apiKey: string;
   readNote: (id: string) => Promise<NoteData>;
 }
 
@@ -53,7 +53,6 @@ export function NotesEditor({
   onRecreateLinkedNote,
   onMoveNote,
   onCreateFolder,
-  apiKey,
   readNote,
 }: NotesEditorProps) {
   const { t } = useTranslation();
@@ -80,8 +79,9 @@ export function NotesEditor({
     onContentSaved: bumpBacklinks,
   });
 
-  const ai = useAiAssistant(editor, apiKey);
+  const ai = useAiAssistant(editor);
   const linkEditor = useLinkEditor(editor);
+  const { isCloudEligible } = useCloud();
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
@@ -208,6 +208,7 @@ export function NotesEditor({
           loadedNoteId={loadedNoteId}
           activeNoteId={activeNoteId}
           isAiLoading={ai.state === "loading"}
+          isAiEligible={isCloudEligible}
           onAiAction={ai.processSelection}
           onRequestDelete={() => setConfirmDeleteOpen(true)}
         />

@@ -35,6 +35,9 @@ export function extractCloudSettings(s: AppSettings["settings"]): CloudSettingsD
   };
 }
 
+const VALID_PROVIDERS: ReadonlySet<AppSettings["settings"]["transcription_provider"]> =
+  new Set(["Local", "LexenaCloud"] as const);
+
 export function applyCloudSettings(
   local: AppSettings["settings"],
   cloud: CloudSettingsData
@@ -42,6 +45,13 @@ export function applyCloudSettings(
   const local_model_size = VALID_LOCAL_MODEL_SIZES.has(cloud.transcription.local_model)
     ? (cloud.transcription.local_model as AppSettings["settings"]["local_model_size"])
     : local.local_model_size;
+
+  // Clamp legacy third-party providers (OpenAI/Groq/Google) to Local — Phase A retired BYOK.
+  const transcription_provider = VALID_PROVIDERS.has(
+    cloud.transcription.provider as AppSettings["settings"]["transcription_provider"]
+  )
+    ? (cloud.transcription.provider as AppSettings["settings"]["transcription_provider"])
+    : "Local";
 
   return {
     ...local,
@@ -52,7 +62,7 @@ export function applyCloudSettings(
     open_window_hotkey: cloud.hotkeys.open_window,
     insertion_mode: cloud.features.auto_paste,
     enable_sounds: cloud.features.sound_effects,
-    transcription_provider: cloud.transcription.provider,
+    transcription_provider,
     local_model_size,
   };
 }

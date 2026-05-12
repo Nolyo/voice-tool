@@ -110,6 +110,35 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             delete (merged.settings as Record<string, unknown>).translate_toggle_hotkey;
             migrated = true;
           }
+          // Phase A: drop legacy third-party transcription providers (OpenAI/Groq/Google)
+          // and BYOK keys/options no longer surfaced in the UI.
+          const legacyProvider = rawSettings.transcription_provider;
+          if (
+            legacyProvider === "OpenAI" ||
+            legacyProvider === "Groq" ||
+            legacyProvider === "Google"
+          ) {
+            merged.settings.transcription_provider = "Local";
+            console.info("[settings migration] %s → Local", legacyProvider);
+            migrated = true;
+          }
+          if (rawSettings.post_process_mode === "custom") {
+            merged.settings.post_process_mode = "auto";
+            migrated = true;
+          }
+          for (const k of [
+            "openai_api_key",
+            "groq_api_key",
+            "google_api_key",
+            "groq_model",
+            "post_process_provider",
+            "post_process_custom_prompt",
+          ] as const) {
+            if (k in rawSettings) {
+              delete (merged.settings as Record<string, unknown>)[k];
+              migrated = true;
+            }
+          }
           if (migrated) {
             await storeInstance.set("settings", merged);
             await storeInstance.save();

@@ -15,6 +15,14 @@ export interface PostProcessResult {
   source: CloudUsageSource;
 }
 
+export interface NotesAssistResult {
+  text: string;
+  tokens_in: number;
+  tokens_out: number;
+  request_id: string;
+  source: CloudUsageSource;
+}
+
 export type PostProcessTask = "reformulate" | "correct" | "email" | "summarize";
 export type ModelTier = "mini" | "full";
 

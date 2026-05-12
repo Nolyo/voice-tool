@@ -14,20 +14,14 @@ export interface AppSettings {
     trim_silence: boolean;
 
     // Transcription
-    transcription_provider: "OpenAI" | "Google" | "Local" | "Groq" | "LexenaCloud";
+    transcription_provider: "Local" | "LexenaCloud";
     local_model_size: "tiny" | "base" | "small" | "medium" | "large-v1" | "large-v2" | "large-v3" | "large-v3-turbo" | "large-v3-turbo-q5_0";
-    groq_model: "whisper-large-v3-turbo" | "whisper-large-v3";
     keep_model_in_memory: boolean | null;
     language: string;
     smart_formatting: boolean;
 
     // Translation
     translate_mode: boolean;
-
-    // API Keys
-    openai_api_key: string;
-    google_api_key: string;
-    groq_api_key: string;
 
     // Text
     insertion_mode: "cursor" | "clipboard" | "none";
@@ -74,9 +68,8 @@ export interface AppSettings {
     dictionary: string[];
     whisper_initial_prompt: string;
 
-    // Post-process (AI reformatting after transcription)
+    // Post-process (AI reformatting after transcription, cloud-only)
     post_process_enabled: boolean;
-    post_process_provider: "OpenAI" | "Groq";
     post_process_mode:
       | "auto"
       | "list"
@@ -84,9 +77,7 @@ export interface AppSettings {
       | "formal"
       | "casual"
       | "summary"
-      | "grammar"
-      | "custom";
-    post_process_custom_prompt: string;
+      | "grammar";
   };
 }
 
@@ -107,18 +98,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
     // Transcription
     transcription_provider: "Local",
     local_model_size: "base", // Recommended for old hardware
-    groq_model: "whisper-large-v3-turbo",
     keep_model_in_memory: null, // null = auto (GPU: keep, CPU: unload after 2min)
     language: "fr-FR",
     smart_formatting: true,
 
     // Translation
     translate_mode: false,
-
-    // API Keys
-    openai_api_key: "",
-    google_api_key: "",
-    groq_api_key: "",
 
     // Text
     insertion_mode: "cursor",
@@ -164,9 +149,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Post-process
     post_process_enabled: false,
-    post_process_provider: "OpenAI",
     post_process_mode: "auto",
-    post_process_custom_prompt: "",
   },
 };
 

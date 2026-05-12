@@ -14,12 +14,7 @@ export type WindowStatus =
   | "success"
   | "error";
 
-export type TranscriptionProvider =
-  | "OpenAI"
-  | "Google"
-  | "Local"
-  | "Groq"
-  | "LexenaCloud";
+export type TranscriptionProvider = "Local" | "LexenaCloud" | "Cloud";
 
 export type VisualizerMode = "bars" | "waveform";
 
@@ -131,10 +126,7 @@ export function useMiniWindowState() {
             }
             if (s.language) setLanguage(s.language);
             if (
-              s.transcription_provider === "OpenAI" ||
-              s.transcription_provider === "Google" ||
               s.transcription_provider === "Local" ||
-              s.transcription_provider === "Groq" ||
               s.transcription_provider === "LexenaCloud"
             ) {
               setProvider(s.transcription_provider);
@@ -211,10 +203,9 @@ export function useMiniWindowState() {
         >("transcription-start", async (event) => {
           const payloadProvider = event.payload?.provider;
           if (
-            payloadProvider === "OpenAI" ||
-            payloadProvider === "Google" ||
             payloadProvider === "Local" ||
-            payloadProvider === "Groq"
+            payloadProvider === "LexenaCloud" ||
+            payloadProvider === "Cloud"
           ) {
             setProvider(payloadProvider);
           }
@@ -232,12 +223,7 @@ export function useMiniWindowState() {
           "transcription-provider-changed",
           (event) => {
             const next = event.payload;
-            if (
-              next === "OpenAI" ||
-              next === "Google" ||
-              next === "Local" ||
-              next === "Groq"
-            ) {
+            if (next === "Local" || next === "LexenaCloud") {
               setProvider(next);
             }
           },

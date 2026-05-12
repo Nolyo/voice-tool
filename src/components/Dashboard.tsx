@@ -18,7 +18,8 @@ import {
 } from "./logs/LogsTab";
 import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./common/UpdateModal";
-import { OnboardingWizard } from "./OnboardingWizard";
+import { WelcomeScreen } from "./billing/WelcomeScreen";
+import { ExpirationPopup } from "./billing/ExpirationPopup";
 import { AuthModal } from "./auth/AuthModal";
 import { SelectedModelMissingBanner } from "./SelectedModelMissingBanner";
 import { useSettings } from "@/hooks/useSettings";
@@ -225,6 +226,23 @@ export default function Dashboard() {
     }
   }, [activeTab, settings.developer_mode]);
 
+  // ExpirationPopup → "Renew" button dispatches `lexena:open-settings` so we
+  // can route to the Cloud section without coupling the popup to Dashboard
+  // state. The Cloud section hosts the SubscribeButton.
+  useEffect(() => {
+    const onOpenSettings = (e: Event) => {
+      const detail = (e as CustomEvent<{ section?: SettingsSectionId }>).detail;
+      setActiveTab("parametres");
+      if (detail?.section) {
+        setActiveSettingsSection(detail.section);
+      }
+    };
+    window.addEventListener("lexena:open-settings", onOpenSettings as EventListener);
+    return () => {
+      window.removeEventListener("lexena:open-settings", onOpenSettings as EventListener);
+    };
+  }, []);
+
   return (
     <div className="h-screen flex overflow-hidden bg-background">
       <DashboardSidebar
@@ -304,7 +322,6 @@ export default function Dashboard() {
               onRecreateLinkedNote={handleRecreateLinkedNote}
               onMoveNote={moveNoteToFolder}
               onCreateFolder={createFolder}
-              apiKey={settings.openai_api_key}
               readNote={readNote}
             />
           ) : activeTab === "notes" ? (
@@ -361,7 +378,9 @@ export default function Dashboard() {
         }}
       />
 
-      {showOnboarding && <OnboardingWizard onComplete={recheckOnboarding} />}
+      {showOnboarding && <WelcomeScreen onComplete={recheckOnboarding} />}
+
+      <ExpirationPopup />
 
       <AuthModal />
     </div>

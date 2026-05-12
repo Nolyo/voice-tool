@@ -68,10 +68,12 @@ Voir chaque fichier `XX-*.md` pour le détail.
 | **v2.x → v2.y** | EPIC-07 audit sécurité (remédiation findings critiques/majeurs) | "On consolide avant d'ouvrir" |
 | **v3.0** | 00 + 01 + 02 (auth + sync settings étendus : dico, snippets, prompts, préréglages) | "Crée ton compte, ton setup te suit partout" |
 | **v3.1** | 03 + 06 v1 (sync notes + onboarding) | "Tes notes te suivent partout" |
-| **v3.2** | 04 (billing & gating premium) | "Soutiens le projet, débloque les fonctionnalités premium" |
-| **v3.3** | 05 (service managé transcription) | "Plus besoin de gérer une clé OpenAI" |
+| **v3.2** | 04 (billing & gating premium) ✅ + 05 (service managé transcription) ✅ | "Soutiens le projet, débloque les fonctionnalités premium" |
+| **v3.3+** | Team plans, optimisations, features avancées | — |
 
 Rationale (révisé 2026-04-22): le billing a été décalé en v3.2 pour se concentrer sur la création de compte + sync settings étendus en v3.0. Livre une valeur concrète dès la première release (pas un "compte vide") sans ouvrir les flows complexes billing/notes/service managé en parallèle. Chaque release ajoute une brique autonome.
+
+_Mise à jour 2026-05-05 : 04-billing livré (cf. [ADR 0015](decisions/0015-sub-epic-04-closure.md)). Bundle launch v3.2 = 04-billing + 05-managed-transcription, le tout livré sur le champ. La sync notes (sous-épique 03) est décalée post-launch (cf. `project_v3_phasage_revised.md`)._
 
 ---
 
@@ -90,6 +92,9 @@ Rationale (révisé 2026-04-22): le billing a été décalé en v3.2 pour se con
 - ✅ Account recovery : reset email + 2FA TOTP optionnel + recovery codes à activation 2FA (ADR 0007)
 - ✅ Conflict resolution multi-device : LWW par item + soft-delete + tables séparées (ADR 0008)
 - ✅ Migration données locales : modale choix explicite + backup auto (ADR 0008)
+- ✅ Offre premium (ADR 0013, figé 2026-04-27)
+- ✅ Trial mechanics (ADR 0014, figé 2026-04-27)
+- ✅ Sub-épique 04 livré (ADR 0015, 2026-05-05)
 
 ---
 

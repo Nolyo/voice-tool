@@ -17,16 +17,24 @@
     "loading": "Loading…",
     "nothing_active": "No active trial or subscription. Cloud transcription is disabled.",
     "refresh": "Refresh",
-    "trial": {
-      "heading": "Free trial in progress",
-      "minutes_remaining": "Minutes remaining",
-      "expires_at": "Expires on"
-    },
     "plan": {
       "heading": "{{plan}} plan",
-      "quota_minutes": "Included minutes this month",
-      "minutes_used": "Minutes consumed",
-      "minutes_remaining": "Minutes remaining"
+      "minutes_progress": "Minutes this month",
+      "minutes_progress_value": "{{used}} / {{quota}}"
+    },
+    "bonus": {
+      "heading": "Welcome bonus",
+      "minutes_remaining_one": "{{count}} min left · expires on {{date}}",
+      "minutes_remaining_other": "{{count}} min left · expires on {{date}}",
+      "consumed_first_note": "Consumed before your plan minutes.",
+      "minutes_remaining_standalone_one": "{{count}} min left",
+      "minutes_remaining_standalone_other": "{{count}} min left",
+      "expires_at": "Expires on {{date}}"
+    },
+    "section": {
+      "plan_title": "Subscription",
+      "current_plan": "{{tier}} plan — {{quota}} minutes included per month",
+      "manage_cta": "Manage subscription"
     }
   },
   "errors": {

@@ -17,7 +17,7 @@ describe("mapping AppSettings ↔ Cloud", () => {
     });
   });
 
-  it("applyCloudSettings merges only syncable keys", () => {
+  it("applyCloudSettings merges only syncable keys (clamping legacy provider to Local)", () => {
     const local = { ...DEFAULT_SETTINGS.settings };
     const cloud = {
       ui: { theme: "light" as const, language: "en" as const },
@@ -36,24 +36,37 @@ describe("mapping AppSettings ↔ Cloud", () => {
     expect(merged.record_hotkey).toBe("Ctrl+F5");
     expect(merged.insertion_mode).toBe("clipboard");
     expect(merged.enable_sounds).toBe(false);
-    expect(merged.transcription_provider).toBe("OpenAI");
+    // Legacy "OpenAI" provider clamped to "Local" (Phase A retired BYOK).
+    expect(merged.transcription_provider).toBe("Local");
     expect(merged.local_model_size).toBe("small");
 
     // Non-syncable keys préservées
-    expect(merged.openai_api_key).toBe(local.openai_api_key);
     expect(merged.silence_threshold).toBe(local.silence_threshold);
+    expect(merged.recordings_keep_last).toBe(local.recordings_keep_last);
   });
 
   it("round-trip extract -> apply est idempotent pour les clés syncées", () => {
     const local = {
       ...DEFAULT_SETTINGS.settings,
       theme: "light" as const,
-      transcription_provider: "Groq" as const,
+      transcription_provider: "LexenaCloud" as const,
     };
     const cloud = extractCloudSettings(local);
     const merged = applyCloudSettings(DEFAULT_SETTINGS.settings, cloud);
     expect(merged.theme).toBe("light");
-    expect(merged.transcription_provider).toBe("Groq");
+    expect(merged.transcription_provider).toBe("LexenaCloud");
+  });
+
+  it("applyCloudSettings clamps Groq legacy provider to Local", () => {
+    const local = { ...DEFAULT_SETTINGS.settings };
+    const cloud = {
+      ui: { theme: "dark" as const, language: "fr" as const },
+      hotkeys: { toggle: "x", push_to_talk: "y", open_window: "z" },
+      features: { auto_paste: "cursor" as const, sound_effects: true },
+      transcription: { provider: "Groq" as const, local_model: "tiny" },
+    };
+    const merged = applyCloudSettings(local, cloud);
+    expect(merged.transcription_provider).toBe("Local");
   });
 
   it("applyCloudSettings falls back to local when cloud local_model is unknown", () => {

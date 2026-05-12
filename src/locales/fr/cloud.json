@@ -17,16 +17,24 @@
     "loading": "Chargement…",
     "nothing_active": "Aucun essai ni abonnement actif. La transcription cloud est désactivée.",
     "refresh": "Rafraîchir",
-    "trial": {
-      "heading": "Essai gratuit en cours",
-      "minutes_remaining": "Minutes restantes",
-      "expires_at": "Expire le"
-    },
     "plan": {
       "heading": "Plan {{plan}}",
-      "quota_minutes": "Minutes incluses ce mois",
-      "minutes_used": "Minutes consommées",
-      "minutes_remaining": "Minutes restantes"
+      "minutes_progress": "Minutes ce mois",
+      "minutes_progress_value": "{{used}} / {{quota}}"
+    },
+    "bonus": {
+      "heading": "Bonus de bienvenue",
+      "minutes_remaining_one": "{{count}} min restante · expire le {{date}}",
+      "minutes_remaining_other": "{{count}} min restantes · expire le {{date}}",
+      "consumed_first_note": "Consommées en priorité avant ton plan.",
+      "minutes_remaining_standalone_one": "{{count}} min restante",
+      "minutes_remaining_standalone_other": "{{count}} min restantes",
+      "expires_at": "Expire le {{date}}"
+    },
+    "section": {
+      "plan_title": "Abonnement",
+      "current_plan": "Abonnement {{tier}} — {{quota}} minutes incluses par mois",
+      "manage_cta": "Gérer mon abonnement"
     }
   },
   "errors": {

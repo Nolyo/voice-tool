@@ -4,6 +4,7 @@ import type {
   PostProcessResult,
   PostProcessTask,
   ModelTier,
+  NotesAssistResult,
 } from "./types";
 import { CloudApiError } from "./errors";
 
@@ -19,6 +20,14 @@ export interface PostProcessArgs {
   task: PostProcessTask;
   text: string;
   language?: string;
+  modelTier?: ModelTier;
+  jwt: string;
+  idempotencyKey?: string;
+}
+
+export interface NotesAssistArgs {
+  systemPrompt: string;
+  userText: string;
   modelTier?: ModelTier;
   jwt: string;
   idempotencyKey?: string;
@@ -73,6 +82,19 @@ export async function postProcessCloud(args: PostProcessArgs): Promise<PostProce
       task: args.task,
       text: args.text,
       language: args.language ?? null,
+      modelTier: args.modelTier ?? null,
+      jwt: args.jwt,
+      idempotencyKey,
+    }),
+  );
+}
+
+export async function notesAssistCloud(args: NotesAssistArgs): Promise<NotesAssistResult> {
+  const idempotencyKey = args.idempotencyKey ?? crypto.randomUUID();
+  return withNetworkRetry(() =>
+    invokeWithErrorMapping<NotesAssistResult>("notes_assist_cloud", {
+      systemPrompt: args.systemPrompt,
+      userText: args.userText,
       modelTier: args.modelTier ?? null,
       jwt: args.jwt,
       idempotencyKey,

@@ -1,7 +1,10 @@
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettings } from "@/hooks/useSettings";
+import type { MonthlyBreakdown } from "@/lib/usage/breakdown";
+import { computeBreakdown } from "@/lib/usage/breakdown";
 
 export type CloudMode = "local" | "cloud" | "uninitialized";
 
@@ -32,6 +35,7 @@ export interface CloudContextValue {
   // fetch instead of each mounting their own copy of useUsage.
   trial: TrialStatus;
   monthly_minutes_used: number;
+  monthly_minutes_breakdown: MonthlyBreakdown;
   plan: UsagePlan | null;
   usageLoading: boolean;
   refreshUsage: () => Promise<void>;
@@ -43,12 +47,15 @@ const DEFAULT_TRIAL: TrialStatus = {
   expires_at: null,
 };
 
+const DEFAULT_BREAKDOWN: MonthlyBreakdown = { trial: 0, quota: 0, overage: 0 };
+
 export const CloudContext = createContext<CloudContextValue>({
   mode: "uninitialized",
   isCloudEligible: false,
   hasCloudSelected: false,
   trial: DEFAULT_TRIAL,
   monthly_minutes_used: 0,
+  monthly_minutes_breakdown: DEFAULT_BREAKDOWN,
   plan: null,
   usageLoading: false,
   refreshUsage: async () => {},
@@ -59,6 +66,13 @@ function currentYearMonth(): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+function currentMonthBoundsUtc(): { start: string; end: string } {
+  const d = new Date();
+  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+  const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
 export function CloudProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { settings: { transcription_provider } } = useSettings();
@@ -66,6 +80,8 @@ export function CloudProvider({ children }: { children: ReactNode }) {
   const [eligible, setEligible] = useState(false);
   const [trial, setTrial] = useState<TrialStatus>(DEFAULT_TRIAL);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
+  const [monthlyBreakdown, setMonthlyBreakdown] =
+    useState<MonthlyBreakdown>(DEFAULT_BREAKDOWN);
   const [plan, setPlan] = useState<UsagePlan | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
 
@@ -75,6 +91,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     if (!user) {
       setTrial(DEFAULT_TRIAL);
       setMonthlyUsed(0);
+      setMonthlyBreakdown(DEFAULT_BREAKDOWN);
       setPlan(null);
       setEligible(false);
       setUsageLoading(false);
@@ -83,7 +100,13 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     setUsageLoading(true);
     try {
       const ym = currentYearMonth();
-      const [{ data: trialData }, { data: usage }, { data: sub }] = await Promise.all([
+      const { start, end } = currentMonthBoundsUtc();
+      const [
+        { data: trialData },
+        { data: usage },
+        { data: sub },
+        { data: events },
+      ] = await Promise.all([
         supabase.from("trial_status").select("*").eq("user_id", user.id).maybeSingle(),
         supabase
           .from("usage_summary")
@@ -97,6 +120,13 @@ export function CloudProvider({ children }: { children: ReactNode }) {
           .select("plan, quota_minutes, status")
           .eq("user_id", user.id)
           .maybeSingle(),
+        supabase
+          .from("usage_events")
+          .select("source, units")
+          .eq("user_id", user.id)
+          .eq("kind", "transcription")
+          .gte("created_at", start)
+          .lt("created_at", end),
       ]);
 
       const t: TrialStatus = {
@@ -106,6 +136,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
       };
       setTrial(t);
       setMonthlyUsed(Number(usage?.units_total ?? 0));
+      setMonthlyBreakdown(computeBreakdown(events ?? []));
       setPlan(
         sub && sub.status === "active"
           ? { quota_minutes: Number(sub.quota_minutes), plan: sub.plan as "starter" | "pro" }
@@ -121,6 +152,20 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     refreshUsage();
   }, [refreshUsage]);
 
+  // Refresh subscription/trial state when the user returns from a successful
+  // Lemon Squeezy checkout. The Rust deep-link handler emits this event when
+  // it receives `lexena://billing/success`. By the time the webhook has been
+  // processed by Supabase, the next `refreshUsage()` should observe the new
+  // `subscriptions.status = 'active'` row.
+  useEffect(() => {
+    const unlistenPromise = listen("billing-checkout-completed", () => {
+      void refreshUsage();
+    });
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten()).catch(() => {});
+    };
+  }, [refreshUsage]);
+
   const mode: CloudMode = useMemo(() => {
     if (!user) return "local";
     if (!hasCloudSelected) return "local";
@@ -134,11 +179,22 @@ export function CloudProvider({ children }: { children: ReactNode }) {
       hasCloudSelected,
       trial,
       monthly_minutes_used: monthlyUsed,
+      monthly_minutes_breakdown: monthlyBreakdown,
       plan,
       usageLoading,
       refreshUsage,
     }),
-    [mode, eligible, hasCloudSelected, trial, monthlyUsed, plan, usageLoading, refreshUsage],
+    [
+      mode,
+      eligible,
+      hasCloudSelected,
+      trial,
+      monthlyUsed,
+      monthlyBreakdown,
+      plan,
+      usageLoading,
+      refreshUsage,
+    ],
   );
   return <CloudContext.Provider value={value}>{children}</CloudContext.Provider>;
 }

@@ -1,9 +1,18 @@
 import { useState, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
+import { supabase } from "@/lib/supabase";
+import { notesAssistCloud } from "@/lib/cloud/api";
+import { CloudApiError } from "@/lib/cloud/errors";
 
 export type AiProcessState = "idle" | "loading" | "preview" | "error";
 
+/**
+ * Cloud-only AI helper used by the Notes editor bubble menu. Authenticates
+ * with the user's Supabase session JWT and routes through the managed worker
+ * (no BYOK). The bubble menu UI is responsible for gating itself on
+ * `useCloud().isCloudEligible`; this hook still surfaces clear errors when a
+ * call lands on the worker without an active trial / subscription.
+ */
 export function useAiProcess() {
   const { t } = useTranslation();
   const [state, setState] = useState<AiProcessState>("idle");
@@ -11,13 +20,7 @@ export function useAiProcess() {
   const [error, setError] = useState("");
 
   const processText = useCallback(
-    async (text: string, systemPrompt: string, apiKey: string) => {
-      if (!apiKey.trim()) {
-        setState("error");
-        setError(t('errors.apiKeyNotConfigured'));
-        return;
-      }
-
+    async (text: string, systemPrompt: string) => {
       if (!text.trim()) {
         return;
       }
@@ -26,19 +29,39 @@ export function useAiProcess() {
       setError("");
 
       try {
-        const response = await invoke<string>("ai_process_text", {
-          apiKey,
+        const { data } = await supabase.auth.getSession();
+        const jwt = data.session?.access_token;
+        if (!jwt) {
+          setState("error");
+          setError(t("cloud:errors.signin_required"));
+          return;
+        }
+
+        const response = await notesAssistCloud({
           systemPrompt,
           userText: text,
+          jwt,
         });
-        setResult(response);
+        setResult(response.text);
         setState("preview");
       } catch (e) {
         setState("error");
-        setError(typeof e === "string" ? e : t('errors.aiProcessError'));
+        if (e instanceof CloudApiError) {
+          if (e.isQuotaIssue()) {
+            setError(t("cloud:errors.quota_exhausted"));
+          } else if (e.isAuthIssue()) {
+            setError(t("cloud:errors.auth_expired"));
+          } else if (e.isProviderUnavailable()) {
+            setError(t("cloud:errors.provider_unavailable"));
+          } else {
+            setError(e.message || t("errors.aiProcessError"));
+          }
+        } else {
+          setError(typeof e === "string" ? e : t("errors.aiProcessError"));
+        }
       }
     },
-    [],
+    [t],
   );
 
   const accept = useCallback(() => {

@@ -47,14 +47,14 @@ function aiTextToHtml(text: string): string {
  *
  * - `processSelection` serializes the current selection (or the full
  *   document) to Markdown, stashes it for the preview, and calls the
- *   underlying AI command.
+ *   underlying AI command (cloud-managed, no BYOK).
  * - `accept` parses the Markdown AI result back into HTML and writes it to
  *   the editor — replacing the selection if there was one, or resetting the
  *   whole document otherwise.
  * - Auto-dismisses the error state after 5 s so the banner disappears by
  *   itself.
  */
-export function useAiAssistant(editor: Editor | null, apiKey: string) {
+export function useAiAssistant(editor: Editor | null) {
   const {
     state,
     result,
@@ -78,9 +78,9 @@ export function useAiAssistant(editor: Editor | null, apiKey: string) {
       const { from, to } = editor.state.selection;
       const markdown = editorToMarkdown(editor, from, to);
       setOriginalText(markdown);
-      processText(markdown, systemPrompt, apiKey);
+      processText(markdown, systemPrompt);
     },
-    [editor, processText, apiKey],
+    [editor, processText],
   );
 
   const accept = useCallback(() => {

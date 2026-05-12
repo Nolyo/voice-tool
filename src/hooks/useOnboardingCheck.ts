@@ -39,12 +39,9 @@ export function useOnboardingCheck(
 
   let showOnboarding = false;
   if (isLoaded && anyModelExists !== null) {
+    // Onboarding only matters for the Local provider — Cloud relies on signin/billing.
     if (settings.transcription_provider === "Local")
       showOnboarding = !anyModelExists;
-    else if (settings.transcription_provider === "OpenAI")
-      showOnboarding = !settings.openai_api_key;
-    else if (settings.transcription_provider === "Google")
-      showOnboarding = !settings.google_api_key;
   }
 
   return { showOnboarding, recheck };

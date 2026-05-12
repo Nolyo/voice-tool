@@ -1,29 +1,17 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { supabase, AUTH_CALLBACK_URL } from "@/lib/supabase";
-import { isPwnedPassword } from "@/lib/pwned-passwords";
 import { isDisposableDomain } from "@/lib/email-normalize";
 import { VtIcon } from "@/components/settings/vt";
-import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 import { TurnstileWidget } from "./TurnstileWidget";
 import type { AuthView } from "./AuthModal";
 
-type Mode = "signin" | "signup";
-
 interface Props {
   onNavigate: (v: AuthView) => void;
-  initialMode?: Mode;
 }
-type Method = "magic" | "password";
-type Step = "form" | "sent";
 
-function scorePassword(p: string): 0 | 1 | 2 | 3 {
-  if (!p) return 0;
-  if (p.length < 10) return 1;
-  if (p.length < 14) return 2;
-  return 3;
-}
+type Step = "form" | "sent";
 
 const GoogleIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24">
@@ -62,39 +50,61 @@ const LockIcon = () => (
   </svg>
 );
 
-export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
-  const { t } = useTranslation();
-  const [mode, setMode] = useState<Mode>(initialMode);
-  // Signup always uses password — magic-link only makes sense for sign-in.
-  const [method, setMethod] = useState<Method>(initialMode === "signup" ? "password" : "magic");
-  const [step, setStep] = useState<Step>("form");
+const ChevronIcon = ({ open }: { open: boolean }) => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{
+      transform: open ? "rotate(180deg)" : "rotate(0deg)",
+      transition: "transform 150ms ease",
+    }}
+  >
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
 
+export function UnifiedAuthForm({ onNavigate }: Props) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordExpanded, setPasswordExpanded] = useState(false);
+  const [step, setStep] = useState<Step>("form");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
-  const score = useMemo(() => scorePassword(password), [password]);
-
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (isDisposableDomain(email)) {
+      setError(t("auth.signup.emailDisposable"));
+      return;
+    }
     if (!captchaToken) {
       setError(t("auth.signup.captchaRequired"));
       return;
     }
     setLoading(true);
-    const { error: signinError } = await supabase.auth.signInWithOtp({
+    const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: AUTH_CALLBACK_URL, captchaToken },
+      options: {
+        emailRedirectTo: AUTH_CALLBACK_URL,
+        captchaToken,
+        shouldCreateUser: true,
+      },
     });
     setLoading(false);
     setCaptchaToken(null);
-    // Generic anti-enumeration response
+    // Anti-enumeration : same outcome whether the account exists or not.
     setStep("sent");
-    if (signinError) {
-      console.warn("magic link error (not shown to user)", signinError.message);
+    if (otpError) {
+      console.warn("magic link error (not shown to user)", otpError.message);
     }
   }
 
@@ -111,45 +121,6 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
       setError(t("auth.errors.invalidCredentials"));
     }
     // MFA enforcement happens centrally via AuthContext.
-  }
-
-  async function handleSignup(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (password.length < 10) {
-      setError(t("auth.signup.passwordTooShort"));
-      return;
-    }
-    if (isDisposableDomain(email)) {
-      setError(t("auth.signup.emailDisposable"));
-      return;
-    }
-    setLoading(true);
-    const pwned = await isPwnedPassword(password);
-    if (pwned) {
-      setLoading(false);
-      setError(t("auth.signup.passwordPwned"));
-      return;
-    }
-    if (!captchaToken) {
-      setLoading(false);
-      setError(t("auth.signup.captchaRequired"));
-      return;
-    }
-    const { error: signupError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: AUTH_CALLBACK_URL, captchaToken },
-    });
-    setLoading(false);
-    setCaptchaToken(null);
-    // Generic anti-enumeration response — even canonical-form collisions stay silent.
-    // The DB trigger (migration 20260601000100) still blocks the actual INSERT;
-    // GoTrue masks it as a 500 we deliberately swallow. See ADR 0011.
-    setStep("sent");
-    if (signupError) {
-      console.warn("signup error (not shown to user)", signupError.message);
-    }
   }
 
   async function handleGoogle() {
@@ -178,23 +149,24 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
   }
 
   function onPrimarySubmit(e: React.FormEvent) {
-    if (mode === "signup") return handleSignup(e);
-    if (method === "magic") return handleMagicLink(e);
-    return handlePasswordSignIn(e);
+    if (passwordExpanded) return handlePasswordSignIn(e);
+    return handleMagicLink(e);
   }
 
-  const primaryLabel =
-    mode === "signup"
-      ? t("auth.signup.submit")
-      : method === "magic"
-        ? t("auth.login.magicLinkSubmit")
-        : t("auth.login.title");
+  function togglePasswordExpanded() {
+    setPasswordExpanded((v) => !v);
+    setError(null);
+    if (passwordExpanded) {
+      // Collapsing back — clear password to avoid surprising autofill on re-expand.
+      setPassword("");
+    }
+  }
 
-  // Signup ALWAYS uses password (account creation needs a password); no method toggle in signup.
-  const showPassword = mode === "signup" || method === "password";
-
-  const captchaRequired = mode === "signup" || (mode === "signin" && method === "magic");
+  // Captcha is only required for the magic-link path.
+  const captchaRequired = !passwordExpanded;
   const captchaSatisfied = !captchaRequired || !!captchaToken;
+  const submitDisabled =
+    loading || !email || (passwordExpanded ? !password : !captchaSatisfied);
 
   return (
     <div className="flex flex-col vt-anim-fade-up">
@@ -212,12 +184,10 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
         </div>
         <div className="min-w-0">
           <div className="vt-display text-[15px] font-semibold tracking-tight">
-            {mode === "signup"
-              ? t("auth.signup.title")
-              : t("auth.login.title")}
+            {t("auth.unified.welcome")}
           </div>
           <div className="text-[11.5px]" style={{ color: "var(--vt-fg-3)" }}>
-            {t("auth.login.subtitle")}
+            {t("auth.unified.welcomeSubtitle")}
           </div>
         </div>
       </div>
@@ -253,12 +223,10 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
               </svg>
             </div>
             <div className="text-[14px] font-semibold" style={{ color: "var(--vt-ok)" }}>
-              {t("auth.modal.checkInbox", { defaultValue: "Vérifie ta boîte mail" })}
+              {t("auth.modal.checkInbox")}
             </div>
             <div className="text-[12.5px] mt-1.5" style={{ color: "var(--vt-fg-2)" }}>
-              {mode === "signup"
-                ? t("auth.signup.success")
-                : t("auth.login.magicLinkSuccess")}{" "}
+              {t("auth.unified.magicLinkSentBody")}{" "}
               {email && (
                 <>
                   <span
@@ -275,49 +243,37 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
               onClick={() => setStep("form")}
               className="vt-btn mt-4 mx-auto"
             >
-              {t("auth.modal.useAnotherMethod", {
-                defaultValue: "Utiliser une autre méthode",
-              })}
+              {t("auth.unified.useAnotherEmail")}
             </button>
           </div>
         </div>
       ) : (
         <div className="px-5 pb-5">
-          {/* Tabs */}
-          <div
-            className="inline-flex rounded-lg p-1 mb-4 w-full"
+          {/* Google OAuth */}
+          <button
+            type="button"
+            onClick={() => void handleGoogle()}
+            disabled={loading}
+            className="w-full h-10 rounded-lg flex items-center justify-center gap-2.5 text-[13px] font-medium transition disabled:opacity-50 mb-3"
             style={{
               background: "var(--vt-surface)",
               border: "1px solid var(--vt-border)",
+              color: "var(--vt-fg)",
             }}
           >
-            {(["signin", "signup"] as Mode[]).map((m) => {
-              const active = mode === m;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => {
-                    setMode(m);
-                    setError(null);
-                    if (m === "signup") setMethod("password");
-                  }}
-                  className="flex-1 h-8 rounded-md text-[12.5px] font-medium transition"
-                  style={
-                    active
-                      ? {
-                          background: "oklch(from var(--vt-accent) l c h / 0.18)",
-                          color: "var(--vt-accent-2)",
-                        }
-                      : { color: "var(--vt-fg-3)" }
-                  }
-                >
-                  {m === "signin"
-                    ? t("auth.modal.tabSignIn", { defaultValue: "Connexion" })
-                    : t("auth.modal.tabSignUp", { defaultValue: "Création" })}
-                </button>
-              );
-            })}
+            <GoogleIcon />
+            {t("auth.login.oauthGoogle")}
+          </button>
+
+          <div className="flex items-center gap-3 my-3">
+            <div className="h-px flex-1" style={{ background: "var(--vt-border)" }} />
+            <span
+              className="text-[10.5px] uppercase tracking-wider"
+              style={{ color: "var(--vt-fg-4)" }}
+            >
+              {t("auth.modal.or")}
+            </span>
+            <div className="h-px flex-1" style={{ background: "var(--vt-border)" }} />
           </div>
 
           <form onSubmit={onPrimarySubmit} className="space-y-2.5">
@@ -364,7 +320,7 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
               </div>
             </div>
 
-            {showPassword && (
+            {passwordExpanded && (
               <div>
                 <label
                   className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block"
@@ -403,35 +359,18 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
                       e.currentTarget.style.borderColor = "var(--vt-border)";
                     }}
                     disabled={loading}
-                    aria-describedby={mode === "signup" ? "auth-password-hint" : undefined}
                   />
                 </div>
-                {mode === "signup" && (
-                  <>
-                    <p
-                      id="auth-password-hint"
-                      className="text-[11px] mt-1.5"
-                      style={{ color: "var(--vt-fg-3)" }}
-                    >
-                      {t("auth.signup.passwordHint")}
-                    </p>
-                    <div className="mt-2">
-                      <PasswordStrengthMeter score={score} />
-                    </div>
-                  </>
-                )}
-                {mode === "signin" && (
-                  <div className="text-right mt-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onNavigate("reset-request")}
-                      className="text-[11.5px] underline"
-                      style={{ color: "var(--vt-accent-2)" }}
-                    >
-                      {t("auth.login.forgotPassword")}
-                    </button>
-                  </div>
-                )}
+                <div className="text-right mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate("reset-request")}
+                    className="text-[11.5px] underline"
+                    style={{ color: "var(--vt-accent-2)" }}
+                  >
+                    {t("auth.login.forgotPassword")}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -447,60 +386,28 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
 
             <button
               type="submit"
-              disabled={loading || !email || !captchaSatisfied}
+              disabled={submitDisabled}
               className="vt-btn-primary w-full justify-center mt-2"
             >
-              {mode === "signin" && method === "magic" && <VtIcon.mail />}
-              {primaryLabel}
+              {!passwordExpanded && <VtIcon.mail />}
+              {passwordExpanded
+                ? t("auth.unified.signInButton")
+                : t("auth.unified.continueButton")}
             </button>
 
-            <div className="flex items-center gap-3 my-3">
-              <div className="h-px flex-1" style={{ background: "var(--vt-border)" }} />
-              <span
-                className="text-[10.5px] uppercase tracking-wider"
-                style={{ color: "var(--vt-fg-4)" }}
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={togglePasswordExpanded}
+                className="inline-flex items-center gap-1.5 text-[12px] underline"
+                style={{ color: "var(--vt-accent-2)" }}
               >
-                {t("auth.modal.or", { defaultValue: "ou" })}
-              </span>
-              <div className="h-px flex-1" style={{ background: "var(--vt-border)" }} />
+                {passwordExpanded
+                  ? t("auth.unified.passwordToggleCollapse")
+                  : t("auth.unified.passwordToggleExpand")}
+                <ChevronIcon open={passwordExpanded} />
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => void handleGoogle()}
-              disabled={loading}
-              className="w-full h-10 rounded-lg flex items-center justify-center gap-2.5 text-[13px] font-medium transition disabled:opacity-50"
-              style={{
-                background: "var(--vt-surface)",
-                border: "1px solid var(--vt-border)",
-                color: "var(--vt-fg)",
-              }}
-            >
-              <GoogleIcon />
-              {t("auth.login.oauthGoogle")}
-            </button>
-
-            {mode === "signin" && (
-              <div className="text-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMethod(method === "magic" ? "password" : "magic");
-                    setError(null);
-                  }}
-                  className="text-[12px] underline"
-                  style={{ color: "var(--vt-accent-2)" }}
-                >
-                  {method === "magic"
-                    ? t("auth.modal.usePasswordInstead", {
-                        defaultValue: "Utiliser un mot de passe à la place",
-                      })
-                    : t("auth.modal.useMagicLinkInstead", {
-                        defaultValue: "Recevoir un lien magique à la place",
-                      })}
-                </button>
-              </div>
-            )}
 
             {error && (
               <p role="alert" className="text-[12px] text-center" style={{ color: "var(--vt-danger)" }}>
@@ -513,10 +420,7 @@ export function SignInPanel({ onNavigate, initialMode = "signin" }: Props) {
             className="text-[10.5px] mt-4 leading-relaxed text-center"
             style={{ color: "var(--vt-fg-4)" }}
           >
-            {t("auth.modal.legal", {
-              defaultValue:
-                "En continuant, tu acceptes nos Conditions et notre Politique de confidentialité.",
-            })}
+            {t("auth.modal.legal")}
           </div>
         </div>
       )}

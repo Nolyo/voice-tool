@@ -37,14 +37,6 @@ type AddTranscription = (
   transcriptionProvider?: string,
 ) => Promise<Transcription>;
 
-interface PostProcessBackendResult {
-  text: string;
-  cost: number;
-  promptTokens: number;
-  completionTokens: number;
-  model: string;
-}
-
 interface PostProcessOutcome {
   /** Final text to use (post-processed if applied, otherwise the input). */
   text: string;
@@ -57,57 +49,25 @@ interface PostProcessOutcome {
 }
 
 /**
- * Returns true when post-processing would actually run for the given text and
- * settings. Extracted so callers can emit a mini-window "post-process-start"
- * event only when the UI will effectively show a post-process phase.
- *
- * `cloudPath` short-circuits the local-key check (cloud post-process doesn't
- * need a user-provided API key) but still respects the enabled flag and the
- * empty-text guard. Custom mode is excluded from the cloud-path gate because
- * the cloud worker rejects it; the warning toast still surfaces from
- * `maybePostProcessCloud` when the call site invokes it, so the user-facing
- * behavior is unchanged — only the redundant `post-process-start` event is
- * suppressed.
+ * Returns true when post-processing would actually run. Post-process is now
+ * cloud-only (Phase A retired BYOK keys), so the call requires a JWT.
  */
 function shouldPostProcess(
   originalText: string,
   settings: AppSettings["settings"],
-  cloudPath: boolean = false,
+  postProcessAvailable: boolean,
 ): boolean {
   if (!settings.post_process_enabled) return false;
   if (!originalText.trim()) return false;
-
-  if (cloudPath) {
-    // Cloud post-process does not support custom mode (server-validated).
-    if (settings.post_process_mode === "custom") return false;
-    return true;
-  }
-
-  const provider = settings.post_process_provider;
-  const apiKey =
-    provider === "OpenAI" ? settings.openai_api_key : settings.groq_api_key;
-  if (!apiKey.trim()) return false;
-
-  if (
-    settings.post_process_mode === "custom" &&
-    !settings.post_process_custom_prompt.trim()
-  ) {
-    return false;
-  }
+  if (!postProcessAvailable) return false;
   return true;
 }
 
 /**
  * Maps the local UI's post-process mode to the cloud worker's task taxonomy.
- * Returns `null` when the mode has no cloud equivalent (only "custom" today)
- * — the caller surfaces a warning and keeps the raw transcription.
  */
-function mapModeToCloudTask(mode: string): PostProcessTask | null {
+function mapModeToCloudTask(mode: string): PostProcessTask {
   switch (mode) {
-    case "auto":
-    case "formal":
-    case "casual":
-      return "reformulate";
     case "grammar":
       return "correct";
     case "email":
@@ -115,9 +75,11 @@ function mapModeToCloudTask(mode: string): PostProcessTask | null {
     case "summary":
     case "list":
       return "summarize";
-    case "custom":
+    case "auto":
+    case "formal":
+    case "casual":
     default:
-      return null;
+      return "reformulate";
   }
 }
 
@@ -133,12 +95,6 @@ async function maybePostProcessCloud(
   if (!trimmed) return { text: originalText };
 
   const task = mapModeToCloudTask(settings.post_process_mode);
-  if (!task) {
-    // Only "custom" lands here today — cloud has no way to honor a user
-    // prompt. Keep the raw transcription and tell the user why.
-    toast.warning(translate("cloud:errors.post_process_custom_unsupported"));
-    return { text: originalText };
-  }
 
   try {
     const result = await postProcessCloud({
@@ -182,60 +138,6 @@ async function maybePostProcessCloud(
         }),
       );
     }
-    return { text: originalText };
-  }
-}
-
-async function maybePostProcess(
-  originalText: string,
-  settings: AppSettings["settings"],
-  translate: (key: string, opts?: Record<string, unknown>) => string,
-): Promise<PostProcessOutcome> {
-  if (!settings.post_process_enabled) return { text: originalText };
-
-  const trimmed = originalText.trim();
-  if (!trimmed) return { text: originalText };
-
-  const provider = settings.post_process_provider;
-  const apiKey =
-    provider === "OpenAI" ? settings.openai_api_key : settings.groq_api_key;
-  if (!apiKey.trim()) {
-    toast.warning(translate("postProcess.missingKey"));
-    return { text: originalText };
-  }
-
-  if (
-    settings.post_process_mode === "custom" &&
-    !settings.post_process_custom_prompt.trim()
-  ) {
-    toast.warning(translate("postProcess.missingCustomPrompt"));
-    return { text: originalText };
-  }
-
-  try {
-    const processed = await invoke<PostProcessBackendResult>("post_process_text", {
-      provider,
-      apiKey,
-      mode: settings.post_process_mode,
-      customPrompt: settings.post_process_custom_prompt,
-      text: trimmed,
-    });
-    const result = processed?.text?.trim();
-    if (!result || result.length === 0 || result === trimmed) {
-      return { text: originalText };
-    }
-    return {
-      text: result,
-      originalText: trimmed,
-      mode: settings.post_process_mode,
-      cost: processed.cost,
-    };
-  } catch (err) {
-    toast.error(
-      translate("postProcess.error", {
-        error: typeof err === "string" ? err : String(err),
-      }),
-    );
     return { text: originalText };
   }
 }
@@ -503,54 +405,52 @@ export function useRecordingWorkflow({
             throw err;
           }
         } else {
-          const providerApiKey =
-            settings.transcription_provider === "Groq"
-              ? settings.groq_api_key
-              : settings.openai_api_key;
           result = await invoke<TranscriptionInvokeResult>(
             "transcribe_audio",
             {
               audioSamples: audioData,
               sampleRate: sampleRate,
-              apiKey: providerApiKey,
               language: settings.language,
               keepLast: settings.recordings_keep_last,
-              provider: settings.transcription_provider,
               localModelSize: settings.local_model_size,
               dictionary: syncDictionaryRef.current.join(", "),
               initialPrompt: settings.whisper_initial_prompt ?? "",
               translate: settings.translate_mode,
               keepModelInMemory: settings.keep_model_in_memory,
-              groqModel: settings.groq_model,
               trimSilence: settings.trim_silence,
             },
           );
         }
 
-        const cloudPostProcess = useCloudPath && Boolean(cloudJwt);
-        if (shouldPostProcess(result.text, settings, cloudPostProcess)) {
+        // Post-process is cloud-only (Phase A retired BYOK). It can run in
+        // hybrid mode: transcription Local + post-process via cloud JWT, when
+        // the user is signed in and eligible.
+        let postProcessJwt: string | undefined = useCloudPath ? cloudJwt : undefined;
+        if (
+          settings.post_process_enabled &&
+          !postProcessJwt &&
+          isCloudEligibleRef.current
+        ) {
+          const { data } = await supabase.auth.getSession();
+          postProcessJwt = data.session?.access_token;
+        }
+        const canPostProcess = Boolean(postProcessJwt);
+        if (shouldPostProcess(result.text, settings, canPostProcess)) {
           await emit("post-process-start");
         }
-        const processed = cloudPostProcess
-          ? await maybePostProcessCloud(result.text, settings, cloudJwt!, tRef.current)
-          : await maybePostProcess(result.text, settings, tRef.current);
+        const processed: PostProcessOutcome = canPostProcess
+          ? await maybePostProcessCloud(
+              result.text,
+              settings,
+              postProcessJwt!,
+              tRef.current,
+            )
+          : { text: result.text };
         const finalText = processed.text;
 
         const durationSeconds = cloudUsedSeconds ?? audioData.length / sampleRate;
-        const durationMinutes = durationSeconds / 60;
-        const apiCost = (() => {
-          if (cloudUsedSeconds !== null) return 0;
-          switch (settings.transcription_provider) {
-            case "Local":
-              return 0;
-            case "Groq":
-              // whisper-large-v3-turbo: $0.04/h ≈ $0.000667/min
-              return durationMinutes * 0.000667;
-            default:
-              // OpenAI whisper-1: $0.006/min
-              return durationMinutes * 0.006;
-          }
-        })();
+        // Local transcription is free; cloud cost is billed server-side on the worker.
+        const apiCost = 0;
 
         await handleTranscriptionFinal(
           finalText,

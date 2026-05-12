@@ -1,11 +1,22 @@
 import { useTranslation } from "react-i18next";
 import { useUsage } from "@/hooks/useUsage";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { SubscribeButton } from "@/components/billing/SubscribeButton";
+
+const LEMON_SQUEEZY_PORTAL_URL =
+  (import.meta.env.VITE_LEMON_SQUEEZY_PORTAL_URL as string | undefined) ??
+  "https://app.lemonsqueezy.com/my-orders";
+
+function formatExpiry(iso: string | null): string {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleDateString();
+}
 
 export function CloudSection() {
   const { t } = useTranslation("cloud");
   const { user } = useAuth();
-  const { trial, monthly_minutes_used, plan, loading, refresh } = useUsage();
+  const { trial, monthly_minutes_breakdown, plan, loading, refresh } = useUsage();
 
   if (!user) {
     return (
@@ -22,6 +33,10 @@ export function CloudSection() {
     );
   }
 
+  const usedQuota = Math.floor(monthly_minutes_breakdown.quota);
+  const trialMinutesLeft = Math.floor(trial.minutes_remaining);
+  const expiryLabel = formatExpiry(trial.expires_at);
+
   return (
     <div id="section-cloud" className="vt-anim-fade-up space-y-5">
       <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
@@ -30,49 +45,98 @@ export function CloudSection() {
             {t("settings.heading")}
           </h2>
 
-          {trial.is_active && (
-            <section className="space-y-2">
-              <h3 className="text-[13px] font-semibold">{t("settings.trial.heading")}</h3>
-              <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-[12.5px]">
-                <dt className="text-muted-foreground">
-                  {t("settings.trial.minutes_remaining")}
-                </dt>
-                <dd className="vt-mono">{Math.floor(trial.minutes_remaining)}</dd>
-                <dt className="text-muted-foreground">
-                  {t("settings.trial.expires_at")}
-                </dt>
-                <dd className="vt-mono">
-                  {trial.expires_at ? new Date(trial.expires_at).toLocaleString() : "-"}
-                </dd>
-              </dl>
-            </section>
-          )}
-
           {plan && (
-            <section className="space-y-2">
+            <section className="space-y-3">
               <h3 className="text-[13px] font-semibold">
                 {t("settings.plan.heading", { plan: plan.plan })}
               </h3>
-              <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-[12.5px]">
-                <dt className="text-muted-foreground">
-                  {t("settings.plan.quota_minutes")}
-                </dt>
-                <dd className="vt-mono">{plan.quota_minutes}</dd>
-                <dt className="text-muted-foreground">{t("settings.plan.minutes_used")}</dt>
-                <dd className="vt-mono">{Math.floor(monthly_minutes_used)}</dd>
-                <dt className="text-muted-foreground">
-                  {t("settings.plan.minutes_remaining")}
-                </dt>
-                <dd className="vt-mono">
-                  {Math.max(plan.quota_minutes - Math.floor(monthly_minutes_used), 0)}
-                </dd>
-              </dl>
+              <div className="flex items-center justify-between text-[12.5px]">
+                <span className="text-muted-foreground">
+                  {t("settings.plan.minutes_progress")}
+                </span>
+                <span className="vt-mono">
+                  {t("settings.plan.minutes_progress_value", {
+                    used: usedQuota,
+                    quota: plan.quota_minutes,
+                  })}
+                </span>
+              </div>
+              <div
+                className="h-1.5 w-full rounded-full bg-muted overflow-hidden"
+                role="progressbar"
+                aria-valuenow={usedQuota}
+                aria-valuemin={0}
+                aria-valuemax={plan.quota_minutes}
+              >
+                <div
+                  className="h-full bg-primary"
+                  style={{
+                    width: `${Math.min((usedQuota / Math.max(plan.quota_minutes, 1)) * 100, 100)}%`,
+                  }}
+                />
+              </div>
+
+              {trial.is_active && (
+                <div className="mt-2 border-t pt-3 space-y-1">
+                  <p className="text-[12.5px] font-medium">{t("settings.bonus.heading")}</p>
+                  <p className="text-[12.5px] text-muted-foreground">
+                    {t("settings.bonus.minutes_remaining", {
+                      count: trialMinutesLeft,
+                      date: expiryLabel,
+                    })}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground italic">
+                    {t("settings.bonus.consumed_first_note")}
+                  </p>
+                </div>
+              )}
             </section>
           )}
 
-          {!trial.is_active && !plan && (
+          {!plan && trial.is_active && (
+            <section className="space-y-2">
+              <h3 className="text-[13px] font-semibold">{t("settings.bonus.heading")}</h3>
+              <p className="text-[12.5px] text-muted-foreground">
+                {t("settings.bonus.minutes_remaining_standalone", {
+                  count: trialMinutesLeft,
+                })}
+              </p>
+              <p className="text-[12.5px] text-muted-foreground">
+                {t("settings.bonus.expires_at", { date: expiryLabel })}
+              </p>
+            </section>
+          )}
+
+          {!plan && !trial.is_active && (
             <p className="text-sm text-muted-foreground">{t("settings.nothing_active")}</p>
           )}
+
+          <section className="space-y-3 border-t pt-5">
+            <h3 className="text-[13px] font-semibold">
+              {t("settings.section.plan_title")}
+            </h3>
+            {plan ? (
+              <div className="rounded-md border p-4 text-sm">
+                <p>
+                  {t("settings.section.current_plan", {
+                    tier: plan.plan,
+                    quota: plan.quota_minutes,
+                  })}
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-3">
+                  <a
+                    href={LEMON_SQUEEZY_PORTAL_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t("settings.section.manage_cta")}
+                  </a>
+                </Button>
+              </div>
+            ) : (
+              <SubscribeButton />
+            )}
+          </section>
 
           <div>
             <button onClick={() => refresh()} className="vt-btn">

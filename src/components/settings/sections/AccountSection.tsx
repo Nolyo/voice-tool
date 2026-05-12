@@ -128,11 +128,8 @@ function SignedOutBlock() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => openAuthModal("signin")} className="vt-btn-primary">
+          <button onClick={() => openAuthModal()} className="vt-btn-primary">
             {t("auth.account.signedOutSignIn")}
-          </button>
-          <button onClick={() => openAuthModal("signup")} className="vt-btn">
-            {t("auth.account.signedOutCreate")}
           </button>
         </div>
         <div className="grid grid-cols-3 gap-3 w-full max-w-[560px] mt-4">
