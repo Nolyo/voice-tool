@@ -2,6 +2,7 @@ import type { Env } from "./types";
 import { authenticate, AuthError } from "./auth";
 import { handleTranscribe } from "./transcribe";
 import { handlePostProcess } from "./post-process";
+import { handleNotesAssist } from "./notes-assist";
 import { errorResponse } from "./errors";
 
 export default {
@@ -35,6 +36,8 @@ export default {
           return await handleTranscribe(req, env, user);
         case "/post-process":
           return await handlePostProcess(req, env, user);
+        case "/notes-assist":
+          return await handleNotesAssist(req, env, user);
         default:
           return new Response("Not Found", { status: 404 });
       }

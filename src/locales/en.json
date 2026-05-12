@@ -753,6 +753,7 @@
   },
   "ai": {
     "button": "AI",
+    "cloudUpsellTooltip": "The Notes AI assistant requires an active trial or Lexena Cloud subscription.",
     "customPromptPlaceholder": "Custom instruction...",
     "groups": {
       "translate": "Translate (FR ↔ EN)",
@@ -802,7 +803,6 @@
     "modelDeleted": "Model {{model}} deleted",
     "modelDeleteError": "Delete error: {{error}}",
     "autostartError": "Error updating autostart: {{error}}",
-    "apiKeyNotConfigured": "OpenAI API key not configured. Set it in settings.",
     "aiProcessError": "Processing error.",
     "hotkeyEmpty": "Shortcut cannot be empty.",
     "updaterUnavailable": "Updates unavailable in development mode"

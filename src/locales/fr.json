@@ -753,6 +753,7 @@
   },
   "ai": {
     "button": "IA",
+    "cloudUpsellTooltip": "L'assistant IA des notes nécessite un essai actif ou un abonnement Lexena Cloud.",
     "customPromptPlaceholder": "Instruction libre...",
     "groups": {
       "translate": "Traduire (FR ↔ EN)",
@@ -802,7 +803,6 @@
     "modelDeleted": "Modèle {{model}} supprimé",
     "modelDeleteError": "Erreur lors de la suppression : {{error}}",
     "autostartError": "Erreur lors de la mise à jour du démarrage automatique : {{error}}",
-    "apiKeyNotConfigured": "Clé API OpenAI non configurée. Configurez-la dans les paramètres.",
     "aiProcessError": "Erreur lors du traitement.",
     "hotkeyEmpty": "Le raccourci ne peut pas être vide.",
     "updaterUnavailable": "Mise à jour non disponible en mode développement"

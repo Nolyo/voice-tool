@@ -127,6 +127,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             migrated = true;
           }
           for (const k of [
+            "openai_api_key",
             "groq_api_key",
             "google_api_key",
             "groq_model",

@@ -322,7 +322,6 @@ export default function Dashboard() {
               onRecreateLinkedNote={handleRecreateLinkedNote}
               onMoveNote={moveNoteToFolder}
               onCreateFolder={createFolder}
-              apiKey={settings.openai_api_key}
               readNote={readNote}
             />
           ) : activeTab === "notes" ? (

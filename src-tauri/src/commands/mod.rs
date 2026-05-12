@@ -1,4 +1,3 @@
-pub mod ai;
 pub mod files;
 pub mod misc;
 pub mod model;

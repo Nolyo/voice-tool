@@ -118,6 +118,15 @@ pub struct PostProcessResult {
     pub source: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NotesAssistResult {
+    pub text: String,
+    pub tokens_in: u32,
+    pub tokens_out: u32,
+    pub request_id: String,
+    pub source: String,
+}
+
 /// Encode i16 PCM samples as a WAV byte buffer in memory (mono, 16-bit).
 /// Zero-retention compliant: nothing touches disk.
 fn encode_wav_in_memory(samples: &[i16], sample_rate: u32) -> Result<Vec<u8>, CloudError> {
@@ -219,6 +228,36 @@ pub async fn post_process_cloud(
     });
     let mut req = cloud_client()
         .post(format!("{}/post-process", api_base()))
+        .bearer_auth(&jwt)
+        .json(&body);
+    if let Some(key) = idempotency_key {
+        req = req.header("Idempotency-Key", key);
+    }
+    let res = req.send().await?;
+    handle_response(res).await
+}
+
+/// Free-form AI helper for the Notes editor bubble menu. Same auth/eligibility
+/// surface as `post_process_cloud`, but the system prompt is supplied by the
+/// caller (translate / improve / summarize / custom).
+#[tauri::command]
+pub async fn notes_assist_cloud(
+    system_prompt: String,
+    user_text: String,
+    model_tier: Option<String>,
+    jwt: String,
+    idempotency_key: Option<String>,
+) -> Result<NotesAssistResult, CloudError> {
+    if jwt.is_empty() {
+        return Err(CloudError::MissingAuth);
+    }
+    let body = serde_json::json!({
+        "system_prompt": system_prompt,
+        "user_text": user_text,
+        "model_tier": model_tier,
+    });
+    let mut req = cloud_client()
+        .post(format!("{}/notes-assist", api_base()))
         .bearer_auth(&jwt)
         .json(&body);
     if let Some(key) = idempotency_key {

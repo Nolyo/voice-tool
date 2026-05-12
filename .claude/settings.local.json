@@ -22,7 +22,8 @@
       "Bash(winget install:*)",
       "Bash(LIBCLANG_PATH=\"C:/Program Files/LLVM/bin\" cargo check:*)",
       "Bash(export:*)",
-      "Bash(ls found:*)"
+      "Bash(ls found:*)",
+      "Bash(pnpm typecheck *)"
     ],
     "deny": [
       "Bash(pnpm tauri dev:*)"

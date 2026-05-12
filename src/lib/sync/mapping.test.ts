@@ -41,8 +41,8 @@ describe("mapping AppSettings ↔ Cloud", () => {
     expect(merged.local_model_size).toBe("small");
 
     // Non-syncable keys préservées
-    expect(merged.openai_api_key).toBe(local.openai_api_key);
     expect(merged.silence_threshold).toBe(local.silence_threshold);
+    expect(merged.recordings_keep_last).toBe(local.recordings_keep_last);
   });
 
   it("round-trip extract -> apply est idempotent pour les clés syncées", () => {

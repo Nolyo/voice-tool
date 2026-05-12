@@ -19,6 +19,9 @@ interface NotesEditorFooterProps {
    *  tab switch while `readNote()` resolves). */
   activeNoteId: string | null;
   isAiLoading: boolean;
+  /** True when the user has an active trial or subscription — required for
+   *  the cloud-managed AI assistant. */
+  isAiEligible: boolean;
   onAiAction: (systemPrompt: string) => void;
   onRequestDelete: () => void;
 }
@@ -29,6 +32,7 @@ export function NotesEditorFooter({
   loadedNoteId,
   activeNoteId,
   isAiLoading,
+  isAiEligible,
   onAiAction,
   onRequestDelete,
 }: NotesEditorFooterProps) {
@@ -129,7 +133,12 @@ export function NotesEditorFooter({
             <AiActionMenu
               onAction={onAiAction}
               isLoading={isAiLoading}
-              disabled={!editorText.trim()}
+              disabled={!editorText.trim() || !isAiEligible}
+              disabledReason={
+                !isAiEligible
+                  ? t("ai.cloudUpsellTooltip")
+                  : undefined
+              }
             />
             <button
               type="button"

@@ -23,9 +23,6 @@ export interface AppSettings {
     // Translation
     translate_mode: boolean;
 
-    // API Keys (legacy — Phase A: openai_api_key still used by Notes AI assistant; Phase B will remove it)
-    openai_api_key: string;
-
     // Text
     insertion_mode: "cursor" | "clipboard" | "none";
 
@@ -107,9 +104,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Translation
     translate_mode: false,
-
-    // API Keys (legacy)
-    openai_api_key: "",
 
     // Text
     insertion_mode: "cursor",

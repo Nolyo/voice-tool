@@ -2,7 +2,6 @@ mod audio;
 mod audio_trim;
 mod auth;
 mod billing;
-mod chat;
 mod cloud;
 mod commands;
 mod folders;
@@ -127,7 +126,6 @@ pub fn run() {
             commands::system::get_system_info,
             commands::system::get_device_info,
             commands::files::delete_recording_files,
-            commands::ai::ai_process_text,
             notes::list_notes,
             notes::read_note,
             notes::create_note,
@@ -177,6 +175,7 @@ pub fn run() {
             sync::save_export_to_download,
             cloud::transcribe_audio_cloud,
             cloud::post_process_cloud,
+            cloud::notes_assist_cloud,
             billing::open_checkout,
         ])
         .setup(move |app| {
