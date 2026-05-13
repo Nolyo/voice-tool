@@ -61,7 +61,9 @@
         "Raw transcription only (no AI post-processing)",
         "Performance depends on your hardware"
       ],
-      "cta": "Continue with local"
+      "cta": "Continue with local",
+      "not_eligible_badge": "Not recommended",
+      "not_eligible_reason": "Your machine ({{ram}} GB of RAM, no discrete GPU) won't be able to run a usable-quality local model."
     }
   }
 }

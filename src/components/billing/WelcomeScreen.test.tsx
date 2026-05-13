@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 
 // Stub localStorage / navigator before any module under test loads, since
 // `@/i18n` (transitively imported via useTranslation init) reads them at
@@ -30,11 +30,12 @@ vi.hoisted(() => {
   }
 });
 
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
 });
 
 const openAuthModal = vi.fn();
@@ -53,8 +54,28 @@ vi.mock("../OnboardingWizard", () => ({
   ),
 }));
 
+// Default invoke mock — overridden per-test via mockImplementationOnce.
+const invokeMock = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (...args: unknown[]) => invokeMock(...args),
+}));
+
 import "@/i18n";
 import { WelcomeScreen } from "./WelcomeScreen";
+
+beforeEach(() => {
+  // Default to "eligible" (GPU) so the existing tests don't see the warning.
+  invokeMock.mockImplementation(async (cmd: string) => {
+    if (cmd === "get_system_info") {
+      return {
+        total_ram_gb: 64,
+        has_discrete_gpu: true,
+        gpu_name: "Test GPU",
+      };
+    }
+    return undefined;
+  });
+});
 
 describe("WelcomeScreen", () => {
   it("opens auth modal on branch A click", () => {
@@ -74,5 +95,52 @@ describe("WelcomeScreen", () => {
       screen.getByRole("button", { name: /Continuer en local|Continue with local/i }),
     );
     expect(screen.getByTestId("local-wizard")).toBeInTheDocument();
+  });
+
+  it("does not show 'not recommended' badge when system has a discrete GPU", async () => {
+    invokeMock.mockResolvedValueOnce({
+      total_ram_gb: 16,
+      has_discrete_gpu: true,
+      gpu_name: "GTX 1080",
+    });
+    render(<WelcomeScreen onComplete={vi.fn()} />);
+    // Wait one tick to ensure the post-detection render has happened.
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("get_system_info");
+    });
+    expect(
+      screen.queryByText(/Déconseillé|Not recommended/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not show 'not recommended' badge when machine has ≥ 32 GB RAM (no GPU)", async () => {
+    invokeMock.mockResolvedValueOnce({
+      total_ram_gb: 64,
+      has_discrete_gpu: false,
+      gpu_name: null,
+    });
+    render(<WelcomeScreen onComplete={vi.fn()} />);
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("get_system_info");
+    });
+    expect(
+      screen.queryByText(/Déconseillé|Not recommended/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows 'not recommended' badge + reason when machine has no GPU and < 32 GB RAM", async () => {
+    invokeMock.mockResolvedValueOnce({
+      total_ram_gb: 16,
+      has_discrete_gpu: false,
+      gpu_name: null,
+    });
+    render(<WelcomeScreen onComplete={vi.fn()} />);
+    expect(
+      await screen.findByText(/Déconseillé|Not recommended/i),
+    ).toBeInTheDocument();
+    // The reason text mentions the detected RAM (16 GB).
+    expect(
+      await screen.findByText(/16\s*Go|16\s*GB/i),
+    ).toBeInTheDocument();
   });
 });

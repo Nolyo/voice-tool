@@ -61,7 +61,9 @@
         "Transcription brute uniquement (pas de post-process IA)",
         "Performances dépendantes de ton matériel"
       ],
-      "cta": "Continuer en local"
+      "cta": "Continuer en local",
+      "not_eligible_badge": "Déconseillé",
+      "not_eligible_reason": "Ta machine ({{ram}} Go de RAM, pas de GPU discret) ne pourra pas faire tourner un modèle local de qualité correctement."
     }
   }
 }

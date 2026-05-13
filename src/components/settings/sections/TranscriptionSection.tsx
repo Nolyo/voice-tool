@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
+import { toast } from "sonner";
 import { useSettings } from "@/hooks/useSettings";
 import { useModelDownload } from "@/hooks/useModelDownload";
 import { useCloud } from "@/hooks/useCloud";
@@ -15,18 +17,24 @@ import {
 } from "../vt";
 
 const ACCENT = "var(--vt-violet)";
+const OFFICIAL_MODEL = "large-v3-turbo";
+const OFFICIAL_MODEL_SIZE = "1.6 GB";
 
 type Provider = "Local" | "LexenaCloud";
-type LocalModel =
-  | "tiny"
-  | "base"
-  | "small"
-  | "medium"
-  | "large-v1"
-  | "large-v2"
-  | "large-v3"
-  | "large-v3-turbo"
-  | "large-v3-turbo-q5_0";
+
+// Pretty display label for legacy model identifiers — only used in the
+// migration banner below. We don't translate these because they're filenames /
+// historical artifacts, not UI labels.
+const LEGACY_MODEL_LABELS: Record<string, string> = {
+  tiny: "Tiny (39 MB)",
+  base: "Base (74 MB)",
+  small: "Small (244 MB)",
+  medium: "Medium (1.5 GB)",
+  "large-v1": "Large v1 (2.9 GB)",
+  "large-v2": "Large v2 (2.9 GB)",
+  "large-v3": "Large v3 (2.9 GB)",
+  "large-v3-turbo-q5_0": "Large v3 Turbo Q5 (547 MB)",
+};
 
 interface TranscriptionSectionProps {
   onSectionChange?: (id: SettingsSectionId) => void;
@@ -61,10 +69,13 @@ function cloudStatusVariant({
 export function TranscriptionSection({ onSectionChange }: TranscriptionSectionProps) {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
+  // Hardcoded to the only officially-supported model — quality of every other
+  // model is too degraded to expose in the UI.
   const { isDownloading, progress, isDownloaded, isChecking, download, remove } =
-    useModelDownload(settings.transcription_provider, settings.local_model_size);
+    useModelDownload(settings.transcription_provider, OFFICIAL_MODEL);
   const { isCloudEligible, trial, plan } = useCloud();
   const { user, openAuthModal } = useAuth();
+  const [isMigrating, setIsMigrating] = useState(false);
 
   const isSignedIn = Boolean(user);
   const planName = plan?.plan ?? null;
@@ -176,88 +187,107 @@ export function TranscriptionSection({ onSectionChange }: TranscriptionSectionPr
 
         {settings.transcription_provider === "Local" && (
           <>
+            {settings.local_model_size !== OFFICIAL_MODEL && (
+              <LegacyModelMigrationBanner
+                currentModel={settings.local_model_size}
+                isMigrating={isMigrating}
+                onMigrate={async () => {
+                  const oldModel = settings.local_model_size;
+                  setIsMigrating(true);
+                  try {
+                    await invoke("download_local_model", {
+                      model: OFFICIAL_MODEL,
+                    });
+                    await updateSetting("local_model_size", OFFICIAL_MODEL);
+                    if (oldModel && oldModel !== OFFICIAL_MODEL) {
+                      try {
+                        await invoke("delete_local_model", { model: oldModel });
+                      } catch (e) {
+                        console.warn("Failed to delete legacy model:", e);
+                      }
+                    }
+                    toast.success(
+                      t("settings.transcription.legacyMigration.success"),
+                    );
+                  } catch (error) {
+                    console.error("Migration failed:", error);
+                    toast.error(
+                      t("settings.transcription.legacyMigration.failure", {
+                        error: String(error),
+                      }),
+                    );
+                  } finally {
+                    setIsMigrating(false);
+                  }
+                }}
+                t={t}
+              />
+            )}
+
             <Row
               label={t("settings.transcription.whisperModel")}
-              hint={t("settings.transcription.whisperModelHint", {
-                defaultValue:
-                  "Plus le modèle est grand, plus il est précis mais lent et lourd.",
-              })}
+              hint={t("settings.transcription.officialModelHint")}
             >
-              <div className="flex items-center gap-2">
-                <select
-                  className="vt-select flex-1"
-                  value={settings.local_model_size}
-                  onChange={(e) =>
-                    updateSetting("local_model_size", e.target.value as LocalModel)
-                  }
-                  disabled={isDownloading}
-                >
-                  <option value="tiny">{t("settings.transcription.modelTiny")}</option>
-                  <option value="base">{t("settings.transcription.modelBase")}</option>
-                  <option value="small">{t("settings.transcription.modelSmall")}</option>
-                  <option value="medium">{t("settings.transcription.modelMedium")}</option>
-                  <option value="large-v1">
-                    {t("settings.transcription.modelLargeV1")}
-                  </option>
-                  <option value="large-v2">
-                    {t("settings.transcription.modelLargeV2")}
-                  </option>
-                  <option value="large-v3">
-                    {t("settings.transcription.modelLargeV3")}
-                  </option>
-                  <option value="large-v3-turbo">
-                    {t("settings.transcription.modelLargeV3Turbo")} ⭐
-                  </option>
-                  <option value="large-v3-turbo-q5_0">
-                    {t("settings.transcription.modelLargeV3TurboQ5")}
-                  </option>
-                </select>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[13px] font-medium">
+                    {t("settings.transcription.officialModelName")}
+                  </span>
+                  <span
+                    className="text-[12px]"
+                    style={{ color: "var(--vt-fg-3)" }}
+                  >
+                    · {OFFICIAL_MODEL_SIZE}
+                  </span>
+                </div>
 
-                {isDownloaded ? (
-                  <>
-                    <span
-                      className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-[12px] font-medium"
-                      style={{
-                        color: "var(--vt-ok)",
-                        background: "var(--vt-ok-soft)",
-                        border: "1px solid oklch(from var(--vt-ok) l c h / 0.3)",
-                      }}
-                    >
-                      <VtIcon.check /> {t("settings.transcription.installed")}
-                    </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {isDownloaded ? (
+                    <>
+                      <span
+                        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-[12px] font-medium"
+                        style={{
+                          color: "var(--vt-ok)",
+                          background: "var(--vt-ok-soft)",
+                          border: "1px solid oklch(from var(--vt-ok) l c h / 0.3)",
+                        }}
+                      >
+                        <VtIcon.check /> {t("settings.transcription.installed")}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={remove}
+                        className="vt-btn"
+                        data-tip={t("settings.transcription.deleteModel")}
+                        style={{
+                          color: "var(--vt-danger)",
+                          borderColor: "oklch(from var(--vt-danger) l c h / 0.3)",
+                        }}
+                      >
+                        <VtIcon.trash />
+                      </button>
+                    </>
+                  ) : (
                     <button
                       type="button"
-                      onClick={remove}
-                      className="vt-btn"
-                      data-tip={t("settings.transcription.deleteModel")}
-                      style={{
-                        color: "var(--vt-danger)",
-                        borderColor: "oklch(from var(--vt-danger) l c h / 0.3)",
-                      }}
+                      onClick={download}
+                      disabled={isDownloading || isChecking}
+                      className="vt-btn-primary"
                     >
-                      <VtIcon.trash />
+                      {isDownloading ? (
+                        <>
+                          <VtIcon.spinner />
+                          {Math.round(progress)}%
+                        </>
+                      ) : (
+                        <>
+                          <VtIcon.refresh />
+                          {t("settings.transcription.download")}
+                        </>
+                      )}
                     </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={download}
-                    disabled={isDownloading || isChecking}
-                    className="vt-btn-primary"
-                  >
-                    {isDownloading ? (
-                      <>
-                        <VtIcon.spinner />
-                        {Math.round(progress)}%
-                      </>
-                    ) : (
-                      <>
-                        <VtIcon.refresh />
-                        {t("settings.transcription.download")}
-                      </>
-                    )}
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
               {isDownloading && (
                 <div
@@ -342,6 +372,64 @@ function ProviderBadge({ color, children }: ProviderBadgeProps) {
     >
       {children}
     </span>
+  );
+}
+
+interface LegacyModelMigrationBannerProps {
+  currentModel: string;
+  isMigrating: boolean;
+  onMigrate: () => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}
+
+function LegacyModelMigrationBanner({
+  currentModel,
+  isMigrating,
+  onMigrate,
+  t,
+}: LegacyModelMigrationBannerProps) {
+  const prettyName = LEGACY_MODEL_LABELS[currentModel] ?? currentModel;
+  return (
+    <div
+      className="rounded-lg px-3 py-2.5 flex items-start gap-3 mx-4 my-3"
+      style={{
+        background: "oklch(from var(--vt-warn) l c h / 0.10)",
+        border: "1px solid oklch(from var(--vt-warn) l c h / 0.32)",
+      }}
+    >
+      <span className="mt-0.5 shrink-0" style={{ color: "var(--vt-warn)" }}>
+        <VtIcon.alert />
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[12.5px] font-semibold">
+          {t("settings.transcription.legacyMigration.title", {
+            model: prettyName,
+          })}
+        </div>
+        <div
+          className="text-[12px] mt-0.5 leading-relaxed"
+          style={{ color: "var(--vt-fg-3)" }}
+        >
+          {t("settings.transcription.legacyMigration.body")}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onMigrate}
+        disabled={isMigrating}
+        className="vt-btn-primary shrink-0"
+        style={{ height: 30 }}
+      >
+        {isMigrating ? (
+          <>
+            <VtIcon.spinner />
+            {t("settings.transcription.legacyMigration.migrating")}
+          </>
+        ) : (
+          t("settings.transcription.legacyMigration.cta")
+        )}
+      </button>
+    </div>
   );
 }
 
