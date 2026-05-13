@@ -170,6 +170,7 @@ function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, 
     <div
       className={`vt-notes-tree-item group relative flex items-center gap-1.5 ${indented ? "pl-8 pr-3" : "px-3"} py-1.5 cursor-pointer transition-colors`}
       data-active={isActive}
+      data-indented={indented}
       style={
         isActive
           ? {
@@ -297,8 +298,8 @@ function FolderSection({
           ) : (
             <ChevronDown className="w-3 h-3 shrink-0" style={{ color: "var(--vt-fg-4)" }} />
           )}
-          <Folder className="w-3 h-3 shrink-0" style={{ color: "var(--vt-fg-4)" }} />
-          <span className="text-xs select-none truncate" style={{ color: "var(--vt-fg-3)" }}>
+          <Folder className="w-3 h-3 shrink-0" style={{ color: "var(--vt-accent-2)" }} />
+          <span className="text-xs font-medium select-none truncate" style={{ color: "var(--vt-fg)" }}>
             {folder.name}
           </span>
           <span className="text-[10px] select-none shrink-0" style={{ color: "var(--vt-fg-4)" }}>
