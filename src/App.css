@@ -607,6 +607,22 @@ body.mini-window-body #root {
   font-feature-settings: "cv11", "ss01";
 }
 
+/* Tree guide — vertical hairline aligned with the parent chevron centre,
+   making the folder → note hierarchy visible at a glance. */
+.vt-notes-tree-item[data-indented="true"]::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--vt-border);
+  pointer-events: none;
+}
+.vt-notes-tree-item[data-indented="true"][data-active="true"]::before {
+  background: var(--vt-accent);
+}
+
 /* Theme-aware hover background for buttons and rows inside .vt-app. */
 .vt-app .vt-hover-bg:hover {
   background: var(--vt-hover);
