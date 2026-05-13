@@ -38,7 +38,9 @@ export function SettingTabs({ activeSection, onSectionChange }: SettingTabsProps
 
   return (
     <div className="vt-app mx-auto max-w-5xl px-3 py-6 sm:px-4 md:px-6">
-      {activeSection === "section-transcription" && <TranscriptionSection />}
+      {activeSection === "section-transcription" && (
+        <TranscriptionSection onSectionChange={onSectionChange} />
+      )}
       {activeSection === "section-post-process" && <PostProcessSection />}
       {activeSection === "section-audio" && <AudioSection />}
       {activeSection === "section-vocabulaire" && <VocabularySection />}

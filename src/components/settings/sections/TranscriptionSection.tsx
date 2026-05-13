@@ -2,6 +2,9 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
 import { useModelDownload } from "@/hooks/useModelDownload";
+import { useCloud } from "@/hooks/useCloud";
+import { useAuth } from "@/hooks/useAuth";
+import type { SettingsSectionId } from "../common/SettingsNav";
 import {
   PickerCardGrid,
   Row,
@@ -25,11 +28,73 @@ type LocalModel =
   | "large-v3-turbo"
   | "large-v3-turbo-q5_0";
 
-export function TranscriptionSection() {
+interface TranscriptionSectionProps {
+  onSectionChange?: (id: SettingsSectionId) => void;
+}
+
+/**
+ * Computes the cloud-eligibility chip displayed on the LexenaCloud provider
+ * card so the user sees, at a glance, why picking cloud might or might not
+ * work. Mirrors the gating logic in `useRecordingWorkflow` and the Rust
+ * `cloud_gate` so the UI signal is consistent with what would happen on
+ * record.
+ */
+function cloudStatusVariant({
+  isSignedIn,
+  isCloudEligible,
+  trialActive,
+  planName,
+}: {
+  isSignedIn: boolean;
+  isCloudEligible: boolean;
+  trialActive: boolean;
+  planName: string | null;
+}): { kind: "signin" | "trial" | "plan" | "none"; planName?: string } {
+  if (!isSignedIn) return { kind: "signin" };
+  if (isCloudEligible) {
+    if (planName) return { kind: "plan", planName };
+    if (trialActive) return { kind: "trial" };
+  }
+  return { kind: "none" };
+}
+
+export function TranscriptionSection({ onSectionChange }: TranscriptionSectionProps) {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { isDownloading, progress, isDownloaded, isChecking, download, remove } =
     useModelDownload(settings.transcription_provider, settings.local_model_size);
+  const { isCloudEligible, trial, plan } = useCloud();
+  const { user, openAuthModal } = useAuth();
+
+  const isSignedIn = Boolean(user);
+  const planName = plan?.plan ?? null;
+  const status = cloudStatusVariant({
+    isSignedIn,
+    isCloudEligible,
+    trialActive: trial.is_active,
+    planName,
+  });
+
+  const cloudStatusBadge =
+    status.kind === "signin" ? (
+      <ProviderBadge color="var(--vt-danger)">
+        {t("settings.transcription.cloudStatus.signinRequired")}
+      </ProviderBadge>
+    ) : status.kind === "plan" ? (
+      <ProviderBadge color="var(--vt-ok)">
+        {t("settings.transcription.cloudStatus.planActive", {
+          plan: status.planName,
+        })}
+      </ProviderBadge>
+    ) : status.kind === "trial" ? (
+      <ProviderBadge color="var(--vt-ok)">
+        {t("settings.transcription.cloudStatus.trialActive")}
+      </ProviderBadge>
+    ) : (
+      <ProviderBadge color="var(--vt-warn)">
+        {t("settings.transcription.cloudStatus.noActivePlan")}
+      </ProviderBadge>
+    );
 
   const providerOptions = [
     {
@@ -44,12 +109,18 @@ export function TranscriptionSection() {
       sub: t("settings.transcription.providerLexenaCloudSub"),
       dot: "var(--vt-accent)",
       badge: (
-        <ProviderBadge color="var(--vt-accent)">
-          {t("settings.transcription.providerBetaBadge")}
-        </ProviderBadge>
+        <div className="flex items-center gap-1.5">
+          <ProviderBadge color="var(--vt-accent)">
+            {t("settings.transcription.providerBetaBadge")}
+          </ProviderBadge>
+          {cloudStatusBadge}
+        </div>
       ),
     },
   ];
+
+  const cloudSelected = settings.transcription_provider === "LexenaCloud";
+  const showCloudBanner = cloudSelected && !isCloudEligible;
 
   return (
     <div className="vt-anim-fade-up space-y-5">
@@ -65,12 +136,22 @@ export function TranscriptionSection() {
           label={t("settings.transcription.provider")}
           hint={t("settings.transcription.providerHint")}
         >
-          <PickerCardGrid
-            value={settings.transcription_provider}
-            onChange={(v) => updateSetting("transcription_provider", v)}
-            options={providerOptions}
-            columns={2}
-          />
+          <div className="flex flex-col gap-2">
+            <PickerCardGrid
+              value={settings.transcription_provider}
+              onChange={(v) => updateSetting("transcription_provider", v)}
+              options={providerOptions}
+              columns={2}
+            />
+            {showCloudBanner && (
+              <CloudEligibilityBanner
+                isSignedIn={isSignedIn}
+                onSignIn={() => openAuthModal()}
+                onManagePlan={() => onSectionChange?.("section-cloud")}
+                t={t}
+              />
+            )}
+          </div>
         </Row>
 
         <Row
@@ -261,5 +342,62 @@ function ProviderBadge({ color, children }: ProviderBadgeProps) {
     >
       {children}
     </span>
+  );
+}
+
+interface CloudEligibilityBannerProps {
+  isSignedIn: boolean;
+  onSignIn: () => void;
+  onManagePlan: () => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}
+
+function CloudEligibilityBanner({
+  isSignedIn,
+  onSignIn,
+  onManagePlan,
+  t,
+}: CloudEligibilityBannerProps) {
+  const titleKey = isSignedIn
+    ? "settings.transcription.cloudBanner.noPlanTitle"
+    : "settings.transcription.cloudBanner.signinRequiredTitle";
+  const bodyKey = isSignedIn
+    ? "settings.transcription.cloudBanner.noPlanBody"
+    : "settings.transcription.cloudBanner.signinRequiredBody";
+
+  return (
+    <div
+      className="rounded-lg px-3 py-2.5 flex items-start gap-3"
+      style={{
+        background: "oklch(from var(--vt-warn) l c h / 0.10)",
+        border: "1px solid oklch(from var(--vt-warn) l c h / 0.32)",
+      }}
+    >
+      <span
+        className="mt-0.5 shrink-0"
+        style={{ color: "var(--vt-warn)" }}
+      >
+        <VtIcon.alert />
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[12.5px] font-semibold">{t(titleKey)}</div>
+        <div
+          className="text-[12px] mt-0.5 leading-relaxed"
+          style={{ color: "var(--vt-fg-3)" }}
+        >
+          {t(bodyKey)}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={isSignedIn ? onManagePlan : onSignIn}
+        className="vt-btn-primary shrink-0"
+        style={{ height: 30 }}
+      >
+        {isSignedIn
+          ? t("settings.transcription.cloudBanner.managePlanCta")
+          : t("settings.transcription.cloudBanner.signinCta")}
+      </button>
+    </div>
   );
 }

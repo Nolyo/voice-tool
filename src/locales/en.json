@@ -326,7 +326,21 @@
       "whisperModelHint": "The bigger the model, the more accurate but slower and heavier.",
       "providerLocalSub": "offline · CPU/GPU",
       "smartFormatting": "Smart formatting (punctuation, capitals, spaces)",
-      "smartFormattingHint": "Fixes capitalization, punctuation and spaces on the Whisper output."
+      "smartFormattingHint": "Fixes capitalization, punctuation and spaces on the Whisper output.",
+      "cloudStatus": {
+        "signinRequired": "Sign-in required",
+        "trialActive": "Trial active",
+        "planActive": "{{plan}} plan active",
+        "noActivePlan": "No active plan"
+      },
+      "cloudBanner": {
+        "signinRequiredTitle": "You're not signed in",
+        "signinRequiredBody": "Lexena Cloud requires an account. Sign in to start your free trial, or pick Local in the meantime.",
+        "signinCta": "Sign in",
+        "noPlanTitle": "No active trial or subscription",
+        "noPlanBody": "You can still pick Lexena Cloud, but recording will be refused until a plan or trial is active.",
+        "managePlanCta": "Manage subscription"
+      }
     },
     "audio": {
       "title": "Audio",

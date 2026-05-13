@@ -119,6 +119,7 @@ pub fn run() {
             commands::settings::set_update_channel,
             commands::settings::set_translate_mode,
             commands::settings::set_post_process_enabled,
+            commands::settings::set_cloud_gate,
             commands::model::download_local_model,
             commands::model::check_local_model_exists,
             commands::model::any_local_model_exists,

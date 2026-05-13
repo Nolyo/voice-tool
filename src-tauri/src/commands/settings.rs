@@ -3,7 +3,7 @@ use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_store::StoreBuilder;
 
 use crate::hotkeys::{apply_hotkeys, normalize_hotkey_value};
-use crate::state::AppState;
+use crate::state::{AppState, CloudGate};
 
 /// Check if autostart is currently enabled
 #[tauri::command]
@@ -186,5 +186,25 @@ pub fn set_post_process_enabled(app: AppHandle, enabled: bool) -> Result<(), Str
     let _ = app.emit("post-process-enabled-changed", enabled);
 
     tracing::info!("Post-process enabled set to: {}", enabled);
+    Ok(())
+}
+
+/// Push the cloud routing snapshot from the renderer's `CloudContext` into
+/// `AppState.cloud_gate`. Hotkey-triggered `start_recording` reads this to
+/// refuse capture when `provider == "LexenaCloud"` and the user is not
+/// eligible — instead of recording 20s of audio that the renderer would
+/// reject post-capture.
+#[tauri::command]
+pub fn set_cloud_gate(
+    state: State<AppState>,
+    provider: String,
+    eligible: bool,
+) -> Result<(), String> {
+    let mut guard = state
+        .inner()
+        .cloud_gate
+        .lock()
+        .map_err(|e| format!("cloud_gate lock poisoned: {}", e))?;
+    *guard = CloudGate { provider, eligible };
     Ok(())
 }

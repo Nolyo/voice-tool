@@ -1,4 +1,5 @@
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -165,6 +166,23 @@ export function CloudProvider({ children }: { children: ReactNode }) {
       unlistenPromise.then((unlisten) => unlisten()).catch(() => {});
     };
   }, [refreshUsage]);
+
+  // Push the cloud routing snapshot to Rust so hotkey-triggered start_recording
+  // can refuse capture when LexenaCloud is selected but the user isn't eligible
+  // (instead of capturing 20s of audio that the renderer would reject post-hoc).
+  // The Rust side stores this in `AppState.cloud_gate` and emits
+  // `cloud-gate-blocked` when a hotkey is refused — listened to in
+  // useRecordingWorkflow which surfaces the i18n toast.
+  useEffect(() => {
+    void invoke("set_cloud_gate", {
+      provider: transcription_provider,
+      eligible,
+    }).catch(() => {
+      // Non-fatal: the renderer-side check in useRecordingWorkflow still
+      // refuses the call. Worst case, hotkey path captures audio then we
+      // reject in transcribeAudio (the pre-PR behavior).
+    });
+  }, [transcription_provider, eligible]);
 
   const mode: CloudMode = useMemo(() => {
     if (!user) return "local";
