@@ -326,7 +326,21 @@
       "whisperModelHint": "Plus le modèle est grand, plus il est précis mais lent et lourd.",
       "providerLocalSub": "hors-ligne · CPU/GPU",
       "smartFormatting": "Formatage intelligent (ponctuation, majuscules, espaces)",
-      "smartFormattingHint": "Corrige majuscules, ponctuation et espaces sur la sortie Whisper."
+      "smartFormattingHint": "Corrige majuscules, ponctuation et espaces sur la sortie Whisper.",
+      "cloudStatus": {
+        "signinRequired": "Connexion requise",
+        "trialActive": "Essai actif",
+        "planActive": "Plan {{plan}} actif",
+        "noActivePlan": "Aucun plan actif"
+      },
+      "cloudBanner": {
+        "signinRequiredTitle": "Tu n'es pas connecté",
+        "signinRequiredBody": "Lexena Cloud nécessite un compte. Connecte-toi pour lancer ton essai gratuit ou choisis Local en attendant.",
+        "signinCta": "Se connecter",
+        "noPlanTitle": "Aucun essai ni abonnement actif",
+        "noPlanBody": "Tu peux toujours choisir Lexena Cloud, mais l'enregistrement sera refusé tant qu'un plan ou un essai n'est pas actif.",
+        "managePlanCta": "Gérer mon abonnement"
+      }
     },
     "audio": {
       "title": "Audio",

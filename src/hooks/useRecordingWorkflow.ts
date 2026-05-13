@@ -606,6 +606,22 @@ export function useRecordingWorkflow({
           await transcribeAudio(result.audio_data, result.sample_rate);
         }
       } else {
+        // Refuse capture before recording when LexenaCloud is selected but the
+        // user isn't eligible — otherwise they speak for 20s only to get a
+        // generic post-capture error. Mirrors the Rust-side gate in
+        // start_recording_shortcut for the hotkey path.
+        if (hasCloudSelectedRef.current && cloudModeRef.current !== "cloud") {
+          const { data } = await supabase.auth.getSession();
+          const hasSession = Boolean(data.session?.access_token);
+          const key = !hasSession
+            ? "errors.signin_required"
+            : "errors.not_eligible";
+          toast.error(tRef.current(`cloud:${key}`));
+          await emit("transcription-error", {
+            error: tRef.current(`cloud:${key}`),
+          });
+          return;
+        }
         await invoke("start_recording", {
           deviceIndex: settings.input_device_index,
         });
@@ -623,6 +639,43 @@ export function useRecordingWorkflow({
     settings.input_device_index,
     transcribeAudio,
   ]);
+
+  // Listener for the Rust-side cloud gate: when a hotkey press is refused
+  // (LexenaCloud selected + ineligible), Rust emits `cloud-gate-blocked` and
+  // we surface the same i18n toast the UI button would show.
+  useEffect(() => {
+    let unlisten: UnlistenFn | null = null;
+    let disposed = false;
+
+    const setup = async () => {
+      try {
+        const handle = await listen("cloud-gate-blocked", async () => {
+          const { data } = await supabase.auth.getSession();
+          const hasSession = Boolean(data.session?.access_token);
+          const key = !hasSession
+            ? "errors.signin_required"
+            : "errors.not_eligible";
+          toast.error(tRef.current(`cloud:${key}`));
+          await emit("transcription-error", {
+            error: tRef.current(`cloud:${key}`),
+          });
+        });
+        if (disposed) handle();
+        else unlisten = handle;
+      } catch (err) {
+        console.error("Failed to register cloud-gate-blocked listener:", err);
+      }
+    };
+    setup();
+
+    return () => {
+      disposed = true;
+      if (unlisten) {
+        unlisten();
+        unlisten = null;
+      }
+    };
+  }, []);
 
   return {
     isRecording,

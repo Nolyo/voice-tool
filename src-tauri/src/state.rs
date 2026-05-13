@@ -29,6 +29,22 @@ pub struct WhisperState {
     pub cache: Arc<TokioMutex<WhisperCache>>,
 }
 
+/// Snapshot of cloud eligibility pushed by the renderer's CloudContext.
+///
+/// Used by hotkey-triggered `start_recording` to refuse capture when the user
+/// picked "LexenaCloud" but isn't signed-in / eligible — otherwise the user
+/// records 20s of audio that will be rejected post-capture by the renderer.
+#[derive(Clone, Default)]
+pub(crate) struct CloudGate {
+    /// Last known `transcription_provider` from settings (`"Local"` or
+    /// `"LexenaCloud"`). Defaults to empty until the renderer pushes its first
+    /// snapshot, which leaves the gate open (no block).
+    pub(crate) provider: String,
+    /// Whether the signed-in user is server-side eligible for cloud
+    /// (active trial or active subscription).
+    pub(crate) eligible: bool,
+}
+
 /// Application state that holds the audio recorder and active hotkeys
 pub struct AppState {
     pub(crate) audio_recorder: Mutex<AudioRecorder>,
@@ -38,6 +54,9 @@ pub struct AppState {
     pub active_profile_id: Mutex<String>,
     /// Auth state: pending OAuth nonces, memory-fallback refresh token, keyring flag
     pub auth: Mutex<crate::auth::AuthState>,
+    /// Cloud routing snapshot pushed by the renderer; used by hotkey handlers
+    /// to refuse `start_recording` when LexenaCloud is selected but ineligible.
+    pub(crate) cloud_gate: Mutex<CloudGate>,
 }
 
 pub(crate) fn create_app_state() -> AppState {
@@ -55,5 +74,6 @@ pub(crate) fn create_app_state() -> AppState {
         },
         active_profile_id: Mutex::new(String::new()),
         auth: Mutex::new(crate::auth::AuthState::new()),
+        cloud_gate: Mutex::new(CloudGate::default()),
     }
 }

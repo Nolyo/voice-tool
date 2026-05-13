@@ -116,6 +116,22 @@ fn is_recorder_active<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
 
 fn start_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
     let state: State<AppState> = app_handle.state();
+
+    // Refuse hotkey-triggered capture when the user picked "LexenaCloud" but
+    // is not eligible (not signed-in / no active trial / no active sub). The
+    // renderer pushes this snapshot via the `set_cloud_gate` command from
+    // CloudContext. We emit `cloud-gate-blocked` so the renderer can surface
+    // a toast (instead of letting the user speak for 20s before we tell them).
+    if let Ok(gate) = state.inner().cloud_gate.lock() {
+        if gate.provider == "LexenaCloud" && !gate.eligible {
+            tracing::info!(
+                "Hotkey start_recording refused: LexenaCloud selected but user not eligible"
+            );
+            let _ = app_handle.emit("cloud-gate-blocked", ());
+            return false;
+        }
+    }
+
     if let Ok(mut recorder) = state.inner().audio_recorder.lock() {
         if recorder.is_recording() {
             return true;
