@@ -1,34 +1,60 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Check, Cloud, HardDrive } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { AlertTriangle, Check, Cloud, HardDrive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OnboardingWizard } from "../OnboardingWizard";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  isLocalEligible,
+  type SystemInfo,
+} from "@/lib/system-eligibility";
 
 type Mode = "choose" | "local-wizard";
 
 /**
  * First-run welcome screen presenting the cloud-vs-local choice.
  *
- * Branch A (recommended): create a free Lexena Cloud account → opens AuthModal
- *   in signup mode. We mark first-run as complete immediately so the screen
- *   doesn't reappear once the modal closes.
- *
- * Branch B: continue with local Whisper only → swaps in the existing
- *   `OnboardingWizard` (now reduced to a local-only sub-flow). The wizard
- *   reports completion via `onComplete` once the model is downloaded.
- *
- * Phase 3 of sub-epic 04 billing (replaces the old internal-choice step that
- * lived inside `OnboardingWizard`).
+ * Auto-detects the user's system (RAM + discrete GPU) on mount. If the machine
+ * can't comfortably run `large-v3-turbo` (no GPU and < 32 GB RAM), the Local
+ * card is soft-blocked: still clickable, but marked "not recommended on your
+ * machine" so non-tech users default to Cloud where the experience is reliable.
  */
 export function WelcomeScreen({ onComplete }: { onComplete: () => void }) {
   const { t } = useTranslation("billing");
   const { openAuthModal } = useAuth();
   const [mode, setMode] = useState<Mode>("choose");
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    invoke<SystemInfo>("get_system_info")
+      .then((info) => {
+        if (!cancelled) setSystemInfo(info);
+      })
+      .catch((e) => {
+        console.error("System detection failed in WelcomeScreen:", e);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Default to "eligible" while detection runs (or if it fails): never block
+  // the Local branch on a transient failure — the wizard will still display
+  // the warning if !isEligible once info is available.
+  const isEligible = systemInfo ? isLocalEligible(systemInfo) : true;
 
   if (mode === "local-wizard") {
-    return <OnboardingWizard onComplete={onComplete} onBack={() => setMode("choose")} />;
+    return (
+      <OnboardingWizard
+        systemInfo={systemInfo}
+        isEligible={isEligible}
+        onComplete={onComplete}
+        onBack={() => setMode("choose")}
+      />
+    );
   }
 
   const branchAFeatures = t("welcome.branch_a.features", {
@@ -40,15 +66,14 @@ export function WelcomeScreen({ onComplete }: { onComplete: () => void }) {
 
   const handleBranchA = () => {
     openAuthModal();
-    // Once the auth modal is open, the user will either sign up (and become
-    // signed-in), or close the modal and re-trigger first-run. Either way,
-    // we close this dialog so the user can interact with the AuthModal.
     onComplete();
   };
 
   const handleBranchB = () => {
     setMode("local-wizard");
   };
+
+  const showNotEligibleBadge = systemInfo !== null && !isEligible;
 
   return (
     <DialogPrimitive.Root open>
@@ -88,11 +113,34 @@ export function WelcomeScreen({ onComplete }: { onComplete: () => void }) {
               </Button>
             </div>
 
-            <div className="flex flex-col rounded-lg border p-6">
+            <div className="relative flex flex-col rounded-lg border p-6">
+              {showNotEligibleBadge && (
+                <span
+                  className="absolute -top-3 right-4 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
+                  style={{
+                    background: "oklch(from var(--vt-warn) l c h / 0.15)",
+                    color: "var(--vt-warn)",
+                    border: "1px solid oklch(from var(--vt-warn) l c h / 0.4)",
+                  }}
+                >
+                  <AlertTriangle className="size-3" />
+                  {t("welcome.branch_b.not_eligible_badge")}
+                </span>
+              )}
               <HardDrive className="size-8 text-muted-foreground" aria-hidden />
               <h3 className="mt-3 text-lg font-semibold">
                 {t("welcome.branch_b.title")}
               </h3>
+              {showNotEligibleBadge && systemInfo && (
+                <p
+                  className="mt-2 text-xs"
+                  style={{ color: "var(--vt-warn)" }}
+                >
+                  {t("welcome.branch_b.not_eligible_reason", {
+                    ram: systemInfo.total_ram_gb.toFixed(0),
+                  })}
+                </p>
+              )}
               <ul className="mt-4 flex flex-1 flex-col gap-2">
                 {branchBFeatures.map((feat) => (
                   <li key={feat} className="flex items-start gap-2 text-sm">
