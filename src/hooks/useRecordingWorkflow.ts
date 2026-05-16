@@ -23,7 +23,6 @@ import { useCloud } from "@/hooks/useCloud";
 import { supabase } from "@/lib/supabase";
 import { transcribeCloud, postProcessCloud } from "@/lib/cloud/api";
 import { CloudApiError } from "@/lib/cloud/errors";
-import type { PostProcessTask } from "@/lib/cloud/types";
 
 type AddTranscription = (
   text: string,
@@ -42,8 +41,6 @@ interface PostProcessOutcome {
   text: string;
   /** Original Whisper text — set only when post-process actually modified it. */
   originalText?: string;
-  /** Mode applied — same condition as `originalText`. */
-  mode?: string;
   /** USD cost of the post-process LLM call — set only when post-process ran. */
   cost?: number;
 }
@@ -63,26 +60,6 @@ function shouldPostProcess(
   return true;
 }
 
-/**
- * Maps the local UI's post-process mode to the cloud worker's task taxonomy.
- */
-function mapModeToCloudTask(mode: string): PostProcessTask {
-  switch (mode) {
-    case "grammar":
-      return "correct";
-    case "email":
-      return "email";
-    case "summary":
-    case "list":
-      return "summarize";
-    case "auto":
-    case "formal":
-    case "casual":
-    default:
-      return "reformulate";
-  }
-}
-
 async function maybePostProcessCloud(
   originalText: string,
   settings: AppSettings["settings"],
@@ -94,13 +71,10 @@ async function maybePostProcessCloud(
   const trimmed = originalText.trim();
   if (!trimmed) return { text: originalText };
 
-  const task = mapModeToCloudTask(settings.post_process_mode);
-
   try {
     const result = await postProcessCloud({
-      task,
+      task: "auto",
       text: trimmed,
-      language: settings.language,
       jwt,
     });
     const cleaned = result.text?.trim();
@@ -110,7 +84,6 @@ async function maybePostProcessCloud(
     return {
       text: cleaned,
       originalText: trimmed,
-      mode: settings.post_process_mode,
       // Cloud post-process is billed in tokens against the user's plan / trial,
       // not in USD against their API key — no apiCost passthrough.
       cost: 0,
@@ -458,7 +431,7 @@ export function useRecordingWorkflow({
           result.audioPath,
           apiCost,
           processed.originalText,
-          processed.mode,
+          undefined,
           processed.cost,
           durationSeconds,
           effectiveProviderLabel,

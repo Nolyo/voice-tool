@@ -372,44 +372,14 @@
       "title": "Post Process",
       "subtitle": "Reformate la transcription avec l'IA Lexena Cloud",
       "enable": "Activer le post-traitement IA",
-      "enableDesc": "Après chaque transcription, le texte est repassé par notre IA selon le mode choisi.",
+      "enableDesc": "Après chaque transcription, le texte est repassé par notre IA en mode automatique.",
       "delayWarning": "Un appel IA ajoute 1 à 3 secondes avant que le texte soit inséré.",
-      "mode": "Mode de reformatage",
       "delayWarningTitle": "Latence supplémentaire",
-      "modeHint": "Détermine le style appliqué à la sortie.",
+      "autoTitle": "Mode automatique",
+      "autoBody": "Dicte une consigne en tête (« traduis en anglais », « rédige ça comme un mail », « mets ça en liste »…) : l'IA l'applique et la retire du texte. Sans consigne, elle se contente de corriger ponctuation, casse et lisibilité.",
       "cloudUpsellTitle": "Disponible avec Lexena Cloud",
       "cloudUpsellBody": "Le post-traitement IA est inclus dans les offres payantes (essai ou abonnement actif).",
-      "cloudUpsellCta": "Voir les offres",
-      "modes": {
-        "auto": {
-          "label": "Auto (détection contextuelle)",
-          "desc": "Détecte liste, email ou texte libre et reformate automatiquement."
-        },
-        "list": {
-          "label": "Liste à puces",
-          "desc": "Convertit l'énumération dictée en liste Markdown à puces."
-        },
-        "email": {
-          "label": "Email",
-          "desc": "Restructure la dictée en email (salutation, corps, formule de politesse)."
-        },
-        "formal": {
-          "label": "Ton formel",
-          "desc": "Réécrit dans un ton professionnel, sans tics de langage."
-        },
-        "casual": {
-          "label": "Ton décontracté",
-          "desc": "Réécrit dans un ton fluide et naturel, sans formalisme."
-        },
-        "summary": {
-          "label": "Résumé",
-          "desc": "Condense la dictée en 2 à 3 phrases essentielles."
-        },
-        "grammar": {
-          "label": "Correction grammaticale",
-          "desc": "Corrige l'orthographe et la grammaire sans reformuler le fond."
-        }
-      }
+      "cloudUpsellCta": "Voir les offres"
     },
     "vocabulary": {
       "title": "Vocabulaire",

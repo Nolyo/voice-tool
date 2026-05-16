@@ -11,33 +11,10 @@ import {
 
 const ACCENT = "var(--vt-pin)";
 
-type PostProcessMode =
-  | "auto"
-  | "list"
-  | "email"
-  | "formal"
-  | "casual"
-  | "summary"
-  | "grammar";
-
 export function PostProcessSection() {
   const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { isCloudEligible } = useCloud();
-
-  const modes: PostProcessMode[] = [
-    "auto",
-    "list",
-    "email",
-    "formal",
-    "casual",
-    "summary",
-    "grammar",
-  ];
-  const recommendedLabel = t("common.recommended", { defaultValue: "Recommandé" });
-  const activeModeDesc = t(
-    `settings.postProcess.modes.${settings.post_process_mode}.desc`,
-  );
 
   return (
     <div className="vt-anim-fade-up space-y-5">
@@ -120,41 +97,17 @@ export function PostProcessSection() {
               </Callout>
             </div>
 
-            <Row
-              label={t("settings.postProcess.mode")}
-              hint={t("settings.postProcess.modeHint", {
-                defaultValue: "Détermine le style appliqué à la sortie.",
-              })}
-              align="start"
-            >
-              <div className="flex flex-col gap-2" style={{ maxWidth: 360 }}>
-                <select
-                  className="vt-select"
-                  value={settings.post_process_mode}
-                  onChange={(e) =>
-                    updateSetting(
-                      "post_process_mode",
-                      e.target.value as PostProcessMode,
-                    )
-                  }
-                >
-                  {modes.map((m) => {
-                    const label = t(`settings.postProcess.modes.${m}.label`);
-                    return (
-                      <option key={m} value={m}>
-                        {m === "auto" ? `${label} — ${recommendedLabel}` : label}
-                      </option>
-                    );
-                  })}
-                </select>
-                <span
-                  className="text-[12px] leading-snug"
-                  style={{ color: "var(--vt-fg-3)" }}
-                >
-                  {activeModeDesc}
-                </span>
-              </div>
-            </Row>
+            <div className="vt-row">
+              <Callout
+                kind="info"
+                icon={<VtIcon.wand />}
+                title={t("settings.postProcess.autoTitle", {
+                  defaultValue: "Mode automatique",
+                })}
+              >
+                {t("settings.postProcess.autoBody")}
+              </Callout>
+            </div>
           </>
         )}
       </div>

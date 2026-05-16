@@ -113,7 +113,7 @@ describe("postProcessCloud", () => {
       source: "trial",
     });
     await postProcessCloud({
-      task: "reformulate",
+      task: "auto",
       text: "in",
       language: "fr",
       modelTier: "mini",
@@ -122,7 +122,7 @@ describe("postProcessCloud", () => {
     expect(invoke).toHaveBeenCalledWith(
       "post_process_cloud",
       expect.objectContaining({
-        task: "reformulate",
+        task: "auto",
         text: "in",
         language: "fr",
         modelTier: "mini",

@@ -372,44 +372,14 @@
       "title": "Post Process",
       "subtitle": "Reformat the transcription with Lexena Cloud AI",
       "enable": "Enable AI post-processing",
-      "enableDesc": "After each transcription, the text goes through our AI using the selected mode.",
+      "enableDesc": "After each transcription, the text goes through our AI in automatic mode.",
       "delayWarning": "An AI call adds 1 to 3 seconds before the text is inserted.",
-      "mode": "Reformatting mode",
       "delayWarningTitle": "Extra latency",
-      "modeHint": "Determines the style applied to the output.",
+      "autoTitle": "Automatic mode",
+      "autoBody": "Dictate an instruction up front (\"translate to English\", \"write this as an email\", \"turn this into a list\"…): the AI applies it and strips it from the output. Without an instruction, it just fixes punctuation, casing, and readability.",
       "cloudUpsellTitle": "Available with Lexena Cloud",
       "cloudUpsellBody": "AI post-processing is included in paid plans (active trial or subscription).",
-      "cloudUpsellCta": "View plans",
-      "modes": {
-        "auto": {
-          "label": "Auto (context detection)",
-          "desc": "Detects list, email, or free text and reformats automatically."
-        },
-        "list": {
-          "label": "Bullet list",
-          "desc": "Converts the dictated enumeration into a Markdown bullet list."
-        },
-        "email": {
-          "label": "Email",
-          "desc": "Restructures the dictation into an email (greeting, body, closing)."
-        },
-        "formal": {
-          "label": "Formal tone",
-          "desc": "Rewrites in a professional tone, without filler words."
-        },
-        "casual": {
-          "label": "Casual tone",
-          "desc": "Rewrites in a fluid, natural tone without formality."
-        },
-        "summary": {
-          "label": "Summary",
-          "desc": "Condenses the dictation into 2 to 3 essential sentences."
-        },
-        "grammar": {
-          "label": "Grammar correction",
-          "desc": "Corrects spelling and grammar without reformulating the content."
-        }
-      }
+      "cloudUpsellCta": "View plans"
     },
     "vocabulary": {
       "title": "Vocabulary",
