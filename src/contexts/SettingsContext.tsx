@@ -122,10 +122,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             console.info("[settings migration] %s → Local", legacyProvider);
             migrated = true;
           }
-          if (rawSettings.post_process_mode === "custom") {
-            merged.settings.post_process_mode = "auto";
-            migrated = true;
-          }
           for (const k of [
             "openai_api_key",
             "groq_api_key",
@@ -133,6 +129,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             "groq_model",
             "post_process_provider",
             "post_process_custom_prompt",
+            // Post-process is now a single auto mode — the legacy per-mode
+            // selector was removed, so any stored value is dead weight.
+            "post_process_mode",
           ] as const) {
             if (k in rawSettings) {
               delete (merged.settings as Record<string, unknown>)[k];

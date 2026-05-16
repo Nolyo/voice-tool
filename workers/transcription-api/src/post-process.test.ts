@@ -55,7 +55,7 @@ describe("handlePostProcess OpenAIError mapping", () => {
       new OpenAIError("openai 400: content policy", 400, false),
     );
     const res = await handlePostProcess(
-      makeRequest({ task: "reformulate", text: "Bonjour" }),
+      makeRequest({ task: "auto", text: "Bonjour" }),
       ENV,
       USER,
     );
@@ -70,7 +70,7 @@ describe("handlePostProcess OpenAIError mapping", () => {
       new OpenAIError("openai 503: down", 503, true),
     );
     const res = await handlePostProcess(
-      makeRequest({ task: "reformulate", text: "Bonjour" }),
+      makeRequest({ task: "auto", text: "Bonjour" }),
       ENV,
       USER,
     );
@@ -85,7 +85,7 @@ describe("handlePostProcess OpenAIError mapping", () => {
       new OpenAIError("openai 429: rate limit", 429, true),
     );
     const res = await handlePostProcess(
-      makeRequest({ task: "reformulate", text: "Bonjour" }),
+      makeRequest({ task: "auto", text: "Bonjour" }),
       ENV,
       USER,
     );

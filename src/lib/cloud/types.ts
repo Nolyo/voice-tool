@@ -23,7 +23,7 @@ export interface NotesAssistResult {
   source: CloudUsageSource;
 }
 
-export type PostProcessTask = "reformulate" | "correct" | "email" | "summarize";
+export type PostProcessTask = "auto";
 export type ModelTier = "mini" | "full";
 
 export interface CloudApiErrorBody {

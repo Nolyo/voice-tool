@@ -70,14 +70,6 @@ export interface AppSettings {
 
     // Post-process (AI reformatting after transcription, cloud-only)
     post_process_enabled: boolean;
-    post_process_mode:
-      | "auto"
-      | "list"
-      | "email"
-      | "formal"
-      | "casual"
-      | "summary"
-      | "grammar";
   };
 }
 
@@ -149,7 +141,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Post-process
     post_process_enabled: false,
-    post_process_mode: "auto",
   },
 };
 
