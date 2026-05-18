@@ -6,24 +6,29 @@ import { OnboardingWizard } from "../OnboardingWizard";
 import { OnboardingProgress } from "./OnboardingProgress";
 import { HeroStep } from "./steps/HeroStep";
 import { CapabilitiesStep } from "./steps/CapabilitiesStep";
+import { TryItStep } from "./steps/TryItStep";
 import { ChoiceStep } from "./steps/ChoiceStep";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettings } from "@/hooks/useSettings";
+import { setOnboardingActive } from "./demoState";
 import {
   isLocalEligible,
   type SystemInfo,
 } from "@/lib/system-eligibility";
 
-type Step = 1 | 2 | 3 | "local-wizard";
+type Step = 1 | 2 | 3 | 4 | "local-wizard";
+
+const TOTAL_STEPS = 4;
 
 /**
- * Three-step first-run wizard. Goal: tell the Lexena story (hero → capabilities
- * → choice) before asking the user to commit, biasing the choice toward Cloud
- * because that path exposes the trial-driven post-process IA experience.
+ * Four-step first-run wizard: hero → capabilities → try-it → choice.
  *
- * The wizard is gated by `settings.onboarding_completed`. Completion is recorded
- * when the user either picks a path (cloud signup, local download finished) or
- * dismisses with "Later" on the choice step.
+ * The TryIt step is the conversion engine: brand-new users without a local
+ * model or an account get a free cloud-powered transcription, then are
+ * prompted to sign up for 60 free minutes (or fall back to local).
+ *
+ * Completion is recorded when the user picks a path (cloud signup, local
+ * download finished) or explicitly dismisses with "Later".
  */
 export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const { t } = useTranslation("billing");
@@ -46,6 +51,15 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // While the modal is open, suppress the global Dashboard hotkey path — a
+  // brand-new user has no local model AND no cloud account, so the regular
+  // transcription pipeline would always error. The TryIt step has its own
+  // button-driven recording flow.
+  useEffect(() => {
+    setOnboardingActive(true);
+    return () => setOnboardingActive(false);
   }, []);
 
   const isEligible = systemInfo ? isLocalEligible(systemInfo) : true;
@@ -82,10 +96,14 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
         systemInfo={systemInfo}
         isEligible={isEligible}
         onComplete={handleLocalWizardComplete}
-        onBack={() => setStep(3)}
+        onBack={() => setStep(4)}
       />
     );
   }
+
+  const handleProgressClick = (s: number) => {
+    if (s === 1 || s === 2 || s === 3 || s === 4) setStep(s as Step);
+  };
 
   return (
     <DialogPrimitive.Root open>
@@ -106,7 +124,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
           {step === 1 && (
             <HeroStep
               onContinue={() => setStep(2)}
-              onSkip={() => setStep(3)}
+              onSkip={() => setStep(4)}
             />
           )}
           {step === 2 && (
@@ -116,10 +134,19 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
             />
           )}
           {step === 3 && (
+            <TryItStep
+              onBack={() => setStep(2)}
+              onSkip={() => setStep(4)}
+              onCloud={handleCloud}
+              onLocal={handleLocal}
+              onLater={handleLater}
+            />
+          )}
+          {step === 4 && (
             <ChoiceStep
               systemInfo={systemInfo}
               isEligible={isEligible}
-              onBack={() => setStep(2)}
+              onBack={() => setStep(3)}
               onCloud={handleCloud}
               onLocal={handleLocal}
               onLater={handleLater}
@@ -128,9 +155,9 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
           <div className="mt-8 flex justify-center">
             <OnboardingProgress
-              current={step}
-              total={3}
-              onStepClick={(s) => setStep(s as Step)}
+              current={typeof step === "number" ? step : 1}
+              total={TOTAL_STEPS}
+              onStepClick={handleProgressClick}
             />
           </div>
         </DialogPrimitive.Content>

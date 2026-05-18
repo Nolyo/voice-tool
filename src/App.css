@@ -2290,81 +2290,22 @@ body.mini-window-body #root {
   }
 }
 
-/* Onboarding hero demo — three sequenced phases that play once on mount,
- * then settle on the final state. Total runtime ≈ 4.2s. Each phase is
- * absolutely positioned and fades in/out via opacity + translate. */
-@keyframes vt-onb-phase-hotkey {
-  0%   { opacity: 0; transform: translateY(8px) scale(0.95); }
-  10%  { opacity: 1; transform: translateY(0)   scale(1);    }
-  35%  { opacity: 1; transform: translateY(0)   scale(1);    }
-  45%  { opacity: 0; transform: translateY(-6px) scale(0.95); }
-  100% { opacity: 0; transform: translateY(-6px) scale(0.95); }
-}
-@keyframes vt-onb-phase-wave {
-  0%   { opacity: 0; }
-  35%  { opacity: 0; }
-  45%  { opacity: 1; }
-  65%  { opacity: 1; }
-  75%  { opacity: 0; }
-  100% { opacity: 0; }
-}
-@keyframes vt-onb-phase-text {
-  0%   { opacity: 0; transform: translateY(8px); }
-  70%  { opacity: 0; transform: translateY(8px); }
-  80%  { opacity: 1; transform: translateY(0);   }
-  100% { opacity: 1; transform: translateY(0);   }
-}
+/* Onboarding hero demo — static 3-step infographic with a subtly pulsing
+ * mic bars set. Earlier versions used a phased animation where the hotkey
+ * was only visible for ~1.5s; switched to static so late-arriving users
+ * never miss the critical hotkey hint. */
 @keyframes vt-onb-wave-bar {
   0%, 100% { transform: scaleY(0.3); }
   50%      { transform: scaleY(1);   }
-}
-@keyframes vt-onb-typewriter {
-  0%   { width: 0; }
-  100% { width: 100%; }
-}
-
-.vt-onb-phase {
-  opacity: 0;
-}
-.vt-onb-phase-hotkey {
-  animation: vt-onb-phase-hotkey 4.2s ease-in-out forwards;
-}
-.vt-onb-phase-wave {
-  animation: vt-onb-phase-wave 4.2s ease-in-out forwards;
-}
-.vt-onb-phase-text {
-  animation: vt-onb-phase-text 4.2s ease-in-out forwards;
 }
 .vt-onb-wave-bar {
   animation: vt-onb-wave-bar 0.55s ease-in-out infinite;
   transform-origin: center;
 }
-.vt-onb-typewriter {
-  display: inline-block;
-  overflow: hidden;
-  white-space: nowrap;
-  vertical-align: bottom;
-  width: 100%;
-  animation: vt-onb-typewriter 1.2s steps(48, end) 3.4s both;
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .vt-onb-phase-hotkey,
-  .vt-onb-phase-wave {
-    animation: none !important;
-    opacity: 0 !important;
-  }
-  .vt-onb-phase-text {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
   .vt-onb-wave-bar {
     animation: none !important;
     transform: scaleY(0.65);
-  }
-  .vt-onb-typewriter {
-    animation: none !important;
-    width: 100% !important;
   }
 }

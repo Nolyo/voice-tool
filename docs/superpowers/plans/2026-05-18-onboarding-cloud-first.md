@@ -180,10 +180,39 @@ Réutilisation max des clés existantes `welcome.branch_a.*` et `welcome.branch_
 ## Test plan manuel (à faire par l'utilisateur)
 
 1. `git checkout feat/onboarding-cloud-first` puis `pnpm tauri dev`
-2. Supprimer le fichier `settings.json` (ou `onboarding_completed` à `false`) pour simuler un premier lancement
-3. Vérifier l'enchaînement Hero → Capabilities → Choice
-4. Tester chacun des 3 chemins : Cloud / Local / Plus tard
-5. Vérifier que l'onboarding ne réapparaît pas après fermeture
-6. Lancer avec un modèle local déjà installé → l'onboarding ne doit pas apparaître (migration silencieuse)
-7. Tester en EN (changer locale) → texte traduit
-8. Si machine sans GPU + <32GB → badge Déconseillé sur la carte Local visible
+2. Renommer le dossier `%APPDATA%/com.nolyo.lexena` pour simuler un premier lancement (ou supprimer `settings.json`)
+3. Vérifier l'enchaînement Hero → Capabilities → **TryIt** → Choice
+   - Sur Hero : raccourci `Ctrl+F11` toujours visible (plus d'animation séquentielle qui peut se rater)
+4. Tester chacun des chemins :
+   - **Démo cloud réussie** : bouton "Démarrer", parler ~3s, "Arrêter" → transcription affichée → CTA "Crée mon compte"
+   - **Démo silencieuse** : démarrer puis arrêter sans parler → erreur "rien entendu" + retry
+   - **Démo skip** : "Sauter l'essai" depuis idle → Choice step
+   - **Rate-limit** : faire 3 démos d'affilée → la 4ᵉ doit montrer "limite atteinte" + CTA signup
+5. Tester aussi les chemins finaux : Cloud signup / Local download / Plus tard
+6. Vérifier que l'onboarding ne réapparaît pas après fermeture
+7. Lancer avec un modèle local déjà installé → migration silencieuse, pas d'onboarding
+8. Tester en EN (changer locale) → texte traduit
+9. Si machine sans GPU + <32GB → badge Déconseillé sur la carte Local visible
+
+## Pré-requis pour que la démo cloud fonctionne
+
+Avant le test manuel, l'utilisateur doit :
+
+1. **Appliquer la migration Supabase** :
+   ```powershell
+   pnpm exec supabase db push
+   ```
+   Ou via le dashboard → SQL editor → coller le contenu de `supabase/migrations/20260602000000_demo_attempts.sql`.
+
+2. **Configurer les secrets Supabase** (dashboard → Edge Functions → Secrets) :
+   - `OPENAI_API_KEY_DEMO` : clé OpenAI dédiée à la démo (séparée de la prod pour pouvoir révoquer indépendamment)
+   - `DEMO_HASH_PEPPER` : chaîne aléatoire 32+ chars (sert à hasher IP + device_id, jamais loggée)
+   - `SUPABASE_SERVICE_ROLE_KEY` : déjà présent (auto-injecté)
+   - `SUPABASE_URL` : déjà présent (auto-injecté)
+
+3. **Déployer la fonction** :
+   ```powershell
+   pnpm exec supabase functions deploy demo-transcribe
+   ```
+
+4. **Si pas configuré**, la démo échouera proprement : message "Démo indisponible" + CTA "Crée un compte pour essayer le cloud directement".

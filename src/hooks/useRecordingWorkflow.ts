@@ -23,6 +23,7 @@ import { useCloud } from "@/hooks/useCloud";
 import { supabase } from "@/lib/supabase";
 import { transcribeCloud, postProcessCloud } from "@/lib/cloud/api";
 import { CloudApiError } from "@/lib/cloud/errors";
+import { isOnboardingActive } from "@/components/onboarding/demoState";
 
 type AddTranscription = (
   text: string,
@@ -475,6 +476,14 @@ export function useRecordingWorkflow({
           avgRms: number;
           isSilent: boolean;
         }>("audio-captured", async (event) => {
+          // Onboarding modal is open: TryItStep has its own path for the
+          // demo. Pressing the hotkey before signup would otherwise route
+          // through local transcription with no model installed.
+          if (isOnboardingActive()) {
+            console.log("Audio captured during onboarding — routed to demo handler");
+            return;
+          }
+
           console.log(
             "Audio captured from keyboard shortcut",
             `(RMS: ${event.payload.avgRms.toFixed(4)}, silent: ${event.payload.isSilent})`,

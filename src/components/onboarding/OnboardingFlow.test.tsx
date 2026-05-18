@@ -57,6 +57,32 @@ vi.mock("../OnboardingWizard", () => ({
   ),
 }));
 
+// Stub TryItStep so we don't depend on Tauri recording APIs for flow tests.
+// The standalone TryItStep tests cover its internal behavior.
+vi.mock("./steps/TryItStep", () => ({
+  TryItStep: ({
+    onCloud,
+    onLocal,
+    onLater,
+    onSkip,
+    onBack,
+  }: {
+    onCloud: () => void;
+    onLocal: () => void;
+    onLater: () => void;
+    onSkip: () => void;
+    onBack: () => void;
+  }) => (
+    <div data-testid="try-it-step">
+      <button onClick={onBack}>back</button>
+      <button onClick={onSkip}>skip</button>
+      <button onClick={onCloud}>try-cloud</button>
+      <button onClick={onLocal}>try-local</button>
+      <button onClick={onLater}>try-later</button>
+    </div>
+  ),
+}));
+
 const invokeMock = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invokeMock(...args),
@@ -86,13 +112,16 @@ describe("OnboardingFlow", () => {
     ).toBeInTheDocument();
   });
 
-  it("navigates hero → capabilities → choice", () => {
+  it("navigates hero → capabilities → try-it → choice", () => {
     render(<OnboardingFlow onComplete={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /Découvrir|Discover/i }));
     expect(
       screen.getByRole("button", { name: /Continuer$|Continue$/i }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Continuer$|Continue$/i }));
+    expect(screen.getByTestId("try-it-step")).toBeInTheDocument();
+    // Skip from TryItStep should land on ChoiceStep.
+    fireEvent.click(screen.getByText("skip"));
     expect(
       screen.getByRole("button", { name: /Créer mon compte|Create my account/i }),
     ).toBeInTheDocument();
@@ -104,6 +133,38 @@ describe("OnboardingFlow", () => {
     expect(
       screen.getByRole("button", { name: /Créer mon compte|Create my account/i }),
     ).toBeInTheDocument();
+  });
+
+  it("try-it cloud CTA marks completion + opens auth modal", () => {
+    const onComplete = vi.fn();
+    render(<OnboardingFlow onComplete={onComplete} />);
+    fireEvent.click(screen.getByRole("button", { name: /Découvrir|Discover/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuer$|Continue$/i }));
+    expect(screen.getByTestId("try-it-step")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("try-cloud"));
+    expect(updateSetting).toHaveBeenCalledWith("onboarding_completed", true);
+    expect(openAuthModal).toHaveBeenCalled();
+    expect(onComplete).toHaveBeenCalled();
+  });
+
+  it("try-it local CTA renders OnboardingWizard", () => {
+    render(<OnboardingFlow onComplete={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Découvrir|Discover/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Continuer$|Continue$/i }));
+    fireEvent.click(screen.getByText("try-local"));
+    expect(screen.getByTestId("local-wizard")).toBeInTheDocument();
+  });
+
+  it("try-it later CTA marks completion", () => {
+    const onComplete = vi.fn();
+    render(<OnboardingFlow onComplete={onComplete} />);
+    fireEvent.click(screen.getByRole("button", { name: /Passer|Skip/i }));
+    // Skip jumps straight to choice; navigate back to try-it.
+    fireEvent.click(screen.getByRole("button", { name: /Retour|Back/i }));
+    expect(screen.getByTestId("try-it-step")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("try-later"));
+    expect(updateSetting).toHaveBeenCalledWith("onboarding_completed", true);
+    expect(onComplete).toHaveBeenCalled();
   });
 
   it("cloud branch marks onboarding completed + opens auth modal + calls onComplete", () => {
