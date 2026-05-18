@@ -383,6 +383,12 @@ deno_version = 2
 [functions.purge-account-deletions]
 verify_jwt = false
 
+# Anonymous demo endpoint: callable BEFORE signup (the whole point is the
+# user has no account yet). Abuse is mitigated server-side via duration cap,
+# IP rate limit, and per-device lifetime cap — see demo-transcribe/index.ts.
+[functions.demo-transcribe]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
