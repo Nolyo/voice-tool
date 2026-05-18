@@ -42,6 +42,13 @@ vi.mock("@/lib/billing/checkout", () => ({
   openCheckout: vi.fn().mockResolvedValue({ opened_url: "https://ls/x" }),
 }));
 
+vi.mock("@/lib/billing/plans", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/billing/plans")>(
+    "@/lib/billing/plans",
+  );
+  return { ...actual, BILLING_ENABLED: true };
+});
+
 import "@/i18n";
 import { openCheckout } from "@/lib/billing/checkout";
 import { SubscribeButton } from "./SubscribeButton";

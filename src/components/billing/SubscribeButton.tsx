@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Check } from "lucide-react";
+import { Loader2, Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { openCheckout } from "@/lib/billing/checkout";
-import { PLANS, type PlanTier, type BillingCycle } from "@/lib/billing/plans";
+import {
+  BILLING_ENABLED,
+  PLANS,
+  type PlanTier,
+  type BillingCycle,
+} from "@/lib/billing/plans";
 
 export function SubscribeButton() {
   const { t } = useTranslation("billing");
@@ -34,6 +39,19 @@ export function SubscribeButton() {
         <h2 className="text-xl font-semibold">{t("title")}</h2>
         <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
+
+      {!BILLING_ENABLED && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm"
+        >
+          <Clock className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">{t("coming_soon.title")}</span>
+            <span className="text-muted-foreground">{t("coming_soon.body")}</span>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-center gap-2">
         <button
@@ -91,10 +109,13 @@ export function SubscribeButton() {
               </ul>
               <Button
                 onClick={() => handleSubscribe(tier)}
-                disabled={loadingTier !== null || !user}
+                disabled={!BILLING_ENABLED || loadingTier !== null || !user}
                 className="mt-6"
+                title={!BILLING_ENABLED ? t("coming_soon.title") : undefined}
               >
-                {loadingTier === tier ? (
+                {!BILLING_ENABLED ? (
+                  t("coming_soon.cta")
+                ) : loadingTier === tier ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
                     {t("redirecting")}

@@ -31,6 +31,11 @@
   "price_per_year": "{{price}}€/yr",
   "cta": "Subscribe",
   "redirecting": "Redirecting to checkout…",
+  "coming_soon": {
+    "title": "Subscriptions coming soon",
+    "body": "Payments are temporarily disabled while we finalize the setup. They'll be available very soon!",
+    "cta": "Coming soon"
+  },
   "expiration": {
     "trial_title": "Your trial has ended",
     "trial_body": "Your 60 minutes or 30 days of trial have expired. Pick a plan to keep using cloud, or switch to local.",

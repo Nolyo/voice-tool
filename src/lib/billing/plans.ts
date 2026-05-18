@@ -4,6 +4,11 @@
  * `lemonsqueezy-create-checkout` (cf. ADR 0013, plan billing 2026-05-05).
  */
 
+// Lemon Squeezy is still in test mode — flip to true once production
+// payments are validated. While false, all subscribe/renew CTAs are
+// disabled in the UI and a "coming soon" banner is shown instead.
+export const BILLING_ENABLED = false;
+
 export type PlanTier = "starter" | "pro";
 export type BillingCycle = "monthly" | "annual";
 export type PlanKey = `${PlanTier}_${BillingCycle}`;

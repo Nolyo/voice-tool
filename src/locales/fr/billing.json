@@ -31,6 +31,11 @@
   "price_per_year": "{{price}}€/an",
   "cta": "S'abonner",
   "redirecting": "Redirection vers le paiement…",
+  "coming_soon": {
+    "title": "Abonnements bientôt disponibles",
+    "body": "Les paiements sont temporairement désactivés le temps que nous finalisions la configuration. Ce sera prêt très prochainement !",
+    "cta": "Bientôt disponible"
+  },
   "expiration": {
     "trial_title": "Ton essai est terminé",
     "trial_body": "Tes 60 minutes ou 30 jours d'essai sont arrivés à échéance. Choisis un plan pour continuer en cloud, ou bascule en local.",

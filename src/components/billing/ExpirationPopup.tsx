@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useCloud } from "@/hooks/useCloud";
+import { BILLING_ENABLED } from "@/lib/billing/plans";
 
 type Reason = "trial" | "subscription" | null;
 
@@ -94,6 +95,11 @@ export function ExpirationPopup() {
             ? t("expiration.trial_body")
             : t("expiration.subscription_body")}
         </DialogDescription>
+        {!BILLING_ENABLED && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t("coming_soon.body")}
+          </p>
+        )}
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={handleSwitchLocal}>
             {t("expiration.switch_local_cta")}
@@ -101,7 +107,13 @@ export function ExpirationPopup() {
           <Button variant="ghost" onClick={handleLater}>
             {t("expiration.later_cta")}
           </Button>
-          <Button onClick={handleRenew}>{t("expiration.renew_cta")}</Button>
+          <Button
+            onClick={handleRenew}
+            disabled={!BILLING_ENABLED}
+            title={!BILLING_ENABLED ? t("coming_soon.title") : undefined}
+          >
+            {!BILLING_ENABLED ? t("coming_soon.cta") : t("expiration.renew_cta")}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
