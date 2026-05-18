@@ -45,7 +45,6 @@ describe("ChoiceStep", () => {
     onBack: vi.fn(),
     onCloud: vi.fn(),
     onLocal: vi.fn(),
-    onLater: vi.fn(),
   };
 
   it("renders both branch CTAs", () => {
@@ -76,13 +75,14 @@ describe("ChoiceStep", () => {
     expect(onLocal).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onLater when the discreet later link is clicked", () => {
-    const onLater = vi.fn();
-    render(<ChoiceStep {...baseProps} onLater={onLater} />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /Plus tard|Later/i }),
-    );
-    expect(onLater).toHaveBeenCalledTimes(1);
+  it("does not render any later/skip exit", () => {
+    render(<ChoiceStep {...baseProps} />);
+    expect(
+      screen.queryByRole("button", { name: /Plus tard|^Later/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Passer|^Skip/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not show 'not recommended' badge when system has a discrete GPU", () => {

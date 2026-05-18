@@ -5,6 +5,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   ArrowLeft,
   ArrowRight,
+  HardDrive,
   Mic,
   RotateCcw,
   Sparkles,
@@ -32,18 +33,10 @@ type Phase =
 interface TryItStepProps {
   onCloud: () => void;
   onLocal: () => void;
-  onLater: () => void;
-  onSkip: () => void;
   onBack: () => void;
 }
 
-export function TryItStep({
-  onCloud,
-  onLocal,
-  onLater,
-  onSkip,
-  onBack,
-}: TryItStepProps) {
+export function TryItStep({ onCloud, onLocal, onBack }: TryItStepProps) {
   const { t, i18n } = useTranslation("billing");
   const { settings } = useSettings();
   const [phase, setPhase] = useState<Phase>({ status: "idle" });
@@ -286,14 +279,6 @@ export function TryItStep({
             <ArrowLeft className="h-4 w-4" />
             {t("welcome.try.cta_back")}
           </Button>
-          <button
-            type="button"
-            onClick={onSkip}
-            className="text-sm underline-offset-4 hover:underline"
-            style={{ color: "var(--vt-fg-3)" }}
-          >
-            {t("welcome.try.cta_skip")}
-          </button>
         </div>
       )}
 
@@ -314,22 +299,15 @@ export function TryItStep({
           >
             {t("welcome.try.cta_signup_subtitle")}
           </span>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex justify-center">
             <button
               type="button"
               onClick={onLocal}
-              className="text-sm underline-offset-4 hover:underline"
+              className="inline-flex items-center gap-1 text-sm underline-offset-4 hover:underline"
               style={{ color: "var(--vt-fg-3)" }}
             >
+              <HardDrive className="h-3.5 w-3.5" />
               {t("welcome.try.cta_local")}
-            </button>
-            <button
-              type="button"
-              onClick={onLater}
-              className="text-sm underline-offset-4 hover:underline"
-              style={{ color: "var(--vt-fg-3)" }}
-            >
-              {t("welcome.try.cta_later")}
             </button>
           </div>
         </div>
@@ -337,7 +315,8 @@ export function TryItStep({
 
       {phase.status === "error" && (
         <div className="flex flex-col gap-3">
-          {/* When rate-limited, push hard for signup — that's the entire point. */}
+          {/* When rate-limited, push hard for signup — that's the entire point.
+              Local stays available as a fallback for users who never want cloud. */}
           {phase.kind === "rate_limited" ? (
             <>
               <Button
@@ -351,11 +330,12 @@ export function TryItStep({
               </Button>
               <button
                 type="button"
-                onClick={onSkip}
-                className="text-center text-sm underline-offset-4 hover:underline"
+                onClick={onLocal}
+                className="inline-flex items-center justify-center gap-1 text-center text-sm underline-offset-4 hover:underline"
                 style={{ color: "var(--vt-fg-3)" }}
               >
-                {t("welcome.try.cta_skip")}
+                <HardDrive className="h-3.5 w-3.5" />
+                {t("welcome.try.cta_local")}
               </button>
             </>
           ) : (
@@ -367,11 +347,12 @@ export function TryItStep({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={onSkip}
-                  className="text-sm underline-offset-4 hover:underline"
+                  onClick={onLocal}
+                  className="inline-flex items-center gap-1 text-sm underline-offset-4 hover:underline"
                   style={{ color: "var(--vt-fg-3)" }}
                 >
-                  {t("welcome.try.cta_skip")}
+                  <HardDrive className="h-3.5 w-3.5" />
+                  {t("welcome.try.cta_local")}
                 </button>
                 <Button onClick={handleRetry} variant="outline" className="gap-2">
                   <RotateCcw className="h-4 w-4" />

@@ -44,23 +44,22 @@ import "@/i18n";
 import { HeroStep } from "./HeroStep";
 
 describe("HeroStep", () => {
-  it("renders headline and CTAs", () => {
-    render(<HeroStep onContinue={vi.fn()} onSkip={vi.fn()} />);
+  it("renders headline and discover CTA", () => {
+    render(<HeroStep onContinue={vi.fn()} />);
     expect(screen.getByRole("button", { name: /Découvrir|Discover/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Passer|Skip/i })).toBeInTheDocument();
+  });
+
+  it("does not render a skip affordance", () => {
+    render(<HeroStep onContinue={vi.fn()} />);
+    expect(
+      screen.queryByRole("button", { name: /Passer|^Skip/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("calls onContinue when discover button is clicked", () => {
     const onContinue = vi.fn();
-    render(<HeroStep onContinue={onContinue} onSkip={vi.fn()} />);
+    render(<HeroStep onContinue={onContinue} />);
     fireEvent.click(screen.getByRole("button", { name: /Découvrir|Discover/i }));
     expect(onContinue).toHaveBeenCalledTimes(1);
-  });
-
-  it("calls onSkip when skip button is clicked", () => {
-    const onSkip = vi.fn();
-    render(<HeroStep onContinue={vi.fn()} onSkip={onSkip} />);
-    fireEvent.click(screen.getByRole("button", { name: /Passer|Skip/i }));
-    expect(onSkip).toHaveBeenCalledTimes(1);
   });
 });

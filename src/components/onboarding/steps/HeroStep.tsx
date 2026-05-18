@@ -5,10 +5,9 @@ import { HotkeyToTextDemo } from "../illustrations/HotkeyToTextDemo";
 
 interface HeroStepProps {
   onContinue: () => void;
-  onSkip: () => void;
 }
 
-export function HeroStep({ onContinue, onSkip }: HeroStepProps) {
+export function HeroStep({ onContinue }: HeroStepProps) {
   const { t } = useTranslation("billing");
 
   return (
@@ -30,15 +29,7 @@ export function HeroStep({ onContinue, onSkip }: HeroStepProps) {
 
       <HotkeyToTextDemo />
 
-      <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-sm underline-offset-4 hover:underline"
-          style={{ color: "var(--vt-fg-3)" }}
-        >
-          {t("welcome.hero.cta_skip")}
-        </button>
+      <div className="flex justify-end">
         <Button onClick={onContinue} size="lg" className="gap-2">
           {t("welcome.hero.cta_discover")}
           <ArrowRight className="h-4 w-4" />

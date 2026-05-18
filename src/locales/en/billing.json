@@ -55,8 +55,7 @@
       "demo_step_press": "Press",
       "demo_step_speak": "Speak",
       "demo_step_text": "Text appears",
-      "cta_discover": "Discover",
-      "cta_skip": "Skip"
+      "cta_discover": "Discover"
     },
     "try": {
       "title": "Try it now",
@@ -72,9 +71,7 @@
       "cta_signup": "Create my free account — 60 minutes included",
       "cta_signup_subtitle": "No credit card required",
       "cta_local": "Continue with local instead",
-      "cta_later": "Later",
       "cta_back": "Back",
-      "cta_skip": "Skip the demo",
       "cta_retry": "Try again",
       "error": {
         "rate_limited_title": "You've reached the free demo limit",
@@ -116,8 +113,7 @@
       "subtitle": "You can change at any time in settings.",
       "cloud_banner": "60 free min · no credit card",
       "cloud_tagline": "The full experience, ready in 30 seconds.",
-      "local_tagline": "For advanced users or 100% offline use.",
-      "later": "Later"
+      "local_tagline": "For advanced users or 100% offline use."
     },
     "branch_a": {
       "badge": "Recommended",

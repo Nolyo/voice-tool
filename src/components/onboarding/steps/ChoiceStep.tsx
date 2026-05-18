@@ -16,7 +16,6 @@ interface ChoiceStepProps {
   onBack: () => void;
   onCloud: () => void;
   onLocal: () => void;
-  onLater: () => void;
 }
 
 export function ChoiceStep({
@@ -25,7 +24,6 @@ export function ChoiceStep({
   onBack,
   onCloud,
   onLocal,
-  onLater,
 }: ChoiceStepProps) {
   const { t } = useTranslation("billing");
   const cloudFeatures = t("welcome.branch_a.features", {
@@ -198,19 +196,11 @@ export function ChoiceStep({
         </article>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-start gap-3">
         <Button variant="ghost" onClick={onBack} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
           {t("welcome.capabilities.cta_back")}
         </Button>
-        <button
-          type="button"
-          onClick={onLater}
-          className="text-sm underline-offset-4 hover:underline"
-          style={{ color: "var(--vt-fg-3)" }}
-        >
-          {t("welcome.choice.later")}
-        </button>
       </div>
     </div>
   );

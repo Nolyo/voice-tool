@@ -55,8 +55,7 @@
       "demo_step_press": "Appuie",
       "demo_step_speak": "Parle",
       "demo_step_text": "Le texte s'écrit",
-      "cta_discover": "Découvrir",
-      "cta_skip": "Passer"
+      "cta_discover": "Découvrir"
     },
     "try": {
       "title": "Essaie maintenant",
@@ -72,9 +71,7 @@
       "cta_signup": "Crée mon compte gratuit — 60 minutes offertes",
       "cta_signup_subtitle": "Sans carte bancaire",
       "cta_local": "Continuer en local à la place",
-      "cta_later": "Plus tard",
       "cta_back": "Retour",
-      "cta_skip": "Sauter l'essai",
       "cta_retry": "Réessayer",
       "error": {
         "rate_limited_title": "Tu as atteint la limite d'essais gratuits",
@@ -116,8 +113,7 @@
       "subtitle": "Tu peux changer à tout moment dans les paramètres.",
       "cloud_banner": "60 min gratuites · sans CB",
       "cloud_tagline": "L'expérience complète, prête en 30 secondes.",
-      "local_tagline": "Pour utilisateurs avancés ou usage 100% offline.",
-      "later": "Plus tard"
+      "local_tagline": "Pour utilisateurs avancés ou usage 100% offline."
     },
     "branch_a": {
       "badge": "Recommandé",

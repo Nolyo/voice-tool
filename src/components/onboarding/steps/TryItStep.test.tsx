@@ -92,15 +92,13 @@ const renderStep = (overrides: Partial<Parameters<typeof TryItStep>[0]> = {}) =>
     <TryItStep
       onCloud={vi.fn()}
       onLocal={vi.fn()}
-      onLater={vi.fn()}
-      onSkip={vi.fn()}
       onBack={vi.fn()}
       {...overrides}
     />,
   );
 
 describe("TryItStep", () => {
-  it("renders idle state with record button + back/skip controls", () => {
+  it("renders idle state with record button + back control (no skip)", () => {
     renderStep();
     expect(
       screen.getByRole("button", { name: /Démarrer|Start recording/i }),
@@ -109,18 +107,15 @@ describe("TryItStep", () => {
       screen.getByRole("button", { name: /Retour|Back/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Sauter|Skip the demo/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /Sauter|Skip the demo/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("calls onBack and onSkip from idle", () => {
+  it("calls onBack from idle", () => {
     const onBack = vi.fn();
-    const onSkip = vi.fn();
-    renderStep({ onBack, onSkip });
+    renderStep({ onBack });
     fireEvent.click(screen.getByRole("button", { name: /Retour|Back/i }));
     expect(onBack).toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: /Sauter|Skip the demo/i }));
-    expect(onSkip).toHaveBeenCalled();
   });
 
   it("transitions idle → recording on start", async () => {
@@ -200,7 +195,7 @@ describe("TryItStep", () => {
     expect(submitDemo).toHaveBeenCalledTimes(1);
   });
 
-  it("rate-limited error shows signup CTA + skip", async () => {
+  it("rate-limited error shows signup CTA + local fallback (no skip)", async () => {
     const { DemoTranscribeError } = await import("@/lib/demo-transcribe");
     invokeMock.mockImplementation((cmd: string) => {
       if (cmd === "start_recording") return Promise.resolve();
@@ -217,7 +212,8 @@ describe("TryItStep", () => {
       new DemoTranscribeError("rate_limited", "exceeded", 429),
     );
     const onCloud = vi.fn();
-    renderStep({ onCloud });
+    const onLocal = vi.fn();
+    renderStep({ onCloud, onLocal });
     fireEvent.click(
       screen.getByRole("button", { name: /Démarrer|Start recording/i }),
     );
@@ -232,13 +228,20 @@ describe("TryItStep", () => {
         screen.getByText(/atteint la limite|reached the free demo limit/i),
       ).toBeInTheDocument();
     });
+    expect(
+      screen.queryByRole("button", { name: /Sauter|Skip the demo/i }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Continuer en local|Continue with local/i }),
+    );
+    expect(onLocal).toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole("button", { name: /Crée mon compte|Create my free account/i }),
     );
     expect(onCloud).toHaveBeenCalled();
   });
 
-  it("generic error shows retry button + back + skip", async () => {
+  it("generic error shows retry + local fallback + back (no skip)", async () => {
     const { DemoTranscribeError } = await import("@/lib/demo-transcribe");
     invokeMock.mockImplementation((cmd: string) => {
       if (cmd === "start_recording") return Promise.resolve();
@@ -254,7 +257,8 @@ describe("TryItStep", () => {
     submitDemo.mockRejectedValue(
       new DemoTranscribeError("network", "offline"),
     );
-    renderStep();
+    const onLocal = vi.fn();
+    renderStep({ onLocal });
     fireEvent.click(
       screen.getByRole("button", { name: /Démarrer|Start recording/i }),
     );
@@ -269,8 +273,46 @@ describe("TryItStep", () => {
         screen.getByRole("button", { name: /Réessayer|Try again/i }),
       ).toBeInTheDocument();
     });
+    expect(
+      screen.queryByRole("button", { name: /Sauter|Skip the demo/i }),
+    ).not.toBeInTheDocument();
+    // Local fallback button is present even on transient errors.
+    fireEvent.click(
+      screen.getByRole("button", { name: /Continuer en local|Continue with local/i }),
+    );
+    expect(onLocal).toHaveBeenCalled();
+  });
+
+  it("retry from error returns to idle", async () => {
+    const { DemoTranscribeError } = await import("@/lib/demo-transcribe");
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === "start_recording") return Promise.resolve();
+      if (cmd === "stop_recording")
+        return Promise.resolve({
+          audio_data: new Array(16000).fill(1000),
+          sample_rate: 16000,
+          avg_rms: 0.5,
+          is_silent: false,
+        });
+      return Promise.reject(new Error("unexpected cmd"));
+    });
+    submitDemo.mockRejectedValue(new DemoTranscribeError("network", "offline"));
+    renderStep();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Démarrer|Start recording/i }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Arrêter|Stop/i }),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Arrêter|Stop/i }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Réessayer|Try again/i }),
+      ).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByRole("button", { name: /Réessayer|Try again/i }));
-    // Retry sends us back to idle.
     expect(
       screen.getByRole("button", { name: /Démarrer|Start recording/i }),
     ).toBeInTheDocument();
@@ -305,6 +347,38 @@ describe("TryItStep", () => {
       screen.getByRole("button", { name: /Crée mon compte|Create my free account/i }),
     );
     expect(onCloud).toHaveBeenCalled();
+  });
+
+  it("success state has no later/skip exit", async () => {
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === "start_recording") return Promise.resolve();
+      if (cmd === "stop_recording")
+        return Promise.resolve({
+          audio_data: new Array(16000).fill(1000),
+          sample_rate: 16000,
+          avg_rms: 0.5,
+          is_silent: false,
+        });
+      return Promise.reject(new Error("unexpected cmd"));
+    });
+    submitDemo.mockResolvedValue({ text: "salut", duration_ms: 800 });
+    renderStep();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Démarrer|Start recording/i }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Arrêter|Stop/i }),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Arrêter|Stop/i }));
+    await waitFor(() => expect(screen.getByText("salut")).toBeInTheDocument());
+    expect(
+      screen.queryByRole("button", { name: /Plus tard|^Later/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Sauter|Skip/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("success → local link calls onLocal", async () => {

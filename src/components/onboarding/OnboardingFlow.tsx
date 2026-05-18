@@ -27,8 +27,10 @@ const TOTAL_STEPS = 4;
  * model or an account get a free cloud-powered transcription, then are
  * prompted to sign up for 60 free minutes (or fall back to local).
  *
- * Completion is recorded when the user picks a path (cloud signup, local
- * download finished) or explicitly dismisses with "Later".
+ * There is intentionally no "skip" / "later" exit: a brand-new user who
+ * dismisses without choosing ends up in local mode with no model AND no
+ * account → app unusable. The wizard only completes once the user picks
+ * Cloud signup or finishes the Local model download.
  */
 export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const { t } = useTranslation("billing");
@@ -78,11 +80,6 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     setStep("local-wizard");
   };
 
-  const handleLater = () => {
-    markComplete();
-    onComplete();
-  };
-
   const handleLocalWizardComplete = () => {
     markComplete();
     onComplete();
@@ -121,12 +118,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
             {t("welcome.subtitle")}
           </DialogPrimitive.Description>
 
-          {step === 1 && (
-            <HeroStep
-              onContinue={() => setStep(2)}
-              onSkip={() => setStep(4)}
-            />
-          )}
+          {step === 1 && <HeroStep onContinue={() => setStep(2)} />}
           {step === 2 && (
             <CapabilitiesStep
               onContinue={() => setStep(3)}
@@ -136,10 +128,8 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
           {step === 3 && (
             <TryItStep
               onBack={() => setStep(2)}
-              onSkip={() => setStep(4)}
               onCloud={handleCloud}
               onLocal={handleLocal}
-              onLater={handleLater}
             />
           )}
           {step === 4 && (
@@ -149,7 +139,6 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
               onBack={() => setStep(3)}
               onCloud={handleCloud}
               onLocal={handleLocal}
-              onLater={handleLater}
             />
           )}
 
