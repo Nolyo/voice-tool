@@ -48,12 +48,51 @@
   "welcome": {
     "title": "Welcome to Lexena",
     "subtitle": "How do you want to start?",
+    "hero": {
+      "title": "Speak, and your text appears anywhere.",
+      "subtitle": "A global hotkey, accurate dictation, and an AI assist to rewrite or polish.",
+      "demo_caption": "Press your hotkey, speak, the text lands in your active app.",
+      "cta_discover": "Discover",
+      "cta_skip": "Skip"
+    },
+    "capabilities": {
+      "title": "Three superpowers",
+      "subtitle": "Everything you need to dictate faster than you can type.",
+      "hotkey": {
+        "title": "Global hotkey",
+        "description": "Trigger dictation from anywhere, even when Lexena is minimised."
+      },
+      "ai": {
+        "title": "AI post-processing",
+        "badge": "Cloud only",
+        "description": "Rewrite, fix, turn into an email. AI polishes your dictation in a heartbeat.",
+        "before_label": "Raw",
+        "after_label": "After AI",
+        "before_example": "hey can you rephrase this idea for a work email",
+        "after_example": "Hello, could you rephrase this idea for a professional context?"
+      },
+      "paste": {
+        "title": "Paste anywhere",
+        "description": "Slack, Notion, mail, terminal… text lands right where your cursor is blinking.",
+        "examples": "Slack · Notion · Gmail · anywhere"
+      },
+      "cta_continue": "Continue",
+      "cta_back": "Back"
+    },
+    "choice": {
+      "title": "How do you want to start?",
+      "subtitle": "You can change at any time in settings.",
+      "cloud_banner": "60 free min · no credit card",
+      "cloud_tagline": "The full experience, ready in 30 seconds.",
+      "local_tagline": "For advanced users or 100% offline use.",
+      "later": "Later"
+    },
     "branch_a": {
       "badge": "Recommended",
       "title": "Create a free account",
       "features": [
-        "60 minutes of cloud service trial",
         "AI post-processing included (rewriting, correction, mail…)",
+        "60 minutes of cloud service trial",
         "Fast on any PC, even modest hardware",
         "No credit card required"
       ],

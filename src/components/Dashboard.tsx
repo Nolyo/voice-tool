@@ -18,9 +18,10 @@ import {
 } from "./logs/LogsTab";
 import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./common/UpdateModal";
-import { WelcomeScreen } from "./billing/WelcomeScreen";
+import { OnboardingFlow } from "./onboarding/OnboardingFlow";
 import { ExpirationPopup } from "./billing/ExpirationPopup";
 import { AuthModal } from "./auth/AuthModal";
+import { useAuth } from "@/hooks/useAuth";
 import { SelectedModelMissingBanner } from "./SelectedModelMissingBanner";
 import { useSettings } from "@/hooks/useSettings";
 import { useOnboardingCheck } from "@/hooks/useOnboardingCheck";
@@ -51,9 +52,11 @@ export default function Dashboard() {
   const [tabScrollEl, setTabScrollEl] = useState<HTMLDivElement | null>(null);
 
   const { settings, isLoaded: settingsLoaded } = useSettings();
+  const { user } = useAuth();
   const { showOnboarding, recheck: recheckOnboarding } = useOnboardingCheck(
     settings,
     settingsLoaded,
+    user,
   );
   const { updateAvailable, updateInfo, showUpdateModal, setShowUpdateModal } =
     useUpdaterContext();
@@ -378,7 +381,7 @@ export default function Dashboard() {
         }}
       />
 
-      {showOnboarding && <WelcomeScreen onComplete={recheckOnboarding} />}
+      {showOnboarding && <OnboardingFlow onComplete={recheckOnboarding} />}
 
       <ExpirationPopup />
 

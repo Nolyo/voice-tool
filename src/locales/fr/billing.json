@@ -48,12 +48,51 @@
   "welcome": {
     "title": "Bienvenue sur Lexena",
     "subtitle": "Comment veux-tu commencer ?",
+    "hero": {
+      "title": "Parle, et le texte apparaît partout.",
+      "subtitle": "Un raccourci global, une dictée précise, un coup de pouce IA pour reformuler ou corriger.",
+      "demo_caption": "Appuie sur ton raccourci, parle, le texte s'écrit dans ton app active.",
+      "cta_discover": "Découvrir",
+      "cta_skip": "Passer"
+    },
+    "capabilities": {
+      "title": "Trois super-pouvoirs",
+      "subtitle": "Tout ce qu'il faut pour dicter plus vite que tu ne tapes.",
+      "hotkey": {
+        "title": "Raccourci global",
+        "description": "Active la dictée depuis n'importe où, même quand Lexena est minimisée."
+      },
+      "ai": {
+        "title": "Post-process IA",
+        "badge": "Cloud uniquement",
+        "description": "Reformule, corrige, transforme en mail. L'IA polit ta dictée en un instant.",
+        "before_label": "Brut",
+        "after_label": "Après IA",
+        "before_example": "hey peux tu me reformuler cette idée pour un mail pro",
+        "after_example": "Bonjour, pourriez-vous reformuler cette idée pour un usage professionnel ?"
+      },
+      "paste": {
+        "title": "Insertion partout",
+        "description": "Slack, Notion, mail, terminal… le texte est collé directement dans l'app où ton curseur clignote.",
+        "examples": "Slack · Notion · Gmail · n'importe où"
+      },
+      "cta_continue": "Continuer",
+      "cta_back": "Retour"
+    },
+    "choice": {
+      "title": "Comment veux-tu démarrer ?",
+      "subtitle": "Tu peux changer à tout moment dans les paramètres.",
+      "cloud_banner": "60 min gratuites · sans CB",
+      "cloud_tagline": "L'expérience complète, prête en 30 secondes.",
+      "local_tagline": "Pour utilisateurs avancés ou usage 100% offline.",
+      "later": "Plus tard"
+    },
     "branch_a": {
       "badge": "Recommandé",
       "title": "Créer un compte gratuit",
       "features": [
-        "60 minutes d'essai du service cloud",
         "Post-process IA inclus (reformulation, correction, mail…)",
+        "60 minutes d'essai du service cloud",
         "Rapide sur tout PC, même modeste",
         "Sans carte bancaire"
       ],

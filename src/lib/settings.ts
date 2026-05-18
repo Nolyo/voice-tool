@@ -70,6 +70,9 @@ export interface AppSettings {
 
     // Post-process (AI reformatting after transcription, cloud-only)
     post_process_enabled: boolean;
+
+    // Onboarding
+    onboarding_completed: boolean;
   };
 }
 
@@ -141,6 +144,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Post-process
     post_process_enabled: false,
+
+    // Onboarding
+    onboarding_completed: false,
   },
 };
 
