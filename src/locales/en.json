@@ -553,6 +553,9 @@
     "errors": {
       "moveFailed": "Failed to move the note"
     },
+    "size": {
+      "warning": "⚠️ This note exceeds 1 MB ({{bytes}} MB) and is too large to sync to the cloud. It remains available locally."
+    },
     "editor": {
       "noNote": "No note open",
       "processing": "Processing...",
@@ -1011,6 +1014,19 @@
       "title": "Cloud storage full",
       "subtitle": "You've reached your storage limit. Delete snippets or dictionary words to resume sync.",
       "manage": "Manage my data"
+    },
+    "quota": {
+      "exceeded": "You've reached your plan's quota. Free up some space or upgrade to a higher tier.",
+      "free": {
+        "title": "Free plan",
+        "body": "You have {{quota}} of sync storage. Upgrade to Starter (100 MB, €5/mo) or Pro (500 MB, €9/mo) for more space."
+      },
+      "starter": {
+        "title": "Starter plan"
+      },
+      "pro": {
+        "title": "Pro plan"
+      }
     },
     "deadLetters": {
       "title": "Stuck operations",

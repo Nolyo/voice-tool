@@ -27,6 +27,8 @@ import { SyncActivationModal } from "./SyncActivationModal";
 import { DangerCard } from "./account/DangerCard";
 import { DevicesList } from "./DevicesList";
 import { DeadLettersDialog } from "./DeadLettersDialog";
+import { useCloud } from "@/hooks/useCloud";
+import { formatBytes, getQuotaForPlan, type Plan } from "@/lib/sync/quota";
 
 const ACCENT_COMPTE = "var(--vt-accent)";
 const ACCENT_SYNC = "var(--vt-cyan)";
@@ -388,6 +390,7 @@ function SyncCard() {
             </div>
 
             <SyncedInventoryGrid />
+            <SyncPlanCard />
           </div>
 
           <div className="vt-row">
@@ -494,6 +497,61 @@ function SyncedInventoryGrid() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Plan + quota indicator shown below the synced inventory grid.
+ *
+ * Free users get an upsell card pointing to the paid tiers; starter/pro users
+ * get a passive "current plan + quota" line. The actual byte usage is not
+ * fetched here — it's authoritative on the server (and rendered as an error
+ * banner above when the 413 quota_exceeded response lands).
+ */
+function SyncPlanCard() {
+  const { t } = useTranslation();
+  const { plan } = useCloud();
+  const currentPlan: Plan = plan?.plan ?? "free";
+  const quotaBytes = getQuotaForPlan(currentPlan);
+
+  if (currentPlan === "free") {
+    return (
+      <div
+        className="mt-3 rounded-md p-3 text-xs"
+        style={{
+          background: "oklch(from var(--vt-cyan) l c h / 0.1)",
+          border: "1px solid oklch(from var(--vt-cyan) l c h / 0.4)",
+          color: "var(--vt-fg-2)",
+        }}
+      >
+        <div className="font-medium mb-1" style={{ color: "var(--vt-fg)" }}>
+          {t("sync.quota.free.title")}
+        </div>
+        <div>
+          {t("sync.quota.free.body", {
+            quota: formatBytes(quotaBytes),
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mt-3 rounded-md p-3 text-xs flex items-center justify-between"
+      style={{
+        background: "var(--vt-surface)",
+        border: "1px solid var(--vt-border)",
+        color: "var(--vt-fg-2)",
+      }}
+    >
+      <span className="font-medium" style={{ color: "var(--vt-fg)" }}>
+        {t(`sync.quota.${currentPlan}.title`)}
+      </span>
+      <span className="vt-mono" style={{ color: "var(--vt-fg-3)" }}>
+        {formatBytes(quotaBytes)}
+      </span>
     </div>
   );
 }

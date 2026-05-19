@@ -553,6 +553,9 @@
     "errors": {
       "moveFailed": "Échec du déplacement de la note"
     },
+    "size": {
+      "warning": "⚠️ Cette note dépasse 1 MB ({{bytes}} MB) et est trop grande pour être synchronisée vers le cloud. Elle reste disponible localement."
+    },
     "editor": {
       "noNote": "Aucune note ouverte",
       "processing": "Traitement en cours...",
@@ -1011,6 +1014,19 @@
       "title": "Espace cloud saturé",
       "subtitle": "Tu as dépassé ta limite de stockage. Supprime des snippets ou des mots du dictionnaire pour relancer la synchronisation.",
       "manage": "Gérer mes données"
+    },
+    "quota": {
+      "exceeded": "Tu as atteint le quota de ton plan. Libère de l'espace ou passe à un plan supérieur.",
+      "free": {
+        "title": "Plan Free",
+        "body": "Tu disposes de {{quota}} de synchronisation. Passe à Starter (100 MB, 5€/mois) ou Pro (500 MB, 9€/mois) pour plus d'espace."
+      },
+      "starter": {
+        "title": "Plan Starter"
+      },
+      "pro": {
+        "title": "Plan Pro"
+      }
     },
     "deadLetters": {
       "title": "Opérations bloquées",
