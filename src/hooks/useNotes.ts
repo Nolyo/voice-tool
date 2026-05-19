@@ -7,30 +7,13 @@ import {
   toggleNoteFavoriteSynced,
   moveNoteToFolderSynced,
   pushNoteUpdate,
+  scheduleNoteUpdatePush,
+  cancelNoteUpdatePush,
 } from '@/lib/sync/notes-store';
 
 // Debounce window for the cloud push of updateNote. Local disk write stays
 // immediate; only the queue enqueue is delayed to coalesce rapid keystrokes.
 const UPDATE_NOTE_DEBOUNCE_MS = 2_000;
-
-// One pending timer per note id. Cleared when the note is unmounted or the
-// session signs out (cf. SyncContext flush — Task 19).
-const updateNoteDebounceMap = new Map<string, ReturnType<typeof setTimeout>>();
-
-/** Flush all pending debounced note pushes immediately. Called on logout (Task 19). */
-export async function flushPendingNoteUpdates(): Promise<void> {
-  const pending = Array.from(updateNoteDebounceMap.entries());
-  for (const [id, timer] of pending) {
-    clearTimeout(timer);
-    updateNoteDebounceMap.delete(id);
-    try {
-      const data = await invoke<NoteData>('read_note', { id });
-      await pushNoteUpdate(data.meta, data.content);
-    } catch (e) {
-      console.warn('[useNotes] flush failed for note', id, e);
-    }
-  }
-}
 
 // Module-level flag: survives React StrictMode double-mount but resets on
 // full page reload, which is the correct scope for "first launch" detection.
@@ -131,24 +114,12 @@ export function useNotes() {
     setNotes(prev => prev.map(n => n.id === id ? updated : n));
 
     // 2) Debounce 2s the cloud push to coalesce rapid keystrokes into one upsert.
-    const existing = updateNoteDebounceMap.get(id);
-    if (existing) clearTimeout(existing);
-    const timer = setTimeout(() => {
-      // Use the freshest meta + content captured at flush time.
-      // `updated` here is closed-over and contains the latest updatedAt.
-      pushNoteUpdate(updated, content);
-      updateNoteDebounceMap.delete(id);
-    }, UPDATE_NOTE_DEBOUNCE_MS);
-    updateNoteDebounceMap.set(id, timer);
+    scheduleNoteUpdatePush(id, updated, content, UPDATE_NOTE_DEBOUNCE_MS);
   };
 
   const deleteNote = async (id: string) => {
     // Cancel any pending debounced push for this note — soft-delete supersedes.
-    const existing = updateNoteDebounceMap.get(id);
-    if (existing) {
-      clearTimeout(existing);
-      updateNoteDebounceMap.delete(id);
-    }
+    cancelNoteUpdatePush(id);
     await deleteNoteSynced(id);
     setNotes(prev => prev.filter(n => n.id !== id));
   };

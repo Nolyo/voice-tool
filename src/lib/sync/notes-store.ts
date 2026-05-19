@@ -89,6 +89,59 @@ export async function pushNoteUpdate(
   }
 }
 
+// ── Debounce registry for updateNote (Task 17) ───────────────────────────────
+// Lives in this module (not useNotes) so it's importable from SyncContext to
+// flush on disable/logout (Task 19) without a hook → context circular dep.
+
+const updateNoteDebounceMap = new Map<string, ReturnType<typeof setTimeout>>();
+
+/** Register / replace a debounced push for the given note id. */
+export function scheduleNoteUpdatePush(
+  id: string,
+  meta: LocalNoteMeta,
+  content: string,
+  delayMs: number
+): void {
+  const existing = updateNoteDebounceMap.get(id);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    void pushNoteUpdate(meta, content);
+    updateNoteDebounceMap.delete(id);
+  }, delayMs);
+  updateNoteDebounceMap.set(id, timer);
+}
+
+/** Cancel the pending debounced push for this note (used by deleteNote). */
+export function cancelNoteUpdatePush(id: string): void {
+  const existing = updateNoteDebounceMap.get(id);
+  if (existing) {
+    clearTimeout(existing);
+    updateNoteDebounceMap.delete(id);
+  }
+}
+
+/**
+ * Flush ALL pending debounced note pushes immediately. Called from SyncContext
+ * on disableSync / signed-out so in-flight keystrokes survive logout.
+ * Reads the freshest meta + content from disk for each pending id.
+ */
+export async function flushPendingNoteUpdates(): Promise<void> {
+  const pending = Array.from(updateNoteDebounceMap.entries());
+  updateNoteDebounceMap.clear();
+  for (const [, timer] of pending) clearTimeout(timer);
+  for (const [id] of pending) {
+    try {
+      const { meta, content } = await invoke<{ meta: LocalNoteMeta; content: string }>(
+        "read_note",
+        { id }
+      );
+      await pushNoteUpdate(meta, content);
+    } catch (e) {
+      console.warn("[notes-store] flush failed for note", id, e);
+    }
+  }
+}
+
 export async function toggleNoteFavoriteSynced(
   id: string
 ): Promise<LocalNoteMeta> {

@@ -31,7 +31,7 @@ import {
   applyRemoteSnippet,
   migrateLegacySnippetsOnce,
 } from "@/lib/sync/snippets-store";
-import { applyRemoteNote } from "@/lib/sync/notes-store";
+import { applyRemoteNote, flushPendingNoteUpdates } from "@/lib/sync/notes-store";
 import { applyRemoteFolder } from "@/lib/sync/folders-store";
 import {
   loadDictionary,
@@ -383,6 +383,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [pullAndApply, getDeviceId]);
 
   const disableSync = useCallback(async () => {
+    // Task 19 : flush les notes en cours de debounce (push immédiat) avant de
+    // désactiver, sinon les modifs des 2 dernières secondes sont perdues si
+    // l'user se déconnecte juste après avoir tapé.
+    try {
+      await flushPendingNoteUpdates();
+    } catch (e) {
+      flog(`[sync] flushPendingNoteUpdates failed on disable: ${String(e)}`, "warn");
+    }
     await setMeta(KEY_ENABLED, false);
     setEnabled(false);
     setStatus("disabled");
