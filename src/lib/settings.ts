@@ -70,8 +70,19 @@ export interface AppSettings {
 
     // Post-process (AI reformatting after transcription, cloud-only)
     post_process_enabled: boolean;
+
+    // Onboarding
+    onboarding_completed: boolean;
   };
 }
+
+// Detect default UI language from the OS / browser locale at module load.
+// English is the default — only French OS locales get FR out of the box.
+// Keep this in sync with the detection in src/i18n.ts.
+const defaultUiLanguage: "fr" | "en" =
+  typeof navigator !== "undefined" && navigator.language?.startsWith("fr")
+    ? "fr"
+    : "en";
 
 /**
  * Default settings values
@@ -119,7 +130,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     record_mode: "toggle",
 
     // Interface
-    ui_language: "fr",
+    ui_language: defaultUiLanguage,
     theme: "dark",
 
     // Mini Window
@@ -141,6 +152,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Post-process
     post_process_enabled: false,
+
+    // Onboarding
+    onboarding_completed: false,
   },
 };
 
