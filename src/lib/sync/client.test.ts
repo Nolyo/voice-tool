@@ -91,6 +91,10 @@ describe("sync client runtime validation", () => {
     expect(res.invalid.dictionary).toBe(1);
     expect(res.snippets).toHaveLength(0);
     expect(res.invalid.snippets).toBe(0);
+    expect(res.notes).toHaveLength(0);
+    expect(res.folders).toHaveLength(0);
+    expect(res.invalid.notes).toBe(0);
+    expect(res.invalid.folders).toBe(0);
     warn.mockRestore();
   });
 
@@ -180,5 +184,69 @@ describe("sync client runtime validation", () => {
     expect(r.ok).toBe(false);
     expect(r.error).toBe("boom");
     expect(r.results).toEqual([]);
+  });
+
+  // ── Sub-épique 03 sync-notes : pull notes + folders ─────────────────────
+  it("pullAll fetches user_notes and user_folders, validates them, and reports counts", async () => {
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      data: { user: { id: "u" } },
+      error: null,
+    } as never);
+
+    const validNote = {
+      id: "11111111-1111-4111-8111-111111111111",
+      user_id: "22222222-2222-4222-8222-222222222222",
+      title: "Hello",
+      content_html: "<p>body</p>",
+      folder_id: null,
+      favorite: false,
+      order: 0,
+      created_at: "2026-05-19T10:00:00Z",
+      updated_at: "2026-05-19T11:00:00Z",
+      deleted_at: null,
+    };
+    const tombstoneNote = {
+      ...validNote,
+      id: "33333333-3333-4333-8333-333333333333",
+      updated_at: "2026-05-19T12:00:00Z",
+      deleted_at: "2026-05-19T12:00:00Z",
+    };
+    const validFolder = {
+      id: "44444444-4444-4444-8444-444444444444",
+      user_id: "22222222-2222-4222-8222-222222222222",
+      name: "Recipes",
+      order: 1,
+      created_at: "2026-05-19T10:00:00Z",
+      updated_at: "2026-05-19T11:00:00Z",
+      deleted_at: null,
+    };
+
+    const notesResp = {
+      data: [validNote, tombstoneNote, { id: "bad" }],
+      error: null,
+    };
+    const foldersResp = {
+      data: [validFolder, { id: "also-bad", name: 42 }],
+      error: null,
+    };
+
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === "user_notes") return makeQuery(notesResp) as never;
+      if (table === "user_folders") return makeQuery(foldersResp) as never;
+      return makeQuery({ data: [], error: null }) as never;
+    });
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const res = await pullAll("2026-05-01T00:00:00Z");
+    expect(res.notes).toHaveLength(2);
+    // Soft-deleted rows are returned so merge can propagate tombstones.
+    const tombstone = res.notes.find((n) => n.deleted_at !== null);
+    expect(tombstone).toBeDefined();
+    expect(res.invalid.notes).toBe(1);
+
+    expect(res.folders).toHaveLength(1);
+    expect(res.folders[0].name).toBe("Recipes");
+    expect(res.invalid.folders).toBe(1);
+    warn.mockRestore();
   });
 });

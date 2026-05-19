@@ -1,5 +1,13 @@
 import type { AppSettings } from "@/lib/settings";
-import type { CloudSettingsData } from "./types";
+import type {
+  CloudSettingsData,
+  CloudUserFolderRow,
+  CloudUserNoteRow,
+  FolderPayload,
+  LocalFolderMeta,
+  LocalNoteMeta,
+  NotePayload,
+} from "./types";
 
 const VALID_LOCAL_MODEL_SIZES: ReadonlySet<string> = new Set([
   "tiny",
@@ -75,4 +83,60 @@ export function syncableSettingsChanged(
   const ca = extractCloudSettings(a);
   const cb = extractCloudSettings(b);
   return JSON.stringify(ca) !== JSON.stringify(cb);
+}
+
+// ── Sub-épique 03 sync-notes : mapping local <-> cloud pour notes + dossiers.
+// `folderId` côté local est `string | undefined` (clé omise quand absente, Rust
+// utilise `Option<String>` + `skip_serializing_if`). Côté cloud, la colonne est
+// `folder_id: string | null` (FK ON DELETE SET NULL). On normalise à la frontière.
+
+export function mapNoteToCloud(meta: LocalNoteMeta, content: string): NotePayload {
+  return {
+    id: meta.id,
+    title: meta.title,
+    content_html: content,
+    folder_id: meta.folderId ?? null,
+    favorite: meta.favorite,
+    order: meta.order,
+    updated_at: meta.updatedAt,
+  };
+}
+
+export function mapNoteFromCloud(row: CloudUserNoteRow): {
+  meta: LocalNoteMeta;
+  content: string;
+} {
+  return {
+    meta: {
+      id: row.id,
+      title: row.title,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      favorite: row.favorite,
+      ...(row.folder_id !== null && { folderId: row.folder_id }),
+      order: row.order,
+      ...(row.deleted_at !== null && { deletedAt: row.deleted_at }),
+    },
+    content: row.content_html,
+  };
+}
+
+export function mapFolderToCloud(folder: LocalFolderMeta): FolderPayload {
+  return {
+    id: folder.id,
+    name: folder.name,
+    order: folder.order,
+    updated_at: folder.updatedAt,
+  };
+}
+
+export function mapFolderFromCloud(row: CloudUserFolderRow): LocalFolderMeta {
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    order: row.order,
+    ...(row.deleted_at !== null && { deletedAt: row.deleted_at }),
+  };
 }

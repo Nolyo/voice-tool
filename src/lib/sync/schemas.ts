@@ -51,6 +51,30 @@ export const CloudSnippetRowSchema = z.object({
   deleted_at: z.string().nullable(),
 });
 
+// Sub-épique 03 sync-notes : rows cloud notes + dossiers.
+export const CloudUserNoteRowSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  title: z.string(),
+  content_html: z.string(),
+  folder_id: z.string().uuid().nullable(),
+  favorite: z.boolean(),
+  order: z.number().int(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  deleted_at: z.string().nullable(),
+});
+
+export const CloudUserFolderRowSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  name: z.string(),
+  order: z.number().int(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  deleted_at: z.string().nullable(),
+});
+
 export const PushResponseSchema = z.object({
   ok: z.boolean(),
   server_time: z.string().optional(),
@@ -64,4 +88,9 @@ export const PushResponseSchema = z.object({
   ),
   error: z.string().optional(),
   quota_bytes: z.number().optional(),
+  // Sub-épique 03 sync-notes : champs ajoutés côté serveur pour exposer le plan
+  // courant et l'usage quota. Optionnels pour rester rétro-compatible.
+  plan: z.string().optional(),
+  limit: z.number().optional(),
+  used: z.number().optional(),
 });

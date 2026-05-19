@@ -74,7 +74,11 @@ export type SyncOperation =
   | { kind: "dictionary-upsert"; word: string }
   | { kind: "dictionary-delete"; word: string }
   | { kind: "snippet-upsert"; snippet: LocalSnippet }
-  | { kind: "snippet-delete"; id: string };
+  | { kind: "snippet-delete"; id: string }
+  | { kind: "note-upsert"; note: NotePayload }
+  | { kind: "note-delete"; id: string }
+  | { kind: "folder-upsert"; folder: FolderPayload }
+  | { kind: "folder-delete"; id: string };
 
 export interface SyncQueueEntry {
   id: string; // uuid local de l'entrée queue (idempotence côté client)
@@ -101,4 +105,68 @@ export interface SyncState {
   last_pull_at: string | null;
   pending_count: number;
   last_error: string | null;
+}
+
+// ── Sub-épique 03 sync-notes ─────────────────────────────────────────────────
+
+/** Payload pushed to the cloud for a note. Server forces deleted_at: null on upsert. */
+export interface NotePayload {
+  id: string;
+  title: string;
+  content_html: string;
+  folder_id: string | null;
+  favorite: boolean;
+  order: number;
+  updated_at: string;
+}
+
+export interface FolderPayload {
+  id: string;
+  name: string;
+  order: number;
+  updated_at: string;
+}
+
+/** Local NoteMeta shape (matches Rust NoteMeta camelCase serialization). */
+export interface LocalNoteMeta {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  favorite: boolean;
+  folderId?: string; // missing key when None server-side
+  order: number;
+  deletedAt?: string;
+}
+
+export interface LocalFolderMeta {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  order: number;
+  deletedAt?: string;
+}
+
+export interface CloudUserNoteRow {
+  id: string;
+  user_id: string;
+  title: string;
+  content_html: string;
+  folder_id: string | null;
+  favorite: boolean;
+  order: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface CloudUserFolderRow {
+  id: string;
+  user_id: string;
+  name: string;
+  order: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
