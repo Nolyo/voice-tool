@@ -97,8 +97,8 @@
         "description": "Rewrite, fix, turn into an email. AI polishes your dictation in a heartbeat.",
         "before_label": "Raw",
         "after_label": "After AI",
-        "before_example": "hey can you rephrase this idea for a work email",
-        "after_example": "Hello, could you rephrase this idea for a professional context?"
+        "before_example": "translate to french um hi could you tell me the time for the mtg",
+        "after_example": "Bonjour, pourriez-vous m'indiquer l'heure du rendez-vous ?"
       },
       "paste": {
         "title": "Paste anywhere",

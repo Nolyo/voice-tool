@@ -35,7 +35,7 @@ const TOTAL_STEPS = 4;
 export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const { t } = useTranslation("billing");
   const { openAuthModal } = useAuth();
-  const { updateSetting } = useSettings();
+  const { settings, updateSetting } = useSettings();
   const [step, setStep] = useState<Step>(1);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
 
@@ -118,6 +118,11 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
             {t("welcome.subtitle")}
           </DialogPrimitive.Description>
 
+          <LanguageSwitch
+            current={settings.ui_language}
+            onChange={(lang) => void updateSetting("ui_language", lang)}
+          />
+
           {step === 1 && <HeroStep onContinue={() => setStep(2)} />}
           {step === 2 && (
             <CapabilitiesStep
@@ -152,5 +157,45 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
+  );
+}
+
+function LanguageSwitch({
+  current,
+  onChange,
+}: {
+  current: "fr" | "en";
+  onChange: (lang: "fr" | "en") => void;
+}) {
+  const langs: Array<"fr" | "en"> = ["en", "fr"];
+  return (
+    <div
+      className="absolute right-5 top-5 flex items-center gap-1 text-xs"
+      aria-label="Language"
+    >
+      {langs.map((l, idx) => {
+        const active = current === l;
+        return (
+          <span key={l} className="contents">
+            {idx > 0 && <span className="opacity-30">·</span>}
+            <button
+              type="button"
+              onClick={() => onChange(l)}
+              aria-pressed={active}
+              className={
+                active
+                  ? "font-semibold"
+                  : "opacity-50 hover:opacity-100 transition-opacity"
+              }
+              style={{
+                color: active ? "var(--vt-fg)" : "var(--vt-fg-3)",
+              }}
+            >
+              {l.toUpperCase()}
+            </button>
+          </span>
+        );
+      })}
+    </div>
   );
 }

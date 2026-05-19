@@ -10,7 +10,8 @@ import enBilling from "./locales/en/billing.json";
 const SAVED_LANG_KEY = "uiLanguage";
 
 const savedLang = localStorage.getItem(SAVED_LANG_KEY);
-const detectedLang = navigator.language.startsWith("en") ? "en" : "fr";
+// English is the default — only French OS locales get FR out of the box.
+const detectedLang = navigator.language?.startsWith("fr") ? "fr" : "en";
 
 i18n.use(initReactI18next).init({
   resources: {
@@ -18,7 +19,7 @@ i18n.use(initReactI18next).init({
     en: { translation: en, cloud: enCloud, billing: enBilling },
   },
   lng: savedLang || detectedLang,
-  fallbackLng: "fr",
+  fallbackLng: "en",
   supportedLngs: ["fr", "en"],
   ns: ["translation", "cloud", "billing"],
   defaultNS: "translation",

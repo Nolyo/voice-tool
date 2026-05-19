@@ -1,25 +1,25 @@
 import { useTranslation } from "react-i18next";
-import { Sparkles } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 
 /**
- * Static side-by-side card showing a raw transcription vs the AI-polished
- * version. Used in the Capabilities step to make the cloud-only post-process
- * value tangible without burning an API call.
+ * Static before/after card showing a raw transcription getting polished by
+ * AI. Stacked vertically so the text panels keep a readable line length even
+ * when the parent card is narrow (3-col grid on the Capabilities step).
  */
 export function PostProcessBeforeAfter() {
   const { t } = useTranslation("billing");
 
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2">
+    <div className="flex flex-col items-stretch gap-1.5">
       <div
-        className="rounded-md border p-2.5 text-left"
+        className="rounded-md border px-2.5 py-2 text-left"
         style={{
           background: "var(--vt-panel-2)",
           borderColor: "var(--vt-border)",
         }}
       >
         <div
-          className="text-[10px] uppercase tracking-wide mb-1"
+          className="text-[10px] uppercase tracking-wide mb-0.5"
           style={{ color: "var(--vt-fg-3)" }}
         >
           {t("welcome.capabilities.ai.before_label")}
@@ -34,25 +34,26 @@ export function PostProcessBeforeAfter() {
 
       <div className="flex items-center justify-center">
         <div
-          className="flex h-7 w-7 items-center justify-center rounded-full"
+          className="flex h-6 w-6 items-center justify-center rounded-full"
           style={{
             background: "oklch(from var(--vt-violet) l c h / 0.18)",
             color: "var(--vt-violet)",
           }}
+          aria-hidden
         >
-          <Sparkles className="h-3.5 w-3.5" />
+          <ArrowDown className="h-3.5 w-3.5" />
         </div>
       </div>
 
       <div
-        className="rounded-md border p-2.5 text-left"
+        className="rounded-md border px-2.5 py-2 text-left"
         style={{
           background: "oklch(from var(--vt-violet) l c h / 0.08)",
           borderColor: "oklch(from var(--vt-violet) l c h / 0.35)",
         }}
       >
         <div
-          className="text-[10px] uppercase tracking-wide mb-1"
+          className="text-[10px] uppercase tracking-wide mb-0.5"
           style={{ color: "var(--vt-violet)" }}
         >
           {t("welcome.capabilities.ai.after_label")}

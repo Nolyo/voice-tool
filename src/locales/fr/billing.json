@@ -97,8 +97,8 @@
         "description": "Reformule, corrige, transforme en mail. L'IA polit ta dictée en un instant.",
         "before_label": "Brut",
         "after_label": "Après IA",
-        "before_example": "hey peux tu me reformuler cette idée pour un mail pro",
-        "after_example": "Bonjour, pourriez-vous reformuler cette idée pour un usage professionnel ?"
+        "before_example": "traduis en anglais euh Bonjour on voudrait connaitre euh l heure du RDV",
+        "after_example": "Hello, could you let us know the time of the meeting?"
       },
       "paste": {
         "title": "Insertion partout",
