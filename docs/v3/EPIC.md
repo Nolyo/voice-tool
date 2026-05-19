@@ -51,7 +51,7 @@ EPIC v3 — Comptes & service managé
 ├── 00 — Threat model & sécurité fondations    ← bloquant, démarrer EN PREMIER
 ├── 01 — Auth & comptes
 ├── 02 — Sync settings (sans clés API)
-├── 03 — Sync notes
+├── 03 — Sync notes                                ← ✅ livré sous-épique
 ├── 04 — Billing & gating premium
 ├── 05 — Service managé transcription           ← v3.1+
 └── 06 — Onboarding & marketing premium
