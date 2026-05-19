@@ -281,6 +281,26 @@ describe("applyRemoteNote", () => {
     expect(imported).toBe(false);
   });
 
+  it("no local note + remote tombstone → no-op (no import call)", async () => {
+    // Task 18 guard: when the server confirms a tombstone for a note we never
+    // had locally, we must not materialize an empty tombstoned dir.
+    invokeHandlers["read_note"] = () => {
+      throw new Error("not found");
+    };
+    let imported = false;
+    invokeHandlers["import_note_for_backup"] = () => {
+      imported = true;
+      return undefined;
+    };
+    const row = makeCloud({
+      id: "ghost",
+      deleted_at: "2026-05-19T12:00:00Z",
+      updated_at: "2026-05-19T12:00:00Z",
+    });
+    await applyRemoteNote(row);
+    expect(imported).toBe(false);
+  });
+
   it("remote newer than local → imports merged (remote) state", async () => {
     const localMeta = makeMeta({
       id: "r3",

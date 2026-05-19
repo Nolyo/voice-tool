@@ -60,10 +60,18 @@ export async function deleteFolderSynced(id: string): Promise<void> {
  * (or null if absent), and only re-writes the list when the merge produced a
  * different reference than the local one. Append on first-seen, replace
  * in-place on update.
+ *
+ * Tombstone guard: if the folder is absent locally AND the remote row is a
+ * tombstone (`deleted_at !== null`), this is a no-op. Mirrors the same
+ * optimization in `applyRemoteNote`. Task 18.
  */
 export async function applyRemoteFolder(row: CloudUserFolderRow): Promise<void> {
   const allLocal = await invoke<LocalFolderMeta[]>("list_folders");
   const local = allLocal.find((f) => f.id === row.id) ?? null;
+  if (!local && row.deleted_at !== null) {
+    // Nothing to delete locally — server tombstone for a folder we never had.
+    return;
+  }
   const merged = mergeFolderLWW(local, row);
   if (local && merged === local) {
     // Local won — skip disk write.

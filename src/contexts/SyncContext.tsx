@@ -31,6 +31,8 @@ import {
   applyRemoteSnippet,
   migrateLegacySnippetsOnce,
 } from "@/lib/sync/snippets-store";
+import { applyRemoteNote } from "@/lib/sync/notes-store";
+import { applyRemoteFolder } from "@/lib/sync/folders-store";
 import {
   loadDictionary,
   applyRemoteWord,
@@ -255,6 +257,66 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           updated_at: row.updated_at,
           deleted_at: row.deleted_at,
         });
+      }
+
+      // Notes — LWW per item. Per-row try/catch so a single bad row (corrupted
+      // local file, fs permission, etc.) does NOT abort the whole batch.
+      for (const row of result.notes) {
+        try {
+          await applyRemoteNote(row);
+        } catch (e) {
+          flog(`[sync] applyRemoteNote failed for ${row.id}: ${String(e)}`, "warn");
+        }
+      }
+
+      // Folders — LWW per item, same per-row isolation.
+      for (const row of result.folders) {
+        try {
+          await applyRemoteFolder(row);
+        } catch (e) {
+          flog(
+            `[sync] applyRemoteFolder failed for ${row.id}: ${String(e)}`,
+            "warn"
+          );
+        }
+      }
+
+      // Hard-purge local tombstones the server has also tombstoned.
+      // The server purges tombstones >30d via cron (sub-épique 03 Task 7).
+      // We mirror that on the client by deleting the local on-disk artifacts
+      // for ids the server confirms are tombstoned. The Rust commands only
+      // act on entries that ARE locally soft-deleted, so passing all
+      // server-tombstoned ids regardless of age is safe and convergent.
+      const tombstonedNoteIds = result.notes
+        .filter((n) => n.deleted_at !== null)
+        .map((n) => n.id);
+      if (tombstonedNoteIds.length > 0) {
+        try {
+          await invoke<number>("purge_soft_deleted_notes_post_pull", {
+            noteIds: tombstonedNoteIds,
+          });
+        } catch (e) {
+          flog(
+            `[sync] purge_soft_deleted_notes_post_pull failed: ${String(e)}`,
+            "warn"
+          );
+        }
+      }
+
+      const tombstonedFolderIds = result.folders
+        .filter((f) => f.deleted_at !== null)
+        .map((f) => f.id);
+      if (tombstonedFolderIds.length > 0) {
+        try {
+          await invoke<number>("purge_soft_deleted_folders_post_pull", {
+            folderIds: tombstonedFolderIds,
+          });
+        } catch (e) {
+          flog(
+            `[sync] purge_soft_deleted_folders_post_pull failed: ${String(e)}`,
+            "warn"
+          );
+        }
       }
 
       const nowIso = new Date().toISOString();

@@ -212,6 +212,23 @@ describe("applyRemoteFolder", () => {
     expect(imported).toBe(false);
   });
 
+  it("no local folder + remote tombstone → no-op (no import call)", async () => {
+    // Task 18 guard: a server tombstone for a folder absent locally is a no-op.
+    invokeHandlers["list_folders"] = () => [];
+    let imported = false;
+    invokeHandlers["import_folders_for_backup"] = () => {
+      imported = true;
+      return undefined;
+    };
+    const row = makeCloudFolder({
+      id: "ghost",
+      deleted_at: "2026-05-19T12:00:00Z",
+      updated_at: "2026-05-19T12:00:00Z",
+    });
+    await applyRemoteFolder(row);
+    expect(imported).toBe(false);
+  });
+
   it("propagates remote tombstone when remote is newer", async () => {
     const localFolder = makeFolder({
       id: "tomb",

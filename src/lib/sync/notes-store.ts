@@ -135,6 +135,11 @@ export async function moveNoteToFolderSynced(
  * `import_note_for_backup` only when remote wins. When local wins,
  * `mergeNoteLWW` returns the same `meta` reference as the local input — we
  * detect that via `===` and short-circuit to avoid a redundant disk write.
+ *
+ * Tombstone guard: if the note doesn't exist locally AND the remote row is a
+ * tombstone (`deleted_at !== null`), this is a no-op. Without the guard we'd
+ * materialize an empty tombstoned note dir on disk just for the post-pull
+ * purge step to immediately delete it — pure churn. Task 18.
  */
 export async function applyRemoteNote(row: CloudUserNoteRow): Promise<void> {
   let local: { meta: LocalNoteMeta; content: string } | null = null;
@@ -145,6 +150,10 @@ export async function applyRemoteNote(row: CloudUserNoteRow): Promise<void> {
   } catch {
     // Note not found locally — fine, will adopt remote.
     local = null;
+  }
+  if (!local && row.deleted_at !== null) {
+    // Nothing to delete locally — server tombstone for a note we never had.
+    return;
   }
   const merged = mergeNoteLWW(local?.meta ?? null, local?.content ?? null, row);
   if (local && merged.meta === local.meta) {
