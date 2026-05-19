@@ -144,12 +144,8 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
           break;
         }
         case "note-upsert": {
-          // Defense-in-depth : la table a déjà un CHECK octet_length <= 1_048_576 et Zod un max(1_048_576)
-          // côté code units, mais on re-check ici en code units pour rejeter avant l'aller-retour DB.
-          if (op.note.content_html.length > 1_048_576) {
-            results.push({ index: i, ok: false, error: "note_too_large" });
-            continue;
-          }
+          // Taille de `content_html` : Zod (max 1_048_576 code units) rejette avant ce point ;
+          // la DB applique en plus un CHECK `octet_length <= 1_048_576` côté bytes UTF-8 comme autorité finale.
           const { error } = await client.from("user_notes").upsert(
             {
               id: op.note.id,
@@ -199,6 +195,10 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
             .eq("user_id", userId);
           if (error) throw error;
           break;
+        }
+        default: {
+          const _exhaustive: never = op;
+          throw new Error(`unhandled op kind: ${(_exhaustive as { kind: string }).kind}`);
         }
       }
       results.push({ index: i, ok: true });

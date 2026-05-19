@@ -44,7 +44,9 @@ export const NotePayloadSchema = z.object({
 
 export const FolderPayloadSchema = z.object({
   id: z.string().uuid(),
-  name: z.string().max(200),
+  // .min(1) mirrors DB CHECK (char_length(name) between 1 and 200). Title côté note n'a pas de min DB
+  // (default ''), donc on laisse `NotePayloadSchema.title` sans `.min(1)`.
+  name: z.string().min(1).max(200),
   order: z.number().int(),
   updated_at: z.string().datetime(),
   deleted_at: z.string().datetime().nullable(),
@@ -93,12 +95,6 @@ export const PushBodySchema = z.object({
   operations: z.array(PushOperationSchema).min(1).max(200),
   device_id: z.string().max(100),
 });
-
-/**
- * @deprecated Conservé pour rétro-compat des tests existants. La vraie limite de quota est désormais
- * dérivée du plan utilisateur via `QUOTA_BY_PLAN` + `getUserQuota()` dans `index.ts`.
- */
-export const QUOTA_BYTES = 5 * 1024 * 1024;
 
 /**
  * Quota par plan en bytes — v3 sub-épique 03.
