@@ -27,6 +27,29 @@ export const SnippetSchema = z.object({
   shortcut: z.string().max(200).nullable(),
 });
 
+// Sub-épique 03 sync-notes : payloads notes + dossiers.
+// Hard cap content_html = 1 MB (1_048_576) — aligné avec la contrainte SQL `octet_length(content_html) <= 1048576`.
+// Zod compte en code units UTF-16 ; côté DB c'est des octets. Mismatch possible sur contenus multibytes,
+// mais on accepte cette approximation côté ingress (la DB constraint reste l'autorité finale).
+export const NotePayloadSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().max(500),
+  content_html: z.string().max(1_048_576),
+  folder_id: z.string().uuid().nullable(),
+  favorite: z.boolean(),
+  order: z.number().int(),
+  updated_at: z.string().datetime(),
+  deleted_at: z.string().datetime().nullable(),
+});
+
+export const FolderPayloadSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(200),
+  order: z.number().int(),
+  updated_at: z.string().datetime(),
+  deleted_at: z.string().datetime().nullable(),
+});
+
 export const PushOperationSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("settings-upsert"),
@@ -48,6 +71,22 @@ export const PushOperationSchema = z.discriminatedUnion("kind", [
     kind: z.literal("snippet-delete"),
     id: z.string().uuid(),
   }),
+  z.object({
+    kind: z.literal("note-upsert"),
+    note: NotePayloadSchema,
+  }),
+  z.object({
+    kind: z.literal("note-delete"),
+    id: z.string().uuid(),
+  }),
+  z.object({
+    kind: z.literal("folder-upsert"),
+    folder: FolderPayloadSchema,
+  }),
+  z.object({
+    kind: z.literal("folder-delete"),
+    id: z.string().uuid(),
+  }),
 ]);
 
 export const PushBodySchema = z.object({
@@ -55,4 +94,20 @@ export const PushBodySchema = z.object({
   device_id: z.string().max(100),
 });
 
+/**
+ * @deprecated Conservé pour rétro-compat des tests existants. La vraie limite de quota est désormais
+ * dérivée du plan utilisateur via `QUOTA_BY_PLAN` + `getUserQuota()` dans `index.ts`.
+ */
 export const QUOTA_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Quota par plan en bytes — v3 sub-épique 03.
+ * - free : 10 MB (gratuit, par défaut quand pas de row `subscriptions` ou statut inactif)
+ * - starter : 100 MB
+ * - pro : 500 MB
+ */
+export const QUOTA_BY_PLAN = {
+  free: 10 * 1024 * 1024,
+  starter: 100 * 1024 * 1024,
+  pro: 500 * 1024 * 1024,
+} as const;
