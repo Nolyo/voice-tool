@@ -33,25 +33,30 @@ export async function handler(req: Request, deps: AccountExportDeps): Promise<Re
 
   const { userId, client } = auth;
 
-  const [settings, dictionary, snippets, devices] = await Promise.all([
+  // GDPR transparency: include soft-deleted rows too (deleted_at column is exported).
+  const [settings, dictionary, snippets, devices, notes, folders] = await Promise.all([
     client.from("user_settings").select("*").maybeSingle(),
     client.from("user_dictionary_words").select("*"),
     client.from("user_snippets").select("*"),
     client.from("user_devices").select("*"),
+    client.from("user_notes").select("*"),
+    client.from("user_folders").select("*"),
   ]);
 
-  for (const r of [settings, dictionary, snippets, devices]) {
+  for (const r of [settings, dictionary, snippets, devices, notes, folders]) {
     if (r.error) return json(req, { error: r.error.message }, 500);
   }
 
   const payload = {
-    export_version: 1,
+    export_version: 2,
     exported_at: new Date().toISOString(),
     user_id: userId,
     user_settings: settings.data,
     user_dictionary_words: dictionary.data,
     user_snippets: snippets.data,
     user_devices: devices.data,
+    user_notes: notes.data,
+    user_folders: folders.data,
   };
 
   return json(req, payload);
