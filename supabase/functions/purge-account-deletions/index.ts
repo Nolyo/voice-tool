@@ -6,6 +6,8 @@ interface Deps {
   selectExpired: () => Promise<string[]>;
   deleteUser: (uid: string) => Promise<{ data: any; error: { message: string } | null }>;
   deleteTombstone: (uid: string) => Promise<void>;
+  /** Sub-epic 03 sync-notes : purge des items soft-deleted (notes + folders) >30j. */
+  purgeSoftDeletedSyncItems: () => Promise<{ notes: number; folders: number }>;
 }
 
 function realDeps(): Deps {
@@ -36,6 +38,20 @@ function realDeps(): Deps {
         .eq("user_id", uid);
       if (error) throw error;
     },
+    async purgeSoftDeletedSyncItems() {
+      const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+      const { count: notesCount, error: notesErr } = await client
+        .from("user_notes")
+        .delete({ count: "exact" })
+        .lt("deleted_at", cutoff);
+      if (notesErr) throw notesErr;
+      const { count: foldersCount, error: foldersErr } = await client
+        .from("user_folders")
+        .delete({ count: "exact" })
+        .lt("deleted_at", cutoff);
+      if (foldersErr) throw foldersErr;
+      return { notes: notesCount ?? 0, folders: foldersCount ?? 0 };
+    },
   };
 }
 
@@ -62,6 +78,17 @@ export async function handler(req: Request, deps: Deps): Promise<Response> {
     });
   }
 
+  // Sub-epic 03 sync-notes : purge des items soft-deleted >30j (indépendant du flow account deletion).
+  // Erreur ici n'interrompt PAS la suite — log + report.
+  let sync_items_purged: { notes: number; folders: number } = { notes: 0, folders: 0 };
+  let sync_purge_error: string | null = null;
+  try {
+    sync_items_purged = await deps.purgeSoftDeletedSyncItems();
+  } catch (err: unknown) {
+    sync_purge_error = err instanceof Error ? err.message : String(err);
+    console.log(JSON.stringify({ event: "purge_run_error", phase: "purgeSoftDeletedSyncItems", message: sync_purge_error }));
+  }
+
   const errors: Array<{ uid: string; message: string }> = [];
   let purged = 0;
 
@@ -86,8 +113,21 @@ export async function handler(req: Request, deps: Deps): Promise<Response> {
   }
 
   const duration_ms = Math.round(performance.now() - start);
-  console.log(JSON.stringify({ event: "purge_run", purged, errors: errors.length, duration_ms }));
-  return new Response(JSON.stringify({ purged, errors, duration_ms }), {
+  console.log(JSON.stringify({
+    event: "purge_run",
+    purged,
+    errors: errors.length,
+    sync_notes_purged: sync_items_purged.notes,
+    sync_folders_purged: sync_items_purged.folders,
+    duration_ms,
+  }));
+  return new Response(JSON.stringify({
+    purged,
+    errors,
+    sync_items_purged,
+    sync_purge_error,
+    duration_ms,
+  }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });

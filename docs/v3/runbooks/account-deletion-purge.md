@@ -2,7 +2,12 @@
 
 ## Vue d'ensemble
 
-Cron Postgres `purge-account-deletions-daily` (03:00 UTC) appelle l'Edge Function `purge-account-deletions`, qui supprime les utilisateurs dont la demande date de plus de 30 jours.
+Cron Postgres `purge-account-deletions-daily` (03:00 UTC) appelle l'Edge Function `purge-account-deletions`, qui :
+
+1. Purge les items soft-deleted >30j (notes + folders) — sub-épique 03 sync-notes. Compteurs reportés dans `sync_items_purged`.
+2. Supprime les utilisateurs dont la demande de suppression date de plus de 30 jours.
+
+Les deux phases sont indépendantes : une erreur sur la phase 1 (sync items) n'interrompt pas la phase 2. La réponse contient `sync_purge_error` (string ou null) si la phase 1 a échoué.
 
 L'URL de l'API et le bearer secret sont stockés dans `supabase_vault` (PAS dans des GUCs `app.settings.*` — sur Supabase hosted le rôle `postgres` ne peut pas faire `alter database … set` pour des paramètres custom). L'Edge Function est déployée avec `verify_jwt = false` (auth interne via `Bearer CRON_SECRET`).
 
@@ -35,7 +40,7 @@ curl -X POST "$SUPABASE_URL/functions/v1/purge-account-deletions" \
   -H "Content-Type: application/json"
 ```
 
-Réponse attendue : `{ "purged": N, "errors": [], "duration_ms": ... }`.
+Réponse attendue : `{ "purged": N, "errors": [], "sync_items_purged": { "notes": M, "folders": P }, "sync_purge_error": null, "duration_ms": ... }`.
 
 ## Investiguer un échec
 
