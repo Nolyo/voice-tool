@@ -553,6 +553,24 @@ Deno.test("quota: starter plan gets 100 MB limit (under limit returns 200)", asy
   assertEquals(body.limit, 100 * 1024 * 1024);
 });
 
+Deno.test("quota: on_trial subscription is treated as active and gets the plan limit", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-on-trial", {
+    rpcResult: { data: 50_000_000, error: null },
+    subscriptionResult: { data: { plan: "starter", status: "on_trial" }, error: null },
+  });
+  const req = postJson({
+    operations: [{ kind: "dictionary-upsert", word: "x" }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.plan, "starter");
+  assertEquals(body.limit, 100 * 1024 * 1024);
+});
+
 Deno.test("quota: starter user pushing above 100 MB returns 413 with starter limit", async () => {
   const { handler } = await import("./index.ts");
   const STARTER_LIMIT = 100 * 1024 * 1024;
