@@ -300,6 +300,34 @@ pub async fn delete_note(app_handle: AppHandle, id: String) -> Result<(), String
     Ok(())
 }
 
+/// Hard-delete soft-deleted notes after server confirmed they were purged.
+/// Called from the frontend sync engine after a successful pull that returns
+/// the list of note IDs whose tombstones were >30j and dropped server-side.
+/// Only deletes notes that ARE soft-deleted locally — never removes an active note.
+#[tauri::command]
+pub async fn purge_soft_deleted_notes_post_pull(
+    app_handle: AppHandle,
+    note_ids: Vec<String>,
+) -> Result<u32, String> {
+    let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
+    let mut purged = 0u32;
+    for note_id in note_ids {
+        let note_dir = notes_dir.join(&note_id);
+        if !note_dir.exists() {
+            continue;
+        }
+        let meta = match read_note_meta(&note_dir) {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        if meta.deleted_at.is_some() {
+            fs::remove_dir_all(&note_dir).map_err(|e| e.to_string())?;
+            purged += 1;
+        }
+    }
+    Ok(purged)
+}
+
 #[tauri::command]
 pub async fn toggle_note_favorite(app_handle: AppHandle, id: String) -> Result<NoteMeta, String> {
     let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
@@ -556,6 +584,20 @@ mod tests {
             "expected deletedAt to be omitted, got: {}",
             json
         );
+    }
+
+    #[test]
+    fn purge_post_pull_predicate_only_removes_soft_deleted() {
+        // Mirror the predicate from purge_soft_deleted_notes_post_pull:
+        // a note is purged iff its id is in the pulled list AND it is locally soft-deleted.
+        let active = make_meta(None);
+        let tombstoned = make_meta(Some("2026-05-19T11:00:00Z".to_string()));
+        let pulled_ids = vec!["test-id".to_string()];
+        let is_pulled = |m: &NoteMeta| pulled_ids.contains(&m.id);
+        assert!(!(is_pulled(&active) && active.deleted_at.is_some()),
+            "active note should NOT be purged even if its id is in the pulled list");
+        assert!(is_pulled(&tombstoned) && tombstoned.deleted_at.is_some(),
+            "soft-deleted note with matching id SHOULD be purged");
     }
 
     #[test]

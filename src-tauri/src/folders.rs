@@ -211,6 +211,27 @@ pub async fn delete_folder(app_handle: AppHandle, id: String) -> Result<(), Stri
     Ok(())
 }
 
+/// Hard-delete soft-deleted folders after server confirmed they were purged.
+/// Mirror of `notes::purge_soft_deleted_notes_post_pull`. Only removes folders
+/// that are locally soft-deleted — an active folder is never removed.
+#[tauri::command]
+pub async fn purge_soft_deleted_folders_post_pull(
+    app_handle: AppHandle,
+    folder_ids: Vec<String>,
+) -> Result<u32, String> {
+    if folder_ids.is_empty() {
+        return Ok(0);
+    }
+    let mut folders = read_folders(&app_handle).map_err(|e| e.to_string())?;
+    let before = folders.len();
+    folders.retain(|f| !(folder_ids.contains(&f.id) && f.deleted_at.is_some()));
+    let purged = (before - folders.len()) as u32;
+    if purged > 0 {
+        write_folders(&app_handle, &folders).map_err(|e| e.to_string())?;
+    }
+    Ok(purged)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -319,5 +340,29 @@ mod tests {
             Some("2026-05-19T12:00:00Z".to_string()),
         );
         assert!(!is_folder_active(&folder));
+    }
+
+    #[test]
+    fn purge_post_pull_retain_only_drops_tombstoned_in_target_set() {
+        // Mirror the retain() predicate from purge_soft_deleted_folders_post_pull.
+        let mut folders = vec![
+            FolderMeta { id: "active-1".to_string(), name: "A".to_string(),
+                created_at: "2026-05-19T10:00:00Z".to_string(),
+                updated_at: "2026-05-19T10:00:00Z".to_string(),
+                order: 0, deleted_at: None },
+            FolderMeta { id: "tombstoned-1".to_string(), name: "B".to_string(),
+                created_at: "2026-05-19T10:00:00Z".to_string(),
+                updated_at: "2026-05-19T11:00:00Z".to_string(),
+                order: 1, deleted_at: Some("2026-05-19T11:00:00Z".to_string()) },
+            FolderMeta { id: "tombstoned-not-in-target".to_string(), name: "C".to_string(),
+                created_at: "2026-05-19T10:00:00Z".to_string(),
+                updated_at: "2026-05-19T11:00:00Z".to_string(),
+                order: 2, deleted_at: Some("2026-05-19T11:00:00Z".to_string()) },
+        ];
+        let target_ids = vec!["active-1".to_string(), "tombstoned-1".to_string()];
+        folders.retain(|f| !(target_ids.contains(&f.id) && f.deleted_at.is_some()));
+        assert_eq!(folders.len(), 2, "only 'tombstoned-1' should be dropped");
+        assert_eq!(folders[0].id, "active-1");
+        assert_eq!(folders[1].id, "tombstoned-not-in-target");
     }
 }
