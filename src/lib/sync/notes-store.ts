@@ -70,6 +70,25 @@ export async function deleteNoteSynced(id: string): Promise<void> {
   }
 }
 
+/**
+ * Enqueue-only push for the debounced `updateNote` path. The caller has already
+ * written to disk (via `invoke("update_note", ...)`) and only wants to ship the
+ * final coalesced state to the cloud after the debounce window settles.
+ *
+ * Used by `useNotes.updateNote` to coalesce rapid keystrokes into a single push.
+ * NEVER throws — queue failures are swallowed.
+ */
+export async function pushNoteUpdate(
+  meta: LocalNoteMeta,
+  content: string
+): Promise<void> {
+  try {
+    await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+  } catch (e) {
+    console.warn("[notes-store] enqueue failed for debounced update", e);
+  }
+}
+
 export async function toggleNoteFavoriteSynced(
   id: string
 ): Promise<LocalNoteMeta> {

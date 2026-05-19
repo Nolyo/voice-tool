@@ -1,6 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import i18n from '@/i18n';
+import {
+  createNoteSynced,
+  deleteNoteSynced,
+  toggleNoteFavoriteSynced,
+  moveNoteToFolderSynced,
+  pushNoteUpdate,
+} from '@/lib/sync/notes-store';
+
+// Debounce window for the cloud push of updateNote. Local disk write stays
+// immediate; only the queue enqueue is delayed to coalesce rapid keystrokes.
+const UPDATE_NOTE_DEBOUNCE_MS = 2_000;
+
+// One pending timer per note id. Cleared when the note is unmounted or the
+// session signs out (cf. SyncContext flush — Task 19).
+const updateNoteDebounceMap = new Map<string, ReturnType<typeof setTimeout>>();
+
+/** Flush all pending debounced note pushes immediately. Called on logout (Task 19). */
+export async function flushPendingNoteUpdates(): Promise<void> {
+  const pending = Array.from(updateNoteDebounceMap.entries());
+  for (const [id, timer] of pending) {
+    clearTimeout(timer);
+    updateNoteDebounceMap.delete(id);
+    try {
+      const data = await invoke<NoteData>('read_note', { id });
+      await pushNoteUpdate(data.meta, data.content);
+    } catch (e) {
+      console.warn('[useNotes] flush failed for note', id, e);
+    }
+  }
+}
 
 // Module-level flag: survives React StrictMode double-mount but resets on
 // full page reload, which is the correct scope for "first launch" detection.
@@ -56,10 +86,14 @@ export function useNotes() {
       const result = await invoke<NoteMeta[]>('list_notes');
       if (result.length === 0 && !welcomeNoteCreating) {
         welcomeNoteCreating = true;
-        const meta = await invoke<NoteMeta>('create_note', { folderId: null });
+        // Route the welcome note through the Synced wrappers so it enqueues
+        // a cloud upsert. If the user enables sync later, the queue flushes
+        // the welcome note as their first note.
+        const meta = await createNoteSynced(null);
         const welcomeHtml = getWelcomeNoteHtml();
         const title = deriveTitle(welcomeHtml);
-        await invoke<NoteMeta>('update_note', { id: meta.id, content: welcomeHtml, title });
+        const persistedMeta = await invoke<NoteMeta>('update_note', { id: meta.id, content: welcomeHtml, title });
+        await pushNoteUpdate(persistedMeta, welcomeHtml);
         const updated = await invoke<NoteMeta[]>('list_notes');
         setNotes(updated);
       } else {
@@ -77,13 +111,13 @@ export function useNotes() {
   }, [loadNotes]);
 
   const createNote = async (folderId: string | null = null): Promise<NoteMeta> => {
-    const meta = await invoke<NoteMeta>('create_note', { folderId });
+    const meta = await createNoteSynced(folderId);
     setNotes(prev => [meta, ...prev]);
     return meta;
   };
 
   const moveNoteToFolder = async (noteId: string, folderId: string | null): Promise<void> => {
-    const updated = await invoke<NoteMeta>('move_note_to_folder', { noteId, folderId });
+    const updated = await moveNoteToFolderSynced(noteId, folderId);
     setNotes(prev => prev.map(n => n.id === noteId ? updated : n));
   };
 
@@ -92,12 +126,30 @@ export function useNotes() {
   };
 
   const updateNote = async (id: string, content: string, title: string) => {
+    // 1) Local disk write immediate (no debounce on filesystem persistence).
     const updated = await invoke<NoteMeta>('update_note', { id, content, title });
     setNotes(prev => prev.map(n => n.id === id ? updated : n));
+
+    // 2) Debounce 2s the cloud push to coalesce rapid keystrokes into one upsert.
+    const existing = updateNoteDebounceMap.get(id);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      // Use the freshest meta + content captured at flush time.
+      // `updated` here is closed-over and contains the latest updatedAt.
+      pushNoteUpdate(updated, content);
+      updateNoteDebounceMap.delete(id);
+    }, UPDATE_NOTE_DEBOUNCE_MS);
+    updateNoteDebounceMap.set(id, timer);
   };
 
   const deleteNote = async (id: string) => {
-    await invoke('delete_note', { id });
+    // Cancel any pending debounced push for this note — soft-delete supersedes.
+    const existing = updateNoteDebounceMap.get(id);
+    if (existing) {
+      clearTimeout(existing);
+      updateNoteDebounceMap.delete(id);
+    }
+    await deleteNoteSynced(id);
     setNotes(prev => prev.filter(n => n.id !== id));
   };
 
@@ -106,7 +158,7 @@ export function useNotes() {
   };
 
   const toggleFavorite = async (id: string): Promise<void> => {
-    const updated = await invoke<NoteMeta>('toggle_note_favorite', { id });
+    const updated = await toggleNoteFavoriteSynced(id);
     setNotes(prev => prev.map(n => n.id === id ? updated : n));
   };
 
@@ -123,6 +175,17 @@ export function useNotes() {
     );
     try {
       await invoke('reorder_notes_in_folder', { folderId, noteIds });
+      // Reorder bumps `order` + `updated_at` on each touched note — enqueue an upsert
+      // per moved note so the cloud picks up the new ordering via LWW. We read fresh
+      // meta + content via `read_note` after the Rust command persists.
+      for (const noteId of noteIds) {
+        try {
+          const data = await invoke<NoteData>('read_note', { id: noteId });
+          await pushNoteUpdate(data.meta, data.content);
+        } catch (e) {
+          console.warn('[useNotes] enqueue failed for reorder', noteId, e);
+        }
+      }
     } catch (error) {
       console.error('Failed to reorder notes:', error);
       await loadNotes();
@@ -135,7 +198,7 @@ export function useNotes() {
     noteIdsInNewOrder: string[],
   ): Promise<void> => {
     try {
-      await invoke<NoteMeta>('move_note_to_folder', { noteId, folderId: targetFolderId });
+      await moveNoteToFolderSynced(noteId, targetFolderId);
     } catch (error) {
       console.error('Failed to move note:', error);
       await loadNotes();
@@ -146,6 +209,14 @@ export function useNotes() {
         folderId: targetFolderId,
         noteIds: noteIdsInNewOrder,
       });
+      for (const id of noteIdsInNewOrder) {
+        try {
+          const data = await invoke<NoteData>('read_note', { id });
+          await pushNoteUpdate(data.meta, data.content);
+        } catch (e) {
+          console.warn('[useNotes] enqueue failed for reorder-after-move', id, e);
+        }
+      }
     } catch (error) {
       console.error('Failed to reorder notes after move:', error);
       await loadNotes();
