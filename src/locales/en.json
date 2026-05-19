@@ -973,6 +973,7 @@
       "title": "Enable sync",
       "no_local_data": "Your local setup is nearly empty. Sync will pull your existing cloud state, or start fresh if none exists.",
       "has_local_data": "You already set up Lexena on this device. What do you want to do?",
+      "counts_summary": "{{notes}} note(s), {{folders}} folder(s), {{snippets}} snippet(s), {{words}} dictionary word(s)",
       "choice_upload": "Upload my current setup (recommended)",
       "choice_upload_desc": "Your snippets, hotkeys and dictionary will be sent to the cloud and available on your other devices.",
       "choice_fresh": "Start from a fresh setup",
@@ -987,6 +988,8 @@
       "scalars": "Theme, language, hotkeys, audio preferences, transcription provider + model",
       "snippets": "{{count}} snippet(s)",
       "dictionary": "{{count}} word(s) in dictionary",
+      "notes": "{{count}} note(s)",
+      "folders": "{{count}} folder(s)",
       "not_synced_disclaimer": "API keys, window positions, downloaded models stay local."
     },
     "backups": {

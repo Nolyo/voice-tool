@@ -973,6 +973,7 @@
       "title": "Activer la synchronisation",
       "no_local_data": "Ton setup est presque vide. La synchronisation va juste récupérer ton état cloud s'il existe, ou démarrer un nouveau profil vide côté cloud.",
       "has_local_data": "Tu as déjà configuré Lexena sur ce device. Que veux-tu faire ?",
+      "counts_summary": "{{notes}} note(s), {{folders}} dossier(s), {{snippets}} snippet(s), {{words}} mot(s) de dictionnaire",
       "choice_upload": "Uploader mon setup actuel (recommandé)",
       "choice_upload_desc": "Tes snippets, hotkeys, dictionnaire seront envoyés au cloud et disponibles sur tes autres devices.",
       "choice_fresh": "Partir d'un setup neuf",
@@ -987,6 +988,8 @@
       "scalars": "Thème, langue, hotkeys, préférences audio, provider + modèle de transcription",
       "snippets": "{{count}} snippet(s)",
       "dictionary": "{{count}} mot(s) dans le dictionnaire",
+      "notes": "{{count}} note(s)",
+      "folders": "{{count}} dossier(s)",
       "not_synced_disclaimer": "Les clés API, les positions de fenêtres, les modèles téléchargés restent locaux."
     },
     "backups": {

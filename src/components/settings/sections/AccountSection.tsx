@@ -7,6 +7,8 @@ import { downloadAccountExport } from "@/lib/sync/export";
 import { supabase } from "@/lib/supabase";
 import { loadSnippets } from "@/lib/sync/snippets-store";
 import { loadDictionary } from "@/lib/sync/dictionary-store";
+import { listNotes } from "@/lib/sync/notes-store";
+import { listFolders } from "@/lib/sync/folders-store";
 import {
   listLocalBackups,
   restoreLocalBackup,
@@ -418,17 +420,27 @@ function SyncCard() {
 
 function SyncedInventoryGrid() {
   const { t } = useTranslation();
-  const [counts, setCounts] = useState<{ snippets: number; words: number } | null>(
-    null,
-  );
+  const [counts, setCounts] = useState<{
+    snippets: number;
+    words: number;
+    notes: number;
+    folders: number;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const sn = (await loadSnippets()).filter((s) => s.deleted_at === null);
       const d = await loadDictionary();
+      // listNotes / listFolders already filter out soft-deleted items.
+      const [n, f] = await Promise.all([listNotes(), listFolders()]);
       if (cancelled) return;
-      setCounts({ snippets: sn.length, words: d.words.length });
+      setCounts({
+        snippets: sn.length,
+        words: d.words.length,
+        notes: n.length,
+        folders: f.length,
+      });
     })();
     return () => {
       cancelled = true;
@@ -447,6 +459,14 @@ function SyncedInventoryGrid() {
     {
       label: t("vocabulary.dictionaryTitle", { defaultValue: "Dictionnaire" }),
       value: t("sync.overview.dictionary", { count: counts?.words ?? 0 }),
+    },
+    {
+      label: t("notes.sidebar.title", { defaultValue: "Notes" }),
+      value: t("sync.overview.notes", { count: counts?.notes ?? 0 }),
+    },
+    {
+      label: t("notes.sidebar.folders", { defaultValue: "Dossiers" }),
+      value: t("sync.overview.folders", { count: counts?.folders ?? 0 }),
     },
   ];
 
