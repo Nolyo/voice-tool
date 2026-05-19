@@ -1,4 +1,12 @@
-import type { LocalSnippet, CloudSnippetRow, CloudUserSettingsRow } from "./types";
+import type {
+  LocalSnippet,
+  CloudSnippetRow,
+  CloudUserSettingsRow,
+  LocalNoteMeta,
+  CloudUserNoteRow,
+  LocalFolderMeta,
+  CloudUserFolderRow,
+} from "./types";
 import type { AppSettings } from "@/lib/settings";
 import { applyCloudSettings } from "./mapping";
 
@@ -57,4 +65,59 @@ export function mergeSettingsLWW(
     };
   }
   return { settings: local, action: "push-local" };
+}
+
+/** LWW merge for a single note (meta + content).
+ *  - `local === null` → adopt remote unconditionally.
+ *  - Tied or remote-newer timestamps → remote wins (deterministic).
+ *  - Local-newer → keep local meta + `localContent` (caller knows the content).
+ */
+export function mergeNoteLWW(
+  local: LocalNoteMeta | null,
+  localContent: string | null,
+  remote: CloudUserNoteRow
+): { meta: LocalNoteMeta; content: string } {
+  const remoteAsLocal: { meta: LocalNoteMeta; content: string } = {
+    meta: {
+      id: remote.id,
+      title: remote.title,
+      createdAt: remote.created_at,
+      updatedAt: remote.updated_at,
+      favorite: remote.favorite,
+      ...(remote.folder_id !== null && { folderId: remote.folder_id }),
+      order: remote.order,
+      ...(remote.deleted_at !== null && { deletedAt: remote.deleted_at }),
+    },
+    content: remote.content_html,
+  };
+  if (!local) return remoteAsLocal;
+
+  const localTs = new Date(local.updatedAt).getTime();
+  const remoteTs = new Date(remote.updated_at).getTime();
+  if (remoteTs >= localTs) return remoteAsLocal;
+
+  // Local wins — return local meta as-is + content provided by caller.
+  return { meta: local, content: localContent ?? "" };
+}
+
+/** LWW merge for a single folder.
+ *  Same semantics as `mergeNoteLWW` minus the content field.
+ */
+export function mergeFolderLWW(
+  local: LocalFolderMeta | null,
+  remote: CloudUserFolderRow
+): LocalFolderMeta {
+  const remoteAsLocal: LocalFolderMeta = {
+    id: remote.id,
+    name: remote.name,
+    createdAt: remote.created_at,
+    updatedAt: remote.updated_at,
+    order: remote.order,
+    ...(remote.deleted_at !== null && { deletedAt: remote.deleted_at }),
+  };
+  if (!local) return remoteAsLocal;
+
+  const localTs = new Date(local.updatedAt).getTime();
+  const remoteTs = new Date(remote.updated_at).getTime();
+  return remoteTs >= localTs ? remoteAsLocal : local;
 }
