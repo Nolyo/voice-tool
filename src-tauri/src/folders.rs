@@ -211,6 +211,17 @@ pub async fn delete_folder(app_handle: AppHandle, id: String) -> Result<(), Stri
     Ok(())
 }
 
+/// Imports folders for backup restore. Replaces the local folders.json entirely
+/// with the provided list (preserves ids + updated_at + deleted_at).
+#[tauri::command]
+pub async fn import_folders_for_backup(
+    app_handle: AppHandle,
+    folders: Vec<FolderMeta>,
+) -> Result<(), String> {
+    write_folders(&app_handle, &folders).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Hard-delete soft-deleted folders after server confirmed they were purged.
 /// Mirror of `notes::purge_soft_deleted_notes_post_pull`. Only removes folders
 /// that are locally soft-deleted — an active folder is never removed.
@@ -340,6 +351,48 @@ mod tests {
             Some("2026-05-19T12:00:00Z".to_string()),
         );
         assert!(!is_folder_active(&folder));
+    }
+
+    #[test]
+    fn import_folders_payload_roundtrips_preserves_all_fields() {
+        // Simulates what import_folders_for_backup writes on disk: serialize the
+        // full list exactly as received. We assert every field roundtrips —
+        // including tombstones — so a restored folder set matches the backup.
+        let folders = vec![
+            FolderMeta {
+                id: "active-1".to_string(),
+                name: "Work".to_string(),
+                created_at: "2026-05-19T10:00:00Z".to_string(),
+                updated_at: "2026-05-19T11:00:00Z".to_string(),
+                order: 0,
+                deleted_at: None,
+            },
+            FolderMeta {
+                id: "tombstoned-1".to_string(),
+                name: "Old".to_string(),
+                created_at: "2026-05-19T09:00:00Z".to_string(),
+                updated_at: "2026-05-19T12:00:00Z".to_string(),
+                order: 1,
+                deleted_at: Some("2026-05-19T12:00:00Z".to_string()),
+            },
+        ];
+
+        let payload = serde_json::to_string_pretty(&folders).expect("serialize");
+        let restored: Vec<FolderMeta> = serde_json::from_str(&payload).expect("deserialize");
+
+        assert_eq!(restored.len(), 2);
+        assert_eq!(restored[0].id, "active-1");
+        assert_eq!(restored[0].name, "Work");
+        assert_eq!(restored[0].created_at, "2026-05-19T10:00:00Z");
+        assert_eq!(restored[0].updated_at, "2026-05-19T11:00:00Z");
+        assert_eq!(restored[0].order, 0);
+        assert_eq!(restored[0].deleted_at, None);
+        assert!(is_folder_active(&restored[0]));
+
+        assert_eq!(restored[1].id, "tombstoned-1");
+        assert_eq!(restored[1].name, "Old");
+        assert_eq!(restored[1].deleted_at, Some("2026-05-19T12:00:00Z".to_string()));
+        assert!(!is_folder_active(&restored[1]), "tombstone must survive restore");
     }
 
     #[test]

@@ -477,6 +477,25 @@ pub async fn get_backlinks(
     Ok(results)
 }
 
+/// Imports a note for backup restore. The note's id, meta, and content_html
+/// are preserved exactly — overwriting any existing note with the same id.
+/// If the meta has `deleted_at: Some(...)`, the note is restored as soft-deleted
+/// (preserves the tombstone semantic).
+#[tauri::command]
+pub async fn import_note_for_backup(
+    app_handle: AppHandle,
+    meta: NoteMeta,
+    content: String,
+) -> Result<(), String> {
+    let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
+    let note_dir = notes_dir.join(&meta.id);
+    fs::create_dir_all(&note_dir).map_err(|e| e.to_string())?;
+    let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
+    fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;
+    fs::write(note_dir.join("content.html"), content).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn search_notes(
     app_handle: AppHandle,
@@ -598,6 +617,28 @@ mod tests {
             "active note should NOT be purged even if its id is in the pulled list");
         assert!(is_pulled(&tombstoned) && tombstoned.deleted_at.is_some(),
             "soft-deleted note with matching id SHOULD be purged");
+    }
+
+    #[test]
+    fn import_note_payload_preserves_tombstone_via_serde() {
+        // Simulates what import_note_for_backup does on disk: serialize the meta
+        // exactly as received. We assert the tombstone roundtrips so a restored
+        // note keeps its soft-deleted state.
+        let meta = make_meta(Some("2026-05-19T11:00:00Z".to_string()));
+        let payload = serde_json::to_string_pretty(&meta).expect("serialize");
+        let restored: NoteMeta = serde_json::from_str(&payload).expect("deserialize");
+        assert_eq!(restored.deleted_at, meta.deleted_at);
+        assert_eq!(restored.id, meta.id);
+        assert!(!is_note_active(&restored), "tombstone must survive restore");
+    }
+
+    #[test]
+    fn import_note_payload_preserves_active_state_via_serde() {
+        let meta = make_meta(None);
+        let payload = serde_json::to_string_pretty(&meta).expect("serialize");
+        let restored: NoteMeta = serde_json::from_str(&payload).expect("deserialize");
+        assert!(is_note_active(&restored));
+        assert_eq!(restored.id, meta.id);
     }
 
     #[test]
