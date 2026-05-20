@@ -31,6 +31,11 @@ export const SnippetSchema = z.object({
 // Hard cap content_html = 1 MB (1_048_576) — aligné avec la contrainte SQL `octet_length(content_html) <= 1048576`.
 // Zod compte en code units UTF-16 ; côté DB c'est des octets. Mismatch possible sur contenus multibytes,
 // mais on accepte cette approximation côté ingress (la DB constraint reste l'autorité finale).
+// `updated_at` / `deleted_at` : `{ offset: true }` car Rust `chrono::Utc::now().to_rfc3339()` émet
+// `+00:00` (RFC 3339 valide) et non `Z`. `deleted_at` est `.optional()` parce que le serveur force
+// `null` côté handler sur les upserts — laisser le client l'omettre est valide.
+const offsetDatetime = () => z.string().datetime({ offset: true });
+
 export const NotePayloadSchema = z.object({
   id: z.string().uuid(),
   title: z.string().max(500),
@@ -38,8 +43,8 @@ export const NotePayloadSchema = z.object({
   folder_id: z.string().uuid().nullable(),
   favorite: z.boolean(),
   order: z.number().int(),
-  updated_at: z.string().datetime(),
-  deleted_at: z.string().datetime().nullable(),
+  updated_at: offsetDatetime(),
+  deleted_at: offsetDatetime().nullable().optional(),
 });
 
 export const FolderPayloadSchema = z.object({
@@ -48,8 +53,8 @@ export const FolderPayloadSchema = z.object({
   // (default ''), donc on laisse `NotePayloadSchema.title` sans `.min(1)`.
   name: z.string().min(1).max(200),
   order: z.number().int(),
-  updated_at: z.string().datetime(),
-  deleted_at: z.string().datetime().nullable(),
+  updated_at: offsetDatetime(),
+  deleted_at: offsetDatetime().nullable().optional(),
 });
 
 export const PushOperationSchema = z.discriminatedUnion("kind", [

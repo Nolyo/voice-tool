@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { z } from "zod";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
 import {
   extractCloudSettings,
@@ -14,6 +15,29 @@ import type {
   LocalFolderMeta,
   LocalNoteMeta,
 } from "./types";
+
+// Mirror of supabase/functions/sync-push/schema.ts — kept locally so this test
+// guards client-emitted payloads against the actual server contract (offset
+// datetime + optional deleted_at). If this drifts from the Edge schema, add
+// the missing field here too.
+const offsetDatetime = () => z.string().datetime({ offset: true });
+const SyncPushNotePayloadSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().max(500),
+  content_html: z.string().max(1_048_576),
+  folder_id: z.string().uuid().nullable(),
+  favorite: z.boolean(),
+  order: z.number().int(),
+  updated_at: offsetDatetime(),
+  deleted_at: offsetDatetime().nullable().optional(),
+});
+const SyncPushFolderPayloadSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(200),
+  order: z.number().int(),
+  updated_at: offsetDatetime(),
+  deleted_at: offsetDatetime().nullable().optional(),
+});
 
 describe("mapping AppSettings ↔ Cloud", () => {
   it("extractCloudSettings returns the spec shape", () => {
@@ -114,7 +138,7 @@ describe("mapping notes ↔ cloud", () => {
   const UUID_B = "22222222-2222-4222-8222-222222222222";
   const UUID_F = "33333333-3333-4333-8333-333333333333";
 
-  it("mapNoteToCloud converts undefined folderId to null and emits all 7 cloud fields", () => {
+  it("mapNoteToCloud converts undefined folderId to null and emits deleted_at: null", () => {
     const meta: LocalNoteMeta = {
       id: UUID_A,
       title: "Hello",
@@ -134,8 +158,9 @@ describe("mapping notes ↔ cloud", () => {
       favorite: true,
       order: 5,
       updated_at: "2026-05-19T11:00:00Z",
+      deleted_at: null,
     });
-    expect(Object.keys(payload)).toHaveLength(7);
+    expect(Object.keys(payload)).toHaveLength(8);
   });
 
   it("mapNoteToCloud passes folderId through when defined", () => {
@@ -232,7 +257,41 @@ describe("mapping notes ↔ cloud", () => {
       favorite: row.favorite,
       order: row.order,
       updated_at: row.updated_at,
+      deleted_at: null,
     });
+  });
+
+  // Regression : payload doit valider le schéma Zod côté Edge — sinon
+  // sync-push retourne "invalid body" et la queue se bloque (cf. bug 2026-05-20).
+  it("mapNoteToCloud output validates against sync-push NotePayloadSchema (offset datetime + deleted_at present)", () => {
+    const meta: LocalNoteMeta = {
+      id: UUID_A,
+      title: "Untitled Note",
+      createdAt: "2026-05-20T11:21:11.358048100+00:00",
+      // Rust chrono::Utc::now().to_rfc3339() emits offset, not Z.
+      updatedAt: "2026-05-20T11:21:11.358048100+00:00",
+      favorite: false,
+      order: 0,
+    };
+    const payload = mapNoteToCloud(meta, "");
+    const parsed = SyncPushNotePayloadSchema.safeParse(payload);
+    expect(parsed.success).toBe(true);
+  });
+
+  it("mapNoteToCloud output validates with non-null deletedAt (tombstone path)", () => {
+    const meta: LocalNoteMeta = {
+      id: UUID_A,
+      title: "Tombstone",
+      createdAt: "2026-05-20T11:21:11.358048100+00:00",
+      updatedAt: "2026-05-20T11:22:00.000000000+00:00",
+      favorite: false,
+      order: 0,
+      deletedAt: "2026-05-20T11:22:00.000000000+00:00",
+    };
+    const payload = mapNoteToCloud(meta, "");
+    expect(payload.deleted_at).toBe("2026-05-20T11:22:00.000000000+00:00");
+    const parsed = SyncPushNotePayloadSchema.safeParse(payload);
+    expect(parsed.success).toBe(true);
   });
 });
 
@@ -240,7 +299,7 @@ describe("mapping folders ↔ cloud", () => {
   const UUID_F = "33333333-3333-4333-8333-333333333333";
   const UUID_U = "22222222-2222-4222-8222-222222222222";
 
-  it("mapFolderToCloud emits id/name/order/updated_at", () => {
+  it("mapFolderToCloud emits id/name/order/updated_at/deleted_at", () => {
     const folder: LocalFolderMeta = {
       id: UUID_F,
       name: "Recipes",
@@ -254,8 +313,9 @@ describe("mapping folders ↔ cloud", () => {
       name: "Recipes",
       order: 2,
       updated_at: "2026-05-19T11:00:00Z",
+      deleted_at: null,
     });
-    expect(Object.keys(payload)).toHaveLength(4);
+    expect(Object.keys(payload)).toHaveLength(5);
   });
 
   it("mapFolderFromCloud omits deletedAt for active folder", () => {
@@ -310,6 +370,21 @@ describe("mapping folders ↔ cloud", () => {
       name: row.name,
       order: row.order,
       updated_at: row.updated_at,
+      deleted_at: null,
     });
+  });
+
+  // Regression : payload doit valider le schéma Zod côté Edge.
+  it("mapFolderToCloud output validates against sync-push FolderPayloadSchema (offset datetime)", () => {
+    const folder: LocalFolderMeta = {
+      id: UUID_F,
+      name: "Recipes",
+      createdAt: "2026-05-20T11:21:11.358048100+00:00",
+      updatedAt: "2026-05-20T11:21:11.358048100+00:00",
+      order: 2,
+    };
+    const payload = mapFolderToCloud(folder);
+    const parsed = SyncPushFolderPayloadSchema.safeParse(payload);
+    expect(parsed.success).toBe(true);
   });
 });

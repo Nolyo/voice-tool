@@ -118,6 +118,7 @@ export interface NotePayload {
   favorite: boolean;
   order: number;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface FolderPayload {
@@ -125,6 +126,7 @@ export interface FolderPayload {
   name: string;
   order: number;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 /** Local NoteMeta shape (matches Rust NoteMeta camelCase serialization). */

@@ -438,6 +438,55 @@ Deno.test("note-upsert: forwards id, title, content_html, folder_id, favorite, o
   assertEquals(upserts[0].options, { onConflict: "id" });
 });
 
+// Regression : le client Rust sérialise updated_at via chrono::Utc::now().to_rfc3339(),
+// qui émet l'offset `+00:00` plutôt que `Z`, et omet `deleted_at` sur les upserts.
+// Avant fix 2026-05-20, Zod `.datetime()` strict rejetait cette forme → "invalid body".
+Deno.test("note-upsert: accepts RFC3339 offset datetime + omitted deleted_at (regression 2026-05-20)", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-rfc3339");
+  const note = {
+    id: NOTE_ID,
+    title: "Untitled Note",
+    content_html: "",
+    folder_id: null,
+    favorite: false,
+    order: 0,
+    updated_at: "2026-05-20T11:21:11.358048100+00:00", // offset, not Z, nano precision
+    // deleted_at intentionally omitted — server forces null on upsert anyway
+  };
+  const req = postJson({
+    operations: [{ kind: "note-upsert", note }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const upserts = auth.calls.filter((c): c is UpsertCall => c.kind === "upsert");
+  assertEquals(upserts.length, 1);
+  assertEquals(upserts[0].table, "user_notes");
+  assertEquals(upserts[0].record.deleted_at, null);
+});
+
+Deno.test("folder-upsert: accepts RFC3339 offset datetime + omitted deleted_at (regression 2026-05-20)", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-rfc3339f");
+  const folder = {
+    id: FOLDER_ID,
+    name: "Inbox",
+    order: 1,
+    updated_at: "2026-05-20T11:21:11.358048100+00:00",
+  };
+  const req = postJson({
+    operations: [{ kind: "folder-upsert", folder }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const upserts = auth.calls.filter((c): c is UpsertCall => c.kind === "upsert");
+  assertEquals(upserts.length, 1);
+  assertEquals(upserts[0].table, "user_folders");
+  assertEquals(upserts[0].record.deleted_at, null);
+});
+
 Deno.test("note-upsert: rejects content_html > 1 MB at Zod parse (400 invalid body)", async () => {
   const { handler } = await import("./index.ts");
   const auth = authOk();

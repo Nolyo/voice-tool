@@ -99,6 +99,7 @@ export function mapNoteToCloud(meta: LocalNoteMeta, content: string): NotePayloa
     favorite: meta.favorite,
     order: meta.order,
     updated_at: meta.updatedAt,
+    deleted_at: meta.deletedAt ?? null,
   };
 }
 
@@ -127,6 +128,7 @@ export function mapFolderToCloud(folder: LocalFolderMeta): FolderPayload {
     name: folder.name,
     order: folder.order,
     updated_at: folder.updatedAt,
+    deleted_at: folder.deletedAt ?? null,
   };
 }
 
