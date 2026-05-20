@@ -15,7 +15,11 @@ export const CloudSettingsDataSchema = z.object({
     sound_effects: z.boolean(),
   }),
   transcription: z.object({
-    provider: z.enum(["OpenAI", "Google", "Local", "Groq"]),
+    // "LexenaCloud" est sélectionnable côté UI depuis sub-épiques 04 billing / 05 managed
+    // transcription : on doit l'accepter en push pour synchroniser la préférence utilisateur.
+    // Les legacy "OpenAI"/"Google"/"Groq" restent acceptés pour pull rétro-compat (clampés
+    // à "Local" côté client via applyCloudSettings).
+    provider: z.enum(["OpenAI", "Google", "Local", "Groq", "LexenaCloud"]),
     local_model: z.string().max(50),
   }),
 });

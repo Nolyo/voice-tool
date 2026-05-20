@@ -198,6 +198,28 @@ Deno.test("settings-upsert: posts to user_settings with userId + device_id", asy
   assertEquals(upserts[0].options, { onConflict: "user_id" });
 });
 
+// Regression : avant 2026-05-20, le enum provider du schema serveur n'incluait
+// pas "LexenaCloud" alors que le picker UI l'accepte depuis le sub-épique 04 billing
+// / 05 managed transcription. Push -> "invalid body". Voir commit
+// fix(sync-settings): accept LexenaCloud provider.
+Deno.test("settings-upsert: accepts LexenaCloud provider (regression 2026-05-20)", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-cloud");
+  const settings = {
+    ...VALID_SETTINGS,
+    transcription: { provider: "LexenaCloud" as const, local_model: "large-v3-turbo" },
+  };
+  const req = postJson({
+    operations: [{ kind: "settings-upsert", data: settings }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const upserts = auth.calls.filter((c): c is UpsertCall => c.kind === "upsert");
+  assertEquals(upserts.length, 1);
+  assertEquals(upserts[0].record.data.transcription.provider, "LexenaCloud");
+});
+
 Deno.test("dictionary-upsert: clears deleted_at on revival", async () => {
   const { handler } = await import("./index.ts");
   const auth = authOk();
