@@ -12,7 +12,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettings } from "@/hooks/useSettings";
-import { extractCloudSettings, syncableSettingsChanged } from "@/lib/sync/mapping";
+import {
+  extractCloudSettings,
+  mapFolderToCloud,
+  mapNoteToCloud,
+  syncableSettingsChanged,
+} from "@/lib/sync/mapping";
 import { flog } from "@/lib/flog";
 import { pullAll, pushOperations } from "@/lib/sync/client";
 import {
@@ -31,8 +36,13 @@ import {
   applyRemoteSnippet,
   migrateLegacySnippetsOnce,
 } from "@/lib/sync/snippets-store";
-import { applyRemoteNote, flushPendingNoteUpdates } from "@/lib/sync/notes-store";
-import { applyRemoteFolder } from "@/lib/sync/folders-store";
+import {
+  applyRemoteNote,
+  flushPendingNoteUpdates,
+  listNotes,
+  readNote,
+} from "@/lib/sync/notes-store";
+import { applyRemoteFolder, listFolders } from "@/lib/sync/folders-store";
 import {
   loadDictionary,
   applyRemoteWord,
@@ -347,7 +357,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
     await pullAndApply();
 
-    // Full push initial : settings + dico + snippets
+    // Full push initial : settings + dico + snippets + folders + notes.
+    // ORDRE CRITIQUE — folders DOIVENT précéder notes dans le tableau d'ops.
+    // Le sync-push Edge traite les ops séquentiellement (boucle for index),
+    // et `user_notes.folder_id` a une FK vers `user_folders.id`. Sans cet
+    // ordre, toute note avec folder_id non null déclenche une violation FK
+    // (user_notes_folder_id_fkey) au premier push initial.
     try {
       const deviceId = await getDeviceId();
       const ops: SyncOperation[] = [];
@@ -373,9 +388,50 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           },
         });
       }
+
+      // Folders actifs — AVANT les notes (FK user_notes_folder_id_fkey).
+      const folders = await listFolders();
+      for (const f of folders) {
+        if (f.deletedAt) continue;
+        ops.push({ kind: "folder-upsert", folder: mapFolderToCloud(f) });
+      }
+
+      // Notes actives — après les folders. Lecture du contenu par note.
+      const notesMeta = await listNotes();
+      for (const nm of notesMeta) {
+        if (nm.deletedAt) continue;
+        try {
+          const { content } = await readNote(nm.id);
+          ops.push({ kind: "note-upsert", note: mapNoteToCloud(nm, content) });
+        } catch (e) {
+          flog(`[sync] readNote failed for ${nm.id}: ${String(e)}`, "warn");
+        }
+      }
+
       if (ops.length > 0) {
-        const resp = await pushOperations(ops, deviceId);
-        if (resp.server_time) await setMeta(KEY_LAST_PUSHED_SETTINGS_AT, resp.server_time);
+        // sync-push cap : max 200 ops par requête. Chunker en préservant
+        // l'ordre global (le tableau `ops` est déjà folders-avant-notes,
+        // donc chunker ne casse pas la garantie FK : tout folder est dans
+        // un chunk antérieur ou identique à toute note qui le référence).
+        const CHUNK = 200;
+        let lastServerTime: string | undefined;
+        for (let i = 0; i < ops.length; i += CHUNK) {
+          const chunk = ops.slice(i, i + CHUNK);
+          const resp = await pushOperations(chunk, deviceId);
+          if (!resp.ok) {
+            flog(
+              `[sync] initial push chunk ${Math.floor(i / CHUNK)} failed: ${
+                resp.error ?? "unknown"
+              }`,
+              "warn"
+            );
+            break;
+          }
+          if (resp.server_time) lastServerTime = resp.server_time;
+        }
+        if (lastServerTime) {
+          await setMeta(KEY_LAST_PUSHED_SETTINGS_AT, lastServerTime);
+        }
       }
     } catch (e) {
       flog(`[sync] initial full push failed: ${String(e)}`, "warn");
