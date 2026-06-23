@@ -161,6 +161,8 @@ pub fn run() {
             commands::profiles::get_active_profile_settings_path,
             commands::profiles::get_active_profile_notes_tabs_path,
             commands::profiles::get_active_profile_notes_sidebar_path,
+            commands::profiles::get_active_profile_sync_meta_path,
+            commands::profiles::get_active_profile_sync_queue_path,
             commands::profiles::create_profile,
             commands::profiles::rename_profile,
             commands::profiles::delete_profile,

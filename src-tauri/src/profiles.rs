@@ -54,6 +54,21 @@ pub fn get_active_id(app: &AppHandle) -> String {
         .unwrap_or_else(|_| "default".to_string())
 }
 
+/// Build a per-profile store path relative to app_data_dir. Pure (testable).
+pub fn profile_store_path(id: &str, filename: &str) -> String {
+    format!("profiles/{}/{}", id, filename)
+}
+
+/// Return the sync-meta store path for the active profile (relative to app_data_dir)
+pub fn sync_meta_store_path(app: &AppHandle) -> String {
+    profile_store_path(&get_active_id(app), "sync-meta.json")
+}
+
+/// Return the sync-queue store path for the active profile (relative to app_data_dir)
+pub fn sync_queue_store_path(app: &AppHandle) -> String {
+    profile_store_path(&get_active_id(app), "sync-queue.json")
+}
+
 /// Return the settings store path for the active profile (relative to app_data_dir)
 pub fn settings_store_path(app: &AppHandle) -> String {
     let id = get_active_id(app);
@@ -242,5 +257,22 @@ pub fn generate_unique_id(base_id: &str, existing: &[ProfileMeta]) -> String {
             return candidate;
         }
         counter += 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::profile_store_path;
+
+    #[test]
+    fn profile_store_path_joins_id_and_filename() {
+        assert_eq!(
+            profile_store_path("work", "sync-queue.json"),
+            "profiles/work/sync-queue.json"
+        );
+        assert_eq!(
+            profile_store_path("default", "sync-meta.json"),
+            "profiles/default/sync-meta.json"
+        );
     }
 }
