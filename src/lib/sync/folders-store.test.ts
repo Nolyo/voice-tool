@@ -4,6 +4,9 @@ import type { CloudUserFolderRow, LocalFolderMeta, SyncOperation } from "./types
 type InvokeHandler = (args: Record<string, unknown> | undefined) => unknown;
 const invokeHandlers: Record<string, InvokeHandler> = {};
 
+let gateActive = true;
+vi.mock("./sync-gate", () => ({ isSyncActive: () => gateActive }));
+
 vi.mock("@tauri-apps/api/core", () => {
   return {
     invoke: vi.fn(async (cmd: string, args?: Record<string, unknown>) => {
@@ -106,6 +109,24 @@ describe("createFolderSynced", () => {
     enqueueMock.mockRejectedValueOnce(new Error("queue offline"));
     const result = await createFolderSynced("X");
     expect(result.id).toBe("local-only");
+  });
+
+  it("does NOT enqueue when sync gate is inactive", async () => {
+    gateActive = false;
+    invokeHandlers["create_folder"] = () => makeFolder({ id: "fld-gate", name: "Gated" });
+    enqueueMock.mockClear();
+    const result = await createFolderSynced("Gated");
+    expect(result.id).toBe("fld-gate");
+    expect(enqueueMock).not.toHaveBeenCalled();
+    gateActive = true; // restore for other tests
+  });
+
+  it("DOES enqueue when sync gate is active", async () => {
+    gateActive = true;
+    invokeHandlers["create_folder"] = () => makeFolder({ id: "fld-gate2", name: "Active" });
+    enqueueMock.mockClear();
+    await createFolderSynced("Active");
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
   });
 });
 

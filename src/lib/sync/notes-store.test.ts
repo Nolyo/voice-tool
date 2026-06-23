@@ -7,6 +7,9 @@ import type { CloudUserNoteRow, LocalNoteMeta, SyncOperation } from "./types";
 type InvokeHandler = (args: Record<string, unknown> | undefined) => unknown;
 const invokeHandlers: Record<string, InvokeHandler> = {};
 
+let gateActive = true;
+vi.mock("./sync-gate", () => ({ isSyncActive: () => gateActive }));
+
 vi.mock("@tauri-apps/api/core", () => {
   return {
     invoke: vi.fn(async (cmd: string, args?: Record<string, unknown>) => {
@@ -136,6 +139,41 @@ describe("createNoteSynced", () => {
     enqueueMock.mockRejectedValueOnce(new Error("queue offline"));
     const result = await createNoteSynced(null);
     expect(result.id).toBe("local-only");
+  });
+
+  it("does NOT enqueue when sync gate is inactive", async () => {
+    gateActive = false;
+    invokeHandlers["create_note"] = () => ({
+      id: "n1",
+      title: "",
+      folderId: null,
+      favorite: false,
+      order: 0,
+      createdAt: "2026-06-23T00:00:00Z",
+      updatedAt: "2026-06-23T00:00:00Z",
+      deletedAt: null,
+    });
+    enqueueMock.mockClear();
+    await createNoteSynced(null);
+    expect(enqueueMock).not.toHaveBeenCalled();
+    gateActive = true; // restore for other tests
+  });
+
+  it("DOES enqueue when sync gate is active", async () => {
+    gateActive = true;
+    invokeHandlers["create_note"] = () => ({
+      id: "n2",
+      title: "",
+      folderId: null,
+      favorite: false,
+      order: 0,
+      createdAt: "2026-06-23T00:00:00Z",
+      updatedAt: "2026-06-23T00:00:00Z",
+      deletedAt: null,
+    });
+    enqueueMock.mockClear();
+    await createNoteSynced(null);
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -3,6 +3,7 @@ import type { CloudUserNoteRow, LocalNoteMeta } from "./types";
 import { mapNoteToCloud } from "./mapping";
 import { mergeNoteLWW } from "./merge";
 import { enqueue } from "./queue";
+import { isSyncActive } from "./sync-gate";
 
 /**
  * Notes store wrapper — sub-épique 03 sync-notes.
@@ -39,8 +40,10 @@ export async function createNoteSynced(
 ): Promise<LocalNoteMeta> {
   const meta = await invoke<LocalNoteMeta>("create_note", { folderId });
   try {
-    // A newly-created note has empty content.
-    await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, "") });
+    if (isSyncActive()) {
+      // A newly-created note has empty content.
+      await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, "") });
+    }
   } catch (e) {
     console.warn("[notes-store] enqueue failed for create", e);
   }
@@ -54,7 +57,9 @@ export async function updateNoteSynced(
 ): Promise<LocalNoteMeta> {
   const meta = await invoke<LocalNoteMeta>("update_note", { id, content, title });
   try {
-    await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+    if (isSyncActive()) {
+      await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+    }
   } catch (e) {
     console.warn("[notes-store] enqueue failed for update", e);
   }
@@ -64,7 +69,9 @@ export async function updateNoteSynced(
 export async function deleteNoteSynced(id: string): Promise<void> {
   await invoke<void>("delete_note", { id });
   try {
-    await enqueue({ kind: "note-delete", id });
+    if (isSyncActive()) {
+      await enqueue({ kind: "note-delete", id });
+    }
   } catch (e) {
     console.warn("[notes-store] enqueue failed for delete", e);
   }
@@ -83,7 +90,9 @@ export async function pushNoteUpdate(
   content: string
 ): Promise<void> {
   try {
-    await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+    if (isSyncActive()) {
+      await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+    }
   } catch (e) {
     console.warn("[notes-store] enqueue failed for debounced update", e);
   }
@@ -147,14 +156,16 @@ export async function toggleNoteFavoriteSynced(
 ): Promise<LocalNoteMeta> {
   const meta = await invoke<LocalNoteMeta>("toggle_note_favorite", { id });
   try {
-    // Re-read content so the cloud row stays consistent. The favorite flag lives
-    // on the meta payload, but the server upsert overwrites the whole row, so we
-    // ship the latest content too.
-    const { content } = await invoke<{ meta: LocalNoteMeta; content: string }>(
-      "read_note",
-      { id }
-    );
-    await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+    if (isSyncActive()) {
+      // Re-read content so the cloud row stays consistent. The favorite flag lives
+      // on the meta payload, but the server upsert overwrites the whole row, so we
+      // ship the latest content too.
+      const { content } = await invoke<{ meta: LocalNoteMeta; content: string }>(
+        "read_note",
+        { id }
+      );
+      await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+    }
   } catch (e) {
     console.warn("[notes-store] enqueue failed for toggle-favorite", e);
   }
@@ -170,11 +181,13 @@ export async function moveNoteToFolderSynced(
     folderId,
   });
   try {
-    const { content } = await invoke<{ meta: LocalNoteMeta; content: string }>(
-      "read_note",
-      { id: noteId }
-    );
-    await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+    if (isSyncActive()) {
+      const { content } = await invoke<{ meta: LocalNoteMeta; content: string }>(
+        "read_note",
+        { id: noteId }
+      );
+      await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+    }
   } catch (e) {
     console.warn("[notes-store] enqueue failed for move-to-folder", e);
   }

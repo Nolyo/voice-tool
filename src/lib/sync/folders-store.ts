@@ -3,6 +3,7 @@ import type { CloudUserFolderRow, LocalFolderMeta } from "./types";
 import { mapFolderToCloud } from "./mapping";
 import { mergeFolderLWW } from "./merge";
 import { enqueue } from "./queue";
+import { isSyncActive } from "./sync-gate";
 
 /**
  * Folders store wrapper — sub-épique 03 sync-notes.
@@ -24,7 +25,9 @@ export async function listFolders(): Promise<LocalFolderMeta[]> {
 export async function createFolderSynced(name: string): Promise<LocalFolderMeta> {
   const folder = await invoke<LocalFolderMeta>("create_folder", { name });
   try {
-    await enqueue({ kind: "folder-upsert", folder: mapFolderToCloud(folder) });
+    if (isSyncActive()) {
+      await enqueue({ kind: "folder-upsert", folder: mapFolderToCloud(folder) });
+    }
   } catch (e) {
     console.warn("[folders-store] enqueue failed for create", e);
   }
@@ -37,7 +40,9 @@ export async function renameFolderSynced(
 ): Promise<LocalFolderMeta> {
   const folder = await invoke<LocalFolderMeta>("rename_folder", { id, name });
   try {
-    await enqueue({ kind: "folder-upsert", folder: mapFolderToCloud(folder) });
+    if (isSyncActive()) {
+      await enqueue({ kind: "folder-upsert", folder: mapFolderToCloud(folder) });
+    }
   } catch (e) {
     console.warn("[folders-store] enqueue failed for rename", e);
   }
@@ -47,7 +52,9 @@ export async function renameFolderSynced(
 export async function deleteFolderSynced(id: string): Promise<void> {
   await invoke<void>("delete_folder", { id });
   try {
-    await enqueue({ kind: "folder-delete", id });
+    if (isSyncActive()) {
+      await enqueue({ kind: "folder-delete", id });
+    }
   } catch (e) {
     console.warn("[folders-store] enqueue failed for delete", e);
   }
