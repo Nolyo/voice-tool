@@ -377,6 +377,7 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - ADR principal : `docs/v3/decisions/0016-notes-sync-strategy.md` (figé).
 - ADR de clôture : `docs/v3/decisions/0017-sub-epic-03-closure.md`.
 - Supabase CLI : `pnpm exec supabase functions deploy sync-push` / `account-export` / `purge-account-deletions` (déploiement distant à faire avant tag bêta).
+- **Isolation sync par profil (fix 2026-06-23)** : la sync est mono-profil (ADR 0016 §10). Stores `sync-queue.json` + `sync-meta.json` déplacés sous `profiles/<id>/` (commandes Rust `get_active_profile_sync_queue_path` / `get_active_profile_sync_meta_path` dans `commands/profiles.rs`), donc le flag `enabled` est par profil. Garde process-wide `src/lib/sync/sync-gate.ts` (`isSyncActive()`) : `notes-store`/`folders-store` n'enqueuent que si la sync est active pour le profil courant ; `SyncContext` pilote le gate (mount/enable/disable). Snippets + dictionnaire restent globaux (racine). Nettoyage one-shot au démarrage des stores racine legacy contaminés (`cleanup_legacy_root_sync_stores`) → re-activer la sync une fois après le build corrigé. Plan : `docs/superpowers/plans/2026-06-23-sync-profile-isolation.md`.
 
 ### V3 Email templates Supabase Auth (livré phase 1, 2026-05-02)
 
