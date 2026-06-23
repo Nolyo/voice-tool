@@ -215,6 +215,9 @@ pub fn run() {
             if let Err(e) = profiles::init_active_profile(app.handle()) {
                 tracing::error!("Failed to initialize active profile: {}", e);
             }
+            if let Err(e) = profiles::cleanup_legacy_root_sync_stores(app.handle()) {
+                tracing::warn!("Legacy root sync store cleanup failed: {}", e);
+            }
 
             // Migrations
             if let Err(e) = transcriptions::cleanup_legacy_transcriptions(app.handle()) {
