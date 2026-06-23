@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const storeData: Record<string, unknown> = {};
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: async (cmd: string) => {
+    if (cmd === "get_active_profile_sync_queue_path") {
+      return "profiles/default/sync-queue.json";
+    }
+    throw new Error(`unexpected invoke ${cmd}`);
+  },
+}));
 vi.mock("@tauri-apps/plugin-store", () => {
   return {
     Store: {
