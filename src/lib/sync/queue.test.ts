@@ -1,16 +1,27 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const storeData: Record<string, unknown> = {};
+const invokeMock = vi.fn(async (cmd: string) => {
+  if (cmd === "get_active_profile_sync_queue_path") {
+    return "profiles/default/sync-queue.json";
+  }
+  throw new Error(`unexpected invoke ${cmd}`);
+});
+vi.mock("@tauri-apps/api/core", () => ({ invoke: (cmd: string) => invokeMock(cmd) }));
 vi.mock("@tauri-apps/plugin-store", () => {
   return {
     Store: {
-      load: async () => ({
-        get: async (k: string) => storeData[k] ?? null,
-        set: async (k: string, v: unknown) => {
-          storeData[k] = v;
-        },
-        save: async () => {},
-      }),
+      load: async (path: string) => {
+        // record the resolved path for assertion
+        storeData.__path = path;
+        return {
+          get: async (k: string) => storeData[k] ?? null,
+          set: async (k: string, v: unknown) => {
+            storeData[k] = v;
+          },
+          save: async () => {},
+        };
+      },
     },
   };
 });
@@ -37,7 +48,14 @@ const OP: SyncOperation = { kind: "dictionary-upsert", word: "hello" };
 describe("sync queue", () => {
   beforeEach(async () => {
     Object.keys(storeData).forEach((k) => delete storeData[k]);
+    invokeMock.mockClear();
     __resetForTests();
+  });
+
+  it("loads the per-profile queue store path", async () => {
+    await size();
+    expect(invokeMock).toHaveBeenCalledWith("get_active_profile_sync_queue_path");
+    expect(storeData.__path).toBe("profiles/default/sync-queue.json");
   });
 
   it("starts empty", async () => {

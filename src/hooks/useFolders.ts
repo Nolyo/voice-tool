@@ -1,11 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import {
+  createFolderSynced,
+  renameFolderSynced,
+  deleteFolderSynced,
+  pushFolderUpsert,
+} from '@/lib/sync/folders-store';
+import type { LocalFolderMeta } from '@/lib/sync/types';
 
 export interface FolderMeta {
   id: string;
   name: string;
   createdAt: string;
+  updatedAt?: string;
   order: number;
+  deletedAt?: string;
 }
 
 export function useFolders() {
@@ -29,19 +38,19 @@ export function useFolders() {
   }, [loadFolders]);
 
   const createFolder = async (name: string): Promise<FolderMeta> => {
-    const meta = await invoke<FolderMeta>('create_folder', { name });
+    const meta = await createFolderSynced(name);
     setFolders(prev => [...prev, meta].sort((a, b) => a.order - b.order));
     return meta;
   };
 
   const renameFolder = async (id: string, name: string): Promise<FolderMeta> => {
-    const updated = await invoke<FolderMeta>('rename_folder', { id, name });
+    const updated = await renameFolderSynced(id, name);
     setFolders(prev => prev.map(f => f.id === id ? updated : f));
     return updated;
   };
 
   const deleteFolder = async (id: string): Promise<void> => {
-    await invoke('delete_folder', { id });
+    await deleteFolderSynced(id);
     setFolders(prev => prev.filter(f => f.id !== id));
   };
 
@@ -57,6 +66,15 @@ export function useFolders() {
     });
     try {
       await invoke('reorder_folders', { ids });
+      // Re-read the persisted folders and enqueue an upsert per reordered folder so
+      // the cloud picks up the new order via LWW (each folder's `updated_at` was
+      // bumped server-side by reorder_folders).
+      const persisted = await invoke<LocalFolderMeta[]>('list_folders');
+      for (const folderId of ids) {
+        const folder = persisted.find(f => f.id === folderId);
+        if (!folder) continue;
+        await pushFolderUpsert(folder);
+      }
     } catch (error) {
       console.error('Failed to reorder folders:', error);
       await loadFolders();

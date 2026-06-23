@@ -12,7 +12,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAuth } from "@/hooks/useAuth";
 import { useSettings } from "@/hooks/useSettings";
-import { extractCloudSettings, syncableSettingsChanged } from "@/lib/sync/mapping";
+import {
+  extractCloudSettings,
+  mapFolderToCloud,
+  mapNoteToCloud,
+  syncableSettingsChanged,
+} from "@/lib/sync/mapping";
 import { flog } from "@/lib/flog";
 import { pullAll, pushOperations } from "@/lib/sync/client";
 import {
@@ -32,15 +37,22 @@ import {
   migrateLegacySnippetsOnce,
 } from "@/lib/sync/snippets-store";
 import {
+  applyRemoteNote,
+  flushPendingNoteUpdates,
+  listNotes,
+  readNote,
+} from "@/lib/sync/notes-store";
+import { applyRemoteFolder, listFolders } from "@/lib/sync/folders-store";
+import {
   loadDictionary,
   applyRemoteWord,
   migrateLegacyDictionaryOnce,
 } from "@/lib/sync/dictionary-store";
 import { mergeSettingsLWW } from "@/lib/sync/merge";
+import { setSyncActive } from "@/lib/sync/sync-gate";
 import type { AppSettings } from "@/lib/settings";
 import type { SyncOperation, SyncState, SyncStatus } from "@/lib/sync/types";
 
-const SYNC_META_STORE = "sync-meta.json";
 const KEY_ENABLED = "enabled";
 const KEY_LAST_PULL_AT = "last_pull_at";
 const KEY_LAST_PUSHED_SETTINGS_AT = "last_pushed_settings_at";
@@ -70,13 +82,23 @@ export interface SyncContextValue extends SyncState {
 
 export const SyncContext = createContext<SyncContextValue | null>(null);
 
+let metaStorePromise: Promise<Awaited<ReturnType<typeof Store.load>>> | null = null;
+async function getMetaStore() {
+  if (!metaStorePromise) {
+    metaStorePromise = (async () => {
+      const path = await invoke<string>("get_active_profile_sync_meta_path");
+      return Store.load(path);
+    })();
+  }
+  return metaStorePromise;
+}
 async function getMeta<T>(key: string, def: T): Promise<T> {
-  const store = await Store.load(SYNC_META_STORE);
+  const store = await getMetaStore();
   const v = await store.get<T>(key);
   return v ?? def;
 }
 async function setMeta(key: string, value: unknown): Promise<void> {
-  const store = await Store.load(SYNC_META_STORE);
+  const store = await getMetaStore();
   await store.set(key, value);
   await store.save();
 }
@@ -106,6 +128,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const en = await getMeta<boolean>(KEY_ENABLED, false);
       const lp = await getMeta<string | null>(KEY_LAST_PULL_AT, null);
       setEnabled(en);
+      setSyncActive(en);
       setLastPullAt(lp);
       setPendingCount(await queueSize());
       setDeadLetterCount((await getDeadLetters()).length);
@@ -257,6 +280,66 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      // Notes — LWW per item. Per-row try/catch so a single bad row (corrupted
+      // local file, fs permission, etc.) does NOT abort the whole batch.
+      for (const row of result.notes) {
+        try {
+          await applyRemoteNote(row);
+        } catch (e) {
+          flog(`[sync] applyRemoteNote failed for ${row.id}: ${String(e)}`, "warn");
+        }
+      }
+
+      // Folders — LWW per item, same per-row isolation.
+      for (const row of result.folders) {
+        try {
+          await applyRemoteFolder(row);
+        } catch (e) {
+          flog(
+            `[sync] applyRemoteFolder failed for ${row.id}: ${String(e)}`,
+            "warn"
+          );
+        }
+      }
+
+      // Hard-purge local tombstones the server has also tombstoned.
+      // The server purges tombstones >30d via cron (sub-épique 03 Task 7).
+      // We mirror that on the client by deleting the local on-disk artifacts
+      // for ids the server confirms are tombstoned. The Rust commands only
+      // act on entries that ARE locally soft-deleted, so passing all
+      // server-tombstoned ids regardless of age is safe and convergent.
+      const tombstonedNoteIds = result.notes
+        .filter((n) => n.deleted_at !== null)
+        .map((n) => n.id);
+      if (tombstonedNoteIds.length > 0) {
+        try {
+          await invoke<number>("purge_soft_deleted_notes_post_pull", {
+            noteIds: tombstonedNoteIds,
+          });
+        } catch (e) {
+          flog(
+            `[sync] purge_soft_deleted_notes_post_pull failed: ${String(e)}`,
+            "warn"
+          );
+        }
+      }
+
+      const tombstonedFolderIds = result.folders
+        .filter((f) => f.deleted_at !== null)
+        .map((f) => f.id);
+      if (tombstonedFolderIds.length > 0) {
+        try {
+          await invoke<number>("purge_soft_deleted_folders_post_pull", {
+            folderIds: tombstonedFolderIds,
+          });
+        } catch (e) {
+          flog(
+            `[sync] purge_soft_deleted_folders_post_pull failed: ${String(e)}`,
+            "warn"
+          );
+        }
+      }
+
       const nowIso = new Date().toISOString();
       await setMeta(KEY_LAST_PULL_AT, nowIso);
       setLastPullAt(nowIso);
@@ -272,6 +355,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const enableSync = useCallback(async () => {
     await setMeta(KEY_ENABLED, true);
     setEnabled(true);
+    setSyncActive(true);
     setStatus("idle");
 
     // Legacy migration : importer settings.snippets / settings.dictionary si présents
@@ -285,7 +369,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
     await pullAndApply();
 
-    // Full push initial : settings + dico + snippets
+    // Full push initial : settings + dico + snippets + folders + notes.
+    // ORDRE CRITIQUE — folders DOIVENT précéder notes dans le tableau d'ops.
+    // Le sync-push Edge traite les ops séquentiellement (boucle for index),
+    // et `user_notes.folder_id` a une FK vers `user_folders.id`. Sans cet
+    // ordre, toute note avec folder_id non null déclenche une violation FK
+    // (user_notes_folder_id_fkey) au premier push initial.
     try {
       const deviceId = await getDeviceId();
       const ops: SyncOperation[] = [];
@@ -311,9 +400,50 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           },
         });
       }
+
+      // Folders actifs — AVANT les notes (FK user_notes_folder_id_fkey).
+      const folders = await listFolders();
+      for (const f of folders) {
+        if (f.deletedAt) continue;
+        ops.push({ kind: "folder-upsert", folder: mapFolderToCloud(f) });
+      }
+
+      // Notes actives — après les folders. Lecture du contenu par note.
+      const notesMeta = await listNotes();
+      for (const nm of notesMeta) {
+        if (nm.deletedAt) continue;
+        try {
+          const { content } = await readNote(nm.id);
+          ops.push({ kind: "note-upsert", note: mapNoteToCloud(nm, content) });
+        } catch (e) {
+          flog(`[sync] readNote failed for ${nm.id}: ${String(e)}`, "warn");
+        }
+      }
+
       if (ops.length > 0) {
-        const resp = await pushOperations(ops, deviceId);
-        if (resp.server_time) await setMeta(KEY_LAST_PUSHED_SETTINGS_AT, resp.server_time);
+        // sync-push cap : max 200 ops par requête. Chunker en préservant
+        // l'ordre global (le tableau `ops` est déjà folders-avant-notes,
+        // donc chunker ne casse pas la garantie FK : tout folder est dans
+        // un chunk antérieur ou identique à toute note qui le référence).
+        const CHUNK = 200;
+        let lastServerTime: string | undefined;
+        for (let i = 0; i < ops.length; i += CHUNK) {
+          const chunk = ops.slice(i, i + CHUNK);
+          const resp = await pushOperations(chunk, deviceId);
+          if (!resp.ok) {
+            flog(
+              `[sync] initial push chunk ${Math.floor(i / CHUNK)} failed: ${
+                resp.error ?? "unknown"
+              }`,
+              "warn"
+            );
+            break;
+          }
+          if (resp.server_time) lastServerTime = resp.server_time;
+        }
+        if (lastServerTime) {
+          await setMeta(KEY_LAST_PUSHED_SETTINGS_AT, lastServerTime);
+        }
       }
     } catch (e) {
       flog(`[sync] initial full push failed: ${String(e)}`, "warn");
@@ -321,8 +451,17 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [pullAndApply, getDeviceId]);
 
   const disableSync = useCallback(async () => {
+    // Task 19 : flush les notes en cours de debounce (push immédiat) avant de
+    // désactiver, sinon les modifs des 2 dernières secondes sont perdues si
+    // l'user se déconnecte juste après avoir tapé.
+    try {
+      await flushPendingNoteUpdates();
+    } catch (e) {
+      flog(`[sync] flushPendingNoteUpdates failed on disable: ${String(e)}`, "warn");
+    }
     await setMeta(KEY_ENABLED, false);
     setEnabled(false);
+    setSyncActive(false);
     setStatus("disabled");
   }, []);
 

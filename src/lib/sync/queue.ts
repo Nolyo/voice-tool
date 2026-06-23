@@ -1,8 +1,8 @@
 import { Store } from "@tauri-apps/plugin-store";
+import { invoke } from "@tauri-apps/api/core";
 import type { SyncOperation, SyncQueueEntry } from "./types";
 import { createMutex } from "./_mutex";
 
-const STORE_FILE = "sync-queue.json";
 const KEY_QUEUE = "queue";
 const KEY_DLQ = "dead-letters";
 
@@ -13,7 +13,10 @@ const withLock = createMutex();
 
 function getStore() {
   if (!storePromise) {
-    storePromise = Store.load(STORE_FILE);
+    storePromise = (async () => {
+      const path = await invoke<string>("get_active_profile_sync_queue_path");
+      return Store.load(path);
+    })();
   }
   return storePromise;
 }

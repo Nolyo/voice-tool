@@ -54,6 +54,21 @@ pub fn get_active_id(app: &AppHandle) -> String {
         .unwrap_or_else(|_| "default".to_string())
 }
 
+/// Build a per-profile store path relative to app_data_dir. Pure (testable).
+pub fn profile_store_path(id: &str, filename: &str) -> String {
+    format!("profiles/{}/{}", id, filename)
+}
+
+/// Return the sync-meta store path for the active profile (relative to app_data_dir)
+pub fn sync_meta_store_path(app: &AppHandle) -> String {
+    profile_store_path(&get_active_id(app), "sync-meta.json")
+}
+
+/// Return the sync-queue store path for the active profile (relative to app_data_dir)
+pub fn sync_queue_store_path(app: &AppHandle) -> String {
+    profile_store_path(&get_active_id(app), "sync-queue.json")
+}
+
 /// Return the settings store path for the active profile (relative to app_data_dir)
 pub fn settings_store_path(app: &AppHandle) -> String {
     let id = get_active_id(app);
@@ -199,6 +214,31 @@ pub fn init_active_profile(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
+/// Delete the contaminated legacy root sync stores (sync-queue.json, sync-meta.json).
+/// These predate per-profile sync isolation. Snippets/dictionary stores are global
+/// and intentionally left in place. Idempotent.
+pub fn cleanup_legacy_root_sync_stores_in(app_data: &std::path::Path) -> std::io::Result<()> {
+    for name in ["sync-queue.json", "sync-meta.json"] {
+        let p = app_data.join(name);
+        if p.exists() {
+            match fs::remove_file(&p) {
+                Ok(_) => tracing::info!("Removed legacy root sync store: {}", name),
+                Err(e) => tracing::warn!("Could not remove legacy {} ({}), skipping", name, e),
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn cleanup_legacy_root_sync_stores(app: &AppHandle) -> Result<()> {
+    let app_data = app
+        .path()
+        .app_data_dir()
+        .context("Could not resolve app data directory")?;
+    cleanup_legacy_root_sync_stores_in(&app_data)?;
+    Ok(())
+}
+
 // --- ID / name helpers ---
 
 pub fn name_to_id(name: &str) -> String {
@@ -242,5 +282,49 @@ pub fn generate_unique_id(base_id: &str, existing: &[ProfileMeta]) -> String {
             return candidate;
         }
         counter += 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::profile_store_path;
+    use super::cleanup_legacy_root_sync_stores_in;
+    use std::fs;
+
+    #[test]
+    fn profile_store_path_joins_id_and_filename() {
+        assert_eq!(
+            profile_store_path("work", "sync-queue.json"),
+            "profiles/work/sync-queue.json"
+        );
+        assert_eq!(
+            profile_store_path("default", "sync-meta.json"),
+            "profiles/default/sync-meta.json"
+        );
+    }
+
+    #[test]
+    fn cleanup_removes_only_legacy_queue_and_meta() {
+        let dir = std::env::temp_dir().join(format!(
+            "lexena_cleanup_test_{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        for f in ["sync-queue.json", "sync-meta.json", "sync-snippets.json", "sync-dictionary.json"] {
+            fs::write(dir.join(f), "{}").unwrap();
+        }
+
+        cleanup_legacy_root_sync_stores_in(&dir).unwrap();
+
+        assert!(!dir.join("sync-queue.json").exists(), "queue should be deleted");
+        assert!(!dir.join("sync-meta.json").exists(), "meta should be deleted");
+        assert!(dir.join("sync-snippets.json").exists(), "snippets must survive");
+        assert!(dir.join("sync-dictionary.json").exists(), "dictionary must survive");
+
+        // Idempotent: second run with files already gone must not error.
+        cleanup_legacy_root_sync_stores_in(&dir).unwrap();
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }

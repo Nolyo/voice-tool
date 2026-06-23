@@ -137,11 +137,15 @@ pub fn run() {
             notes::toggle_note_favorite,
             notes::move_note_to_folder,
             notes::reorder_notes_in_folder,
+            notes::purge_soft_deleted_notes_post_pull,
+            notes::import_note_for_backup,
             folders::list_folders,
             folders::create_folder,
             folders::rename_folder,
             folders::delete_folder,
             folders::reorder_folders,
+            folders::purge_soft_deleted_folders_post_pull,
+            folders::import_folders_for_backup,
             transcriptions::list_transcriptions,
             transcriptions::save_transcription,
             transcriptions::delete_transcription,
@@ -157,6 +161,8 @@ pub fn run() {
             commands::profiles::get_active_profile_settings_path,
             commands::profiles::get_active_profile_notes_tabs_path,
             commands::profiles::get_active_profile_notes_sidebar_path,
+            commands::profiles::get_active_profile_sync_meta_path,
+            commands::profiles::get_active_profile_sync_queue_path,
             commands::profiles::create_profile,
             commands::profiles::rename_profile,
             commands::profiles::delete_profile,
@@ -208,6 +214,9 @@ pub fn run() {
             }
             if let Err(e) = profiles::init_active_profile(app.handle()) {
                 tracing::error!("Failed to initialize active profile: {}", e);
+            }
+            if let Err(e) = profiles::cleanup_legacy_root_sync_stores(app.handle()) {
+                tracing::warn!("Legacy root sync store cleanup failed: {}", e);
             }
 
             // Migrations

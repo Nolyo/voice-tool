@@ -3,7 +3,32 @@ import { type SupabaseClient } from "npm:@supabase/supabase-js@2.49.1";
 import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { getAuthenticatedUser } from "../_shared/auth.ts";
 import { isRateLimited } from "../_shared/rate-limit.ts";
-import { PushBodySchema, QUOTA_BYTES } from "./schema.ts";
+import { PushBodySchema, QUOTA_BY_PLAN } from "./schema.ts";
+
+const ACTIVE_SUBSCRIPTION_STATUSES: readonly string[] = ["active", "on_trial"];
+
+/**
+ * Résout la limite de quota d'un user en fonction de sa subscription active.
+ * - Absence de row, statut non actif, ou plan inconnu → fallback `free` (10 MB).
+ * - Sinon, retourne le plan + sa limite issus de `QUOTA_BY_PLAN`.
+ */
+export async function getUserQuota(
+  client: SupabaseClient<any, any, any>,
+  userId: string,
+): Promise<{ plan: string; limit: number }> {
+  const { data } = await client
+    .from("subscriptions")
+    .select("plan, status")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!data || !ACTIVE_SUBSCRIPTION_STATUSES.includes(data.status)) {
+    return { plan: "free", limit: QUOTA_BY_PLAN.free };
+  }
+  const plan = String(data.plan);
+  const limit = QUOTA_BY_PLAN[plan as keyof typeof QUOTA_BY_PLAN] ?? QUOTA_BY_PLAN.free;
+  return { plan, limit };
+}
 
 export interface SyncPushDeps {
   authenticate: (req: Request) => Promise<
@@ -118,6 +143,63 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
           if (error) throw error;
           break;
         }
+        case "note-upsert": {
+          // Taille de `content_html` : Zod (max 1_048_576 code units) rejette avant ce point ;
+          // la DB applique en plus un CHECK `octet_length <= 1_048_576` côté bytes UTF-8 comme autorité finale.
+          const { error } = await client.from("user_notes").upsert(
+            {
+              id: op.note.id,
+              user_id: userId,
+              title: op.note.title,
+              content_html: op.note.content_html,
+              folder_id: op.note.folder_id,
+              favorite: op.note.favorite,
+              order: op.note.order,
+              deleted_at: null,
+              updated_at: nowIso,
+            },
+            { onConflict: "id" },
+          );
+          if (error) throw error;
+          break;
+        }
+        case "note-delete": {
+          const { error } = await client
+            .from("user_notes")
+            .update({ deleted_at: nowIso, updated_at: nowIso })
+            .eq("id", op.id)
+            .eq("user_id", userId);
+          if (error) throw error;
+          break;
+        }
+        case "folder-upsert": {
+          const { error } = await client.from("user_folders").upsert(
+            {
+              id: op.folder.id,
+              user_id: userId,
+              name: op.folder.name,
+              order: op.folder.order,
+              deleted_at: null,
+              updated_at: nowIso,
+            },
+            { onConflict: "id" },
+          );
+          if (error) throw error;
+          break;
+        }
+        case "folder-delete": {
+          const { error } = await client
+            .from("user_folders")
+            .update({ deleted_at: nowIso, updated_at: nowIso })
+            .eq("id", op.id)
+            .eq("user_id", userId);
+          if (error) throw error;
+          break;
+        }
+        default: {
+          const _exhaustive: never = op;
+          throw new Error(`unhandled op kind: ${(_exhaustive as { kind: string }).kind}`);
+        }
       }
       results.push({ index: i, ok: true });
     } catch (e: any) {
@@ -125,7 +207,8 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
     }
   }
 
-  // Quota check après l'application — rejet si > seuil, client doit supprimer du contenu
+  // Quota check après l'application — rejet si > seuil, client doit supprimer du contenu.
+  // La limite est dérivée du plan utilisateur via `getUserQuota()` (free 10 MB par défaut).
   const { data: sizeData, error: sizeErr } = await client.rpc("compute_user_sync_size", {
     target_user: userId,
   });
@@ -133,20 +216,22 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
     return json(req, { error: "quota check failed", details: sizeErr.message }, 500);
   }
   const size = Number(sizeData ?? 0);
-  if (size > QUOTA_BYTES) {
+  const { plan, limit } = await getUserQuota(client, userId);
+  if (size > limit) {
     return json(
       req,
       {
-        error: "quota exceeded",
-        quota_bytes: QUOTA_BYTES,
-        current_bytes: size,
+        error: "quota_exceeded",
+        plan,
+        used: size,
+        limit,
         results,
       },
-      413
+      413,
     );
   }
 
-  return json(req, { ok: true, server_time: nowIso, current_bytes: size, results });
+  return json(req, { ok: true, server_time: nowIso, current_bytes: size, plan, limit, results });
 }
 
 if (import.meta.main) {

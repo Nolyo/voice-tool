@@ -7,6 +7,8 @@ import { downloadAccountExport } from "@/lib/sync/export";
 import { supabase } from "@/lib/supabase";
 import { loadSnippets } from "@/lib/sync/snippets-store";
 import { loadDictionary } from "@/lib/sync/dictionary-store";
+import { listNotes } from "@/lib/sync/notes-store";
+import { listFolders } from "@/lib/sync/folders-store";
 import {
   listLocalBackups,
   restoreLocalBackup,
@@ -25,6 +27,8 @@ import { SyncActivationModal } from "./SyncActivationModal";
 import { DangerCard } from "./account/DangerCard";
 import { DevicesList } from "./DevicesList";
 import { DeadLettersDialog } from "./DeadLettersDialog";
+import { useCloud } from "@/hooks/useCloud";
+import { formatBytes, getQuotaForPlan, type Plan } from "@/lib/sync/quota";
 
 const ACCENT_COMPTE = "var(--vt-accent)";
 const ACCENT_SYNC = "var(--vt-cyan)";
@@ -386,6 +390,7 @@ function SyncCard() {
             </div>
 
             <SyncedInventoryGrid />
+            <SyncPlanCard />
           </div>
 
           <div className="vt-row">
@@ -418,17 +423,27 @@ function SyncCard() {
 
 function SyncedInventoryGrid() {
   const { t } = useTranslation();
-  const [counts, setCounts] = useState<{ snippets: number; words: number } | null>(
-    null,
-  );
+  const [counts, setCounts] = useState<{
+    snippets: number;
+    words: number;
+    notes: number;
+    folders: number;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const sn = (await loadSnippets()).filter((s) => s.deleted_at === null);
       const d = await loadDictionary();
+      // listNotes / listFolders already filter out soft-deleted items.
+      const [n, f] = await Promise.all([listNotes(), listFolders()]);
       if (cancelled) return;
-      setCounts({ snippets: sn.length, words: d.words.length });
+      setCounts({
+        snippets: sn.length,
+        words: d.words.length,
+        notes: n.length,
+        folders: f.length,
+      });
     })();
     return () => {
       cancelled = true;
@@ -447,6 +462,14 @@ function SyncedInventoryGrid() {
     {
       label: t("vocabulary.dictionaryTitle", { defaultValue: "Dictionnaire" }),
       value: t("sync.overview.dictionary", { count: counts?.words ?? 0 }),
+    },
+    {
+      label: t("notes.sidebar.title", { defaultValue: "Notes" }),
+      value: t("sync.overview.notes", { count: counts?.notes ?? 0 }),
+    },
+    {
+      label: t("notes.sidebar.folders", { defaultValue: "Dossiers" }),
+      value: t("sync.overview.folders", { count: counts?.folders ?? 0 }),
     },
   ];
 
@@ -474,6 +497,61 @@ function SyncedInventoryGrid() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Plan + quota indicator shown below the synced inventory grid.
+ *
+ * Free users get an upsell card pointing to the paid tiers; starter/pro users
+ * get a passive "current plan + quota" line. The actual byte usage is not
+ * fetched here — it's authoritative on the server (and rendered as an error
+ * banner above when the 413 quota_exceeded response lands).
+ */
+function SyncPlanCard() {
+  const { t } = useTranslation();
+  const { plan } = useCloud();
+  const currentPlan: Plan = plan?.plan ?? "free";
+  const quotaBytes = getQuotaForPlan(currentPlan);
+
+  if (currentPlan === "free") {
+    return (
+      <div
+        className="mt-3 rounded-md p-3 text-xs"
+        style={{
+          background: "oklch(from var(--vt-cyan) l c h / 0.1)",
+          border: "1px solid oklch(from var(--vt-cyan) l c h / 0.4)",
+          color: "var(--vt-fg-2)",
+        }}
+      >
+        <div className="font-medium mb-1" style={{ color: "var(--vt-fg)" }}>
+          {t("sync.quota.free.title")}
+        </div>
+        <div>
+          {t("sync.quota.free.body", {
+            quota: formatBytes(quotaBytes),
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mt-3 rounded-md p-3 text-xs flex items-center justify-between"
+      style={{
+        background: "var(--vt-surface)",
+        border: "1px solid var(--vt-border)",
+        color: "var(--vt-fg-2)",
+      }}
+    >
+      <span className="font-medium" style={{ color: "var(--vt-fg)" }}>
+        {t(`sync.quota.${currentPlan}.title`)}
+      </span>
+      <span className="vt-mono" style={{ color: "var(--vt-fg-3)" }}>
+        {formatBytes(quotaBytes)}
+      </span>
     </div>
   );
 }

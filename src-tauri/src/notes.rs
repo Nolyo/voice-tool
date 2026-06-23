@@ -18,6 +18,13 @@ pub struct NoteMeta {
     pub folder_id: Option<String>,
     #[serde(default)]
     pub order: i32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deleted_at: Option<String>,
+}
+
+/// Pure helper: a note is "active" (visible to the user) when it has not been soft-deleted.
+fn is_note_active(meta: &NoteMeta) -> bool {
+    meta.deleted_at.is_none()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,6 +155,7 @@ pub fn migrate_notes_from_store(app_handle: &AppHandle) -> Result<u32> {
             favorite: false,
             folder_id: None,
             order: 0,
+            deleted_at: None,
         };
         let meta_json = serde_json::to_string_pretty(&meta)?;
         fs::write(note_dir.join("note.json"), meta_json)?;
@@ -184,7 +192,9 @@ pub async fn list_notes(app_handle: AppHandle) -> Result<Vec<NoteMeta>, String> 
             continue;
         }
         if let Ok(meta) = read_note_meta(&path) {
-            notes.push(meta);
+            if is_note_active(&meta) {
+                notes.push(meta);
+            }
         }
     }
 
@@ -232,6 +242,7 @@ pub async fn create_note(
         favorite: false,
         folder_id,
         order: 0,
+        deleted_at: None,
     };
 
     let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
@@ -274,11 +285,47 @@ pub async fn delete_note(app_handle: AppHandle, id: String) -> Result<(), String
     let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
     let note_dir = notes_dir.join(&id);
 
-    if note_dir.exists() {
-        fs::remove_dir_all(&note_dir).map_err(|e| e.to_string())?;
+    if !note_dir.exists() {
+        return Ok(()); // idempotent
     }
 
+    let mut meta = read_note_meta(&note_dir).map_err(|e| e.to_string())?;
+    let now = chrono::Utc::now().to_rfc3339();
+    meta.deleted_at = Some(now.clone());
+    meta.updated_at = now;
+
+    let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
+    fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;
+
     Ok(())
+}
+
+/// Hard-delete soft-deleted notes after server confirmed they were purged.
+/// Called from the frontend sync engine after a successful pull that returns
+/// the list of note IDs whose tombstones were >30j and dropped server-side.
+/// Only deletes notes that ARE soft-deleted locally — never removes an active note.
+#[tauri::command]
+pub async fn purge_soft_deleted_notes_post_pull(
+    app_handle: AppHandle,
+    note_ids: Vec<String>,
+) -> Result<u32, String> {
+    let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
+    let mut purged = 0u32;
+    for note_id in note_ids {
+        let note_dir = notes_dir.join(&note_id);
+        if !note_dir.exists() {
+            continue;
+        }
+        let meta = match read_note_meta(&note_dir) {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        if meta.deleted_at.is_some() {
+            fs::remove_dir_all(&note_dir).map_err(|e| e.to_string())?;
+            purged += 1;
+        }
+    }
+    Ok(purged)
 }
 
 #[tauri::command]
@@ -371,6 +418,11 @@ pub fn orphan_notes_in_folder(app_handle: &AppHandle, folder_id: &str) -> Result
             Err(_) => continue,
         };
 
+        // Soft-deleted notes keep their folder_id intact (tombstone preservation).
+        if !is_note_active(&meta) {
+            continue;
+        }
+
         if meta.folder_id.as_deref() == Some(folder_id) {
             meta.folder_id = None;
             let meta_json = serde_json::to_string_pretty(&meta)?;
@@ -413,7 +465,9 @@ pub async fn get_backlinks(
 
         if html.contains(&needle) {
             if let Ok(meta) = read_note_meta(&path) {
-                results.push(meta);
+                if is_note_active(&meta) {
+                    results.push(meta);
+                }
             }
         }
     }
@@ -421,6 +475,25 @@ pub async fn get_backlinks(
     results.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
 
     Ok(results)
+}
+
+/// Imports a note for backup restore. The note's id, meta, and content_html
+/// are preserved exactly — overwriting any existing note with the same id.
+/// If the meta has `deleted_at: Some(...)`, the note is restored as soft-deleted
+/// (preserves the tombstone semantic).
+#[tauri::command]
+pub async fn import_note_for_backup(
+    app_handle: AppHandle,
+    meta: NoteMeta,
+    content: String,
+) -> Result<(), String> {
+    let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
+    let note_dir = notes_dir.join(&meta.id);
+    fs::create_dir_all(&note_dir).map_err(|e| e.to_string())?;
+    let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
+    fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;
+    fs::write(note_dir.join("content.html"), content).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -441,6 +514,10 @@ pub async fn search_notes(
         }
 
         if let Ok(meta) = read_note_meta(&path) {
+            if !is_note_active(&meta) {
+                continue;
+            }
+
             let title_match = meta.title.to_lowercase().contains(&lower_query);
 
             let content_match = if !title_match {
@@ -464,4 +541,119 @@ pub async fn search_notes(
     results.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
 
     Ok(results)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_meta(deleted_at: Option<String>) -> NoteMeta {
+        NoteMeta {
+            id: "test-id".to_string(),
+            title: "Test".to_string(),
+            created_at: "2026-05-19T10:00:00Z".to_string(),
+            updated_at: "2026-05-19T10:00:00Z".to_string(),
+            favorite: false,
+            folder_id: None,
+            order: 0,
+            deleted_at,
+        }
+    }
+
+    #[test]
+    fn is_note_active_returns_true_when_deleted_at_is_none() {
+        let meta = make_meta(None);
+        assert!(is_note_active(&meta));
+    }
+
+    #[test]
+    fn is_note_active_returns_false_when_deleted_at_is_some() {
+        let meta = make_meta(Some("2026-05-19T11:00:00Z".to_string()));
+        assert!(!is_note_active(&meta));
+    }
+
+    #[test]
+    fn note_meta_roundtrips_with_deleted_at() {
+        let meta = make_meta(Some("2026-05-19T11:00:00Z".to_string()));
+        let json = serde_json::to_string(&meta).expect("serialize");
+        // camelCase rename → JSON key is `deletedAt`
+        assert!(
+            json.contains("\"deletedAt\":\"2026-05-19T11:00:00Z\""),
+            "expected deletedAt in JSON, got: {}",
+            json
+        );
+
+        let decoded: NoteMeta = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(decoded.deleted_at, meta.deleted_at);
+        assert_eq!(decoded.id, meta.id);
+        assert_eq!(decoded.title, meta.title);
+        assert_eq!(decoded.created_at, meta.created_at);
+        assert_eq!(decoded.updated_at, meta.updated_at);
+        assert_eq!(decoded.favorite, meta.favorite);
+        assert_eq!(decoded.folder_id, meta.folder_id);
+        assert_eq!(decoded.order, meta.order);
+    }
+
+    #[test]
+    fn note_meta_skips_deleted_at_when_none() {
+        let meta = make_meta(None);
+        let json = serde_json::to_string(&meta).expect("serialize");
+        assert!(
+            !json.contains("deletedAt"),
+            "expected deletedAt to be omitted, got: {}",
+            json
+        );
+    }
+
+    #[test]
+    fn purge_post_pull_predicate_only_removes_soft_deleted() {
+        // Mirror the predicate from purge_soft_deleted_notes_post_pull:
+        // a note is purged iff its id is in the pulled list AND it is locally soft-deleted.
+        let active = make_meta(None);
+        let tombstoned = make_meta(Some("2026-05-19T11:00:00Z".to_string()));
+        let pulled_ids = vec!["test-id".to_string()];
+        let is_pulled = |m: &NoteMeta| pulled_ids.contains(&m.id);
+        assert!(!(is_pulled(&active) && active.deleted_at.is_some()),
+            "active note should NOT be purged even if its id is in the pulled list");
+        assert!(is_pulled(&tombstoned) && tombstoned.deleted_at.is_some(),
+            "soft-deleted note with matching id SHOULD be purged");
+    }
+
+    #[test]
+    fn import_note_payload_preserves_tombstone_via_serde() {
+        // Simulates what import_note_for_backup does on disk: serialize the meta
+        // exactly as received. We assert the tombstone roundtrips so a restored
+        // note keeps its soft-deleted state.
+        let meta = make_meta(Some("2026-05-19T11:00:00Z".to_string()));
+        let payload = serde_json::to_string_pretty(&meta).expect("serialize");
+        let restored: NoteMeta = serde_json::from_str(&payload).expect("deserialize");
+        assert_eq!(restored.deleted_at, meta.deleted_at);
+        assert_eq!(restored.id, meta.id);
+        assert!(!is_note_active(&restored), "tombstone must survive restore");
+    }
+
+    #[test]
+    fn import_note_payload_preserves_active_state_via_serde() {
+        let meta = make_meta(None);
+        let payload = serde_json::to_string_pretty(&meta).expect("serialize");
+        let restored: NoteMeta = serde_json::from_str(&payload).expect("deserialize");
+        assert!(is_note_active(&restored));
+        assert_eq!(restored.id, meta.id);
+    }
+
+    #[test]
+    fn note_meta_deserializes_without_deleted_at_key() {
+        // Backward compat: legacy note.json files on disk don't have the deletedAt key.
+        let legacy_json = r#"{
+            "id": "abc",
+            "title": "Legacy Note",
+            "createdAt": "2026-05-19T10:00:00Z",
+            "updatedAt": "2026-05-19T10:00:00Z",
+            "favorite": false,
+            "order": 0
+        }"#;
+        let meta: NoteMeta = serde_json::from_str(legacy_json).expect("deserialize legacy");
+        assert_eq!(meta.deleted_at, None);
+        assert!(is_note_active(&meta));
+    }
 }

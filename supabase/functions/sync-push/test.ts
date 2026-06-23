@@ -31,12 +31,20 @@ interface RpcCall {
   name: string;
   args: any;
 }
-type ClientCall = UpsertCall | UpdateCall | RpcCall;
+interface SelectCall {
+  kind: "select";
+  table: string;
+  cols: string;
+  eqs: Array<{ col: string; val: any }>;
+}
+type ClientCall = UpsertCall | UpdateCall | RpcCall | SelectCall;
 
 interface FakeClientOptions {
   upsertError?: { table: string; error: any };
   updateError?: { table: string; error: any };
   rpcResult?: { data: number | null; error: any };
+  /** Result for `.from('subscriptions').select(...).eq('user_id', uid).maybeSingle()`. Default = null row = free tier. */
+  subscriptionResult?: { data: any; error: any };
 }
 
 function makeFakeClient(opts: FakeClientOptions = {}): { client: any; calls: ClientCall[] } {
@@ -68,6 +76,20 @@ function makeFakeClient(opts: FakeClientOptions = {}): { client: any; calls: Cli
             },
           };
           return filter;
+        },
+        select(cols: string) {
+          const eqs: Array<{ col: string; val: any }> = [];
+          calls.push({ kind: "select", table, cols, eqs });
+          const chain: any = {
+            eq(col: string, val: any) {
+              eqs.push({ col, val });
+              return chain;
+            },
+            maybeSingle() {
+              return Promise.resolve(opts.subscriptionResult ?? { data: null, error: null });
+            },
+          };
+          return chain;
         },
       };
     },
@@ -174,6 +196,28 @@ Deno.test("settings-upsert: posts to user_settings with userId + device_id", asy
   assertEquals(upserts[0].record.user_id, "user-42");
   assertEquals(upserts[0].record.updated_by_device, "dev-A");
   assertEquals(upserts[0].options, { onConflict: "user_id" });
+});
+
+// Regression : avant 2026-05-20, le enum provider du schema serveur n'incluait
+// pas "LexenaCloud" alors que le picker UI l'accepte depuis le sub-épique 04 billing
+// / 05 managed transcription. Push -> "invalid body". Voir commit
+// fix(sync-settings): accept LexenaCloud provider.
+Deno.test("settings-upsert: accepts LexenaCloud provider (regression 2026-05-20)", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-cloud");
+  const settings = {
+    ...VALID_SETTINGS,
+    transcription: { provider: "LexenaCloud" as const, local_model: "large-v3-turbo" },
+  };
+  const req = postJson({
+    operations: [{ kind: "settings-upsert", data: settings }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const upserts = auth.calls.filter((c): c is UpsertCall => c.kind === "upsert");
+  assertEquals(upserts.length, 1);
+  assertEquals(upserts[0].record.data.transcription.provider, "LexenaCloud");
 });
 
 Deno.test("dictionary-upsert: clears deleted_at on revival", async () => {
@@ -288,10 +332,11 @@ Deno.test("RPC quota error returns 500 quota check failed", async () => {
   assertEquals(body.details, "rpc down");
 });
 
-Deno.test("quota exceeded returns 413 with quota_bytes + current_bytes", async () => {
+Deno.test("quota exceeded returns 413 with new quota_exceeded shape (plan, used, limit, results)", async () => {
   const { handler } = await import("./index.ts");
-  const QUOTA = 5 * 1024 * 1024;
-  const over = QUOTA + 1;
+  const FREE_LIMIT = 10 * 1024 * 1024;
+  const over = FREE_LIMIT + 1;
+  // No subscription row → free tier (10 MB).
   const auth = authOk("user-1", {
     rpcResult: { data: over, error: null },
   });
@@ -302,9 +347,10 @@ Deno.test("quota exceeded returns 413 with quota_bytes + current_bytes", async (
   const res = await handler(req, auth);
   assertEquals(res.status, 413);
   const body = await res.json();
-  assertEquals(body.error, "quota exceeded");
-  assertEquals(body.quota_bytes, QUOTA);
-  assertEquals(body.current_bytes, over);
+  assertEquals(body.error, "quota_exceeded");
+  assertEquals(body.plan, "free");
+  assertEquals(body.used, over);
+  assertEquals(body.limit, FREE_LIMIT);
   assertEquals(body.results.length, 1);
 });
 
@@ -349,4 +395,306 @@ Deno.test("rateLimit returns true: handler short-circuits with 429 + skips DB", 
   assertEquals(res.status, 429);
   assertEquals((await res.json()).error, "rate limited");
   assertEquals(auth.calls.length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// v3 sub-épique 03 sync-notes — tests notes + dossiers + quotas par plan
+// ---------------------------------------------------------------------------
+
+const NOTE_ID = "33333333-3333-4333-8333-333333333333";
+const FOLDER_ID = "44444444-4444-4444-8444-444444444444";
+const NOTE_UPDATED_AT = "2026-05-19T12:00:00.000Z";
+
+function makeNote(overrides: Partial<Record<string, any>> = {}) {
+  return {
+    id: NOTE_ID,
+    title: "My note",
+    content_html: "<p>hello</p>",
+    folder_id: null as string | null,
+    favorite: false,
+    order: 0,
+    updated_at: NOTE_UPDATED_AT,
+    deleted_at: null as string | null,
+    ...overrides,
+  };
+}
+
+function makeFolder(overrides: Partial<Record<string, any>> = {}) {
+  return {
+    id: FOLDER_ID,
+    name: "Inbox",
+    order: 1,
+    updated_at: NOTE_UPDATED_AT,
+    deleted_at: null as string | null,
+    ...overrides,
+  };
+}
+
+Deno.test("note-upsert: forwards id, title, content_html, folder_id, favorite, order", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-note");
+  const note = makeNote({
+    title: "Title",
+    content_html: "<p>content</p>",
+    folder_id: FOLDER_ID,
+    favorite: true,
+    order: 7,
+  });
+  const req = postJson({
+    operations: [{ kind: "note-upsert", note }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const upserts = auth.calls.filter((c): c is UpsertCall => c.kind === "upsert");
+  assertEquals(upserts.length, 1);
+  assertEquals(upserts[0].table, "user_notes");
+  assertEquals(upserts[0].record.id, NOTE_ID);
+  assertEquals(upserts[0].record.user_id, "user-note");
+  assertEquals(upserts[0].record.title, "Title");
+  assertEquals(upserts[0].record.content_html, "<p>content</p>");
+  assertEquals(upserts[0].record.folder_id, FOLDER_ID);
+  assertEquals(upserts[0].record.favorite, true);
+  assertEquals(upserts[0].record.order, 7);
+  assertEquals(upserts[0].record.deleted_at, null);
+  assertEquals(upserts[0].options, { onConflict: "id" });
+});
+
+// Regression : le client Rust sérialise updated_at via chrono::Utc::now().to_rfc3339(),
+// qui émet l'offset `+00:00` plutôt que `Z`, et omet `deleted_at` sur les upserts.
+// Avant fix 2026-05-20, Zod `.datetime()` strict rejetait cette forme → "invalid body".
+Deno.test("note-upsert: accepts RFC3339 offset datetime + omitted deleted_at (regression 2026-05-20)", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-rfc3339");
+  const note = {
+    id: NOTE_ID,
+    title: "Untitled Note",
+    content_html: "",
+    folder_id: null,
+    favorite: false,
+    order: 0,
+    updated_at: "2026-05-20T11:21:11.358048100+00:00", // offset, not Z, nano precision
+    // deleted_at intentionally omitted — server forces null on upsert anyway
+  };
+  const req = postJson({
+    operations: [{ kind: "note-upsert", note }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const upserts = auth.calls.filter((c): c is UpsertCall => c.kind === "upsert");
+  assertEquals(upserts.length, 1);
+  assertEquals(upserts[0].table, "user_notes");
+  assertEquals(upserts[0].record.deleted_at, null);
+});
+
+Deno.test("folder-upsert: accepts RFC3339 offset datetime + omitted deleted_at (regression 2026-05-20)", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-rfc3339f");
+  const folder = {
+    id: FOLDER_ID,
+    name: "Inbox",
+    order: 1,
+    updated_at: "2026-05-20T11:21:11.358048100+00:00",
+  };
+  const req = postJson({
+    operations: [{ kind: "folder-upsert", folder }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const upserts = auth.calls.filter((c): c is UpsertCall => c.kind === "upsert");
+  assertEquals(upserts.length, 1);
+  assertEquals(upserts[0].table, "user_folders");
+  assertEquals(upserts[0].record.deleted_at, null);
+});
+
+Deno.test("note-upsert: rejects content_html > 1 MB at Zod parse (400 invalid body)", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk();
+  // 1 byte past the 1 MB limit — Zod max(1_048_576) rejects at body parse → 400 invalid body.
+  const huge = "a".repeat(1_048_577);
+  const note = makeNote({ content_html: huge });
+  const req = postJson({
+    operations: [{ kind: "note-upsert", note }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 400);
+  const body = await res.json();
+  assertEquals(body.error, "invalid body");
+  // No DB call happened.
+  assertEquals(auth.calls.length, 0);
+});
+
+Deno.test("note-delete: scoped update with id + user_id on user_notes", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-del");
+  const req = postJson({
+    operations: [{ kind: "note-delete", id: NOTE_ID }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const updates = auth.calls.filter((c): c is UpdateCall => c.kind === "update");
+  assertEquals(updates.length, 1);
+  assertEquals(updates[0].table, "user_notes");
+  assertEquals(typeof updates[0].record.deleted_at, "string");
+  assertEquals(updates[0].eqs, [
+    { col: "id", val: NOTE_ID },
+    { col: "user_id", val: "user-del" },
+  ]);
+});
+
+Deno.test("folder-upsert: forwards id, name, order on user_folders", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-folder");
+  const folder = makeFolder({ name: "Projects", order: 3 });
+  const req = postJson({
+    operations: [{ kind: "folder-upsert", folder }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const upserts = auth.calls.filter((c): c is UpsertCall => c.kind === "upsert");
+  assertEquals(upserts.length, 1);
+  assertEquals(upserts[0].table, "user_folders");
+  assertEquals(upserts[0].record.id, FOLDER_ID);
+  assertEquals(upserts[0].record.user_id, "user-folder");
+  assertEquals(upserts[0].record.name, "Projects");
+  assertEquals(upserts[0].record.order, 3);
+  assertEquals(upserts[0].record.deleted_at, null);
+  assertEquals(upserts[0].options, { onConflict: "id" });
+});
+
+Deno.test("folder-delete: scoped update with id + user_id on user_folders", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-fd");
+  const req = postJson({
+    operations: [{ kind: "folder-delete", id: FOLDER_ID }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const updates = auth.calls.filter((c): c is UpdateCall => c.kind === "update");
+  assertEquals(updates.length, 1);
+  assertEquals(updates[0].table, "user_folders");
+  assertEquals(typeof updates[0].record.deleted_at, "string");
+  assertEquals(updates[0].eqs, [
+    { col: "id", val: FOLDER_ID },
+    { col: "user_id", val: "user-fd" },
+  ]);
+});
+
+Deno.test("quota: user with no subscription row is treated as free (10 MB limit)", async () => {
+  const { handler } = await import("./index.ts");
+  const FREE_LIMIT = 10 * 1024 * 1024;
+  const auth = authOk("user-no-sub", {
+    rpcResult: { data: FREE_LIMIT + 1, error: null },
+    // subscriptionResult omitted → defaults to { data: null } in fake client.
+  });
+  const req = postJson({
+    operations: [{ kind: "dictionary-upsert", word: "x" }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 413);
+  const body = await res.json();
+  assertEquals(body.error, "quota_exceeded");
+  assertEquals(body.plan, "free");
+  assertEquals(body.limit, FREE_LIMIT);
+  assertEquals(body.used, FREE_LIMIT + 1);
+});
+
+Deno.test("quota: starter plan gets 100 MB limit (under limit returns 200)", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-starter", {
+    rpcResult: { data: 50_000_000, error: null },
+    subscriptionResult: { data: { plan: "starter", status: "active" }, error: null },
+  });
+  const req = postJson({
+    operations: [{ kind: "dictionary-upsert", word: "x" }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.plan, "starter");
+  assertEquals(body.limit, 100 * 1024 * 1024);
+});
+
+Deno.test("quota: on_trial subscription is treated as active and gets the plan limit", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-on-trial", {
+    rpcResult: { data: 50_000_000, error: null },
+    subscriptionResult: { data: { plan: "starter", status: "on_trial" }, error: null },
+  });
+  const req = postJson({
+    operations: [{ kind: "dictionary-upsert", word: "x" }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.plan, "starter");
+  assertEquals(body.limit, 100 * 1024 * 1024);
+});
+
+Deno.test("quota: starter user pushing above 100 MB returns 413 with starter limit", async () => {
+  const { handler } = await import("./index.ts");
+  const STARTER_LIMIT = 100 * 1024 * 1024;
+  const auth = authOk("user-starter-over", {
+    rpcResult: { data: 110_000_000, error: null },
+    subscriptionResult: { data: { plan: "starter", status: "active" }, error: null },
+  });
+  const req = postJson({
+    operations: [{ kind: "dictionary-upsert", word: "x" }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 413);
+  const body = await res.json();
+  assertEquals(body.error, "quota_exceeded");
+  assertEquals(body.plan, "starter");
+  assertEquals(body.limit, STARTER_LIMIT);
+  assertEquals(body.used, 110_000_000);
+});
+
+Deno.test("quota: pro plan gets 500 MB limit (under limit returns 200)", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-pro", {
+    rpcResult: { data: 400_000_000, error: null },
+    subscriptionResult: { data: { plan: "pro", status: "active" }, error: null },
+  });
+  const req = postJson({
+    operations: [{ kind: "dictionary-upsert", word: "x" }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.plan, "pro");
+  assertEquals(body.limit, 500 * 1024 * 1024);
+});
+
+Deno.test("quota: cancelled subscription falls back to free", async () => {
+  const { handler } = await import("./index.ts");
+  const FREE_LIMIT = 10 * 1024 * 1024;
+  const auth = authOk("user-cancelled", {
+    rpcResult: { data: 11_000_000, error: null },
+    subscriptionResult: { data: { plan: "pro", status: "cancelled" }, error: null },
+  });
+  const req = postJson({
+    operations: [{ kind: "dictionary-upsert", word: "x" }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 413);
+  const body = await res.json();
+  assertEquals(body.error, "quota_exceeded");
+  assertEquals(body.plan, "free");
+  assertEquals(body.limit, FREE_LIMIT);
 });

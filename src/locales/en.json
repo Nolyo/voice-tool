@@ -553,6 +553,9 @@
     "errors": {
       "moveFailed": "Failed to move the note"
     },
+    "size": {
+      "warning": "⚠️ This note exceeds 1 MB ({{bytes}} MB) and is too large to sync to the cloud. It remains available locally."
+    },
     "editor": {
       "noNote": "No note open",
       "processing": "Processing...",
@@ -973,6 +976,7 @@
       "title": "Enable sync",
       "no_local_data": "Your local setup is nearly empty. Sync will pull your existing cloud state, or start fresh if none exists.",
       "has_local_data": "You already set up Lexena on this device. What do you want to do?",
+      "counts_summary": "{{notes}} note(s), {{folders}} folder(s), {{snippets}} snippet(s), {{words}} dictionary word(s)",
       "choice_upload": "Upload my current setup (recommended)",
       "choice_upload_desc": "Your snippets, hotkeys and dictionary will be sent to the cloud and available on your other devices.",
       "choice_fresh": "Start from a fresh setup",
@@ -987,6 +991,8 @@
       "scalars": "Theme, language, hotkeys, audio preferences, transcription provider + model",
       "snippets": "{{count}} snippet(s)",
       "dictionary": "{{count}} word(s) in dictionary",
+      "notes": "{{count}} note(s)",
+      "folders": "{{count}} folder(s)",
       "not_synced_disclaimer": "API keys, window positions, downloaded models stay local."
     },
     "backups": {
@@ -1008,6 +1014,19 @@
       "title": "Cloud storage full",
       "subtitle": "You've reached your storage limit. Delete snippets or dictionary words to resume sync.",
       "manage": "Manage my data"
+    },
+    "quota": {
+      "exceeded": "You've reached your plan's quota. Free up some space or upgrade to a higher tier.",
+      "free": {
+        "title": "Free plan",
+        "body": "You have {{quota}} of sync storage. Upgrade to Starter (100 MB, €5/mo) or Pro (500 MB, €9/mo) for more space."
+      },
+      "starter": {
+        "title": "Starter plan"
+      },
+      "pro": {
+        "title": "Pro plan"
+      }
     },
     "deadLetters": {
       "title": "Stuck operations",

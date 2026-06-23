@@ -553,6 +553,9 @@
     "errors": {
       "moveFailed": "Échec du déplacement de la note"
     },
+    "size": {
+      "warning": "⚠️ Cette note dépasse 1 MB ({{bytes}} MB) et est trop grande pour être synchronisée vers le cloud. Elle reste disponible localement."
+    },
     "editor": {
       "noNote": "Aucune note ouverte",
       "processing": "Traitement en cours...",
@@ -973,6 +976,7 @@
       "title": "Activer la synchronisation",
       "no_local_data": "Ton setup est presque vide. La synchronisation va juste récupérer ton état cloud s'il existe, ou démarrer un nouveau profil vide côté cloud.",
       "has_local_data": "Tu as déjà configuré Lexena sur ce device. Que veux-tu faire ?",
+      "counts_summary": "{{notes}} note(s), {{folders}} dossier(s), {{snippets}} snippet(s), {{words}} mot(s) de dictionnaire",
       "choice_upload": "Uploader mon setup actuel (recommandé)",
       "choice_upload_desc": "Tes snippets, hotkeys, dictionnaire seront envoyés au cloud et disponibles sur tes autres devices.",
       "choice_fresh": "Partir d'un setup neuf",
@@ -987,6 +991,8 @@
       "scalars": "Thème, langue, hotkeys, préférences audio, provider + modèle de transcription",
       "snippets": "{{count}} snippet(s)",
       "dictionary": "{{count}} mot(s) dans le dictionnaire",
+      "notes": "{{count}} note(s)",
+      "folders": "{{count}} dossier(s)",
       "not_synced_disclaimer": "Les clés API, les positions de fenêtres, les modèles téléchargés restent locaux."
     },
     "backups": {
@@ -1008,6 +1014,19 @@
       "title": "Espace cloud saturé",
       "subtitle": "Tu as dépassé ta limite de stockage. Supprime des snippets ou des mots du dictionnaire pour relancer la synchronisation.",
       "manage": "Gérer mes données"
+    },
+    "quota": {
+      "exceeded": "Tu as atteint le quota de ton plan. Libère de l'espace ou passe à un plan supérieur.",
+      "free": {
+        "title": "Plan Free",
+        "body": "Tu disposes de {{quota}} de synchronisation. Passe à Starter (100 MB, 5€/mois) ou Pro (500 MB, 9€/mois) pour plus d'espace."
+      },
+      "starter": {
+        "title": "Plan Starter"
+      },
+      "pro": {
+        "title": "Plan Pro"
+      }
     },
     "deadLetters": {
       "title": "Opérations bloquées",

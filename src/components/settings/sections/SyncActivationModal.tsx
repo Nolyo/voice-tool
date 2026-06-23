@@ -9,6 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { loadSnippets } from "@/lib/sync/snippets-store";
 import { loadDictionary } from "@/lib/sync/dictionary-store";
+import { listNotes } from "@/lib/sync/notes-store";
+import { listFolders } from "@/lib/sync/folders-store";
 import { createLocalBackup } from "@/lib/sync/backups";
 import { useSync } from "@/hooks/useSync";
 
@@ -21,6 +23,12 @@ export function SyncActivationModal({ open, onClose }: Props) {
   const { t } = useTranslation();
   const sync = useSync();
   const [nonTrivial, setNonTrivial] = useState<boolean | null>(null);
+  const [counts, setCounts] = useState<{
+    snippets: number;
+    words: number;
+    notes: number;
+    folders: number;
+  } | null>(null);
   const [choice, setChoice] = useState<"upload" | "fresh">("upload");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +39,20 @@ export function SyncActivationModal({ open, onClose }: Props) {
     (async () => {
       const sn = (await loadSnippets()).filter((s) => s.deleted_at === null);
       const d = await loadDictionary();
+      const [n, f] = await Promise.all([listNotes(), listFolders()]);
       if (cancelled) return;
-      const nonTriv = sn.length > 0 || d.words.length >= 3;
+      const c = {
+        snippets: sn.length,
+        words: d.words.length,
+        notes: n.length,
+        folders: f.length,
+      };
+      setCounts(c);
+      // Threshold updated for sub-epic 03: a single note or folder counts as
+      // non-trivial local data. Existing snippets / 3+ dictionary words
+      // continue to apply.
+      const nonTriv =
+        c.snippets > 0 || c.words >= 3 || c.notes > 0 || c.folders > 0;
       setNonTrivial(nonTriv);
       if (!nonTriv) setChoice("upload");
     })();
@@ -86,6 +106,16 @@ export function SyncActivationModal({ open, onClose }: Props) {
         {nonTrivial === true && (
           <div className="space-y-3">
             <p className="text-sm">{t("sync.activation.has_local_data")}</p>
+            {counts && (
+              <p className="text-xs" style={{ color: "var(--vt-fg-2)" }}>
+                {t("sync.activation.counts_summary", {
+                  notes: counts.notes,
+                  folders: counts.folders,
+                  snippets: counts.snippets,
+                  words: counts.words,
+                })}
+              </p>
+            )}
 
             <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 hover:bg-muted/50">
               <input

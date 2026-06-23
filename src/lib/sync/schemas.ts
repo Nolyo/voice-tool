@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 // Matches the Edge Function schema — keep in sync with supabase/functions/sync-push/schema.ts.
-// "LexenaCloud" is a placeholder accepted client-side; the picker locks the card so it cannot
-// actually be selected and sent. The server schema will be updated when the provider launches.
+// "LexenaCloud" est sélectionnable côté UI (sub-épique 04/05) et accepté par le serveur depuis
+// 2026-05-20. Les legacy "OpenAI"/"Google"/"Groq" restent acceptés pour rétro-compat des rows
+// existants (applyCloudSettings clamp à "Local" côté client).
 
 export const CloudSettingsDataSchema = z.object({
   ui: z.object({
@@ -51,6 +52,30 @@ export const CloudSnippetRowSchema = z.object({
   deleted_at: z.string().nullable(),
 });
 
+// Sub-épique 03 sync-notes : rows cloud notes + dossiers.
+export const CloudUserNoteRowSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  title: z.string(),
+  content_html: z.string(),
+  folder_id: z.string().uuid().nullable(),
+  favorite: z.boolean(),
+  order: z.number().int(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  deleted_at: z.string().nullable(),
+});
+
+export const CloudUserFolderRowSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  name: z.string(),
+  order: z.number().int(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  deleted_at: z.string().nullable(),
+});
+
 export const PushResponseSchema = z.object({
   ok: z.boolean(),
   server_time: z.string().optional(),
@@ -64,4 +89,9 @@ export const PushResponseSchema = z.object({
   ),
   error: z.string().optional(),
   quota_bytes: z.number().optional(),
+  // Sub-épique 03 sync-notes : champs ajoutés côté serveur pour exposer le plan
+  // courant et l'usage quota. Optionnels pour rester rétro-compatible.
+  plan: z.string().optional(),
+  limit: z.number().optional(),
+  used: z.number().optional(),
 });

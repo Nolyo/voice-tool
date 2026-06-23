@@ -37,6 +37,18 @@ pub fn get_active_profile_notes_sidebar_path(app: AppHandle) -> Result<String, S
     Ok(crate::profiles::notes_sidebar_store_path(&app))
 }
 
+/// Get the sync-meta store path for the active profile (for frontend Store.load)
+#[tauri::command]
+pub fn get_active_profile_sync_meta_path(app: AppHandle) -> Result<String, String> {
+    Ok(crate::profiles::sync_meta_store_path(&app))
+}
+
+/// Get the sync-queue store path for the active profile (for frontend Store.load)
+#[tauri::command]
+pub fn get_active_profile_sync_queue_path(app: AppHandle) -> Result<String, String> {
+    Ok(crate::profiles::sync_queue_store_path(&app))
+}
+
 /// Create a new profile (does NOT switch to it)
 #[tauri::command]
 pub fn create_profile(app: AppHandle, name: String) -> Result<ProfileMeta, String> {

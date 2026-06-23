@@ -360,6 +360,25 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - Checklist E2E : `docs/v3/02-sync-settings-e2e-checklist.md`
 - ADR de clôture : `docs/v3/decisions/0010-sub-epic-02-closure.md`
 
+### V3 Sync notes (livré sous-épique 03, 2026-05-19)
+
+- Backend Rust : `src-tauri/src/notes.rs` (soft-delete `deleted_at`, filtres `is_note_active`, `purge_soft_deleted_notes_post_pull`, `import_note_for_backup`) + `src-tauri/src/folders.rs` (idem + `updated_at` LWW + migration backfill `migrate_folder_updated_at_if_needed`)
+- Sync engine TS : `src/lib/sync/` étendu — `types.ts` (LocalNoteMeta/LocalFolderMeta/CloudUserNoteRow/CloudUserFolderRow + 4 nouvelles SyncOperation kinds), `schemas.ts` (CloudUserNoteRowSchema, CloudUserFolderRowSchema), `mapping.ts` (4 helpers), `client.ts` (pullAll étendu notes+folders), `merge.ts` (`mergeNoteLWW`, `mergeFolderLWW` per-item), `notes-store.ts` (push-on-mutate + debounce registry + tombstone guard), `folders-store.ts` (idem), `quota.ts` (QUOTA_BY_PLAN, getQuotaForPlan, getWarningThreshold, formatBytes), `backups.ts` (BackupPayload v2 inclut notes + folders).
+- Hooks : `src/hooks/useNotes.ts` (mutations via *Synced, debounce 2s sur updateNote, flush au logout via `notes-store.flushPendingNoteUpdates`) + `src/hooks/useFolders.ts` (mutations *Synced).
+- Context : `src/contexts/SyncContext.tsx` étendu (pull lifecycle notes + folders + purge `purge_soft_deleted_*_post_pull` + flush debounce dans disableSync).
+- Edge Functions : `sync-push` v2 (4 nouvelles ops note/folder upsert/delete + per-plan quota lookup via `subscriptions(plan, status)` + 413 `{ error: "quota_exceeded", plan, used, limit }`), `account-export` v2 (export_version 2 inclut user_notes + user_folders avec deleted_at), `purge-account-deletions` étendu (DELETE FROM user_notes/user_folders WHERE deleted_at < now() - 30j, sync_items_purged + sync_purge_error reporté).
+- Tables Supabase : `user_notes` (id, user_id, title, content_html, folder_id, favorite, order, created_at, updated_at, deleted_at + CHECK octet_length <= 1 MB + FK folder_id ON DELETE SET NULL), `user_folders` (id, user_id, name, order, created_at, updated_at, deleted_at) — migrations `20260601000800-001000`. Fonction quota `compute_user_sync_size_v2` inclut notes + folders actifs.
+- UX : `src/components/notes/NoteSizeWarning.tsx` (banner amber >1 MB via TextEncoder bytecount) + `SyncActivationModal.tsx` (compteurs notes/folders, threshold non-trivial étendu) + `AccountSection.tsx::SyncedInventoryGrid` (5 cards : Préférences + Snippets + Dictionnaire + Notes + Dossiers) + `SyncPlanCard` (carte plan Free/Starter/Pro avec upsell free).
+- Quotas freemium : Free 10 MB / Starter 100 MB / Pro 500 MB. Hard cap par note 1 MB tous plans. Lecture plan via table `subscriptions` — `active` + `on_trial` actifs, sinon fallback free.
+- Soft-delete + purge : tombstones préservés 30j serveur (cron `purge-account-deletions-daily` étendu), purge client post-pull à réception via `purge_soft_deleted_*_post_pull`.
+- Tests : pgtap RLS cross-tenant (`rls_user_folders.sql`, `rls_user_notes.sql` avec test FK SET NULL, `notes_content_size_constraint.sql`) + Rust unit (6 notes + 9 folders) + Deno Edge (28 sync-push + 12 account-export + 10 purge) + Vitest (266/266 incluant mapping/client/merge/stores/quota/backups).
+- Backup local v2 : `BackupPayload` étendu avec `notes: NoteWithContent[]` + `folders: FolderMeta[]`. Restore préserve les IDs via `import_note_for_backup` + `import_folders_for_backup`. Rétro-compat v1 (notes/folders absents → restore stores uniquement).
+- Checklist E2E : `docs/v3/03-sync-notes-e2e-checklist.md` (12 cas — bloquant avant tag bêta).
+- ADR principal : `docs/v3/decisions/0016-notes-sync-strategy.md` (figé).
+- ADR de clôture : `docs/v3/decisions/0017-sub-epic-03-closure.md`.
+- Supabase CLI : `pnpm exec supabase functions deploy sync-push` / `account-export` / `purge-account-deletions` (déploiement distant à faire avant tag bêta).
+- **Isolation sync par profil (fix 2026-06-23)** : la sync est mono-profil (ADR 0016 §10). Stores `sync-queue.json` + `sync-meta.json` déplacés sous `profiles/<id>/` (commandes Rust `get_active_profile_sync_queue_path` / `get_active_profile_sync_meta_path` dans `commands/profiles.rs`), donc le flag `enabled` est par profil. Garde process-wide `src/lib/sync/sync-gate.ts` (`isSyncActive()`) : `notes-store`/`folders-store` n'enqueuent que si la sync est active pour le profil courant ; `SyncContext` pilote le gate (mount/enable/disable). Snippets + dictionnaire restent globaux (racine). Nettoyage one-shot au démarrage des stores racine legacy contaminés (`cleanup_legacy_root_sync_stores`) → re-activer la sync une fois après le build corrigé. Plan : `docs/superpowers/plans/2026-06-23-sync-profile-isolation.md`.
+
 ### V3 Email templates Supabase Auth (livré phase 1, 2026-05-02)
 
 - Source de vérité : `emails/templates/*.tsx` (React Email + `@react-email/components` 1.0.12)

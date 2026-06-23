@@ -4,12 +4,16 @@ import type {
   CloudUserSettingsRow,
   CloudDictionaryWordRow,
   CloudSnippetRow,
+  CloudUserNoteRow,
+  CloudUserFolderRow,
   SyncOperation,
 } from "./types";
 import {
   CloudUserSettingsRowSchema,
   CloudDictionaryWordRowSchema,
   CloudSnippetRowSchema,
+  CloudUserNoteRowSchema,
+  CloudUserFolderRowSchema,
   PushResponseSchema,
 } from "./schemas";
 
@@ -17,10 +21,14 @@ export interface PullResult {
   settings: CloudUserSettingsRow | null;
   dictionary: CloudDictionaryWordRow[];
   snippets: CloudSnippetRow[];
+  notes: CloudUserNoteRow[];
+  folders: CloudUserFolderRow[];
   invalid: {
     settings: boolean;
     dictionary: number;
     snippets: number;
+    notes: number;
+    folders: number;
   };
 }
 
@@ -38,16 +46,29 @@ export async function pullAll(since: string | null): Promise<PullResult> {
   const snipQuery = since
     ? supabase.from("user_snippets").select("*").gt("updated_at", since)
     : supabase.from("user_snippets").select("*");
+  // Sub-épique 03 sync-notes : on récupère TOUTES les rows depuis `since`,
+  // y compris les tombstones (deleted_at IS NOT NULL) pour que le merge côté
+  // client propage les soft-deletes. Aucun filtre extra.
+  const notesQuery = since
+    ? supabase.from("user_notes").select("*").gt("updated_at", since)
+    : supabase.from("user_notes").select("*");
+  const foldersQuery = since
+    ? supabase.from("user_folders").select("*").gt("updated_at", since)
+    : supabase.from("user_folders").select("*");
 
-  const [settingsRes, dictRes, snipRes] = await Promise.all([
+  const [settingsRes, dictRes, snipRes, notesRes, foldersRes] = await Promise.all([
     settingsQuery,
     dictQuery,
     snipQuery,
+    notesQuery,
+    foldersQuery,
   ]);
 
   if (settingsRes.error) throw settingsRes.error;
   if (dictRes.error) throw dictRes.error;
   if (snipRes.error) throw snipRes.error;
+  if (notesRes.error) throw notesRes.error;
+  if (foldersRes.error) throw foldersRes.error;
 
   // Runtime validation — drop invalid rows, count them for visibility
   let settings: CloudUserSettingsRow | null = null;
@@ -97,14 +118,50 @@ export async function pullAll(since: string | null): Promise<PullResult> {
     }
   }
 
+  let invalidNotes = 0;
+  const notes: CloudUserNoteRow[] = [];
+  for (const row of notesRes.data ?? []) {
+    const parsed = CloudUserNoteRowSchema.safeParse(row);
+    if (parsed.success) {
+      notes.push(parsed.data as CloudUserNoteRow);
+    } else {
+      invalidNotes++;
+      console.warn(
+        "[sync pullAll] malformed user_notes row dropped",
+        row,
+        parsed.error.flatten()
+      );
+    }
+  }
+
+  let invalidFolders = 0;
+  const folders: CloudUserFolderRow[] = [];
+  for (const row of foldersRes.data ?? []) {
+    const parsed = CloudUserFolderRowSchema.safeParse(row);
+    if (parsed.success) {
+      folders.push(parsed.data as CloudUserFolderRow);
+    } else {
+      invalidFolders++;
+      console.warn(
+        "[sync pullAll] malformed user_folders row dropped",
+        row,
+        parsed.error.flatten()
+      );
+    }
+  }
+
   return {
     settings,
     dictionary,
     snippets,
+    notes,
+    folders,
     invalid: {
       settings: invalidSettings,
       dictionary: invalidDict,
       snippets: invalidSnip,
+      notes: invalidNotes,
+      folders: invalidFolders,
     },
   };
 }

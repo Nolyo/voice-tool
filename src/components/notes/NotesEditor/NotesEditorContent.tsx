@@ -10,6 +10,7 @@ import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { TableFloatingToolbar } from "./TableFloatingToolbar";
 import { NotesEditorAiPreview } from "./NotesEditorAiPreview";
 import { NotesEditorHeader } from "./NotesEditorHeader";
+import { NoteSizeWarning } from "../NoteSizeWarning";
 
 interface NotesEditorContentProps {
   editor: Editor | null;
@@ -84,6 +85,7 @@ export function NotesEditorContent({
         </div>
       ) : (
         <>
+          {editor && isEditorInSync && <NoteSizeWarning editor={editor} />}
           {editor && <EditorBubbleMenu editor={editor} linkEditor={linkEditor} />}
           {editor && <TableFloatingToolbar editor={editor} />}
           <EditorContent
