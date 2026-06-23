@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "app_name": "Voice Tool",
   "repository": "Nolyo/lexena",
-  "generated_at": "2026-05-19T12:00:12.225Z",
+  "generated_at": "2026-06-23T20:50:48.467Z",
   "latest": {
     "version": "2.10.1",
     "tag": "v2.10.1",
@@ -16,7 +16,7 @@
         "size_bytes": 41593344,
         "size_human": "39.7 MB",
         "sha256": "00b3a107a4aaa6eb54939baa94382b2943f337082605d991e5a4a8d170984888",
-        "download_count": 3
+        "download_count": 8
       },
       "nsis_installer": {
         "filename": "voice-tool-v2.10.1-setup.exe",
@@ -24,7 +24,7 @@
         "size_bytes": 7707493,
         "size_human": "7.4 MB",
         "sha256": "3d7e1b5d5c5ab2e5d450d37ae190c7892a8d4cf5ea24b8a0ecad31ea3d417a14",
-        "download_count": 4
+        "download_count": 8
       }
     }
   },
@@ -42,7 +42,7 @@
           "size_bytes": 41593344,
           "size_human": "39.7 MB",
           "sha256": "00b3a107a4aaa6eb54939baa94382b2943f337082605d991e5a4a8d170984888",
-          "download_count": 3
+          "download_count": 8
         },
         "nsis_installer": {
           "filename": "voice-tool-v2.10.1-setup.exe",
@@ -50,7 +50,7 @@
           "size_bytes": 7707493,
           "size_human": "7.4 MB",
           "sha256": "3d7e1b5d5c5ab2e5d450d37ae190c7892a8d4cf5ea24b8a0ecad31ea3d417a14",
-          "download_count": 4
+          "download_count": 8
         }
       }
     },
