@@ -49,10 +49,10 @@ import {
   migrateLegacyDictionaryOnce,
 } from "@/lib/sync/dictionary-store";
 import { mergeSettingsLWW } from "@/lib/sync/merge";
+import { setSyncActive } from "@/lib/sync/sync-gate";
 import type { AppSettings } from "@/lib/settings";
 import type { SyncOperation, SyncState, SyncStatus } from "@/lib/sync/types";
 
-const SYNC_META_STORE = "sync-meta.json";
 const KEY_ENABLED = "enabled";
 const KEY_LAST_PULL_AT = "last_pull_at";
 const KEY_LAST_PUSHED_SETTINGS_AT = "last_pushed_settings_at";
@@ -82,13 +82,23 @@ export interface SyncContextValue extends SyncState {
 
 export const SyncContext = createContext<SyncContextValue | null>(null);
 
+let metaStorePromise: Promise<Awaited<ReturnType<typeof Store.load>>> | null = null;
+async function getMetaStore() {
+  if (!metaStorePromise) {
+    metaStorePromise = (async () => {
+      const path = await invoke<string>("get_active_profile_sync_meta_path");
+      return Store.load(path);
+    })();
+  }
+  return metaStorePromise;
+}
 async function getMeta<T>(key: string, def: T): Promise<T> {
-  const store = await Store.load(SYNC_META_STORE);
+  const store = await getMetaStore();
   const v = await store.get<T>(key);
   return v ?? def;
 }
 async function setMeta(key: string, value: unknown): Promise<void> {
-  const store = await Store.load(SYNC_META_STORE);
+  const store = await getMetaStore();
   await store.set(key, value);
   await store.save();
 }
@@ -118,6 +128,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const en = await getMeta<boolean>(KEY_ENABLED, false);
       const lp = await getMeta<string | null>(KEY_LAST_PULL_AT, null);
       setEnabled(en);
+      setSyncActive(en);
       setLastPullAt(lp);
       setPendingCount(await queueSize());
       setDeadLetterCount((await getDeadLetters()).length);
@@ -344,6 +355,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const enableSync = useCallback(async () => {
     await setMeta(KEY_ENABLED, true);
     setEnabled(true);
+    setSyncActive(true);
     setStatus("idle");
 
     // Legacy migration : importer settings.snippets / settings.dictionary si présents
@@ -449,6 +461,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
     await setMeta(KEY_ENABLED, false);
     setEnabled(false);
+    setSyncActive(false);
     setStatus("disabled");
   }, []);
 
