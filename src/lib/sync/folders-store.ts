@@ -61,6 +61,22 @@ export async function deleteFolderSynced(id: string): Promise<void> {
 }
 
 /**
+ * Gated enqueue of a folder upsert, used by the reorder path in `useFolders`.
+ * Mirrors `notes-store.pushNoteUpdate`: the caller has already written to disk
+ * via Rust; this only ships the new state to the cloud when sync is active for
+ * the running profile. NEVER throws — queue failures are swallowed.
+ */
+export async function pushFolderUpsert(folder: LocalFolderMeta): Promise<void> {
+  try {
+    if (isSyncActive()) {
+      await enqueue({ kind: "folder-upsert", folder: mapFolderToCloud(folder) });
+    }
+  } catch (e) {
+    console.warn("[folders-store] enqueue failed for push-upsert", e);
+  }
+}
+
+/**
  * Applies a remote folder row after LWW merge.
  *
  * Reads the full local folder list, runs `mergeFolderLWW` on the matching id

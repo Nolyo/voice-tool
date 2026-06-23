@@ -4,9 +4,8 @@ import {
   createFolderSynced,
   renameFolderSynced,
   deleteFolderSynced,
+  pushFolderUpsert,
 } from '@/lib/sync/folders-store';
-import { enqueue } from '@/lib/sync/queue';
-import { mapFolderToCloud } from '@/lib/sync/mapping';
 import type { LocalFolderMeta } from '@/lib/sync/types';
 
 export interface FolderMeta {
@@ -74,11 +73,7 @@ export function useFolders() {
       for (const folderId of ids) {
         const folder = persisted.find(f => f.id === folderId);
         if (!folder) continue;
-        try {
-          await enqueue({ kind: 'folder-upsert', folder: mapFolderToCloud(folder) });
-        } catch (e) {
-          console.warn('[useFolders] enqueue failed for reorder', folderId, e);
-        }
+        await pushFolderUpsert(folder);
       }
     } catch (error) {
       console.error('Failed to reorder folders:', error);

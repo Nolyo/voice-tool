@@ -40,6 +40,7 @@ import {
   renameFolderSynced,
   deleteFolderSynced,
   applyRemoteFolder,
+  pushFolderUpsert,
 } from "./folders-store";
 
 function makeFolder(partial: Partial<LocalFolderMeta> = {}): LocalFolderMeta {
@@ -164,6 +165,27 @@ describe("deleteFolderSynced", () => {
     invokeHandlers["delete_folder"] = () => undefined;
     enqueueMock.mockRejectedValueOnce(new Error("queue offline"));
     await expect(deleteFolderSynced("fld-4")).resolves.toBeUndefined();
+  });
+});
+
+describe("pushFolderUpsert", () => {
+  it("does NOT call enqueueMock when sync gate is inactive", async () => {
+    gateActive = false;
+    enqueueMock.mockClear();
+    await pushFolderUpsert(makeFolder({ id: "push-gated", name: "Gated Push" }));
+    expect(enqueueMock).not.toHaveBeenCalled();
+    gateActive = true; // restore
+  });
+
+  it("DOES call enqueueMock exactly once when sync gate is active", async () => {
+    gateActive = true;
+    enqueueMock.mockClear();
+    const folder = makeFolder({ id: "push-active", name: "Active Push", order: 3 });
+    await pushFolderUpsert(folder);
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
+    const op = enqueueMock.mock.calls[0][0];
+    if (op.kind !== "folder-upsert") throw new Error("expected folder-upsert");
+    expect(op.folder.id).toBe("push-active");
   });
 });
 
