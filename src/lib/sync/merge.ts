@@ -67,6 +67,21 @@ export function mergeSettingsLWW(
   return { settings: local, action: "push-local" };
 }
 
+/** Whether a pulled cloud-settings row should overwrite local state.
+ *
+ *  Even when LWW resolves to `apply-cloud`, a still-queued local settings push
+ *  means the user just edited settings on THIS device and the change hasn't
+ *  reached the server yet. Applying the (now-stale) cloud value would revert
+ *  that edit — the "cloud → local in a microsecond" lost-update. In that case we
+ *  keep local and let the pending push win.
+ */
+export function shouldApplyCloudSettings(
+  action: SettingsMergeAction,
+  hasPendingLocalSettingsPush: boolean
+): boolean {
+  return action === "apply-cloud" && !hasPendingLocalSettingsPush;
+}
+
 /** LWW merge for a single note (meta + content).
  *  - `local === null` → adopt remote unconditionally.
  *  - Tied or remote-newer timestamps → remote wins (deterministic).
