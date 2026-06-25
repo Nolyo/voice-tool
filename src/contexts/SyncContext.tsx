@@ -51,12 +51,14 @@ import {
 import { mergeSettingsLWW, shouldApplyCloudSettings } from "@/lib/sync/merge";
 import { computeNextPullCursor } from "@/lib/sync/pull-cursor";
 import { setSyncActive } from "@/lib/sync/sync-gate";
+import { ensureCloudProfileId } from "@/lib/sync/cloud-profile";
 import type { AppSettings } from "@/lib/settings";
 import type { SyncOperation, SyncState, SyncStatus } from "@/lib/sync/types";
 
 const KEY_ENABLED = "enabled";
 const KEY_LAST_PULL_AT = "last_pull_at";
 const KEY_LAST_PUSHED_SETTINGS_AT = "last_pushed_settings_at";
+const KEY_CLOUD_PROFILE_ID = "cloud_profile_id";
 const DEBOUNCE_PUSH_MS = 500;
 const FOCUS_PULL_IDLE_MS = 5 * 60 * 1000;
 
@@ -152,6 +154,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     setStatus("syncing");
     try {
       const deviceId = await getDeviceId();
+      const { id: cloudProfileId } = await ensureCloudProfileId(getMeta, setMeta);
       let sawError = false;
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -160,7 +163,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         const pending = await peekAll();
         const batch = pending.slice(0, 50);
         const ops = batch.map((e) => e.operation);
-        const resp = await pushOperations(ops, deviceId);
+        const resp = await pushOperations(ops, deviceId, cloudProfileId);
         if (!resp.ok) {
           // Whole-batch failure (network, 5xx, 413 quota)
           await markRetry(ready.id, resp.error ?? "push failed");
@@ -236,7 +239,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const since = opts?.forceFull
         ? null
         : await getMeta<string | null>(KEY_LAST_PULL_AT, null);
-      const result = await pullAll(since);
+      const cloudProfileId = await getMeta<string | null>(KEY_CLOUD_PROFILE_ID, null);
+      if (!cloudProfileId) {
+        // No cloud partition associated with this profile yet: nothing to pull.
+        setStatus("idle");
+        return;
+      }
+      const result = await pullAll(since, cloudProfileId);
 
       // Settings : LWW → écrire la diff syncable dans le SettingsContext
       if (result.settings) {
@@ -376,6 +385,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     setSyncActive(true);
     setStatus("idle");
 
+    const { id: cloudProfileId, name: cloudProfileName } = await ensureCloudProfileId(
+      getMeta,
+      setMeta
+    );
+
     // Legacy migration : importer settings.snippets / settings.dictionary si présents
     try {
       const current = settingsRef.current;
@@ -396,6 +410,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     try {
       const deviceId = await getDeviceId();
       const ops: SyncOperation[] = [];
+      ops.push({
+        kind: "profile-upsert",
+        profile: {
+          id: cloudProfileId,
+          name: cloudProfileName,
+          updated_at: new Date().toISOString(),
+          deleted_at: null,
+        },
+      });
       ops.push({
         kind: "settings-upsert",
         data: extractCloudSettings(settingsRef.current),
@@ -447,7 +470,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         let lastServerTime: string | undefined;
         for (let i = 0; i < ops.length; i += CHUNK) {
           const chunk = ops.slice(i, i + CHUNK);
-          const resp = await pushOperations(chunk, deviceId);
+          const resp = await pushOperations(chunk, deviceId, cloudProfileId);
           if (!resp.ok) {
             flog(
               `[sync] initial push chunk ${Math.floor(i / CHUNK)} failed: ${

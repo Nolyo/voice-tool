@@ -64,6 +64,7 @@ function makeCloud(partial: Partial<CloudUserNoteRow> = {}): CloudUserNoteRow {
   return {
     id: "11111111-1111-4111-8111-111111111111",
     user_id: "22222222-2222-4222-8222-222222222222",
+    profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     title: "Cloud Title",
     content_html: "<p>cloud</p>",
     folder_id: null,

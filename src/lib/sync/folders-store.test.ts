@@ -58,6 +58,7 @@ function makeCloudFolder(partial: Partial<CloudUserFolderRow> = {}): CloudUserFo
   return {
     id: "55555555-5555-4555-8555-555555555555",
     user_id: "22222222-2222-4222-8222-222222222222",
+    profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     name: "Cloud Folder",
     order: 0,
     created_at: "2026-05-19T10:00:00Z",

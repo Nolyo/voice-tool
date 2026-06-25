@@ -34,6 +34,7 @@ function cloudSnippet(partial: Partial<CloudSnippetRow>): CloudSnippetRow {
   return {
     id: "11111111-1111-4111-8111-111111111111",
     user_id: "22222222-2222-4222-8222-222222222222",
+    profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     label: "a",
     content: "A",
     shortcut: null,
@@ -80,6 +81,7 @@ describe("merge LWW settings", () => {
   it("cloud présent et pas de lastPushedAt → apply-cloud", () => {
     const cloud: CloudUserSettingsRow = {
       user_id: "22222222-2222-4222-8222-222222222222",
+      profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       data: {
         ui: { theme: "light", language: "en" },
         hotkeys: { toggle: "Ctrl+F5", push_to_talk: "Ctrl+F6", open_window: "Ctrl+Alt+P" },
@@ -98,6 +100,7 @@ describe("merge LWW settings", () => {
   it("local plus récent que cloud → push-local", () => {
     const cloud: CloudUserSettingsRow = {
       user_id: "22222222-2222-4222-8222-222222222222",
+      profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       data: {
         ui: { theme: "light", language: "en" },
         hotkeys: { toggle: "Ctrl+F5", push_to_talk: "Ctrl+F6", open_window: "Ctrl+Alt+P" },
@@ -156,6 +159,7 @@ function cloudNote(partial: Partial<CloudUserNoteRow>): CloudUserNoteRow {
   return {
     id: "33333333-3333-4333-8333-333333333333",
     user_id: "22222222-2222-4222-8222-222222222222",
+    profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     title: "cloud title",
     content_html: "<p>cloud</p>",
     folder_id: null,
@@ -278,6 +282,7 @@ function cloudFolder(partial: Partial<CloudUserFolderRow>): CloudUserFolderRow {
   return {
     id: "55555555-5555-4555-8555-555555555555",
     user_id: "22222222-2222-4222-8222-222222222222",
+    profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     name: "cloud folder",
     order: 0,
     created_at: "2026-01-01T00:00:00Z",

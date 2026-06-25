@@ -15,7 +15,6 @@ import {
   CloudSnippetRowSchema,
   CloudUserNoteRowSchema,
   CloudUserFolderRowSchema,
-  CloudUserProfileRowSchema,
   PushResponseSchema,
 } from "./schemas";
 
