@@ -115,10 +115,14 @@ function authFail(error = "invalid token", status = 401) {
   };
 }
 
-function postJson(body: unknown, headers: Record<string, string> = {}) {
+const DEFAULT_PROFILE_ID = "10000000-0000-0000-0000-000000000001";
+
+function postJson(body: Record<string, unknown>, headers: Record<string, string> = {}) {
+  // Inject profile_id when not explicitly provided — PushBodySchema requires it since A3.
+  const enriched = "profile_id" in body ? body : { profile_id: DEFAULT_PROFILE_ID, ...body };
   return new Request(ENDPOINT, {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(enriched),
     headers,
   });
 }
@@ -195,7 +199,7 @@ Deno.test("settings-upsert: posts to user_settings with userId + device_id", asy
   assertEquals(upserts[0].table, "user_settings");
   assertEquals(upserts[0].record.user_id, "user-42");
   assertEquals(upserts[0].record.updated_by_device, "dev-A");
-  assertEquals(upserts[0].options, { onConflict: "user_id" });
+  assertEquals(upserts[0].options, { onConflict: "user_id,profile_id" });
 });
 
 // Regression : avant 2026-05-20, le enum provider du schema serveur n'incluait
@@ -233,7 +237,7 @@ Deno.test("dictionary-upsert: clears deleted_at on revival", async () => {
   assertEquals(upserts[0].table, "user_dictionary_words");
   assertEquals(upserts[0].record.word, "hello");
   assertEquals(upserts[0].record.deleted_at, null);
-  assertEquals(upserts[0].options, { onConflict: "user_id,word" });
+  assertEquals(upserts[0].options, { onConflict: "user_id,profile_id,word" });
 });
 
 Deno.test("dictionary-delete: soft-deletes via upsert with deleted_at set", async () => {

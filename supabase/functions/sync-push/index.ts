@@ -62,7 +62,7 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
   if (!parsed.success) {
     return json(req, { error: "invalid body", details: parsed.error.flatten() }, 400);
   }
-  const { operations, device_id } = parsed.data;
+  const { operations, device_id, profile_id } = parsed.data;
 
   const { userId, client } = auth;
   const nowIso = new Date().toISOString();
@@ -78,11 +78,12 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
             .upsert(
               {
                 user_id: userId,
+                profile_id,
                 data: op.data,
                 updated_by_device: device_id,
                 updated_at: nowIso,
               },
-              { onConflict: "user_id" }
+              { onConflict: "user_id,profile_id" }
             );
           if (error) throw error;
           break;
@@ -93,11 +94,12 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
             .upsert(
               {
                 user_id: userId,
+                profile_id,
                 word: op.word,
                 deleted_at: null,
                 updated_at: nowIso,
               },
-              { onConflict: "user_id,word" }
+              { onConflict: "user_id,profile_id,word" }
             );
           if (error) throw error;
           break;
@@ -109,11 +111,12 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
             .upsert(
               {
                 user_id: userId,
+                profile_id,
                 word: op.word,
                 deleted_at: nowIso,
                 updated_at: nowIso,
               },
-              { onConflict: "user_id,word" }
+              { onConflict: "user_id,profile_id,word" }
             );
           if (error) throw error;
           break;
@@ -123,6 +126,7 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
             {
               id: op.snippet.id,
               user_id: userId,
+              profile_id,
               label: op.snippet.label,
               content: op.snippet.content,
               shortcut: op.snippet.shortcut,
@@ -150,6 +154,7 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
             {
               id: op.note.id,
               user_id: userId,
+              profile_id,
               title: op.note.title,
               content_html: op.note.content_html,
               folder_id: op.note.folder_id,
@@ -177,6 +182,7 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
             {
               id: op.folder.id,
               user_id: userId,
+              profile_id,
               name: op.folder.name,
               order: op.folder.order,
               deleted_at: null,
@@ -190,6 +196,29 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
         case "folder-delete": {
           const { error } = await client
             .from("user_folders")
+            .update({ deleted_at: nowIso, updated_at: nowIso })
+            .eq("id", op.id)
+            .eq("user_id", userId);
+          if (error) throw error;
+          break;
+        }
+        case "profile-upsert": {
+          const { error } = await client.from("user_profiles").upsert(
+            {
+              id: op.profile.id,
+              user_id: userId,
+              name: op.profile.name,
+              deleted_at: null,
+              updated_at: nowIso,
+            },
+            { onConflict: "id" },
+          );
+          if (error) throw error;
+          break;
+        }
+        case "profile-delete": {
+          const { error } = await client
+            .from("user_profiles")
             .update({ deleted_at: nowIso, updated_at: nowIso })
             .eq("id", op.id)
             .eq("user_id", userId);
