@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { mergeSnippetLWW, mergeSettingsLWW, mergeNoteLWW, mergeFolderLWW } from "./merge";
+import {
+  mergeSnippetLWW,
+  mergeSettingsLWW,
+  mergeNoteLWW,
+  mergeFolderLWW,
+  shouldApplyCloudSettings,
+} from "./merge";
 import type {
   LocalSnippet,
   CloudSnippetRow,
@@ -110,6 +116,27 @@ describe("merge LWW settings", () => {
   it("cloud null → push-local", () => {
     const merged = mergeSettingsLWW(DEFAULT_SETTINGS.settings, null, null);
     expect(merged.action).toBe("push-local");
+  });
+});
+
+describe("shouldApplyCloudSettings", () => {
+  it("apply-cloud + no pending local push → apply", () => {
+    expect(shouldApplyCloudSettings("apply-cloud", false)).toBe(true);
+  });
+
+  it("apply-cloud BUT a local settings push is still queued → do NOT apply", () => {
+    // The user just toggled a setting on this device; the push hasn't reached
+    // the server yet. Applying the (stale) cloud value here reverts the edit.
+    expect(shouldApplyCloudSettings("apply-cloud", true)).toBe(false);
+  });
+
+  it("push-local action → never apply cloud regardless of queue", () => {
+    expect(shouldApplyCloudSettings("push-local", false)).toBe(false);
+    expect(shouldApplyCloudSettings("push-local", true)).toBe(false);
+  });
+
+  it("no-op action → never apply cloud", () => {
+    expect(shouldApplyCloudSettings("no-op", false)).toBe(false);
   });
 });
 

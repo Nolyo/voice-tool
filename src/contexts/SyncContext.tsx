@@ -48,7 +48,8 @@ import {
   applyRemoteWord,
   migrateLegacyDictionaryOnce,
 } from "@/lib/sync/dictionary-store";
-import { mergeSettingsLWW } from "@/lib/sync/merge";
+import { mergeSettingsLWW, shouldApplyCloudSettings } from "@/lib/sync/merge";
+import { computeNextPullCursor } from "@/lib/sync/pull-cursor";
 import { setSyncActive } from "@/lib/sync/sync-gate";
 import type { AppSettings } from "@/lib/settings";
 import type { SyncOperation, SyncState, SyncStatus } from "@/lib/sync/types";
@@ -242,7 +243,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           lastPushedAt,
           result.settings
         );
-        if (merged.action === "apply-cloud") {
+        // A queued local settings push means the user just edited settings on
+        // this device — don't let the pulled (stale) cloud value revert it.
+        const pendingOps = await peekAll();
+        const settingsPushPending = pendingOps.some(
+          (e) => e.operation.kind === "settings-upsert"
+        );
+        if (shouldApplyCloudSettings(merged.action, settingsPushPending)) {
           await updateSettings({
             theme: merged.settings.theme,
             ui_language: merged.settings.ui_language,
@@ -340,8 +347,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Cursor for the next incremental pull MUST come from server `updated_at`
+      // values, never the client wall-clock — a client clock ahead of the server
+      // would push the cursor past rows written on another device and hide them
+      // permanently. Display timestamps below stay wall-clock (cosmetic only).
+      const nextCursor = computeNextPullCursor(since, result);
+      await setMeta(KEY_LAST_PULL_AT, nextCursor);
       const nowIso = new Date().toISOString();
-      await setMeta(KEY_LAST_PULL_AT, nowIso);
       setLastPullAt(nowIso);
       setLastSyncAt(nowIso);
       setStatus("idle");

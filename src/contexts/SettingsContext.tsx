@@ -257,14 +257,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   /**
    * Update a specific setting value
    */
-  const updateSetting = async <K extends keyof AppSettings["settings"]>(
+  const updateSetting = useCallback(async <K extends keyof AppSettings["settings"]>(
     key: K,
     value: AppSettings["settings"][K]
   ) => {
     try {
       const storeInstance = await getStore();
       const current = await storeInstance.get<AppSettings>("settings");
-      const base = current ? mergeSettings(current) : settings;
+      const base = current ? mergeSettings(current) : settingsRef.current;
 
       const newSettings: AppSettings = {
         ...base,
@@ -325,18 +325,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Failed to save setting:", error);
     }
-  };
+  }, [fireObservers]);
 
   /**
    * Update multiple settings at once
    */
-  const updateSettings = async (
+  const updateSettings = useCallback(async (
     updates: Partial<AppSettings["settings"]>
   ) => {
     try {
       const storeInstance = await getStore();
       const current = await storeInstance.get<AppSettings>("settings");
-      const base = current ? mergeSettings(current) : settings;
+      const base = current ? mergeSettings(current) : settingsRef.current;
 
       const newSettings: AppSettings = {
         ...base,
@@ -354,12 +354,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Failed to save settings:", error);
     }
-  };
+  }, [fireObservers]);
 
   /**
    * Reset all settings to defaults
    */
-  const resetSettings = async () => {
+  const resetSettings = useCallback(async () => {
     const newSettings = {
       ...DEFAULT_SETTINGS,
       created: new Date().toISOString().replace("T", " ").substring(0, 19),
@@ -376,7 +376,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Failed to reset settings:", error);
     }
-  };
+  }, [fireObservers]);
 
   const value: SettingsContextType = {
     settings: settings.settings,
