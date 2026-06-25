@@ -480,6 +480,13 @@
     "updater": {
       "title": "Mises à jour",
       "subtitle": "Vérification et installation des nouvelles versions"
+    },
+    "sharedLinks": {
+      "heading": "Mes liens partagés",
+      "empty": "Aucun lien actif.",
+      "copy": "Copier",
+      "revoke": "Révoquer",
+      "loading": "Chargement…"
     }
   },
   "hotkeyInput": {

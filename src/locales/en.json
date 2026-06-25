@@ -480,6 +480,13 @@
     "updater": {
       "title": "Updates",
       "subtitle": "Check and install new versions"
+    },
+    "sharedLinks": {
+      "heading": "My shared links",
+      "empty": "No active links.",
+      "copy": "Copy",
+      "revoke": "Revoke",
+      "loading": "Loading…"
     }
   },
   "hotkeyInput": {
