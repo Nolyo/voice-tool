@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Share2 } from "lucide-react";
 import type { NoteMeta } from "@/hooks/useNotes";
@@ -14,6 +14,32 @@ export function ShareNoteButton({ note }: { note: NoteMeta | null }) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Ref for the copy-feedback timeout — cleared on unmount to prevent
+  // state-update-after-unmount warnings.
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Ref for the container element — used for outside-click detection.
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Clear pending copy timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
+  // Close the popover when the user clicks outside the container.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
   if (!note) return null;
   const active = activeShareFor(note.id);
 
@@ -23,9 +49,14 @@ export function ShareNoteButton({ note }: { note: NoteMeta | null }) {
   };
   const onCopy = async () => {
     if (!active) return;
-    await navigator.clipboard.writeText(shareUrl(active.slug));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(shareUrl(active.slug));
+      setCopied(true);
+      if (copyTimerRef.current !== null) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard write failed (e.g. permission denied) — silently ignore.
+    }
   };
   const onStop = async () => {
     if (!active) return;
@@ -34,7 +65,7 @@ export function ShareNoteButton({ note }: { note: NoteMeta | null }) {
   };
 
   return (
-    <div className="note-share">
+    <div className="note-share" ref={containerRef}>
       <button
         type="button"
         className="note-meta-item note-share-trigger"
