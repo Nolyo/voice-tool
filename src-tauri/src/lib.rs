@@ -163,6 +163,8 @@ pub fn run() {
             commands::profiles::get_active_profile_notes_sidebar_path,
             commands::profiles::get_active_profile_sync_meta_path,
             commands::profiles::get_active_profile_sync_queue_path,
+            commands::profiles::get_active_profile_snippets_path,
+            commands::profiles::get_active_profile_dictionary_path,
             commands::profiles::create_profile,
             commands::profiles::rename_profile,
             commands::profiles::delete_profile,
@@ -217,6 +219,9 @@ pub fn run() {
             }
             if let Err(e) = profiles::cleanup_legacy_root_sync_stores(app.handle()) {
                 tracing::warn!("Legacy root sync store cleanup failed: {}", e);
+            }
+            if let Err(e) = profiles::migrate_global_snippets_dict_to_default(app.handle()) {
+                tracing::warn!("Global snippets/dict migration failed: {}", e);
             }
 
             // Migrations

@@ -87,6 +87,16 @@ pub fn notes_sidebar_store_path(app: &AppHandle) -> String {
     format!("profiles/{}/notes-sidebar.json", id)
 }
 
+/// Return the snippets store path for the active profile (relative to app_data_dir)
+pub fn snippets_store_path(app: &AppHandle) -> String {
+    profile_store_path(&get_active_id(app), "sync-snippets.json")
+}
+
+/// Return the dictionary store path for the active profile (relative to app_data_dir)
+pub fn dictionary_store_path(app: &AppHandle) -> String {
+    profile_store_path(&get_active_id(app), "sync-dictionary.json")
+}
+
 fn load_manifest_from_path(path: &PathBuf) -> Result<ProfilesManifest> {
     let content = fs::read_to_string(path)
         .with_context(|| format!("Failed to read profiles.json: {}", path.display()))?;
@@ -239,6 +249,38 @@ pub fn cleanup_legacy_root_sync_stores(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
+/// Move the legacy GLOBAL snippets/dictionary stores from app_data root into
+/// profiles/default/. Multi-profil sync makes these per-profile (spec 2026-06-25).
+/// Idempotent: no-op if root files are absent. Preserves local content.
+pub fn migrate_global_snippets_dict_to_default_in(
+    app_data: &std::path::Path,
+) -> std::io::Result<()> {
+    let default_dir = app_data.join("profiles").join("default");
+    for name in ["sync-snippets.json", "sync-dictionary.json"] {
+        let src = app_data.join(name);
+        if src.exists() {
+            fs::create_dir_all(&default_dir)?;
+            let dst = default_dir.join(name);
+            if !dst.exists() {
+                match fs::rename(&src, &dst) {
+                    Ok(_) => tracing::info!("Moved global {} -> profiles/default/", name),
+                    Err(e) => tracing::warn!("Could not move {} ({}), skipping", name, e),
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn migrate_global_snippets_dict_to_default(app: &AppHandle) -> Result<()> {
+    let app_data = app
+        .path()
+        .app_data_dir()
+        .context("Could not resolve app data directory")?;
+    migrate_global_snippets_dict_to_default_in(&app_data)?;
+    Ok(())
+}
+
 // --- ID / name helpers ---
 
 pub fn name_to_id(name: &str) -> String {
@@ -290,6 +332,41 @@ mod tests {
     use super::profile_store_path;
     use super::cleanup_legacy_root_sync_stores_in;
     use std::fs;
+
+    #[test]
+    fn profile_store_path_handles_snippets_and_dictionary() {
+        assert_eq!(
+            profile_store_path("perso", "sync-snippets.json"),
+            "profiles/perso/sync-snippets.json"
+        );
+        assert_eq!(
+            profile_store_path("perso", "sync-dictionary.json"),
+            "profiles/perso/sync-dictionary.json"
+        );
+    }
+
+    #[test]
+    fn migrate_moves_root_snippets_dict_into_default() {
+        let dir = std::env::temp_dir().join(format!(
+            "lexena_snipmig_test_{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("profiles").join("default")).unwrap();
+        fs::write(dir.join("sync-snippets.json"), "{\"snippets\":[]}").unwrap();
+        fs::write(dir.join("sync-dictionary.json"), "{\"words\":[]}").unwrap();
+
+        super::migrate_global_snippets_dict_to_default_in(&dir).unwrap();
+
+        assert!(!dir.join("sync-snippets.json").exists(), "root snippets moved");
+        assert!(dir.join("profiles/default/sync-snippets.json").exists(), "snippets in default");
+        assert!(!dir.join("sync-dictionary.json").exists(), "root dict moved");
+        assert!(dir.join("profiles/default/sync-dictionary.json").exists(), "dict in default");
+
+        // Idempotent
+        super::migrate_global_snippets_dict_to_default_in(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn profile_store_path_joins_id_and_filename() {
