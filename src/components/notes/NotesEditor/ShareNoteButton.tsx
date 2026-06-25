@@ -13,6 +13,7 @@ export function ShareNoteButton({ note }: { note: NoteMeta | null }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState(false);
 
   // Ref for the copy-feedback timeout — cleared on unmount to prevent
   // state-update-after-unmount warnings.
@@ -45,7 +46,14 @@ export function ShareNoteButton({ note }: { note: NoteMeta | null }) {
 
   const onCreate = async () => {
     setBusy(true);
-    try { await share(note.id, note.title); } finally { setBusy(false); }
+    try {
+      setError(false);
+      await share(note.id, note.title);
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
   };
   const onCopy = async () => {
     if (!active) return;
@@ -70,7 +78,7 @@ export function ShareNoteButton({ note }: { note: NoteMeta | null }) {
         type="button"
         className="note-meta-item note-share-trigger"
         aria-label={t("notes.share.button", { defaultValue: "Partager" })}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { setOpen((v) => { if (!v) setError(false); return !v; }); }}
       >
         <Share2 className="w-3 h-3" />
         <span>{t("notes.share.button", { defaultValue: "Partager" })}</span>
@@ -87,11 +95,18 @@ export function ShareNoteButton({ note }: { note: NoteMeta | null }) {
           )}
 
           {enabled && !active && (
-            <button type="button" className="note-share-action" disabled={busy} onClick={onCreate}>
-              {busy
-                ? t("notes.share.creating", { defaultValue: "Création…" })
-                : t("notes.share.create", { defaultValue: "Créer un lien public" })}
-            </button>
+            <>
+              <button type="button" className="note-share-action" disabled={busy} onClick={onCreate}>
+                {busy
+                  ? t("notes.share.creating", { defaultValue: "Création…" })
+                  : t("notes.share.create", { defaultValue: "Créer un lien public" })}
+              </button>
+              {error && (
+                <p className="note-share-warn">
+                  {t("notes.share.error", { defaultValue: "Le partage a échoué. Réessaie dans un instant." })}
+                </p>
+              )}
+            </>
           )}
 
           {enabled && active && (

@@ -483,6 +483,7 @@
     },
     "sharedLinks": {
       "heading": "My shared links",
+      "desc": "Active public links for your notes.",
       "empty": "No active links.",
       "copy": "Copy",
       "revoke": "Revoke",
@@ -676,7 +677,7 @@
       "copy": "Copy link",
       "copied": "Link copied",
       "stop": "Stop sharing",
-      "stopped": "Sharing stopped"
+      "error": "Sharing failed. Please try again in a moment."
     }
   },
   "mini": {

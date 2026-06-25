@@ -125,7 +125,7 @@ post-traction si des besoins de confidentialité renforcée remontent.
 
 | Vecteur | Contrôle |
 |---|---|
-| Énumération de slugs | Slug base62 16 caractères ~95 bits d'entropie ; rate-limit IP sur `share-view` |
+| Énumération de slugs | Slug base62 16 caractères ~95 bits d'entropie — l'entropie seule rend l'énumération impraticable |
 | XSS via contenu note | DOMPurify + hook `afterSanitizeAttributes` + CSP stricte (`script-src 'self'`) |
 | Fuite de données cross-user | Triple filtre `note_id + user_id + deleted_at IS NULL` en service role ; RLS bloque l'accès owner direct à `note_shares` d'un autre user |
 | Slug révoqué réactivé | Impossibilité structurelle : nouveau slug = nouvelle ligne ; l'ancienne `revoked_at` n'est jamais mise à null |
@@ -143,6 +143,7 @@ post-traction si des besoins de confidentialité renforcée remontent.
 - **F6** : Snapshots figés / historique de versions du lien partagé.
 - **F7** : Export fichier autonome (HTML/PDF hors-ligne).
 - **F8** : Cache CDN court (≤ 60s) pour les réponses `share-view` — à négocier avec l'infra Cloudflare.
+- **F9** : Rate-limit IP sur `share-view` (défense en profondeur). L'entropie de ~95 bits du slug rend l'énumération impraticable sans rate-limit ; ce contrôle est donc déféré post-traction comme couche de sécurité additionnelle et non comme contrôle principal.
 
 ---
 

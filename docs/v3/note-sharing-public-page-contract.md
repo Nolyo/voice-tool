@@ -52,13 +52,18 @@ En-têtes obligatoires :
 
 ## 3. CORS
 
-L'Edge Function autorise :
+L'Edge Function autorise exactement les origines suivantes (définies dans
+`supabase/functions/_shared/cors-public.ts`) :
 
-- `https://lexena.app` (production)
-- `http://localhost:*` (développement local)
+- `https://lexena.app`
+- `https://www.lexena.app`
+- `http://localhost:5173`
+- `http://localhost:1420`
 
-Aucun autre domaine. Si la page publique est hébergée sous un sous-domaine différent,
-contacter l'équipe `voice-tool` pour ajuster la liste.
+Aucun autre domaine ni port n'est autorisé. Un serveur de dev marketing-site
+tournant sur un port différent (ex. `:3000`) doit être ajouté dans `cors-public.ts`
+avant de tester localement. Si la page publique est hébergée sous un autre domaine
+ou sous-domaine, contacter l'équipe `voice-tool` pour ajuster la liste.
 
 ---
 
