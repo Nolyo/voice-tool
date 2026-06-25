@@ -26,6 +26,7 @@ export interface CloudSettingsData {
 // Rows côté cloud
 export interface CloudUserSettingsRow {
   user_id: string;
+  profile_id: string;
   data: CloudSettingsData;
   schema_version: number;
   updated_at: string; // ISO
@@ -34,6 +35,7 @@ export interface CloudUserSettingsRow {
 
 export interface CloudDictionaryWordRow {
   user_id: string;
+  profile_id: string;
   word: string;
   created_at: string;
   updated_at: string;
@@ -43,6 +45,7 @@ export interface CloudDictionaryWordRow {
 export interface CloudSnippetRow {
   id: string; // uuid
   user_id: string;
+  profile_id: string;
   label: string;
   content: string;
   shortcut: string | null;
@@ -78,7 +81,9 @@ export type SyncOperation =
   | { kind: "note-upsert"; note: NotePayload }
   | { kind: "note-delete"; id: string }
   | { kind: "folder-upsert"; folder: FolderPayload }
-  | { kind: "folder-delete"; id: string };
+  | { kind: "folder-delete"; id: string }
+  | { kind: "profile-upsert"; profile: ProfilePayload }
+  | { kind: "profile-delete"; id: string };
 
 export interface SyncQueueEntry {
   id: string; // uuid local de l'entrée queue (idempotence côté client)
@@ -129,6 +134,22 @@ export interface FolderPayload {
   deleted_at: string | null;
 }
 
+export interface ProfilePayload {
+  id: string;
+  name: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface CloudUserProfileRow {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
 /** Local NoteMeta shape (matches Rust NoteMeta camelCase serialization). */
 export interface LocalNoteMeta {
   id: string;
@@ -153,6 +174,7 @@ export interface LocalFolderMeta {
 export interface CloudUserNoteRow {
   id: string;
   user_id: string;
+  profile_id: string;
   title: string;
   content_html: string;
   folder_id: string | null;
@@ -166,6 +188,7 @@ export interface CloudUserNoteRow {
 export interface CloudUserFolderRow {
   id: string;
   user_id: string;
+  profile_id: string;
   name: string;
   order: number;
   created_at: string;
