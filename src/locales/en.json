@@ -480,6 +480,14 @@
     "updater": {
       "title": "Updates",
       "subtitle": "Check and install new versions"
+    },
+    "sharedLinks": {
+      "heading": "My shared links",
+      "desc": "Active public links for your notes.",
+      "empty": "No active links.",
+      "copy": "Copy",
+      "revoke": "Revoke",
+      "loading": "Loading…"
     }
   },
   "hotkeyInput": {
@@ -658,6 +666,18 @@
       "daysAgo_one": "{{count}}d ago",
       "daysAgo_other": "{{count}}d ago",
       "wordsReadingTime": "{{count}} words · {{minutes}} min read"
+    },
+    "share": {
+      "button": "Share",
+      "title": "Share this tutorial",
+      "syncRequired": "Enable sync to share a note.",
+      "create": "Create a public link",
+      "creating": "Creating…",
+      "liveHint": "The link always shows the latest synced version.",
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "stop": "Stop sharing",
+      "error": "Sharing failed. Please try again in a moment."
     }
   },
   "mini": {

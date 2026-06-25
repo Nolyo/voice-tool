@@ -480,6 +480,14 @@
     "updater": {
       "title": "Mises à jour",
       "subtitle": "Vérification et installation des nouvelles versions"
+    },
+    "sharedLinks": {
+      "heading": "Mes liens partagés",
+      "desc": "Liens publics actifs pour vos notes.",
+      "empty": "Aucun lien actif.",
+      "copy": "Copier",
+      "revoke": "Révoquer",
+      "loading": "Chargement…"
     }
   },
   "hotkeyInput": {
@@ -658,6 +666,18 @@
       "daysAgo_one": "Il y a {{count}} j",
       "daysAgo_other": "Il y a {{count}} j",
       "wordsReadingTime": "{{count}} mots · {{minutes}} min de lecture"
+    },
+    "share": {
+      "button": "Partager",
+      "title": "Partager ce tuto",
+      "syncRequired": "Active la synchronisation pour partager une note.",
+      "create": "Créer un lien public",
+      "creating": "Création…",
+      "liveHint": "Le lien montre toujours la dernière version synchronisée.",
+      "copy": "Copier le lien",
+      "copied": "Lien copié",
+      "stop": "Arrêter le partage",
+      "error": "Le partage a échoué. Réessaie dans un instant."
     }
   },
   "mini": {

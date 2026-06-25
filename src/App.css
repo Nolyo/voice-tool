@@ -2309,3 +2309,233 @@ body.mini-window-body #root {
     transform: scaleY(0.65);
   }
 }
+
+/* ── Share note button & popover ──────────────────────────────────────────
+ * `.note-share` is the positioned ancestor for the popover; `.note-share-trigger`
+ * extends `.note-meta-item` with a hover/active state; `.note-share-popover`
+ * floats as a card above the editor content.
+ */
+.vt-app .note-share {
+  position: relative;
+}
+
+.vt-app .note-share-trigger {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  border-radius: var(--vt-radius-sm);
+  cursor: pointer;
+  color: var(--vt-fg-4);
+  font-size: 11.5px;
+  transition: background 0.12s, color 0.12s;
+}
+.vt-app .note-share-trigger:hover {
+  background: var(--vt-hover);
+  color: var(--vt-fg-2);
+}
+.vt-app .note-share-trigger:focus-visible {
+  outline: 2px solid var(--vt-accent);
+  outline-offset: 1px;
+}
+
+/* Popover card — floats above content, z-index matches other overlays (50) */
+.vt-app .note-share-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  width: 280px;
+  background: var(--vt-panel-2);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-md);
+  box-shadow:
+    0 1px 0 var(--vt-inset-highlight) inset,
+    0 10px 30px -12px rgba(0, 0, 0, 0.5),
+    0 2px 6px -2px rgba(0, 0, 0, 0.3);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: vt-adv-pop-in 120ms ease-out;
+}
+
+.vt-app .note-share-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--vt-fg);
+  margin: 0;
+}
+
+.vt-app .note-share-warn {
+  font-size: 12px;
+  color: var(--vt-warn);
+  background: var(--vt-warn-soft);
+  border: 1px solid oklch(from var(--vt-warn) l c h / 0.3);
+  border-radius: var(--vt-radius-sm);
+  padding: 8px 10px;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Full-width primary action button (create link) */
+.vt-app .note-share-action {
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--vt-accent);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.15) inset,
+    0 4px 12px -4px oklch(from var(--vt-accent) l c h / 0.5);
+  transition: filter 0.12s;
+}
+.vt-app .note-share-action:hover {
+  filter: brightness(1.08);
+}
+.vt-app .note-share-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Active share state */
+.vt-app .note-share-active {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Read-only URL field — monospace, subtle background */
+.vt-app .note-share-url {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: var(--vt-radius-sm);
+  color: var(--vt-fg-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+.vt-app .note-share-url:focus {
+  outline: none;
+  border-color: var(--vt-accent);
+  box-shadow: 0 0 0 2px oklch(from var(--vt-accent) l c h / 0.22);
+}
+
+.vt-app .note-share-hint {
+  font-size: 11px;
+  color: var(--vt-fg-4);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.vt-app .note-share-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+/* Buttons inside the active share panel inherit `.vt-btn` sizing defaults,
+ * scoped manually here so they work without the class on the element. */
+.vt-app .note-share-buttons button {
+  flex: 1;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--vt-border);
+  background: var(--vt-surface);
+  color: var(--vt-fg);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.vt-app .note-share-buttons button:hover {
+  background: var(--vt-surface-hi);
+  border-color: var(--vt-border-strong);
+}
+.vt-app .note-share-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Stop-sharing button — subtle destructive */
+.vt-app .note-share-stop {
+  color: var(--vt-fg-3) !important;
+}
+.vt-app .note-share-stop:hover {
+  border-color: oklch(from var(--vt-danger) l c h / 0.5) !important;
+  color: var(--vt-danger) !important;
+  background: oklch(from var(--vt-danger) l c h / 0.08) !important;
+}
+
+/* ── Settings → Account — shared links panel ──────────────────────────────
+ * Uses the `vt-card-sectioned` + `vt-row` card pattern (option b).
+ * Only the list rows need custom classes; outer structure matches siblings.
+ */
+.vt-app .shared-links-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vt-app .shared-links-empty {
+  font-size: 12.5px;
+  color: var(--vt-fg-3);
+  margin: 0;
+}
+
+.vt-app .shared-links-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--vt-radius-sm);
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  min-width: 0;
+}
+
+.vt-app .shared-links-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--vt-fg-2);
+}
+
+.vt-app .shared-links-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Revoke button — subtle destructive, rests on .vt-btn */
+.vt-app .shared-links-revoke {
+  color: var(--vt-fg-3);
+}
+.vt-app .shared-links-revoke:hover {
+  border-color: oklch(from var(--vt-danger) l c h / 0.5);
+  color: var(--vt-danger);
+  background: oklch(from var(--vt-danger) l c h / 0.08);
+}

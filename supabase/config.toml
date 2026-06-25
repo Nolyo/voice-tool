@@ -389,6 +389,11 @@ verify_jwt = false
 [functions.demo-transcribe]
 verify_jwt = false
 
+# Public share endpoint: the share page is viewed by people WITHOUT an account.
+# Auth is by unguessable slug + revoked_at check inside the handler (service role).
+[functions.share-view]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

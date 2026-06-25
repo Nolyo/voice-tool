@@ -4,6 +4,7 @@ import type { Editor } from "@tiptap/react";
 import { Clock, Folder } from "lucide-react";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
+import { ShareNoteButton } from "./ShareNoteButton";
 
 interface NotesEditorHeaderProps {
   note: NoteMeta | null;
@@ -104,6 +105,7 @@ export function NotesEditorHeader({ note, folder, editor, isEditorInSync }: Note
             </span>
           </>
         )}
+        <ShareNoteButton note={note} />
       </div>
 
       <div className="note-doc-divider" />
