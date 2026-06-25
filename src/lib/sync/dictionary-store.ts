@@ -1,8 +1,8 @@
 import { Store } from "@tauri-apps/plugin-store";
+import { invoke } from "@tauri-apps/api/core";
 import type { LocalDictionary } from "./types";
 import { createMutex } from "./_mutex";
 
-const STORE_FILE = "sync-dictionary.json";
 const KEY_DATA = "dictionary";
 const KEY_MIGRATED = "legacy_migrated";
 
@@ -11,7 +11,10 @@ const withLock = createMutex();
 
 function getStore() {
   if (!storePromise) {
-    storePromise = Store.load(STORE_FILE);
+    storePromise = (async () => {
+      const path = await invoke<string>("get_active_profile_dictionary_path");
+      return Store.load(path);
+    })();
   }
   return storePromise;
 }
