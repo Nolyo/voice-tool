@@ -17,7 +17,23 @@ export function useNoteShares(): UseNoteShares {
   const auth = useAuth();
   const userId = auth.status === "signed-in" ? auth.user?.id : undefined;
   const [shares, setShares] = useState<NoteShare[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(!!userId);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!userId) { setShares([]); setLoading(false); return; }
+      setLoading(true);
+      try {
+        const data = await listShares(supabase, userId);
+        if (!cancelled) setShares(data);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const refresh = useCallback(async () => {
     if (!userId) { setShares([]); setLoading(false); return; }
@@ -28,8 +44,6 @@ export function useNoteShares(): UseNoteShares {
       setLoading(false);
     }
   }, [userId]);
-
-  useEffect(() => { void refresh(); }, [refresh]);
 
   const share = useCallback(async (noteId: string, title: string): Promise<NoteShare> => {
     if (!userId) throw new Error("not signed in");
