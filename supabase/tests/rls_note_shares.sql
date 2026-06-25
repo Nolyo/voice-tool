@@ -6,14 +6,14 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000a1', 'a@test.dev'),
   ('00000000-0000-0000-0000-0000000000b2', 'b@test.dev');
 insert into public.user_notes (id, user_id, title, content_html)
-  values ('00000000-0000-0000-0000-00000000note', '00000000-0000-0000-0000-0000000000a1', 'A note', '<p>hi</p>');
+  values ('00000000-0000-0000-0000-00000000beef', '00000000-0000-0000-0000-0000000000a1', 'A note', '<p>hi</p>');
 
 -- Act as user A: can insert a share for own note.
 set local role authenticated;
 set local request.jwt.claims to '{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}';
 select lives_ok(
   $$insert into public.note_shares (slug, user_id, note_id, title_snapshot)
-    values ('aaaaaaaaaaaaaaaa', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-00000000note', 'A note')$$,
+    values ('aaaaaaaaaaaaaaaa', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-00000000beef', 'A note')$$,
   'owner can insert own share');
 
 select results_eq(
@@ -23,7 +23,7 @@ select results_eq(
 -- Partial unique: a second ACTIVE share for the same note must fail.
 select throws_ok(
   $$insert into public.note_shares (slug, user_id, note_id, title_snapshot)
-    values ('cccccccccccccccc', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-00000000note', 'A note')$$,
+    values ('cccccccccccccccc', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-00000000beef', 'A note')$$,
   '23505', null, 'only one active share per note');
 
 -- Act as user B: cannot see or mutate A's share.
@@ -48,7 +48,7 @@ select results_eq(
 -- insert rows with its own user_id.
 select throws_ok(
   $$insert into public.note_shares (slug, user_id, note_id, title_snapshot)
-    values ('dddddddddddddddd', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-00000000note', 'x')$$,
+    values ('dddddddddddddddd', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-00000000beef', 'x')$$,
   '42501', null, 'cannot insert a share owned by another user');
 
 select * from finish();
