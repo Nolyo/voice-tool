@@ -26,21 +26,23 @@ export async function handleShareView(req: Request, deps: ShareViewDeps): Promis
   const slug = slugFromRequest(req);
   if (!slug || !isValidSlug(slug)) return json(req, { error: "invalid_slug" }, 400);
 
-  const { data: share } = await deps.client
+  const { data: share, error: shareErr } = await deps.client
     .from("note_shares")
     .select("note_id,user_id")
     .eq("slug", slug)
     .is("revoked_at", null)
     .maybeSingle();
+  if (shareErr) return json(req, { error: "internal" }, 500);
   if (!share) return json(req, { error: "not_found" }, 404);
 
-  const { data: note } = await deps.client
+  const { data: note, error: noteErr } = await deps.client
     .from("user_notes")
     .select("title,content_html,updated_at")
     .eq("id", (share as { note_id: string }).note_id)
     .eq("user_id", (share as { user_id: string }).user_id)
     .is("deleted_at", null)
     .maybeSingle();
+  if (noteErr) return json(req, { error: "internal" }, 500);
   if (!note) return json(req, { error: "not_found" }, 404);
 
   const n = note as { title: string; content_html: string; updated_at: string };
