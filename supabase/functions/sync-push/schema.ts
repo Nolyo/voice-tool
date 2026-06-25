@@ -61,6 +61,14 @@ export const FolderPayloadSchema = z.object({
   deleted_at: offsetDatetime().nullable().optional(),
 });
 
+// Sub-épique sync-multi-profile (A3) : payload profil utilisateur.
+export const ProfilePayloadSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(64),
+  updated_at: offsetDatetime(),
+  deleted_at: offsetDatetime().nullable().optional(),
+});
+
 export const PushOperationSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("settings-upsert"),
@@ -98,9 +106,18 @@ export const PushOperationSchema = z.discriminatedUnion("kind", [
     kind: z.literal("folder-delete"),
     id: z.string().uuid(),
   }),
+  z.object({
+    kind: z.literal("profile-upsert"),
+    profile: ProfilePayloadSchema,
+  }),
+  z.object({
+    kind: z.literal("profile-delete"),
+    id: z.string().uuid(),
+  }),
 ]);
 
 export const PushBodySchema = z.object({
+  profile_id: z.string().uuid(),
   operations: z.array(PushOperationSchema).min(1).max(200),
   device_id: z.string().max(100),
 });
