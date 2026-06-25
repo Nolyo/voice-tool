@@ -225,11 +225,17 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     [enabled, flushQueue]
   );
 
-  const pullAndApply = useCallback(async () => {
-    if (!enabled || auth.status !== "signed-in") return;
+  const pullAndApply = useCallback(async (opts?: { forceFull?: boolean }) => {
+    // `forceFull` is used by enableSync: it bypasses the stale `enabled` closure
+    // (enableSync sets enabled=true but this callback still captured false) AND
+    // ignores any residual cursor, so activating sync always does a COMPLETE
+    // reconcile instead of an incremental pull that would miss older notes.
+    if ((!enabled && !opts?.forceFull) || auth.status !== "signed-in") return;
     setStatus("syncing");
     try {
-      const since = await getMeta<string | null>(KEY_LAST_PULL_AT, null);
+      const since = opts?.forceFull
+        ? null
+        : await getMeta<string | null>(KEY_LAST_PULL_AT, null);
       const result = await pullAll(since);
 
       // Settings : LWW → écrire la diff syncable dans le SettingsContext
@@ -379,7 +385,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       flog(`[sync] legacy migration failed: ${String(e)}`, "warn");
     }
 
-    await pullAndApply();
+    await pullAndApply({ forceFull: true });
 
     // Full push initial : settings + dico + snippets + folders + notes.
     // ORDRE CRITIQUE — folders DOIVENT précéder notes dans le tableau d'ops.
@@ -472,6 +478,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       flog(`[sync] flushPendingNoteUpdates failed on disable: ${String(e)}`, "warn");
     }
     await setMeta(KEY_ENABLED, false);
+    // Clear the incremental cursor so a later re-enable always full-reconciles
+    // (re-activation must never resume an incremental pull from a stale cursor).
+    await setMeta(KEY_LAST_PULL_AT, null);
+    setLastPullAt(null);
     setEnabled(false);
     setSyncActive(false);
     setStatus("disabled");
