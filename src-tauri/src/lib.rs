@@ -162,6 +162,7 @@ pub fn run() {
             commands::profiles::get_active_profile_notes_tabs_path,
             commands::profiles::get_active_profile_notes_sidebar_path,
             commands::profiles::get_active_profile_sync_meta_path,
+            commands::profiles::get_profile_sync_meta_path,
             commands::profiles::get_active_profile_sync_queue_path,
             commands::profiles::get_active_profile_snippets_path,
             commands::profiles::get_active_profile_dictionary_path,

@@ -15,6 +15,7 @@ import {
   CloudSnippetRowSchema,
   CloudUserNoteRowSchema,
   CloudUserFolderRowSchema,
+  CloudUserProfileRowSchema,
   PushResponseSchema,
 } from "./schemas";
 
@@ -176,6 +177,45 @@ export async function pullAll(
       profiles: 0,
     },
   };
+}
+
+/**
+ * Pull the account-wide `user_profiles` registry (all active profiles of the
+ * signed-in user, across every device). RLS scopes to `auth.uid()`, so this is
+ * NOT scoped by profile_id — it's how a fresh device discovers the profiles that
+ * already exist in the cloud. Tombstoned profiles (deleted_at) are excluded.
+ * Malformed rows are dropped (counted in `invalid`) rather than aborting.
+ */
+export async function pullProfilesRegistry(): Promise<{
+  profiles: CloudUserProfileRow[];
+  invalid: number;
+}> {
+  const userRes = await supabase.auth.getUser();
+  if (userRes.error || !userRes.data.user) {
+    throw new Error("not authenticated");
+  }
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("*")
+    .is("deleted_at", null);
+  if (error) throw error;
+
+  let invalid = 0;
+  const profiles: CloudUserProfileRow[] = [];
+  for (const row of data ?? []) {
+    const parsed = CloudUserProfileRowSchema.safeParse(row);
+    if (parsed.success) {
+      profiles.push(parsed.data as CloudUserProfileRow);
+    } else {
+      invalid++;
+      console.warn(
+        "[sync pullProfilesRegistry] malformed user_profiles row dropped",
+        row,
+        parsed.error.flatten()
+      );
+    }
+  }
+  return { profiles, invalid };
 }
 
 export interface PushResponse {
