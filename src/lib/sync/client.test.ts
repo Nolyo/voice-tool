@@ -11,7 +11,7 @@ vi.mock("@/lib/supabase", () => {
 });
 
 import { supabase } from "@/lib/supabase";
-import { pullAll, pushOperations } from "./client";
+import { pullAll, pushOperations, pullProfilesRegistry } from "./client";
 
 // Helper that builds a thenable query chain returning `resp`.
 // Supports: .select(...).eq(...).maybeSingle(), .select(...).eq(...).gt(...),
@@ -37,6 +37,7 @@ function makeQuery(resp: { data: unknown; error: unknown }) {
   const builder: Record<string, unknown> = {
     maybeSingle: () => Promise.resolve(resp),
     gt: () => thenable,
+    is: () => thenable,
     eq: () => builder,
     ...thenable,
   };
@@ -275,5 +276,45 @@ describe("sync client runtime validation", () => {
     expect(res.folders[0].name).toBe("Recipes");
     expect(res.invalid.folders).toBe(1);
     warn.mockRestore();
+  });
+
+  // ── Multi-device import : registre user_profiles (account-wide) ──────────
+  it("pullProfilesRegistry validates rows and drops malformed ones", async () => {
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      data: { user: { id: "u" } },
+      error: null,
+    } as never);
+
+    const validProfile = {
+      id: "11111111-1111-4111-8111-111111111111",
+      user_id: "22222222-2222-4222-8222-222222222222",
+      name: "Travail",
+      created_at: "2026-06-25T10:00:00Z",
+      updated_at: "2026-06-25T11:00:00Z",
+      deleted_at: null,
+    };
+    const profilesResp = {
+      data: [validProfile, { id: "nope" /* invalid */ }],
+      error: null,
+    };
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === "user_profiles") return makeQuery(profilesResp) as never;
+      return makeQuery({ data: [], error: null }) as never;
+    });
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const res = await pullProfilesRegistry();
+    expect(res.profiles).toHaveLength(1);
+    expect(res.profiles[0].name).toBe("Travail");
+    expect(res.invalid).toBe(1);
+    warn.mockRestore();
+  });
+
+  it("pullProfilesRegistry throws when not authenticated", async () => {
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      data: { user: null },
+      error: null,
+    } as never);
+    await expect(pullProfilesRegistry()).rejects.toThrow("not authenticated");
   });
 });

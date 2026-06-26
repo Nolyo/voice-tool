@@ -1074,6 +1074,13 @@
       "aal2_required": "2FA verification required to confirm deletion. Complete the MFA challenge and retry."
     },
     "multi_profile_warning": "Sync covers only your active profile (\"{{name}}\"). Your other profiles stay local to this device.",
-    "oversizedNotes_warning": "{{count}} note(s) exceed the 1 MB limit and can't be synced — they stay on this device."
+    "oversizedNotes_warning": "{{count}} note(s) exceed the 1 MB limit and can't be synced — they stay on this device.",
+    "import": {
+      "title": "Cloud profiles",
+      "desc": "Bring profiles already synced from another computer onto this device.",
+      "row_hint": "Available in your account — not on this device yet",
+      "button": "Import",
+      "importing": "Importing…"
+    }
   }
 }

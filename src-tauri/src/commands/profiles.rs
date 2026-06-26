@@ -43,6 +43,19 @@ pub fn get_active_profile_sync_meta_path(app: AppHandle) -> Result<String, Strin
     Ok(crate::profiles::sync_meta_store_path(&app))
 }
 
+/// Get the sync-meta store path for an ARBITRARY profile (for frontend Store.load).
+/// Used by multi-device import to read/write the cloud_profile_id binding of a
+/// profile other than the active one. Validates the profile exists in the
+/// manifest so callers can't address a path outside the known profiles.
+#[tauri::command]
+pub fn get_profile_sync_meta_path(app: AppHandle, id: String) -> Result<String, String> {
+    let manifest = load_manifest(&app).map_err(|e| e.to_string())?;
+    if !manifest.profiles.iter().any(|p| p.id == id) {
+        return Err(format!("Profile '{}' not found.", id));
+    }
+    Ok(crate::profiles::profile_store_path(&id, "sync-meta.json"))
+}
+
 /// Get the sync-queue store path for the active profile (for frontend Store.load)
 #[tauri::command]
 pub fn get_active_profile_sync_queue_path(app: AppHandle) -> Result<String, String> {

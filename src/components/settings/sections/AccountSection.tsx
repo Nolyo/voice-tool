@@ -15,6 +15,11 @@ import {
   deleteLocalBackup,
   type BackupMeta,
 } from "@/lib/sync/backups";
+import {
+  listImportableCloudProfiles,
+  importCloudProfile,
+  type ImportableCloudProfile,
+} from "@/lib/sync/profile-import";
 import { TwoFactorActivationFlow } from "@/components/auth/TwoFactorActivationFlow";
 import { OtpInput } from "@/components/auth/OtpInput";
 import {
@@ -175,6 +180,7 @@ function SignedInBlocks() {
     <>
       <IdentityCard />
       <SyncCard />
+      <CloudProfilesImportCard />
       <SharedLinksPanel />
       <SecurityCard />
       <DataCard />
@@ -428,6 +434,127 @@ function SyncCard() {
         onClose={() => setActivationOpen(false)}
       />
       <DeadLettersDialog open={showDlq} onClose={() => setShowDlq(false)} />
+    </div>
+  );
+}
+
+/* ─── Cloud profiles import card (multi-device onboarding) ─────────── */
+
+/**
+ * Lists profiles that exist in the cloud account but aren't yet linked to a
+ * local profile on this device, and lets the user import each one. Importing
+ * creates a bound local profile (sync pre-enabled) and switches into it — the
+ * post-switch mount lifecycle then pulls that profile's data. The card renders
+ * nothing when there's nothing to import (no clutter on single-device setups).
+ */
+function CloudProfilesImportCard() {
+  const { t } = useTranslation();
+  const { switchProfile } = useProfiles();
+  const [importable, setImportable] = useState<ImportableCloudProfile[] | null>(
+    null
+  );
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await listImportableCloudProfiles();
+        if (!cancelled) setImportable(list);
+      } catch {
+        // Offline / transient: just hide the card rather than surfacing noise.
+        if (!cancelled) setImportable([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Nothing to import (or still loading): render nothing.
+  if (!importable || importable.length === 0) return null;
+
+  const onImport = async (p: ImportableCloudProfile) => {
+    setBusyId(p.id);
+    setError(null);
+    try {
+      const localId = await importCloudProfile(p);
+      // Switching reloads the WebView; the new profile's mount lifecycle pulls
+      // its cloud data. This call does not return in practice.
+      await switchProfile(localId);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="vt-card-sectioned" style={{ overflow: "hidden" }}>
+      <SectionHeader
+        color={ACCENT_SYNC}
+        icon={<VtIcon.device />}
+        title={t("sync.import.title")}
+        description={t("sync.import.desc")}
+      />
+      <div className="vt-row space-y-2">
+        {error && (
+          <div className="mb-1">
+            <Callout kind="danger" icon={<VtIcon.alert />}>
+              {error}
+            </Callout>
+          </div>
+        )}
+        {importable.map((p) => (
+          <div
+            key={p.id}
+            className="flex items-center justify-between gap-4 rounded-lg p-3"
+            style={{
+              background: "var(--vt-surface)",
+              border: "1px solid var(--vt-border)",
+            }}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{
+                  background: "oklch(from var(--vt-cyan) l c h / 0.15)",
+                  color: "var(--vt-cyan)",
+                }}
+              >
+                <VtIcon.cloud />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[13px] font-medium truncate">{p.name}</div>
+                <div
+                  className="text-[11.5px]"
+                  style={{ color: "var(--vt-fg-3)" }}
+                >
+                  {t("sync.import.row_hint")}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={busyId !== null}
+              onClick={() => void onImport(p)}
+              className="vt-btn shrink-0"
+            >
+              {busyId === p.id ? (
+                <>
+                  <VtIcon.spinner />
+                  {t("sync.import.importing")}
+                </>
+              ) : (
+                <>
+                  <VtIcon.download />
+                  {t("sync.import.button")}
+                </>
+              )}
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
