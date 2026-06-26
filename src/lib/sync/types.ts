@@ -110,6 +110,12 @@ export interface SyncState {
   last_pull_at: string | null;
   pending_count: number;
   last_error: string | null;
+  /**
+   * Number of active local notes that exceed the 1 MB hard cap and therefore
+   * cannot be synced. They stay local-only; the UI warns the user. Computed on
+   * activation and once per session when sync is enabled.
+   */
+  oversized_note_count: number;
 }
 
 // ── Sub-épique 03 sync-notes ─────────────────────────────────────────────────

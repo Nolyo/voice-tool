@@ -83,6 +83,7 @@ vi.mock("@/lib/sync/notes-store", () => ({
   flushPendingNoteUpdates: async () => {},
   listNotes: async () => [],
   readNote: async () => ({ meta: {}, content: "" }),
+  scanOversizedNoteCount: async () => 0,
 }));
 
 vi.mock("@/lib/sync/folders-store", () => ({

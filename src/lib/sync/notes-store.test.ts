@@ -46,7 +46,9 @@ import {
   toggleNoteFavoriteSynced,
   moveNoteToFolderSynced,
   applyRemoteNote,
+  scanOversizedNoteCount,
 } from "./notes-store";
+import { NOTE_SIZE_LIMIT_BYTES } from "./note-size";
 
 function makeMeta(partial: Partial<LocalNoteMeta> = {}): LocalNoteMeta {
   return {
@@ -200,6 +202,54 @@ describe("updateNoteSynced", () => {
     enqueueMock.mockRejectedValueOnce(new Error("queue offline"));
     const result = await updateNoteSynced("u2", "x", "y");
     expect(result.id).toBe("u2");
+  });
+});
+
+describe("oversized-note sync guard", () => {
+  const OVERSIZED = "a".repeat(NOTE_SIZE_LIMIT_BYTES + 1);
+
+  it("updateNoteSynced does NOT enqueue an oversized note but still writes locally", async () => {
+    const meta = makeMeta({ id: "big1", title: "Huge" });
+    invokeHandlers["update_note"] = () => meta;
+    const result = await updateNoteSynced("big1", OVERSIZED, "Huge");
+    expect(result).toEqual(meta); // local write succeeded
+    expect(enqueueMock).not.toHaveBeenCalled(); // but never queued for sync
+  });
+
+  it("updateNoteSynced DOES enqueue a note at exactly the limit", async () => {
+    const meta = makeMeta({ id: "ok1" });
+    invokeHandlers["update_note"] = () => meta;
+    await updateNoteSynced("ok1", "a".repeat(NOTE_SIZE_LIMIT_BYTES), "ok");
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("toggleNoteFavoriteSynced skips enqueue when the note is oversized", async () => {
+    const meta = makeMeta({ id: "big2", favorite: true });
+    invokeHandlers["toggle_note_favorite"] = () => meta;
+    invokeHandlers["read_note"] = () => ({ meta, content: OVERSIZED });
+    await toggleNoteFavoriteSynced("big2");
+    expect(enqueueMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("scanOversizedNoteCount", () => {
+  it("counts active notes whose content exceeds the cap, skipping deleted", async () => {
+    const big = makeMeta({ id: "big" });
+    const small = makeMeta({ id: "small" });
+    const gone = makeMeta({ id: "gone", deletedAt: "2026-05-19T00:00:00Z" });
+    invokeHandlers["list_notes"] = () => [big, small, gone];
+    invokeHandlers["read_note"] = (args) => {
+      const id = (args as { id: string }).id;
+      if (id === "big") return { meta: big, content: "a".repeat(NOTE_SIZE_LIMIT_BYTES + 1) };
+      return { meta: small, content: "<p>tiny</p>" };
+    };
+    expect(await scanOversizedNoteCount()).toBe(1);
+  });
+
+  it("returns 0 when all notes fit", async () => {
+    invokeHandlers["list_notes"] = () => [makeMeta({ id: "a" }), makeMeta({ id: "b" })];
+    invokeHandlers["read_note"] = () => ({ meta: makeMeta(), content: "<p>ok</p>" });
+    expect(await scanOversizedNoteCount()).toBe(0);
   });
 });
 

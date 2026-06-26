@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
-
-/**
- * Hard cap enforced by the sync-push Edge Function (`content_html` <= 1 MB UTF-8).
- * Keep this in sync with `supabase/functions/sync-push/schema.ts`.
- */
-const NOTE_SIZE_LIMIT_BYTES = 1_048_576;
+import { NOTE_SIZE_LIMIT_BYTES, noteContentBytes } from "@/lib/sync/note-size";
 
 interface Props {
   /** TipTap editor instance — null while a tab is still loading. */
@@ -32,7 +27,7 @@ export function NoteSizeWarning({ editor }: Props) {
       // rather than JS string code-unit length (which would under-count
       // multi-byte characters).
       const html = editor.getHTML();
-      setBytes(new TextEncoder().encode(html).length);
+      setBytes(noteContentBytes(html));
     };
     recompute();
     editor.on("update", recompute);
