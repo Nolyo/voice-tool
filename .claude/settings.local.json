@@ -29,5 +29,8 @@
       "Bash(pnpm tauri dev:*)"
     ],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }
