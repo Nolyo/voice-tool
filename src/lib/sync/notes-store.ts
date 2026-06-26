@@ -4,6 +4,7 @@ import { mapNoteToCloud } from "./mapping";
 import { mergeNoteLWW } from "./merge";
 import { enqueue } from "./queue";
 import { isSyncActive } from "./sync-gate";
+import { isNoteSyncable } from "./note-size";
 
 /**
  * Notes store wrapper — sub-épique 03 sync-notes.
@@ -25,8 +26,60 @@ import { isSyncActive } from "./sync-gate";
  * sync is best-effort. We log and swallow.
  */
 
+/**
+ * Enqueue a note-upsert, but ONLY when the content fits the cloud hard cap.
+ *
+ * An oversized note (> 1 MB UTF-8) cannot be synced: the Edge validates the
+ * whole push body atomically, so a single oversized note makes the entire batch
+ * fail server-side ("invalid body"), silently blocking every other op. We must
+ * never let one into the queue — it stays local-only. The editor surfaces a
+ * `NoteSizeWarning`; here we just skip and warn. Returns true when enqueued.
+ *
+ * NEVER throws — queue failures are swallowed (local write is the truth).
+ */
+async function enqueueNoteUpsertIfSyncable(
+  meta: LocalNoteMeta,
+  content: string,
+  context: string
+): Promise<boolean> {
+  try {
+    if (!isSyncActive()) return false;
+    if (!isNoteSyncable(content)) {
+      console.warn(
+        `[notes-store] note ${meta.id} skipped (over 1 MB sync cap) on ${context}`
+      );
+      return false;
+    }
+    await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+    return true;
+  } catch (e) {
+    console.warn(`[notes-store] enqueue failed for ${context}`, e);
+    return false;
+  }
+}
+
 export async function listNotes(): Promise<LocalNoteMeta[]> {
   return invoke<LocalNoteMeta[]>("list_notes");
+}
+
+/**
+ * Count the active notes whose content exceeds the cloud hard cap. Used by
+ * SyncContext to surface "N note(s) too large to sync" in the UI. Reads every
+ * note's content, so call sparingly (activation + once per session on mount).
+ */
+export async function scanOversizedNoteCount(): Promise<number> {
+  const metas = await invoke<LocalNoteMeta[]>("list_notes");
+  let count = 0;
+  for (const m of metas) {
+    if (m.deletedAt) continue;
+    try {
+      const { content } = await readNote(m.id);
+      if (!isNoteSyncable(content)) count++;
+    } catch {
+      // Unreadable note — ignore for the count.
+    }
+  }
+  return count;
 }
 
 export async function readNote(
@@ -56,13 +109,7 @@ export async function updateNoteSynced(
   title: string
 ): Promise<LocalNoteMeta> {
   const meta = await invoke<LocalNoteMeta>("update_note", { id, content, title });
-  try {
-    if (isSyncActive()) {
-      await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
-    }
-  } catch (e) {
-    console.warn("[notes-store] enqueue failed for update", e);
-  }
+  await enqueueNoteUpsertIfSyncable(meta, content, "update");
   return meta;
 }
 
@@ -89,13 +136,7 @@ export async function pushNoteUpdate(
   meta: LocalNoteMeta,
   content: string
 ): Promise<void> {
-  try {
-    if (isSyncActive()) {
-      await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
-    }
-  } catch (e) {
-    console.warn("[notes-store] enqueue failed for debounced update", e);
-  }
+  await enqueueNoteUpsertIfSyncable(meta, content, "debounced update");
 }
 
 // ── Debounce registry for updateNote (Task 17) ───────────────────────────────
@@ -164,10 +205,10 @@ export async function toggleNoteFavoriteSynced(
         "read_note",
         { id }
       );
-      await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+      await enqueueNoteUpsertIfSyncable(meta, content, "toggle-favorite");
     }
   } catch (e) {
-    console.warn("[notes-store] enqueue failed for toggle-favorite", e);
+    console.warn("[notes-store] read failed for toggle-favorite", e);
   }
   return meta;
 }
@@ -186,10 +227,10 @@ export async function moveNoteToFolderSynced(
         "read_note",
         { id: noteId }
       );
-      await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, content) });
+      await enqueueNoteUpsertIfSyncable(meta, content, "move-to-folder");
     }
   } catch (e) {
-    console.warn("[notes-store] enqueue failed for move-to-folder", e);
+    console.warn("[notes-store] read failed for move-to-folder", e);
   }
   return meta;
 }

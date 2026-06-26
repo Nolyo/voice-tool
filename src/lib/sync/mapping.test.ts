@@ -181,6 +181,7 @@ describe("mapping notes ↔ cloud", () => {
     const row: CloudUserNoteRow = {
       id: UUID_A,
       user_id: UUID_B,
+      profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       title: "Hello",
       content_html: "<p>body</p>",
       folder_id: UUID_F,
@@ -203,6 +204,7 @@ describe("mapping notes ↔ cloud", () => {
     const row: CloudUserNoteRow = {
       id: UUID_A,
       user_id: UUID_B,
+      profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       title: "Hello",
       content_html: "",
       folder_id: null,
@@ -221,6 +223,7 @@ describe("mapping notes ↔ cloud", () => {
     const row: CloudUserNoteRow = {
       id: UUID_A,
       user_id: UUID_B,
+      profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       title: "Tombstone",
       content_html: "",
       folder_id: null,
@@ -238,6 +241,7 @@ describe("mapping notes ↔ cloud", () => {
     const row: CloudUserNoteRow = {
       id: UUID_A,
       user_id: UUID_B,
+      profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       title: "Hello",
       content_html: "<p>body</p>",
       folder_id: UUID_F,
@@ -322,6 +326,7 @@ describe("mapping folders ↔ cloud", () => {
     const row: CloudUserFolderRow = {
       id: UUID_F,
       user_id: UUID_U,
+      profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       name: "Recipes",
       order: 2,
       created_at: "2026-05-19T10:00:00Z",
@@ -343,6 +348,7 @@ describe("mapping folders ↔ cloud", () => {
     const row: CloudUserFolderRow = {
       id: UUID_F,
       user_id: UUID_U,
+      profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       name: "Old",
       order: 0,
       created_at: "2026-05-19T10:00:00Z",
@@ -357,6 +363,7 @@ describe("mapping folders ↔ cloud", () => {
     const row: CloudUserFolderRow = {
       id: UUID_F,
       user_id: UUID_U,
+      profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       name: "Recipes",
       order: 2,
       created_at: "2026-05-19T10:00:00Z",

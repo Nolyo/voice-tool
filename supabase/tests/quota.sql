@@ -6,12 +6,15 @@ insert into auth.users (id, email, aud, role) values
 
 set local role authenticated;
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
-insert into public.user_settings (user_id, data) values
-  ('11111111-1111-1111-1111-111111111111', '{"ui":{"theme":"dark","language":"fr"}}'::jsonb);
-insert into public.user_dictionary_words (user_id, word) values
-  ('11111111-1111-1111-1111-111111111111', 'tauri');
-insert into public.user_snippets (id, user_id, label, content) values
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'sign', 'Cordialement');
+-- Plan A : profile_id NOT NULL → FK vers user_profiles. Parent d'abord.
+insert into public.user_profiles (id, user_id, name) values
+  ('a0000000-0000-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', 'Default');
+insert into public.user_settings (user_id, profile_id, data) values
+  ('11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', '{"ui":{"theme":"dark","language":"fr"}}'::jsonb);
+insert into public.user_dictionary_words (user_id, profile_id, word) values
+  ('11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'tauri');
+insert into public.user_snippets (id, user_id, profile_id, label, content) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'sign', 'Cordialement');
 
 select ok(
   public.compute_user_sync_size('11111111-1111-1111-1111-111111111111') > 0,
@@ -25,8 +28,8 @@ declare
   after bigint;
 begin
   before := public.compute_user_sync_size('11111111-1111-1111-1111-111111111111');
-  insert into public.user_dictionary_words (user_id, word) values
-    ('11111111-1111-1111-1111-111111111111', 'extrabig_word_for_test');
+  insert into public.user_dictionary_words (user_id, profile_id, word) values
+    ('11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'extrabig_word_for_test');
   after := public.compute_user_sync_size('11111111-1111-1111-1111-111111111111');
   if after <= before then
     raise exception 'size did not grow: before=% after=%', before, after;

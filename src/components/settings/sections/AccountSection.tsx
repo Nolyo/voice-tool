@@ -406,6 +406,15 @@ function SyncCard() {
                 </Callout>
               </div>
             )}
+            {sync.oversized_note_count > 0 && (
+              <div className="mt-3">
+                <Callout kind="warn" icon={<VtIcon.alert />}>
+                  {t("sync.oversizedNotes_warning", {
+                    count: sync.oversized_note_count,
+                  })}
+                </Callout>
+              </div>
+            )}
           </div>
 
           <div className="vt-row">

@@ -7,9 +7,12 @@ insert into auth.users (id, email, aud, role) values
 
 set local role authenticated;
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
-insert into public.user_dictionary_words (user_id, word) values
-  ('11111111-1111-1111-1111-111111111111', 'tauri'),
-  ('11111111-1111-1111-1111-111111111111', 'supabase');
+-- Plan A : profile_id NOT NULL → FK vers user_profiles. Parent d'abord.
+insert into public.user_profiles (id, user_id, name) values
+  ('a0000000-0000-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', 'Default');
+insert into public.user_dictionary_words (user_id, profile_id, word) values
+  ('11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'tauri'),
+  ('11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'supabase');
 
 select results_eq(
   $$ select count(*)::int from public.user_dictionary_words where deleted_at is null $$,
@@ -25,7 +28,7 @@ select results_eq(
 );
 
 select throws_ok(
-  $$ insert into public.user_dictionary_words (user_id, word) values ('11111111-1111-1111-1111-111111111111', 'hack') $$,
+  $$ insert into public.user_dictionary_words (user_id, profile_id, word) values ('11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'hack') $$,
   '42501',
   null,
   'User B ne peut pas injecter un mot avec user_id de A'

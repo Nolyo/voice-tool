@@ -6,6 +6,7 @@ import type {
   CloudSnippetRow,
   CloudUserNoteRow,
   CloudUserFolderRow,
+  CloudUserProfileRow,
   SyncOperation,
 } from "./types";
 import {
@@ -23,38 +24,47 @@ export interface PullResult {
   snippets: CloudSnippetRow[];
   notes: CloudUserNoteRow[];
   folders: CloudUserFolderRow[];
+  profiles: CloudUserProfileRow[];
   invalid: {
     settings: boolean;
     dictionary: number;
     snippets: number;
     notes: number;
     folders: number;
+    profiles: number;
   };
 }
 
 /** Pull FULL ou INCREMENTAL (since = ISO timestamp, null = full). */
-export async function pullAll(since: string | null): Promise<PullResult> {
+export async function pullAll(
+  since: string | null,
+  profileId: string
+): Promise<PullResult> {
   const userRes = await supabase.auth.getUser();
   if (userRes.error || !userRes.data.user) {
     throw new Error("not authenticated");
   }
 
-  const settingsQuery = supabase.from("user_settings").select("*").maybeSingle();
+  const settingsQuery = supabase
+    .from("user_settings")
+    .select("*")
+    .eq("profile_id", profileId)
+    .maybeSingle();
   const dictQuery = since
-    ? supabase.from("user_dictionary_words").select("*").gt("updated_at", since)
-    : supabase.from("user_dictionary_words").select("*");
+    ? supabase.from("user_dictionary_words").select("*").eq("profile_id", profileId).gt("updated_at", since)
+    : supabase.from("user_dictionary_words").select("*").eq("profile_id", profileId);
   const snipQuery = since
-    ? supabase.from("user_snippets").select("*").gt("updated_at", since)
-    : supabase.from("user_snippets").select("*");
+    ? supabase.from("user_snippets").select("*").eq("profile_id", profileId).gt("updated_at", since)
+    : supabase.from("user_snippets").select("*").eq("profile_id", profileId);
   // Sub-épique 03 sync-notes : on récupère TOUTES les rows depuis `since`,
   // y compris les tombstones (deleted_at IS NOT NULL) pour que le merge côté
   // client propage les soft-deletes. Aucun filtre extra.
   const notesQuery = since
-    ? supabase.from("user_notes").select("*").gt("updated_at", since)
-    : supabase.from("user_notes").select("*");
+    ? supabase.from("user_notes").select("*").eq("profile_id", profileId).gt("updated_at", since)
+    : supabase.from("user_notes").select("*").eq("profile_id", profileId);
   const foldersQuery = since
-    ? supabase.from("user_folders").select("*").gt("updated_at", since)
-    : supabase.from("user_folders").select("*");
+    ? supabase.from("user_folders").select("*").eq("profile_id", profileId).gt("updated_at", since)
+    : supabase.from("user_folders").select("*").eq("profile_id", profileId);
 
   const [settingsRes, dictRes, snipRes, notesRes, foldersRes] = await Promise.all([
     settingsQuery,
@@ -156,12 +166,14 @@ export async function pullAll(since: string | null): Promise<PullResult> {
     snippets,
     notes,
     folders,
+    profiles: [], // Plan A: pull du registre profils différé à Plan B
     invalid: {
       settings: invalidSettings,
       dictionary: invalidDict,
       snippets: invalidSnip,
       notes: invalidNotes,
       folders: invalidFolders,
+      profiles: 0,
     },
   };
 }
@@ -178,10 +190,11 @@ export interface PushResponse {
 
 export async function pushOperations(
   operations: SyncOperation[],
-  deviceId: string
+  deviceId: string,
+  profileId: string
 ): Promise<PushResponse> {
   const { data, error } = await supabase.functions.invoke("sync-push", {
-    body: { operations, device_id: deviceId },
+    body: { operations, device_id: deviceId, profile_id: profileId },
   });
   if (error) {
     // FunctionsHttpError exposes the Response in error.context (>= 400).
@@ -236,6 +249,6 @@ export async function pushOperations(
 }
 
 /** Envoie uniquement le blob settings (upsert). Retourne l'erreur éventuelle. */
-export async function pushSettings(data: CloudSettingsData, deviceId: string) {
-  return pushOperations([{ kind: "settings-upsert", data }], deviceId);
+export async function pushSettings(data: CloudSettingsData, deviceId: string, profileId: string) {
+  return pushOperations([{ kind: "settings-upsert", data }], deviceId, profileId);
 }

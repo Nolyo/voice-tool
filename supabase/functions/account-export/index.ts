@@ -34,21 +34,22 @@ export async function handler(req: Request, deps: AccountExportDeps): Promise<Re
   const { userId, client } = auth;
 
   // GDPR transparency: include soft-deleted rows too (deleted_at column is exported).
-  const [settings, dictionary, snippets, devices, notes, folders] = await Promise.all([
-    client.from("user_settings").select("*").maybeSingle(),
+  const [settings, dictionary, snippets, devices, notes, folders, profiles] = await Promise.all([
+    client.from("user_settings").select("*"),
     client.from("user_dictionary_words").select("*"),
     client.from("user_snippets").select("*"),
     client.from("user_devices").select("*"),
     client.from("user_notes").select("*"),
     client.from("user_folders").select("*"),
+    client.from("user_profiles").select("*"),
   ]);
 
-  for (const r of [settings, dictionary, snippets, devices, notes, folders]) {
+  for (const r of [settings, dictionary, snippets, devices, notes, folders, profiles]) {
     if (r.error) return json(req, { error: r.error.message }, 500);
   }
 
   const payload = {
-    export_version: 2,
+    export_version: 3,
     exported_at: new Date().toISOString(),
     user_id: userId,
     user_settings: settings.data,
@@ -57,6 +58,7 @@ export async function handler(req: Request, deps: AccountExportDeps): Promise<Re
     user_devices: devices.data,
     user_notes: notes.data,
     user_folders: folders.data,
+    user_profiles: profiles.data,
   };
 
   return json(req, payload);

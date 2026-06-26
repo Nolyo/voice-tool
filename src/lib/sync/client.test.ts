@@ -14,7 +14,8 @@ import { supabase } from "@/lib/supabase";
 import { pullAll, pushOperations } from "./client";
 
 // Helper that builds a thenable query chain returning `resp`.
-// Supports: .select(...).maybeSingle() and .select(...).gt(...) and bare .select(...).
+// Supports: .select(...).eq(...).maybeSingle(), .select(...).eq(...).gt(...),
+//           and bare awaits at any step.
 function makeQuery(resp: { data: unknown; error: unknown }) {
   // Both `.gt(...)` and the bare select-builder are awaited directly. We make
   // them thenable so `await query` resolves to `resp`. The `then` impl must
@@ -33,9 +34,10 @@ function makeQuery(resp: { data: unknown; error: unknown }) {
       }
     },
   };
-  const builder = {
+  const builder: Record<string, unknown> = {
     maybeSingle: () => Promise.resolve(resp),
     gt: () => thenable,
+    eq: () => builder,
     ...thenable,
   };
   return {
@@ -64,6 +66,7 @@ describe("sync client runtime validation", () => {
       data: [
         {
           user_id: "11111111-1111-4111-8111-111111111111",
+          profile_id: "11111111-1111-4111-8111-111111111111",
           word: "ok",
           created_at: "2026-01-01T00:00:00Z",
           updated_at: "2026-01-01T00:00:00Z",
@@ -83,7 +86,7 @@ describe("sync client runtime validation", () => {
     });
 
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const res = await pullAll(null);
+    const res = await pullAll(null, "11111111-1111-4111-8111-111111111111");
     expect(res.settings).toBeNull();
     expect(res.invalid.settings).toBe(true);
     expect(res.dictionary).toHaveLength(1);
@@ -107,6 +110,7 @@ describe("sync client runtime validation", () => {
     const settingsResp = {
       data: {
         user_id: "11111111-1111-4111-8111-111111111111",
+        profile_id: "11111111-1111-4111-8111-111111111111",
         data: {
           ui: { theme: "dark", language: "fr" },
           hotkeys: {
@@ -129,7 +133,7 @@ describe("sync client runtime validation", () => {
       return makeQuery({ data: [], error: null }) as never;
     });
 
-    const res = await pullAll(null);
+    const res = await pullAll(null, "11111111-1111-4111-8111-111111111111");
     expect(res.settings).not.toBeNull();
     expect(res.settings?.data.ui.theme).toBe("dark");
     expect(res.invalid.settings).toBe(false);
@@ -144,7 +148,8 @@ describe("sync client runtime validation", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const r = await pushOperations(
       [{ kind: "dictionary-upsert", word: "x" }],
-      "dev"
+      "dev",
+      "11111111-1111-4111-8111-111111111111"
     );
     expect(r.ok).toBe(false);
     expect(r.error).toContain("malformed");
@@ -164,7 +169,8 @@ describe("sync client runtime validation", () => {
 
     const r = await pushOperations(
       [{ kind: "dictionary-upsert", word: "x" }],
-      "dev"
+      "dev",
+      "11111111-1111-4111-8111-111111111111"
     );
     expect(r.ok).toBe(true);
     expect(r.current_bytes).toBe(42);
@@ -179,11 +185,30 @@ describe("sync client runtime validation", () => {
 
     const r = await pushOperations(
       [{ kind: "dictionary-upsert", word: "x" }],
-      "dev"
+      "dev",
+      "11111111-1111-4111-8111-111111111111"
     );
     expect(r.ok).toBe(false);
     expect(r.error).toBe("boom");
     expect(r.results).toEqual([]);
+  });
+
+  it("pushOperations sends profile_id in the body", async () => {
+    const invokeSpy = vi.fn(async () => ({ data: { ok: true, results: [] }, error: null }));
+    // @ts-expect-error — accès mock
+    supabase.functions.invoke = invokeSpy;
+    await pushOperations(
+      [{ kind: "dictionary-upsert", word: "hi" }],
+      "dev1",
+      "11111111-1111-4111-8111-111111111111"
+    );
+    expect(invokeSpy).toHaveBeenCalledWith("sync-push", {
+      body: {
+        operations: [{ kind: "dictionary-upsert", word: "hi" }],
+        device_id: "dev1",
+        profile_id: "11111111-1111-4111-8111-111111111111",
+      },
+    });
   });
 
   // ── Sub-épique 03 sync-notes : pull notes + folders ─────────────────────
@@ -196,6 +221,7 @@ describe("sync client runtime validation", () => {
     const validNote = {
       id: "11111111-1111-4111-8111-111111111111",
       user_id: "22222222-2222-4222-8222-222222222222",
+      profile_id: "11111111-1111-4111-8111-111111111111",
       title: "Hello",
       content_html: "<p>body</p>",
       folder_id: null,
@@ -214,6 +240,7 @@ describe("sync client runtime validation", () => {
     const validFolder = {
       id: "44444444-4444-4444-8444-444444444444",
       user_id: "22222222-2222-4222-8222-222222222222",
+      profile_id: "11111111-1111-4111-8111-111111111111",
       name: "Recipes",
       order: 1,
       created_at: "2026-05-19T10:00:00Z",
@@ -237,7 +264,7 @@ describe("sync client runtime validation", () => {
     });
 
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const res = await pullAll("2026-05-01T00:00:00Z");
+    const res = await pullAll("2026-05-01T00:00:00Z", "11111111-1111-4111-8111-111111111111");
     expect(res.notes).toHaveLength(2);
     // Soft-deleted rows are returned so merge can propagate tombstones.
     const tombstone = res.notes.find((n) => n.deleted_at !== null);

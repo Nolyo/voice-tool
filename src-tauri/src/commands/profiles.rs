@@ -49,6 +49,18 @@ pub fn get_active_profile_sync_queue_path(app: AppHandle) -> Result<String, Stri
     Ok(crate::profiles::sync_queue_store_path(&app))
 }
 
+/// Get the snippets store path for the active profile (for frontend Store.load)
+#[tauri::command]
+pub fn get_active_profile_snippets_path(app: AppHandle) -> Result<String, String> {
+    Ok(crate::profiles::snippets_store_path(&app))
+}
+
+/// Get the dictionary store path for the active profile (for frontend Store.load)
+#[tauri::command]
+pub fn get_active_profile_dictionary_path(app: AppHandle) -> Result<String, String> {
+    Ok(crate::profiles::dictionary_store_path(&app))
+}
+
 /// Create a new profile (does NOT switch to it)
 #[tauri::command]
 pub fn create_profile(app: AppHandle, name: String) -> Result<ProfileMeta, String> {

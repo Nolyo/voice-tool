@@ -9,8 +9,11 @@ insert into auth.users (id, email, aud, role) values
 -- User A pose un row
 set local role authenticated;
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
-insert into public.user_settings (user_id, data) values
-  ('11111111-1111-1111-1111-111111111111', '{"ui":{"theme":"dark"}}'::jsonb);
+-- Plan A : profile_id NOT NULL → FK vers user_profiles. Parent d'abord.
+insert into public.user_profiles (id, user_id, name) values
+  ('a0000000-0000-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', 'Default');
+insert into public.user_settings (user_id, profile_id, data) values
+  ('11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', '{"ui":{"theme":"dark"}}'::jsonb);
 
 select results_eq(
   $$ select count(*)::int from public.user_settings $$,
@@ -42,7 +45,7 @@ select results_eq(
 -- User B tente insert avec user_id = A → doit échouer (RLS WITH CHECK)
 set local "request.jwt.claim.sub" = '22222222-2222-2222-2222-222222222222';
 select throws_ok(
-  $$ insert into public.user_settings (user_id, data) values ('11111111-1111-1111-1111-111111111111', '{"hack":true}'::jsonb) $$,
+  $$ insert into public.user_settings (user_id, profile_id, data) values ('11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', '{"hack":true}'::jsonb) $$,
   '42501',
   null,
   'User B ne peut pas INSERT un row avec user_id de A'

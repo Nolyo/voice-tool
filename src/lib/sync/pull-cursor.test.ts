@@ -9,7 +9,8 @@ function emptyResult(partial: Partial<PullResult> = {}): PullResult {
     snippets: [],
     notes: [],
     folders: [],
-    invalid: { settings: false, dictionary: 0, snippets: 0, notes: 0, folders: 0 },
+    profiles: [],
+    invalid: { settings: false, dictionary: 0, snippets: 0, notes: 0, folders: 0, profiles: 0 },
     ...partial,
   };
 }

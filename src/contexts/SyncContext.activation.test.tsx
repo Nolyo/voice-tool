@@ -15,6 +15,8 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string) => {
     if (cmd === "get_active_profile_sync_meta_path") return "meta.json";
     if (cmd === "get_or_create_device_id") return "device-B";
+    if (cmd === "get_active_profile") return "default";
+    if (cmd === "list_profiles") return [{ id: "default", name: "Test Profile", createdAt: "" }];
     return undefined;
   },
 }));
@@ -81,6 +83,7 @@ vi.mock("@/lib/sync/notes-store", () => ({
   flushPendingNoteUpdates: async () => {},
   listNotes: async () => [],
   readNote: async () => ({ meta: {}, content: "" }),
+  scanOversizedNoteCount: async () => 0,
 }));
 
 vi.mock("@/lib/sync/folders-store", () => ({
@@ -102,7 +105,8 @@ const EMPTY_PULL = {
   snippets: [],
   notes: [],
   folders: [],
-  invalid: { settings: false, dictionary: 0, snippets: 0, notes: 0, folders: 0 },
+  profiles: [],
+  invalid: { settings: false, dictionary: 0, snippets: 0, notes: 0, folders: 0, profiles: 0 },
 };
 
 beforeEach(() => {

@@ -1073,6 +1073,7 @@
       "submitted": "Ta demande de suppression est enregistrée. Tu as été déconnecté. Tes données seront purgées sous 30 jours.",
       "aal2_required": "Vérification 2FA requise pour confirmer la suppression. Termine le challenge MFA puis réessaie."
     },
-    "multi_profile_warning": "La synchronisation couvre uniquement ton profil actif (« {{name}} »). Tes autres profils restent locaux à ce device."
+    "multi_profile_warning": "La synchronisation couvre uniquement ton profil actif (« {{name}} »). Tes autres profils restent locaux à ce device.",
+    "oversizedNotes_warning": "{{count}} note(s) dépassent la limite d'1 Mo et ne peuvent pas être synchronisées — elles restent sur cet appareil."
   }
 }

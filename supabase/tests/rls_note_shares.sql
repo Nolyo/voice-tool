@@ -5,8 +5,12 @@ select plan(7);
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000a1', 'a@test.dev'),
   ('00000000-0000-0000-0000-0000000000b2', 'b@test.dev');
-insert into public.user_notes (id, user_id, title, content_html)
-  values ('00000000-0000-0000-0000-00000000beef', '00000000-0000-0000-0000-0000000000a1', 'A note', '<p>hi</p>');
+-- Plan A : profile_id NOT NULL → FK vers user_profiles. Parent d'abord
+-- (inséré en tant que postgres, RLS non applicable ici).
+insert into public.user_profiles (id, user_id, name)
+  values ('a0000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-0000000000a1', 'Default');
+insert into public.user_notes (id, user_id, profile_id, title, content_html)
+  values ('00000000-0000-0000-0000-00000000beef', '00000000-0000-0000-0000-0000000000a1', 'a0000000-0000-4000-8000-000000000001', 'A note', '<p>hi</p>');
 
 -- Act as user A: can insert a share for own note.
 set local role authenticated;

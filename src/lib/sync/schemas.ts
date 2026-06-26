@@ -27,6 +27,7 @@ export const CloudSettingsDataSchema = z.object({
 
 export const CloudUserSettingsRowSchema = z.object({
   user_id: z.string().uuid(),
+  profile_id: z.string().uuid(),
   data: CloudSettingsDataSchema,
   schema_version: z.number().int(),
   updated_at: z.string(),
@@ -35,6 +36,7 @@ export const CloudUserSettingsRowSchema = z.object({
 
 export const CloudDictionaryWordRowSchema = z.object({
   user_id: z.string().uuid(),
+  profile_id: z.string().uuid(),
   word: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -44,6 +46,7 @@ export const CloudDictionaryWordRowSchema = z.object({
 export const CloudSnippetRowSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
+  profile_id: z.string().uuid(),
   label: z.string(),
   content: z.string(),
   shortcut: z.string().nullable(),
@@ -56,6 +59,7 @@ export const CloudSnippetRowSchema = z.object({
 export const CloudUserNoteRowSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
+  profile_id: z.string().uuid(),
   title: z.string(),
   content_html: z.string(),
   folder_id: z.string().uuid().nullable(),
@@ -69,8 +73,18 @@ export const CloudUserNoteRowSchema = z.object({
 export const CloudUserFolderRowSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
+  profile_id: z.string().uuid(),
   name: z.string(),
   order: z.number().int(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  deleted_at: z.string().nullable(),
+});
+
+export const CloudUserProfileRowSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  name: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
   deleted_at: z.string().nullable(),

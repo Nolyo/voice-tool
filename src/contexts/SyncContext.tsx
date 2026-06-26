@@ -41,7 +41,9 @@ import {
   flushPendingNoteUpdates,
   listNotes,
   readNote,
+  scanOversizedNoteCount,
 } from "@/lib/sync/notes-store";
+import { isNoteSyncable } from "@/lib/sync/note-size";
 import { applyRemoteFolder, listFolders } from "@/lib/sync/folders-store";
 import {
   loadDictionary,
@@ -51,12 +53,19 @@ import {
 import { mergeSettingsLWW, shouldApplyCloudSettings } from "@/lib/sync/merge";
 import { computeNextPullCursor } from "@/lib/sync/pull-cursor";
 import { setSyncActive } from "@/lib/sync/sync-gate";
+import { ensureCloudProfileId } from "@/lib/sync/cloud-profile";
 import type { AppSettings } from "@/lib/settings";
 import type { SyncOperation, SyncState, SyncStatus } from "@/lib/sync/types";
 
 const KEY_ENABLED = "enabled";
 const KEY_LAST_PULL_AT = "last_pull_at";
 const KEY_LAST_PUSHED_SETTINGS_AT = "last_pushed_settings_at";
+const KEY_CLOUD_PROFILE_ID = "cloud_profile_id";
+// True once the initial full push of local state has completed successfully for
+// this profile. Until then, mount re-tries it — so a push that failed (offline,
+// an oversized note that has since been trimmed, a transient 5xx) eventually
+// completes on a later launch without the user having to toggle sync off/on.
+const KEY_INITIAL_PUSH_DONE = "initial_push_done";
 const DEBOUNCE_PUSH_MS = 500;
 const FOCUS_PULL_IDLE_MS = 5 * 60 * 1000;
 
@@ -113,9 +122,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [lastPullAt, setLastPullAt] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [deadLetterCount, setDeadLetterCount] = useState(0);
+  const [oversizedNoteCount, setOversizedNoteCount] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
   const debounceRef = useRef<number | null>(null);
   const flushingRef = useRef(false);
+  const pushingRef = useRef(false);
   // Always-fresh mirror so stable callbacks (flush, pullAndApply, notify*) can
   // read the latest settings without re-subscribing on every settings change.
   const settingsRef = useRef<AppSettings["settings"]>(settings);
@@ -152,6 +163,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     setStatus("syncing");
     try {
       const deviceId = await getDeviceId();
+      const { id: cloudProfileId } = await ensureCloudProfileId(getMeta, setMeta);
       let sawError = false;
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -160,7 +172,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         const pending = await peekAll();
         const batch = pending.slice(0, 50);
         const ops = batch.map((e) => e.operation);
-        const resp = await pushOperations(ops, deviceId);
+        const resp = await pushOperations(ops, deviceId, cloudProfileId);
         if (!resp.ok) {
           // Whole-batch failure (network, 5xx, 413 quota)
           await markRetry(ready.id, resp.error ?? "push failed");
@@ -236,7 +248,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const since = opts?.forceFull
         ? null
         : await getMeta<string | null>(KEY_LAST_PULL_AT, null);
-      const result = await pullAll(since);
+      const cloudProfileId = await getMeta<string | null>(KEY_CLOUD_PROFILE_ID, null);
+      if (!cloudProfileId) {
+        // No cloud partition associated with this profile yet: nothing to pull.
+        setStatus("idle");
+        return;
+      }
+      const result = await pullAll(since, cloudProfileId);
 
       // Settings : LWW → écrire la diff syncable dans le SettingsContext
       if (result.settings) {
@@ -370,32 +388,42 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, [enabled, auth.status, updateSettings]);
 
-  const enableSync = useCallback(async () => {
-    await setMeta(KEY_ENABLED, true);
-    setEnabled(true);
-    setSyncActive(true);
-    setStatus("idle");
-
-    // Legacy migration : importer settings.snippets / settings.dictionary si présents
+  /**
+   * Push the COMPLETE local state of the active profile to the cloud:
+   * profile + settings + dictionary + snippets + folders + notes. Idempotent
+   * (all upserts), so it's safe to re-run — used both at activation and as a
+   * recovery retry on mount / manual "sync now".
+   *
+   * ORDRE CRITIQUE — folders DOIVENT précéder notes dans le tableau d'ops.
+   * Le sync-push Edge traite les ops séquentiellement (boucle for index), et
+   * `user_notes.folder_id` a une FK vers `user_folders.id`. Sans cet ordre,
+   * toute note avec folder_id non null déclenche une violation FK
+   * (user_notes_folder_id_fkey).
+   *
+   * Returns true on full success (all ops accepted). On success it records
+   * `initial_push_done` so mount stops retrying.
+   */
+  const fullPush = useCallback(async (): Promise<boolean> => {
+    // Prevent a concurrent second full push (e.g. activation + mount retry
+    // firing together). Idempotent upserts make a double push harmless, but
+    // serializing avoids redundant work and interleaved status flips.
+    if (pushingRef.current) return false;
+    pushingRef.current = true;
+    setStatus("syncing");
     try {
-      const current = settingsRef.current;
-      await migrateLegacySnippetsOnce(current.snippets ?? []);
-      await migrateLegacyDictionaryOnce(current.dictionary ?? []);
-    } catch (e) {
-      flog(`[sync] legacy migration failed: ${String(e)}`, "warn");
-    }
-
-    await pullAndApply({ forceFull: true });
-
-    // Full push initial : settings + dico + snippets + folders + notes.
-    // ORDRE CRITIQUE — folders DOIVENT précéder notes dans le tableau d'ops.
-    // Le sync-push Edge traite les ops séquentiellement (boucle for index),
-    // et `user_notes.folder_id` a une FK vers `user_folders.id`. Sans cet
-    // ordre, toute note avec folder_id non null déclenche une violation FK
-    // (user_notes_folder_id_fkey) au premier push initial.
-    try {
+      const { id: cloudProfileId, name: cloudProfileName } =
+        await ensureCloudProfileId(getMeta, setMeta);
       const deviceId = await getDeviceId();
       const ops: SyncOperation[] = [];
+      ops.push({
+        kind: "profile-upsert",
+        profile: {
+          id: cloudProfileId,
+          name: cloudProfileName,
+          updated_at: new Date().toISOString(),
+          deleted_at: null,
+        },
+      });
       ops.push({
         kind: "settings-upsert",
         data: extractCloudSettings(settingsRef.current),
@@ -427,17 +455,33 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       }
 
       // Notes actives — après les folders. Lecture du contenu par note.
+      // Une note > 1 MB (UTF-8) ne peut PAS être synchronisée : le serveur
+      // valide le body du push de façon atomique, donc une seule note trop
+      // grosse fait échouer TOUT le batch ("invalid body") et bloque
+      // silencieusement toutes les autres ops. On les saute ici (elles
+      // restent locales) et on les compte pour avertir l'utilisateur.
       const notesMeta = await listNotes();
+      let oversized = 0;
       for (const nm of notesMeta) {
         if (nm.deletedAt) continue;
         try {
           const { content } = await readNote(nm.id);
+          if (!isNoteSyncable(content)) {
+            oversized++;
+            flog(
+              `[sync] note ${nm.id} ("${nm.title}") skipped (over 1 MB sync cap)`,
+              "warn"
+            );
+            continue;
+          }
           ops.push({ kind: "note-upsert", note: mapNoteToCloud(nm, content) });
         } catch (e) {
           flog(`[sync] readNote failed for ${nm.id}: ${String(e)}`, "warn");
         }
       }
+      setOversizedNoteCount(oversized);
 
+      let pushFailed: string | null = null;
       if (ops.length > 0) {
         // sync-push cap : max 200 ops par requête. Chunker en préservant
         // l'ordre global (le tableau `ops` est déjà folders-avant-notes,
@@ -447,12 +491,22 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         let lastServerTime: string | undefined;
         for (let i = 0; i < ops.length; i += CHUNK) {
           const chunk = ops.slice(i, i + CHUNK);
-          const resp = await pushOperations(chunk, deviceId);
+          const resp = await pushOperations(chunk, deviceId, cloudProfileId);
           if (!resp.ok) {
+            pushFailed = resp.error ?? "unknown";
             flog(
-              `[sync] initial push chunk ${Math.floor(i / CHUNK)} failed: ${
-                resp.error ?? "unknown"
-              }`,
+              `[sync] full push chunk ${Math.floor(i / CHUNK)} failed: ${pushFailed}`,
+              "warn"
+            );
+            break;
+          }
+          // A 200 response can still carry per-op failures (FK, RLS, …). Surface
+          // them instead of reporting a clean sync the DB never received.
+          const firstFailed = resp.results.find((r) => !r.ok);
+          if (firstFailed) {
+            pushFailed = firstFailed.error ?? "operation rejected";
+            flog(
+              `[sync] full push op ${firstFailed.index} rejected: ${pushFailed}`,
               "warn"
             );
             break;
@@ -463,10 +517,52 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           await setMeta(KEY_LAST_PUSHED_SETTINGS_AT, lastServerTime);
         }
       }
+      if (pushFailed) {
+        setStatus("error");
+        setLastError(pushFailed);
+        return false;
+      }
+      await setMeta(KEY_INITIAL_PUSH_DONE, true);
+      setStatus("idle");
+      setLastError(null);
+      setLastSyncAt(new Date().toISOString());
+      return true;
     } catch (e) {
-      flog(`[sync] initial full push failed: ${String(e)}`, "warn");
+      flog(`[sync] full push failed: ${String(e)}`, "warn");
+      setStatus("error");
+      setLastError(e instanceof Error ? e.message : String(e));
+      return false;
+    } finally {
+      pushingRef.current = false;
     }
-  }, [pullAndApply, getDeviceId]);
+  }, [getDeviceId]);
+
+  const enableSync = useCallback(async () => {
+    await setMeta(KEY_ENABLED, true);
+    // A fresh activation must run (or re-run) the initial full push.
+    await setMeta(KEY_INITIAL_PUSH_DONE, false);
+    setEnabled(true);
+    setSyncActive(true);
+    setStatus("idle");
+
+    // Generate/persist the cloud_profile_id BEFORE the pull — pullAndApply
+    // early-returns when the active profile has no cloud partition yet, so the
+    // forceFull reconcile would be a no-op otherwise. fullPush re-ensures it
+    // (idempotent: returns the same stored id).
+    await ensureCloudProfileId(getMeta, setMeta);
+
+    // Legacy migration : importer settings.snippets / settings.dictionary si présents
+    try {
+      const current = settingsRef.current;
+      await migrateLegacySnippetsOnce(current.snippets ?? []);
+      await migrateLegacyDictionaryOnce(current.dictionary ?? []);
+    } catch (e) {
+      flog(`[sync] legacy migration failed: ${String(e)}`, "warn");
+    }
+
+    await pullAndApply({ forceFull: true });
+    await fullPush();
+  }, [pullAndApply, fullPush]);
 
   const disableSync = useCallback(async () => {
     // Task 19 : flush les notes en cours de debounce (push immédiat) avant de
@@ -481,6 +577,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     // Clear the incremental cursor so a later re-enable always full-reconciles
     // (re-activation must never resume an incremental pull from a stale cursor).
     await setMeta(KEY_LAST_PULL_AT, null);
+    // Force the next activation to redo the initial full push.
+    await setMeta(KEY_INITIAL_PUSH_DONE, false);
     setLastPullAt(null);
     setEnabled(false);
     setSyncActive(false);
@@ -490,8 +588,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const syncNow = useCallback(async () => {
     if (!enabled) return;
     await flushQueue();
+    // A manual "sync now" also re-asserts the full local state. This is the
+    // recovery path when the initial push failed (e.g. an oversized note that
+    // has since been trimmed): one click re-pushes everything, idempotently.
+    await fullPush();
     await pullAndApply();
-  }, [enabled, flushQueue, pullAndApply]);
+  }, [enabled, flushQueue, fullPush, pullAndApply]);
 
   const notifySettingsChanged = useCallback(
     (previous: AppSettings["settings"], current: AppSettings["settings"]) => {
@@ -547,12 +649,38 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     [enqueueAndTry]
   );
 
-  // Lifecycle : login → pullAndApply + flush
+  // Lifecycle : login → pullAndApply + flush, then finish any initial push that
+  // never completed (offline last time, transient error, oversized note now
+  // trimmed). The flag makes the push a no-op once the first full push
+  // succeeded. Guarded to run ONCE per signed-in session — without the ref it
+  // would re-fire on every render where `pullAndApply`/`fullPush` change
+  // identity, re-pulling and re-pushing needlessly.
+  const mountSyncRanRef = useRef(false);
+  useEffect(() => {
+    if (!enabled || auth.status !== "signed-in") {
+      mountSyncRanRef.current = false;
+      return;
+    }
+    if (mountSyncRanRef.current) return;
+    mountSyncRanRef.current = true;
+    void (async () => {
+      await pullAndApply();
+      await flushQueue();
+      const done = await getMeta<boolean>(KEY_INITIAL_PUSH_DONE, false);
+      if (!done) await fullPush();
+    })();
+  }, [auth.status, enabled, pullAndApply, flushQueue, fullPush]);
+
+  // Recompute the oversized-note count once per session when sync is on, so the
+  // "too large to sync" warning survives an app restart (enableSync only runs at
+  // activation time). Best-effort: failures leave the count at 0.
   useEffect(() => {
     if (!enabled) return;
     if (auth.status !== "signed-in") return;
-    void pullAndApply().then(() => flushQueue());
-  }, [auth.status, enabled, pullAndApply, flushQueue]);
+    void scanOversizedNoteCount()
+      .then(setOversizedNoteCount)
+      .catch(() => {});
+  }, [auth.status, enabled]);
 
   // Schedule a retry when the head's next_retry_at is past
   useEffect(() => {
@@ -615,6 +743,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       last_pull_at: lastPullAt,
       pending_count: pendingCount,
       dead_letter_count: deadLetterCount,
+      oversized_note_count: oversizedNoteCount,
       last_error: lastError,
       enableSync,
       disableSync,
@@ -633,6 +762,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       lastPullAt,
       pendingCount,
       deadLetterCount,
+      oversizedNoteCount,
       lastError,
       enableSync,
       disableSync,
