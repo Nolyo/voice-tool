@@ -7,8 +7,11 @@ insert into auth.users (id, email, aud, role) values
 
 set local role authenticated;
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
-insert into public.user_snippets (id, user_id, label, content, shortcut) values
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'sign', 'Cordialement, Jean', 'sign');
+-- Plan A : profile_id NOT NULL → FK vers user_profiles. Parent d'abord.
+insert into public.user_profiles (id, user_id, name) values
+  ('a0000000-0000-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', 'Default');
+insert into public.user_snippets (id, user_id, profile_id, label, content, shortcut) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'sign', 'Cordialement, Jean', 'sign');
 
 select results_eq(
   $$ select count(*)::int from public.user_snippets where deleted_at is null $$,
@@ -24,7 +27,7 @@ select results_eq(
 );
 
 select throws_ok(
-  $$ insert into public.user_snippets (id, user_id, label, content) values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111111', 'hack', 'bad') $$,
+  $$ insert into public.user_snippets (id, user_id, profile_id, label, content) values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'hack', 'bad') $$,
   '42501',
   null,
   'User B ne peut pas créer un snippet sous le user_id de A'

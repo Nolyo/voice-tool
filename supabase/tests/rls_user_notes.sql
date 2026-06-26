@@ -8,11 +8,14 @@ insert into auth.users (id, email, aud, role) values
 set local role authenticated;
 set local "request.jwt.claim.sub" = '11111111-1111-1111-1111-111111111111';
 
+-- Plan A : profile_id NOT NULL → FK vers user_profiles. Parent d'abord.
+insert into public.user_profiles (id, user_id, name) values
+  ('a0000000-0000-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', 'Default');
 -- Folder + note for user A
-insert into public.user_folders (id, user_id, name) values
-  ('ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111111', 'A folder');
-insert into public.user_notes (id, user_id, title, content_html, folder_id) values
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'Note A', '<p>hello</p>', 'ffffffff-ffff-ffff-ffff-ffffffffffff');
+insert into public.user_folders (id, user_id, profile_id, name) values
+  ('ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'A folder');
+insert into public.user_notes (id, user_id, profile_id, title, content_html, folder_id) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'Note A', '<p>hello</p>', 'ffffffff-ffff-ffff-ffff-ffffffffffff');
 
 select results_eq(
   $$ select count(*)::int from public.user_notes where deleted_at is null $$,
@@ -28,7 +31,7 @@ select results_eq(
 );
 
 select throws_ok(
-  $$ insert into public.user_notes (id, user_id, title, content_html) values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111111', 'hack', '<p>bad</p>') $$,
+  $$ insert into public.user_notes (id, user_id, profile_id, title, content_html) values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111111', 'a0000000-0000-4000-8000-000000000001', 'hack', '<p>bad</p>') $$,
   '42501',
   null,
   'User B ne peut pas créer une note sous le user_id de A'
