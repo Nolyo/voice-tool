@@ -2,6 +2,7 @@ import {
   BarChart3,
   FileText,
   History,
+  Home,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -28,6 +29,13 @@ import { LogsSidebarSection } from "./LogsSidebarSection";
 import { UpdateAvailableBanner } from "./UpdateAvailableBanner";
 
 export const DASHBOARD_NAV_ITEMS = [
+  {
+    id: "accueil",
+    labelKey: "sidebar.home",
+    icon: Home,
+    iconColor: "text-vt-fg-3",
+    iconBg: "bg-vt-surface",
+  },
   {
     id: "historique",
     labelKey: "sidebar.history",

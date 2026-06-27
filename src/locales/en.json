@@ -25,6 +25,7 @@
   "header": {
     "title": "Lexena",
     "subtitle": {
+      "accueil": "Overview",
       "historique": "Dictations history",
       "statistiques": "Usage statistics",
       "notes": "Notes & organized dictations",
@@ -38,6 +39,7 @@
     "error": "AI post-processing failed: {{error}}"
   },
   "sidebar": {
+    "home": "Home",
     "history": "History",
     "statistics": "Statistics",
     "notes": "Notes",
@@ -47,6 +49,51 @@
     "collapseMenu": "Collapse menu",
     "updateAvailable": "Update available",
     "updateAvailableTooltip": "Update {{version}} available"
+  },
+  "home": {
+    "heroEyebrow": "Home",
+    "heroTitle": "Welcome to Lexena",
+    "heroSubtitle": "A glance at your account, your sync status and your latest notes.",
+    "account": {
+      "eyebrowSignedOut": "Account",
+      "titleSignedOut": "Create a Lexena account",
+      "descSignedOut": "Back up your notes to the cloud, sync your devices and unlock managed transcription.",
+      "ctaSignedOut": "Create an account",
+      "eyebrowTrial": "Trial",
+      "minutesUnit": "min left",
+      "trialExpires": "Expires on {{date}}",
+      "eyebrowPlan": "Subscription",
+      "plan_starter": "Starter",
+      "plan_pro": "Pro",
+      "minutesUsed": "{{used}} / {{quota}} min used this month",
+      "manage": "Manage my account",
+      "eyebrowInactive": "Account",
+      "titleInactive": "Switch to cloud transcription",
+      "descInactive": "Your trial has ended. Pick a plan to keep using managed transcription and sync.",
+      "ctaInactive": "See plans"
+    },
+    "sync": {
+      "eyebrow": "Sync",
+      "title": "Turn on sync",
+      "desc": "You have an account but sync is not enabled on this profile.",
+      "benefit1": "Your notes and settings backed up to the cloud",
+      "benefit2": "Pick up where you left off on your other devices",
+      "benefit3": "Protection against data loss",
+      "cta": "Turn on sync"
+    },
+    "recentNotes": {
+      "title": "Recently edited notes",
+      "empty": "You don't have any notes yet.",
+      "createCta": "Create a note",
+      "viewAll": "All notes"
+    },
+    "quickActions": {
+      "title": "Quick actions",
+      "newNote": "New note",
+      "viewHistory": "View history",
+      "recordHint": "Start a dictation",
+      "pttHint": "Hold to dictate"
+    }
   },
   "statistics": {
     "heroEyebrow": "Dashboard",

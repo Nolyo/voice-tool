@@ -7,6 +7,7 @@ import {
   DashboardSidebar,
   type DashboardTabId,
 } from "./dashboard/DashboardSidebar";
+import { AccueilTab } from "./dashboard/tabs/AccueilTab";
 import { HistoriqueTab } from "./dashboard/tabs/HistoriqueTab";
 import { StatistiquesTab } from "./dashboard/tabs/StatistiquesTab";
 import { SettingTabs } from "./settings/SettingTabs";
@@ -42,7 +43,7 @@ export default function Dashboard() {
   const [selectedTranscription, setSelectedTranscription] =
     useState<Transcription | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<DashboardTabId>("historique");
+  const [activeTab, setActiveTab] = useState<DashboardTabId>("accueil");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSettingsSection, setActiveSettingsSection] =
     useState<SettingsSectionId>("section-transcription");
@@ -226,7 +227,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (activeTab === "logs" && !settings.developer_mode) {
-      setActiveTab("historique");
+      setActiveTab("accueil");
     }
   }, [activeTab, settings.developer_mode]);
 
@@ -349,6 +350,19 @@ export default function Dashboard() {
                 />
               ) : (
                 <div className="container mx-auto px-6 py-8">
+                  {activeTab === "accueil" && (
+                    <AccueilTab
+                      notes={notes}
+                      onOpenNote={handleOpenNoteFromSidebar}
+                      onCreateNote={() => handleCreateNoteFromSidebar(null)}
+                      onViewHistory={() => setActiveTab("historique")}
+                      onViewNotes={() => setActiveTab("notes")}
+                      onOpenAccountPage={() => {
+                        setActiveTab("parametres");
+                        setActiveSettingsSection("section-compte");
+                      }}
+                    />
+                  )}
                   {activeTab === "historique" && (
                     <HistoriqueTab
                       transcriptions={transcriptions}
