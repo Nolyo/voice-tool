@@ -17,11 +17,20 @@ type Settings = AppSettings["settings"];
  * The `recheck` callback is exposed so callers can force-revaluate after they
  * mutate state outside the settings store (e.g. finishing a local model
  * download).
+ *
+ * `authResolved` MUST be false while the auth session is still being restored
+ * (AuthContext status === "loading"). The migration decision depends on whether
+ * a user is signed in, and that signal only becomes trustworthy once auth has
+ * settled. Deciding earlier — e.g. on a freshly imported profile reloaded by
+ * switch_profile, where settings load before the Supabase session is restored —
+ * would wrongly take the "no user → fresh Local" branch and flash an
+ * unskippable onboarding wizard.
  */
 export function useOnboardingCheck(
   settings: Settings,
   isLoaded: boolean,
   user: User | null,
+  authResolved: boolean,
 ): { showOnboarding: boolean; recheck: () => void } {
   const { updateSetting } = useSettings();
   const [migrationDone, setMigrationDone] = useState(false);
@@ -29,7 +38,7 @@ export function useOnboardingCheck(
   const migrationAttempted = useRef(false);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !authResolved) return;
     if (settings.onboarding_completed) {
       setMigrationDone(true);
       return;
@@ -65,6 +74,7 @@ export function useOnboardingCheck(
     };
   }, [
     isLoaded,
+    authResolved,
     settings.onboarding_completed,
     settings.transcription_provider,
     user,
@@ -75,7 +85,7 @@ export function useOnboardingCheck(
   const recheck = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const showOnboarding =
-    isLoaded && migrationDone && !settings.onboarding_completed;
+    isLoaded && authResolved && migrationDone && !settings.onboarding_completed;
 
   return { showOnboarding, recheck };
 }

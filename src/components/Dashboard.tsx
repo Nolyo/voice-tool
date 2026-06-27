@@ -52,11 +52,12 @@ export default function Dashboard() {
   const [tabScrollEl, setTabScrollEl] = useState<HTMLDivElement | null>(null);
 
   const { settings, isLoaded: settingsLoaded } = useSettings();
-  const { user } = useAuth();
+  const { user, status: authStatus } = useAuth();
   const { showOnboarding, recheck: recheckOnboarding } = useOnboardingCheck(
     settings,
     settingsLoaded,
     user,
+    authStatus !== "loading",
   );
   const { updateAvailable, updateInfo, showUpdateModal, setShowUpdateModal } =
     useUpdaterContext();
