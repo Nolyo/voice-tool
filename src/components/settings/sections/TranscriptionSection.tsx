@@ -6,7 +6,10 @@ import { useSettings } from "@/hooks/useSettings";
 import { useModelDownload } from "@/hooks/useModelDownload";
 import { useCloud } from "@/hooks/useCloud";
 import { useAuth } from "@/hooks/useAuth";
-import type { SettingsSectionId } from "../common/SettingsNav";
+import {
+  type SettingsSectionId,
+  scrollToSettingsAnchor,
+} from "../common/SettingsNav";
 import {
   PickerCardGrid,
   Row,
@@ -158,7 +161,10 @@ export function TranscriptionSection({ onSectionChange }: TranscriptionSectionPr
               <CloudEligibilityBanner
                 isSignedIn={isSignedIn}
                 onSignIn={() => openAuthModal()}
-                onManagePlan={() => onSectionChange?.("section-cloud")}
+                onManagePlan={() => {
+                  onSectionChange?.("section-compte");
+                  scrollToSettingsAnchor("section-cloud");
+                }}
                 t={t}
               />
             )}

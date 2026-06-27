@@ -11,7 +11,11 @@ import { AccueilTab } from "./dashboard/tabs/AccueilTab";
 import { HistoriqueTab } from "./dashboard/tabs/HistoriqueTab";
 import { StatistiquesTab } from "./dashboard/tabs/StatistiquesTab";
 import { SettingTabs } from "./settings/SettingTabs";
-import { type SettingsSectionId } from "./settings/common/SettingsNav";
+import {
+  type SettingsSectionId,
+  resolveSettingsTarget,
+  scrollToSettingsAnchor,
+} from "./settings/common/SettingsNav";
 import {
   ALL_LEVELS_ON,
   LogsTab,
@@ -46,7 +50,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTabId>("accueil");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSettingsSection, setActiveSettingsSection] =
-    useState<SettingsSectionId>("section-transcription");
+    useState<SettingsSectionId>("section-dictee");
   const [logsLevelFilter, setLogsLevelFilter] =
     useState<LevelFilter>(ALL_LEVELS_ON);
   const [logsSourceFilter, setLogsSourceFilter] = useState<string | null>(null);
@@ -236,10 +240,14 @@ export default function Dashboard() {
   // state. The Cloud section hosts the SubscribeButton.
   useEffect(() => {
     const onOpenSettings = (e: Event) => {
-      const detail = (e as CustomEvent<{ section?: SettingsSectionId }>).detail;
+      const detail = (e as CustomEvent<{ section?: string }>).detail;
       setActiveTab("parametres");
       if (detail?.section) {
-        setActiveSettingsSection(detail.section);
+        // Callers may emit legacy ids of pages that were merged away; resolve
+        // to the hosting page and scroll to the relevant card.
+        const { section, anchor } = resolveSettingsTarget(detail.section);
+        setActiveSettingsSection(section);
+        if (anchor) scrollToSettingsAnchor(anchor);
       }
     };
     window.addEventListener("lexena:open-settings", onOpenSettings as EventListener);
@@ -301,7 +309,8 @@ export default function Dashboard() {
         <SelectedModelMissingBanner
           onGoToSettings={() => {
             setActiveTab("parametres");
-            setActiveSettingsSection("section-transcription");
+            setActiveSettingsSection("section-dictee");
+            scrollToSettingsAnchor("section-transcription");
           }}
         />
 
@@ -392,7 +401,8 @@ export default function Dashboard() {
         onOpenChange={setShowUpdateModal}
         onViewDetails={() => {
           setActiveTab("parametres");
-          setActiveSettingsSection("section-mises-a-jour");
+          setActiveSettingsSection("section-a-propos");
+          scrollToSettingsAnchor("section-mises-a-jour");
         }}
       />
 

@@ -29,8 +29,27 @@ vi.hoisted(() => {
   }
 });
 
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  cleanup,
+  waitFor,
+  configure,
+} from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+
+// These tests render a stateful component and assert on phases that only appear
+// after a chain of awaits (stop_recording → device id → demo transcription).
+// Under the parallel suite, CPU contention can briefly starve this jsdom-heavy
+// file, so the result occasionally arrives later than the default 1000ms
+// waitFor budget — making assertions flaky (observed ~1065ms on CI). Give async
+// utilities generous headroom, and keep the per-test timeout strictly above it
+// so the test wrapper never fires before waitFor itself (a 5s/5s collision
+// would surface as a misleading timeout). Real failures still surface, just not
+// on a hair-trigger timeout.
+vi.setConfig({ testTimeout: 30000 });
+configure({ asyncUtilTimeout: 15000 });
 
 afterEach(() => {
   cleanup();

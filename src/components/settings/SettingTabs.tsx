@@ -1,17 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
 import { type SettingsSectionId } from "./common/SettingsNav";
-import { TranscriptionSection } from "./sections/TranscriptionSection";
-import { PostProcessSection } from "./sections/PostProcessSection";
+import { DictationSection } from "./sections/DictationSection";
 import { AudioSection } from "./sections/AudioSection";
-import { VocabularySection } from "./sections/VocabularySection";
 import { SystemSection } from "./sections/SystemSection";
 import { AppearanceSection } from "./sections/AppearanceSection";
 import { ShortcutsSection } from "./sections/ShortcutsSection";
-import { UpdaterSection } from "./sections/UpdaterSection";
 import { AboutSection } from "./sections/AboutSection";
 import { AccountSection } from "./sections/AccountSection";
-import { CloudSection } from "./sections/CloudSection";
 
 interface SettingTabsProps {
   activeSection: SettingsSectionId;
@@ -38,21 +34,15 @@ export function SettingTabs({ activeSection, onSectionChange }: SettingTabsProps
 
   return (
     <div className="vt-app mx-auto max-w-5xl px-3 py-6 sm:px-4 md:px-6">
-      {activeSection === "section-transcription" && (
-        <TranscriptionSection onSectionChange={onSectionChange} />
+      {activeSection === "section-dictee" && (
+        <DictationSection onSectionChange={onSectionChange} />
       )}
-      {activeSection === "section-post-process" && <PostProcessSection />}
       {activeSection === "section-audio" && <AudioSection />}
-      {activeSection === "section-vocabulaire" && <VocabularySection />}
       {activeSection === "section-apparence" && <AppearanceSection />}
       {activeSection === "section-raccourcis" && <ShortcutsSection />}
-      {activeSection === "section-systeme" && <SystemSection />}
-      {activeSection === "section-mises-a-jour" && <UpdaterSection />}
-      {activeSection === "section-a-propos" && (
-        <AboutSection onSectionChange={onSectionChange} />
-      )}
       {activeSection === "section-compte" && <AccountSection />}
-      {activeSection === "section-cloud" && <CloudSection />}
+      {activeSection === "section-systeme" && <SystemSection />}
+      {activeSection === "section-a-propos" && <AboutSection />}
     </div>
   );
 }
