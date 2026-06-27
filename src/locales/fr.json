@@ -25,6 +25,7 @@
   "header": {
     "title": "Lexena",
     "subtitle": {
+      "accueil": "Vue d'ensemble",
       "historique": "Historique des dictées",
       "statistiques": "Statistiques d'utilisation",
       "notes": "Notes & dictées organisées",
@@ -38,6 +39,7 @@
     "error": "Post-traitement IA échoué : {{error}}"
   },
   "sidebar": {
+    "home": "Accueil",
     "history": "Historique",
     "statistics": "Statistiques",
     "notes": "Notes",
@@ -47,6 +49,51 @@
     "collapseMenu": "Replier le menu",
     "updateAvailable": "Mise à jour disponible",
     "updateAvailableTooltip": "Mise à jour {{version}} disponible"
+  },
+  "home": {
+    "heroEyebrow": "Accueil",
+    "heroTitle": "Bienvenue sur Lexena",
+    "heroSubtitle": "Un coup d'œil sur ton compte, ta synchronisation et tes dernières notes.",
+    "account": {
+      "eyebrowSignedOut": "Compte",
+      "titleSignedOut": "Crée un compte Lexena",
+      "descSignedOut": "Sauvegarde tes notes dans le cloud, synchronise tes appareils et débloque la transcription managée.",
+      "ctaSignedOut": "Créer un compte",
+      "eyebrowTrial": "Période d'essai",
+      "minutesUnit": "min restantes",
+      "trialExpires": "Expire le {{date}}",
+      "eyebrowPlan": "Abonnement",
+      "plan_starter": "Starter",
+      "plan_pro": "Pro",
+      "minutesUsed": "{{used}} / {{quota}} min utilisées ce mois-ci",
+      "manage": "Gérer mon compte",
+      "eyebrowInactive": "Compte",
+      "titleInactive": "Passe à la transcription cloud",
+      "descInactive": "Ton essai est terminé. Choisis un plan pour continuer à utiliser la transcription managée et la synchronisation.",
+      "ctaInactive": "Voir les plans"
+    },
+    "sync": {
+      "eyebrow": "Synchronisation",
+      "title": "Active la synchronisation",
+      "desc": "Tu as un compte mais la synchronisation n'est pas activée sur ce profil.",
+      "benefit1": "Tes notes et réglages sauvegardés dans le cloud",
+      "benefit2": "Retrouve tout sur tes autres appareils",
+      "benefit3": "Une protection contre la perte de données",
+      "cta": "Activer la synchronisation"
+    },
+    "recentNotes": {
+      "title": "Dernières notes éditées",
+      "empty": "Tu n'as pas encore de note.",
+      "createCta": "Créer une note",
+      "viewAll": "Toutes les notes"
+    },
+    "quickActions": {
+      "title": "Accès rapides",
+      "newNote": "Nouvelle note",
+      "viewHistory": "Voir l'historique",
+      "recordHint": "Démarrer une dictée",
+      "pttHint": "Maintenir pour dicter"
+    }
   },
   "statistics": {
     "heroEyebrow": "Tableau de bord",

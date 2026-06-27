@@ -6,6 +6,7 @@ import {
   Mic,
   FileText,
   History,
+  Home,
   ScrollText,
   Settings2,
   BarChart3,
@@ -27,6 +28,7 @@ interface DashboardHeaderProps {
 }
 
 const TAB_ICONS: Record<DashboardTabId, LucideIcon> = {
+  accueil: Home,
   historique: History,
   statistiques: BarChart3,
   notes: FileText,
