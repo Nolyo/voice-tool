@@ -1,0 +1,11 @@
+-- Security fix: public.trial_status was created without security_invoker, so it
+-- ran as SECURITY DEFINER (Postgres default). That bypasses the RLS on the
+-- underlying trial_credits table (trial_credits_owner_read: auth.uid() = user_id)
+-- and lets any authenticated caller read every user's trial credits through the
+-- view. Switching to security_invoker makes the view execute with the querying
+-- user's privileges, so the RLS policy applies per-row.
+--
+-- Safe: the authenticated role already holds SELECT on public.trial_credits, and
+-- the Worker reads trial_status via service_role (RLS-exempt), so no legitimate
+-- access is lost. Idempotent.
+ALTER VIEW public.trial_status SET (security_invoker = true);
