@@ -39,7 +39,7 @@ describe("useOnboardingCheck", () => {
   it("does not show onboarding when settings haven't loaded yet", () => {
     invokeMock.mockResolvedValue(false);
     const { result } = renderHook(() =>
-      useOnboardingCheck(makeSettings(), false, null),
+      useOnboardingCheck(makeSettings(), false, null, true),
     );
     expect(result.current.showOnboarding).toBe(false);
   });
@@ -50,6 +50,7 @@ describe("useOnboardingCheck", () => {
         makeSettings({ onboarding_completed: true }),
         true,
         null,
+        true,
       ),
     );
     await waitFor(() => {
@@ -66,6 +67,7 @@ describe("useOnboardingCheck", () => {
         true,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         user as any,
+        true,
       ),
     );
     await waitFor(() => {
@@ -83,6 +85,7 @@ describe("useOnboardingCheck", () => {
         makeSettings({ transcription_provider: "LexenaCloud" }),
         true,
         null,
+        true,
       ),
     );
     await waitFor(() => {
@@ -93,7 +96,7 @@ describe("useOnboardingCheck", () => {
 
   it("migrates a user with a local model already installed to completed", async () => {
     invokeMock.mockResolvedValue(true);
-    renderHook(() => useOnboardingCheck(makeSettings(), true, null));
+    renderHook(() => useOnboardingCheck(makeSettings(), true, null, true));
     await waitFor(() => {
       expect(invokeMock).toHaveBeenCalledWith("any_local_model_exists");
     });
@@ -105,7 +108,7 @@ describe("useOnboardingCheck", () => {
   it("shows onboarding for a fresh Local user with no model and no account", async () => {
     invokeMock.mockResolvedValue(false);
     const { result } = renderHook(() =>
-      useOnboardingCheck(makeSettings(), true, null),
+      useOnboardingCheck(makeSettings(), true, null, true),
     );
     await waitFor(() => {
       expect(invokeMock).toHaveBeenCalledWith("any_local_model_exists");
@@ -115,5 +118,42 @@ describe("useOnboardingCheck", () => {
       expect(result.current.showOnboarding).toBe(true);
     });
     expect(updateSetting).not.toHaveBeenCalled();
+  });
+
+  it("waits for auth to resolve before deciding, then migrates a late-arriving user", async () => {
+    // Reproduces the multi-device import bug: after switch_profile reloads the
+    // app, settings load BEFORE the Supabase session is restored. While auth is
+    // unresolved the hook must NOT commit the (premature) "no user → fresh Local"
+    // decision, otherwise the onboarding wizard flashes and gets stuck.
+    invokeMock.mockResolvedValue(false);
+    const { result, rerender } = renderHook(
+      ({ user, authResolved }) =>
+        useOnboardingCheck(
+          makeSettings(),
+          true,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          user as any,
+          authResolved,
+        ),
+      { initialProps: { user: null as { id: string } | null, authResolved: false } },
+    );
+
+    // Auth still loading: no decision, no filesystem probe, no wizard.
+    await waitFor(() => {
+      expect(result.current.showOnboarding).toBe(false);
+    });
+    expect(invokeMock).not.toHaveBeenCalled();
+    expect(updateSetting).not.toHaveBeenCalled();
+
+    // Session restored with a signed-in user → silent migration (flips the
+    // persisted flag), and the "no user → fresh Local" filesystem probe is never
+    // taken. `showOnboarding` is not asserted here: the mocked settings prop
+    // stays `onboarding_completed: false`, so the live flip isn't reflected (see
+    // the "migrates a signed-in user" test for the same caveat).
+    rerender({ user: { id: "abc" }, authResolved: true });
+    await waitFor(() => {
+      expect(updateSetting).toHaveBeenCalledWith("onboarding_completed", true);
+    });
+    expect(invokeMock).not.toHaveBeenCalled();
   });
 });
