@@ -1,12 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
 import { useAutostart } from "@/hooks/useAutostart";
-import { RadioCardList, Row, SectionHeader, Toggle, VtIcon } from "../vt";
+import { Row, SectionHeader, Toggle, VtIcon } from "../vt";
 import { DangerZone } from "./DangerZone";
 
 const ACCENT = "var(--vt-warn)";
-
-type InsertionMode = "cursor" | "clipboard" | "none";
 
 export function SystemSection() {
   const { t } = useTranslation();
@@ -222,35 +220,6 @@ export function SystemSection() {
               <VtIcon.plus />
             </button>
           </div>
-        </Row>
-
-        <Row
-          label={t("settings.system.insertionMode")}
-          hint={t("settings.system.insertionModeHint")}
-          align="start"
-        >
-          <RadioCardList<InsertionMode>
-            value={settings.insertion_mode}
-            onChange={(v) => updateSetting("insertion_mode", v)}
-            options={[
-              {
-                id: "cursor",
-                title: t("settings.system.modeCursor"),
-                sub: t("settings.system.modeCursorDesc"),
-                badge: t("common.recommended", { defaultValue: "Recommandé" }),
-              },
-              {
-                id: "clipboard",
-                title: t("settings.system.modeClipboard"),
-                sub: t("settings.system.modeClipboardDesc"),
-              },
-              {
-                id: "none",
-                title: t("settings.system.modeNone"),
-                sub: t("settings.system.modeNoneDesc"),
-              },
-            ]}
-          />
         </Row>
       </div>
 

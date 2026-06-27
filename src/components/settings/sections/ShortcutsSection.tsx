@@ -5,6 +5,7 @@ import { useHotkeyConfig } from "@/hooks/useHotkeyConfig";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { buildShortcutFromEvent } from "../common/HotkeyInput";
 import { Callout, Kbd, SectionHeader, VtIcon } from "../vt";
+import { InsertionModeCard } from "./InsertionModeCard";
 
 const ACCENT = "var(--vt-accent)";
 
@@ -293,6 +294,8 @@ export function ShortcutsSection() {
             "Si un raccourci ne répond pas, il est peut-être capturé par une autre application. Essaie une combinaison avec la touche Win ou Alt.",
         })}
       </Callout>
+
+      <InsertionModeCard />
     </div>
   );
 }

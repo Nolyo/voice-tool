@@ -4,17 +4,14 @@ import { Github, RefreshCw } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useSettings } from "@/hooks/useSettings";
 import { LexenaWordmark } from "@/components/common/LexenaWordmark";
-import { type SettingsSectionId } from "../common/SettingsNav";
+import { scrollToSettingsAnchor } from "../common/SettingsNav";
 import { Callout, SectionHeader, VtIcon } from "../vt";
+import { UpdaterSection } from "./UpdaterSection";
 
 const ACCENT = "var(--vt-green)";
 const GITHUB_URL = "https://github.com/Nolyo/lexena";
 
-interface AboutSectionProps {
-  onSectionChange?: (id: SettingsSectionId) => void;
-}
-
-export function AboutSection({ onSectionChange }: AboutSectionProps) {
+export function AboutSection() {
   const { t } = useTranslation();
   const { settings } = useSettings();
   const [version, setVersion] = useState<string>("");
@@ -125,38 +122,36 @@ export function AboutSection({ onSectionChange }: AboutSectionProps) {
           </div>
         </div>
 
-        {onSectionChange && (
-          <div className="vt-row">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[13px] font-semibold">
-                  {t("settings.about.checkUpdates", {
-                    defaultValue: "Mises à jour",
-                  })}
-                </span>
-                <span
-                  className="text-[12px]"
-                  style={{ color: "var(--vt-fg-3)" }}
-                >
-                  {t("settings.about.checkUpdatesDesc", {
-                    defaultValue:
-                      "Vérifier la disponibilité d'une nouvelle version.",
-                  })}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => onSectionChange("section-mises-a-jour")}
-                className="vt-btn-primary inline-flex items-center gap-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                {t("settings.about.checkUpdatesBtn", {
-                  defaultValue: "Vérifier les mises à jour",
+        <div className="vt-row">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[13px] font-semibold">
+                {t("settings.about.checkUpdates", {
+                  defaultValue: "Mises à jour",
                 })}
-              </button>
+              </span>
+              <span
+                className="text-[12px]"
+                style={{ color: "var(--vt-fg-3)" }}
+              >
+                {t("settings.about.checkUpdatesDesc", {
+                  defaultValue:
+                    "Vérifier la disponibilité d'une nouvelle version.",
+                })}
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={() => scrollToSettingsAnchor("section-mises-a-jour")}
+              className="vt-btn-primary inline-flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              {t("settings.about.checkUpdatesBtn", {
+                defaultValue: "Vérifier les mises à jour",
+              })}
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {versionError && (
@@ -170,6 +165,10 @@ export function AboutSection({ onSectionChange }: AboutSectionProps) {
           {versionError}
         </Callout>
       )}
+
+      <div id="section-mises-a-jour">
+        <UpdaterSection />
+      </div>
     </div>
   );
 }

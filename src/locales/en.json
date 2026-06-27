@@ -302,6 +302,8 @@
     "quitApp": "Close the application completely",
     "footer": "(c) 2026 - Automatic updates via GitHub, By Nolyo Claude",
     "nav": {
+      "dictation": "Dictation",
+      "dictationSubtitle": "Transcription, AI and vocabulary",
       "transcription": "Transcription",
       "transcriptionSubtitle": "Speech → text",
       "postProcess": "Post-processing",
@@ -313,13 +315,13 @@
       "appearance": "Appearance",
       "appearanceSubtitle": "Theme, language, mini window",
       "shortcuts": "Shortcuts",
-      "shortcutsSubtitle": "Command keys",
+      "shortcutsSubtitle": "Keys and insertion mode",
       "system": "System",
       "systemSubtitle": "Startup and storage",
       "updates": "Updates",
       "updatesSubtitle": "New versions",
       "about": "About",
-      "aboutSubtitle": "Version, tagline and links",
+      "aboutSubtitle": "Version, updates and links",
       "cloud": "Cloud",
       "cloudSubtitle": "Trial, quota and subscription"
     },
@@ -940,8 +942,8 @@
       "confirm": "Yes, sign me out"
     },
     "account": {
-      "sectionTitle": "Account",
-      "sectionSubtitle": "Profile, security and sync",
+      "sectionTitle": "Account & Cloud",
+      "sectionSubtitle": "Profile, subscription, security and sync",
       "email": "Email",
       "deleteAccount": "Delete my account",
       "deleteAccountWarning": "This action is irreversible. All synced data will be deleted within 30 days.",

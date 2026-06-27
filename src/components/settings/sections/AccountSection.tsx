@@ -35,6 +35,7 @@ import { DeadLettersDialog } from "./DeadLettersDialog";
 import { useCloud } from "@/hooks/useCloud";
 import { formatBytes, getQuotaForPlan, type Plan } from "@/lib/sync/quota";
 import { SharedLinksPanel } from "./SharedLinksPanel";
+import { CloudSection } from "./CloudSection";
 
 const ACCENT_COMPTE = "var(--vt-accent)";
 const ACCENT_SYNC = "var(--vt-cyan)";
@@ -179,6 +180,7 @@ function SignedInBlocks() {
   return (
     <>
       <IdentityCard />
+      <CloudSection />
       <SyncCard />
       <CloudProfilesImportCard />
       <SharedLinksPanel />

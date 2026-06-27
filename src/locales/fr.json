@@ -302,6 +302,8 @@
     "quitApp": "Fermer complètement l'application",
     "footer": "(c) 2026 - Mises à jour automatiques via GitHub, Par Nolyo Claude",
     "nav": {
+      "dictation": "Dictée",
+      "dictationSubtitle": "Transcription, IA et vocabulaire",
       "transcription": "Transcription",
       "transcriptionSubtitle": "Parole → texte",
       "postProcess": "Post-traitement",
@@ -313,13 +315,13 @@
       "appearance": "Apparence",
       "appearanceSubtitle": "Thème, langue, mini fenêtre",
       "shortcuts": "Raccourcis",
-      "shortcutsSubtitle": "Touches de commande",
+      "shortcutsSubtitle": "Touches et mode d'insertion",
       "system": "Système",
       "systemSubtitle": "Démarrage et stockage",
       "updates": "Mises à jour",
       "updatesSubtitle": "Nouvelles versions",
       "about": "À propos",
-      "aboutSubtitle": "Version, slogan et liens",
+      "aboutSubtitle": "Version, mises à jour et liens",
       "cloud": "Cloud",
       "cloudSubtitle": "Essai, quota et abonnement"
     },
@@ -940,8 +942,8 @@
       "confirm": "Oui, me déconnecter"
     },
     "account": {
-      "sectionTitle": "Compte",
-      "sectionSubtitle": "Profil, sécurité et synchronisation",
+      "sectionTitle": "Compte & Cloud",
+      "sectionSubtitle": "Profil, abonnement, sécurité et synchronisation",
       "email": "Email",
       "deleteAccount": "Supprimer mon compte",
       "deleteAccountWarning": "Cette action est irréversible. Toutes les données synchronisées seront supprimées sous 30 jours.",

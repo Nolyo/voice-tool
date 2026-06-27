@@ -1,19 +1,14 @@
 import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  BookOpen,
-  Cloud,
   Info,
   Keyboard,
   Mic,
   Palette,
-  RefreshCw,
   Settings,
   Sparkles,
   UserCircle2,
-  Wand2,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 
 export interface NavItemDef {
   id: string;
@@ -23,35 +18,30 @@ export interface NavItemDef {
   subtitleKey: string;
 }
 
+/**
+ * The seven top-level settings pages. Several former pages were folded into
+ * these (see `resolveSettingsTarget` for the legacy → new mapping):
+ *  - `section-dictee`   ← transcription + post-process + vocabulary
+ *  - `section-raccourcis` also hosts the insertion-mode card (was in system)
+ *  - `section-compte`   ← account + cloud (quota/billing)
+ *  - `section-a-propos` ← about + updates
+ */
 export type SettingsSectionId =
-  | "section-transcription"
-  | "section-post-process"
+  | "section-dictee"
   | "section-audio"
-  | "section-vocabulaire"
   | "section-apparence"
   | "section-raccourcis"
-  | "section-systeme"
-  | "section-mises-a-jour"
-  | "section-a-propos"
   | "section-compte"
-  | "section-cloud";
-
-const AUTH_ONLY_IDS = new Set<SettingsSectionId>(["section-cloud"]);
+  | "section-systeme"
+  | "section-a-propos";
 
 export const NAV_ITEM_DEFS: NavItemDef[] = [
   {
-    id: "section-transcription",
+    id: "section-dictee",
     icon: <Sparkles className="w-3.5 h-3.5 text-vt-violet" />,
     iconBg: "bg-vt-violet/10",
-    titleKey: "settings.nav.transcription",
-    subtitleKey: "settings.nav.transcriptionSubtitle",
-  },
-  {
-    id: "section-post-process",
-    icon: <Wand2 className="w-3.5 h-3.5 text-vt-pin" />,
-    iconBg: "bg-vt-pin/10",
-    titleKey: "settings.nav.postProcess",
-    subtitleKey: "settings.nav.postProcessSubtitle",
+    titleKey: "settings.nav.dictation",
+    subtitleKey: "settings.nav.dictationSubtitle",
   },
   {
     id: "section-audio",
@@ -59,13 +49,6 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     iconBg: "bg-vt-cyan/10",
     titleKey: "settings.nav.audio",
     subtitleKey: "settings.nav.audioSubtitle",
-  },
-  {
-    id: "section-vocabulaire",
-    icon: <BookOpen className="w-3.5 h-3.5 text-vt-violet" />,
-    iconBg: "bg-vt-violet/10",
-    titleKey: "settings.nav.vocabulary",
-    subtitleKey: "settings.nav.vocabularySubtitle",
   },
   {
     id: "section-apparence",
@@ -82,18 +65,18 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     subtitleKey: "settings.nav.shortcutsSubtitle",
   },
   {
+    id: "section-compte",
+    icon: <UserCircle2 className="w-3.5 h-3.5 text-vt-accent" />,
+    iconBg: "bg-vt-accent/10",
+    titleKey: "auth.account.sectionTitle",
+    subtitleKey: "auth.account.sectionSubtitle",
+  },
+  {
     id: "section-systeme",
     icon: <Settings className="w-3.5 h-3.5 text-vt-warn" />,
     iconBg: "bg-vt-warn/10",
     titleKey: "settings.nav.system",
     subtitleKey: "settings.nav.systemSubtitle",
-  },
-  {
-    id: "section-mises-a-jour",
-    icon: <RefreshCw className="w-3.5 h-3.5 text-vt-cyan" />,
-    iconBg: "bg-vt-cyan/10",
-    titleKey: "settings.nav.updates",
-    subtitleKey: "settings.nav.updatesSubtitle",
   },
   {
     id: "section-a-propos",
@@ -102,31 +85,51 @@ export const NAV_ITEM_DEFS: NavItemDef[] = [
     titleKey: "settings.nav.about",
     subtitleKey: "settings.nav.aboutSubtitle",
   },
-  {
-    id: "section-compte",
-    icon: <UserCircle2 className="w-3.5 h-3.5 text-vt-accent" />,
-    iconBg: "bg-vt-accent/10",
-    titleKey: "auth.account.sectionTitle",
-    subtitleKey: "auth.account.sectionSubtitle",
-  },
-  {
-    id: "section-cloud",
-    icon: <Cloud className="w-3.5 h-3.5 text-vt-cyan" />,
-    iconBg: "bg-vt-cyan/10",
-    titleKey: "settings.nav.cloud",
-    subtitleKey: "settings.nav.cloudSubtitle",
-  },
 ];
 
 // Keep backward compat alias
 export const NAV_ITEMS = NAV_ITEM_DEFS;
 
-/** Returns only the nav items appropriate for the current auth status. */
+/** Returns the nav items to display. (No auth-gated pages anymore — the cloud
+ * card lives inside the account page, which handles its own signed-out state.) */
 export function useNavItems(): NavItemDef[] {
-  const { status } = useAuth();
-  return NAV_ITEM_DEFS.filter((item) =>
-    AUTH_ONLY_IDS.has(item.id as SettingsSectionId) ? status === "signed-in" : true,
-  );
+  return NAV_ITEM_DEFS;
+}
+
+/**
+ * Maps any settings id (including ids of pages that were merged away) to the
+ * page that now hosts it, plus an optional anchor to scroll to within that
+ * page. External callers (expiration popup, update modal, cross-section links)
+ * keep emitting their original ids; this keeps those deep-links working.
+ */
+const LEGACY_SECTION_TARGETS: Record<
+  string,
+  { section: SettingsSectionId; anchor?: string }
+> = {
+  "section-transcription": { section: "section-dictee", anchor: "section-transcription" },
+  "section-post-process": { section: "section-dictee", anchor: "section-post-process" },
+  "section-vocabulaire": { section: "section-dictee", anchor: "section-vocabulaire" },
+  "section-cloud": { section: "section-compte", anchor: "section-cloud" },
+  "section-mises-a-jour": { section: "section-a-propos", anchor: "section-mises-a-jour" },
+};
+
+export function resolveSettingsTarget(id: string): {
+  section: SettingsSectionId;
+  anchor?: string;
+} {
+  return LEGACY_SECTION_TARGETS[id] ?? { section: id as SettingsSectionId };
+}
+
+/** Smoothly scrolls to an anchored card after the section has rendered. */
+export function scrollToSettingsAnchor(anchor: string): void {
+  // Defer past the section swap so the target node exists in the DOM.
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      document
+        .getElementById(anchor)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+  });
 }
 
 interface SettingsNavProps {
