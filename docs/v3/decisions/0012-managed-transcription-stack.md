@@ -3,7 +3,7 @@
 **Date** : 2026-05-04
 **Statut** : Accepté
 **Contexte** : sous-épique 05 (managed transcription, cible bundle launch v3.2)
-**Spec source** : [`docs/superpowers/specs/2026-05-04-managed-transcription-architecture-design.md`](../../superpowers/specs/2026-05-04-managed-transcription-architecture-design.md)
+**Spec source** : [`docs/archive/superpowers/specs/2026-05-04-managed-transcription-architecture-design.md`](../../archive/superpowers/specs/2026-05-04-managed-transcription-architecture-design.md)
 
 ## Décisions
 
@@ -33,6 +33,6 @@
 
 ## Liens
 
-- Spec : `docs/superpowers/specs/2026-05-04-managed-transcription-architecture-design.md`
-- Plan : `docs/superpowers/plans/2026-05-04-managed-transcription-architecture.md`
+- Spec : `docs/archive/superpowers/specs/2026-05-04-managed-transcription-architecture-design.md`
+- Plan : `docs/archive/superpowers/plans/2026-05-04-managed-transcription-architecture.md`
 - Sous-épique : `docs/v3/05-managed-transcription.md`

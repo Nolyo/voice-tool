@@ -26,5 +26,5 @@ L'épique v3 ne peut pas sortir publiquement avec un bouton "Supprimer mon compt
 
 ## Spec & plan
 
-- Spec : `docs/superpowers/specs/2026-04-25-account-deletion-completion-design.md`
-- Plan : `docs/superpowers/plans/2026-04-25-account-deletion-completion.md`
+- Spec : `docs/archive/superpowers/specs/2026-04-25-account-deletion-completion-design.md`
+- Plan : `docs/archive/superpowers/plans/2026-04-25-account-deletion-completion.md`

@@ -5,7 +5,7 @@
 
 | ADR | Décision | Statut | Implémentation |
 |---|---|---|---|
-| **0001** — Lemon Squeezy MoR | Billing via Lemon Squeezy (pas Stripe direct, pas Paddle) | ⏳ v3.2 | POC : `docs/research/lemonsqueezy-poc/`. Pas câblé en v3.0 (billing décalé). Décision toujours valide. |
+| **0001** — Lemon Squeezy MoR | Billing via Lemon Squeezy (pas Stripe direct, pas Paddle) | ⏳ v3.2 | POC : `docs/archive/research/lemonsqueezy-poc/`. Pas câblé en v3.0 (billing décalé). Décision toujours valide. |
 | **0002** — Server-side encryption (style Notion) | Encryption at rest Postgres + TLS in transit, pas de E2E v3.0 | ✅ | Supabase managé (encryption at rest natif), TLS forcé client `src/lib/supabase.ts`. Documenté threat model § Compromis acceptés. |
 | **0003** — Clés API device-local | Clés OpenAI/Groq jamais syncées, jamais en transit serveur | ✅ | Filtre sync : `src/lib/sync/mapping.ts` (whitelist 9 clés scalaires, exclut `openai_api_key`, `groq_api_key`, etc.). Stockage local : Tauri Store (chiffré côté OS pour les valeurs sensibles via keyring quand applicable). Test : `mapping.test.ts`. |
 | **0004** — Méthodes auth | Email/password + Magic link + Google OAuth | ✅ | Composants : `src/components/auth/SignInPanel.tsx` (E/P + magic link), `AuthModal.tsx`. OAuth Google : configuré côté Supabase Dashboard + callback handler `src-tauri/src/auth.rs`. Tests : `cargo test` couvre nonce + JWT shape. |

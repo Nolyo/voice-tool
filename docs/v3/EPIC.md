@@ -23,7 +23,7 @@ La v3 introduit deux changements majeurs qui remettent en cause cette posture:
 ## État de l'existant
 
 - **`docs/BACKLOG.md`** définit déjà EPIC-07 (audit sécurité, **bloquant** pour v3) et EPIC-08 (comptes + service payant, v3.0).
-- **`docs/research/lemonsqueezy-poc/`** contient un POC technique fonctionnel (HMAC, idempotence, RLS) prouvant que Lemon Squeezy + Supabase peut marcher. Le POC ne couvre **que** le flow billing — pas le sync, pas le chiffrement, pas le proxy.
+- **`docs/archive/research/lemonsqueezy-poc/`** contient un POC technique fonctionnel (HMAC, idempotence, RLS) prouvant que Lemon Squeezy + Supabase peut marcher. Le POC ne couvre **que** le flow billing — pas le sync, pas le chiffrement, pas le proxy.
 - **`docs/IDEES_AMELIORATION_2026-04-17.md` section 16** liste les pistes monétisation (crédits transcription, modèles premium, sync, partage, team/enterprise).
 
 ---
@@ -114,5 +114,5 @@ _Mise à jour 2026-05-05 : 04-billing livré (cf. [ADR 0015](decisions/0015-sub-
 
 - [Backlog général](../BACKLOG.md) — EPIC-07 et EPIC-08 macro
 - [Idées d'amélioration 2026-04-17](../IDEES_AMELIORATION_2026-04-17.md) — section 16 pour pistes monétisation
-- [POC Lemon Squeezy](../research/lemonsqueezy-poc/) — preuve technique existante
+- [POC Lemon Squeezy](../archive/research/lemonsqueezy-poc/) — preuve technique existante
 - [README de l'épique](README.md) — convention de travail

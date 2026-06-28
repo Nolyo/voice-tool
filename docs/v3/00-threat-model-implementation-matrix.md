@@ -68,7 +68,7 @@
 | Edge Functions Supabase | P1 | Validation Zod + CORS lock + service role server-only + rate limit RPC dispo | `supabase/functions/_shared/{auth,cors,rate-limit}.ts`, `sync-push/schema.ts` |
 | Flow OAuth Google | P2 | `state` nonce one-time validé Rust + redirect URI strict côté Google Console | `src-tauri/src/auth.rs` (nonce), Google Cloud Console (manuel) |
 | Flow Magic Link | P2 | Token one-time Supabase + TTL court + anti-enumeration (réponses identiques) | `src/components/auth/SignInPanel.tsx` (UX neutre), Supabase native |
-| Webhook Lemon Squeezy | P2 | HMAC + idempotence (POC validé) | `docs/research/lemonsqueezy-poc/` — à recâbler v3.2 |
+| Webhook Lemon Squeezy | P2 | HMAC + idempotence (POC validé) | `docs/archive/research/lemonsqueezy-poc/` — à recâbler v3.2 |
 | Page web auth-callback | P2 | CSP stricte + zéro JS tiers + token nettoyé URL | Repo `voice-tool-auth-callback` (Cloudflare Pages) |
 | Deep link `lexena://` | P3 | Validation Rust : nonce one-time + parsing JWT shape + anti-replay | `src-tauri/src/auth.rs` (11 tests unitaires) |
 | App desktop Tauri (IPC commands) | P3 | Capabilities Tauri 2 limitées (`src-tauri/capabilities/default.json`, `mini.json`) | Capabilities files + audit dépendances `cargo audit` |

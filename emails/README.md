@@ -67,7 +67,7 @@ Edge Functions Resend templates, sharing the same components:
 - Account deletion request
 - Account deletion completion
 
-See `docs/superpowers/specs/2026-05-02-email-templates-supabase-auth-design.md` section 9 (out of scope of phase 1).
+See `docs/archive/superpowers/specs/2026-05-02-email-templates-supabase-auth-design.md` section 9 (out of scope of phase 1).
 
 ## Operator runbook
 

@@ -4,8 +4,8 @@
 **Statut** : design figé, prêt à être planifié
 **Sous-épique principal** : `03-sync-notes` (livraison dans une future bêta `v3.0.0-beta.X` — tout sort sur v3.0 incrémentale)
 **Sous-épiques touchés** : `02-sync-settings` (extension queue + Edge Function), `01-auth` (réutilisation JWT)
-**ADR créé** : [`0016-notes-sync-strategy.md`](../../v3/decisions/0016-notes-sync-strategy.md)
-**Living document** : [`docs/v3/03-sync-notes.md`](../../v3/03-sync-notes.md)
+**ADR créé** : [`0016-notes-sync-strategy.md`](../../../v3/decisions/0016-notes-sync-strategy.md)
+**Living document** : [`docs/v3/03-sync-notes.md`](../../../v3/03-sync-notes.md)
 
 ---
 
@@ -13,7 +13,7 @@
 
 Le sous-épique 02 (sync settings) est livré et stabilisé : 3 tables Supabase, RLS deny-by-default, Edge Function `sync-push`, lifecycle-based, LWW par item, soft-delete, quota 5 MB, backup local, modale migration. Le pattern est éprouvé.
 
-Le sous-épique 03 livre la sync cloud des notes texte + dossiers. Le stub [`03-sync-notes.md`](../../v3/03-sync-notes.md) listait 8 questions ouvertes. Cette spec figée fait écho à la décision : **aligner maximalement sur le pattern settings**, et n'introduire des écarts que là où la nature "édition continue" des notes l'exige.
+Le sous-épique 03 livre la sync cloud des notes texte + dossiers. Le stub [`03-sync-notes.md`](../../../v3/03-sync-notes.md) listait 8 questions ouvertes. Cette spec figée fait écho à la décision : **aligner maximalement sur le pattern settings**, et n'introduire des écarts que là où la nature "édition continue" des notes l'exige.
 
 ### Contraintes de cadrage
 
@@ -157,7 +157,7 @@ Aucun nouveau composant infra. La sync notes **extend** :
 
 ### A10. Chiffrement E2E
 
-**Hors scope.** Cf. [ADR 0002 server-side encryption](../../v3/decisions/0002-server-side-encryption.md). Posture style Notion : encryption at rest Postgres + TLS in transit, pas d'E2E. Réversible long terme si position prend.
+**Hors scope.** Cf. [ADR 0002 server-side encryption](../../../v3/decisions/0002-server-side-encryption.md). Posture style Notion : encryption at rest Postgres + TLS in transit, pas d'E2E. Réversible long terme si position prend.
 
 ### A11. Pagination liste notes
 
@@ -209,5 +209,5 @@ Aucun nouveau composant infra. La sync notes **extend** :
 ## 8. Suite
 
 - Plan d'implémentation : [`docs/superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md`](../plans/2026-05-19-v3-sub-epic-03-sync-notes.md)
-- Living document spec : [`docs/v3/03-sync-notes.md`](../../v3/03-sync-notes.md)
-- ADR : [`docs/v3/decisions/0016-notes-sync-strategy.md`](../../v3/decisions/0016-notes-sync-strategy.md)
+- Living document spec : [`docs/v3/03-sync-notes.md`](../../../v3/03-sync-notes.md)
+- ADR : [`docs/v3/decisions/0016-notes-sync-strategy.md`](../../../v3/decisions/0016-notes-sync-strategy.md)
