@@ -93,16 +93,22 @@ dependency → fully unit-testable.
 - Recompute the rect on `resize`; `scrollIntoView` the target when needed.
 - Styled entirely with `.vt-app` tokens for visual consistency.
 
-**B3 — Anchors.**
-`data-tour` attributes added to always-visible elements on the Accueil tab:
-`HeroDictationCard`, the sidebar nav buttons (Historique, Notes, Paramètres), and
-`ProfileSwitcher`. The tour stays on the Accueil tab and points at the sidebar — no
-cross-tab orchestration needed, which keeps the engine simple.
+**B3 — Anchors.** `data-tour` attributes on always-visible Accueil-tab elements.
+Concrete placements (verified against the current code):
+
+| Anchor id | Where | Note |
+|---|---|---|
+| `hero-dictation` | root `div` of `HeroDictationCard.tsx` | The card already renders the toggle + push-to-talk hotkey rows, so the spotlight visually reinforces the "global shortcut" message of step 2. |
+| `nav-historique` / `nav-notes` / `nav-parametres` | sidebar nav buttons in `DashboardSidebar.tsx` | Generated in a `.map()` over `visibleNavItems`; add `data-tour={`nav-${id}`}` on each button. Buttons remain present (icon-only) when the sidebar is collapsed → still valid anchors. |
+| `profile-switcher` | wrapper `div.border-t…p-2` in `DashboardSidebar.tsx` (~line 305) | `ProfileSwitcher`'s own root is a fragment, so anchor on its sidebar wrapper rather than inside the component. |
+
+The tour stays on the Accueil tab and points at the sidebar — no cross-tab
+orchestration needed, which keeps the engine simple.
 
 **Files:** new `src/components/onboarding/tour/GuidedTour.tsx`,
 `src/hooks/useGuidedTour.ts`, `src/components/onboarding/tour/tourSteps.ts`;
-`data-tour` added to `HeroDictationCard.tsx`, `DashboardSidebar.tsx`,
-`ProfileSwitcher.tsx`; mount in `Dashboard.tsx`.
+`data-tour` added in `HeroDictationCard.tsx` and `DashboardSidebar.tsx` (nav
+buttons + profile wrapper); mount in `Dashboard.tsx`.
 
 ### C. Tour itinerary (6 steps, Accueil tab)
 
@@ -132,17 +138,26 @@ can be trimmed to 4 if preferred.
 
 ### E. Replay
 
-A "Revoir le tour guidé" button in Settings → Appearance/General that sets
-`tour_pending = true` and switches to the Accueil tab. Near-zero cost; also useful
-for manual testing.
+A "Revoir le tour guidé" button in the **Appearance** settings page
+(`AppearanceSection.tsx`, section id `section-apparence` — where theme + UI language
+already live; there is no "General" page). It sets `tour_pending = true` and
+switches to the Accueil tab. Near-zero cost; also useful for manual testing.
 
 **Files:** `src/lib/settings.ts` (flag + default), `Dashboard.tsx` (trigger),
-a Settings section (replay button), translation files.
+`src/components/settings/sections/AppearanceSection.tsx` (replay button),
+translation files.
 
 ### F. i18n & testing
 
-- **i18n:** new FR + EN keys for tour steps, the "Micro" label, "Passer cette
-  étape", and the replay button. No hardcoded UI strings (project rule).
+- **i18n — namespaces (verified):**
+  - Tour steps + replay button → **default** namespace, files
+    `src/locales/fr.json` + `src/locales/en.json`, under a new `tour.*` prefix
+    (matches `home.*`, `sidebar.*`, `onboarding.*`, accessed via `useTranslation()`).
+  - Mic selector label + Skip link → **billing** namespace, files
+    `src/locales/fr/billing.json` + `src/locales/en/billing.json`, under
+    `welcome.try.*` (same namespace `TryItStep` already uses,
+    `useTranslation("billing")`).
+  - No hardcoded UI strings (project rule).
 - **Tests:** unit tests for `useGuidedTour` (next/prev/skip/finish, clamping) and
   the trigger condition. Positioning/layout lives in the presentation layer and is
   not covered under jsdom.
