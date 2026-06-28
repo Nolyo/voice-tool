@@ -125,6 +125,20 @@ export function AppearanceSection() {
             ]}
           />
         </Row>
+
+        <Row label={t("tour.replayButton")} hint={t("tour.replayHint")}>
+          <button
+            type="button"
+            className="vt-btn"
+            style={{ height: 36 }}
+            onClick={async () => {
+              await updateSetting("tour_pending", true);
+              window.dispatchEvent(new CustomEvent("lexena:start-tour"));
+            }}
+          >
+            {t("tour.replayButton")}
+          </button>
+        </Row>
       </div>
 
       {/* Mini fenêtre */}

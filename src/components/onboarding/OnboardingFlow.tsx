@@ -68,6 +68,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
   const markComplete = () => {
     void updateSetting("onboarding_completed", true);
+    void updateSetting("tour_pending", true);
   };
 
   const handleCloud = () => {

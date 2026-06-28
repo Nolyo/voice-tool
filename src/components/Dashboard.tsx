@@ -24,6 +24,8 @@ import {
 import { NotesEditor } from "./notes/NotesEditor/NotesEditor";
 import { UpdateModal } from "./common/UpdateModal";
 import { OnboardingFlow } from "./onboarding/OnboardingFlow";
+import { GuidedTour } from "./onboarding/tour/GuidedTour";
+import { shouldShowGuidedTour } from "./onboarding/tour/tourSteps";
 import { ExpirationPopup } from "./billing/ExpirationPopup";
 import { AuthModal } from "./auth/AuthModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,8 +58,8 @@ export default function Dashboard() {
   const [logsSourceFilter, setLogsSourceFilter] = useState<string | null>(null);
   const [tabScrollEl, setTabScrollEl] = useState<HTMLDivElement | null>(null);
 
-  const { settings, isLoaded: settingsLoaded } = useSettings();
-  const { user, status: authStatus } = useAuth();
+  const { settings, isLoaded: settingsLoaded, updateSetting } = useSettings();
+  const { user, status: authStatus, isAuthModalOpen } = useAuth();
   const { showOnboarding, recheck: recheckOnboarding } = useOnboardingCheck(
     settings,
     settingsLoaded,
@@ -267,6 +269,14 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Replay tour (from settings) → land on the Accueil tab so the tour, which
+  // only renders there, can show. `tour_pending` is flipped by the caller.
+  useEffect(() => {
+    const onStartTour = () => setActiveTab("accueil");
+    window.addEventListener("lexena:start-tour", onStartTour);
+    return () => window.removeEventListener("lexena:start-tour", onStartTour);
+  }, []);
+
   return (
     <div className="h-screen flex overflow-hidden bg-background">
       <DashboardSidebar
@@ -426,6 +436,17 @@ export default function Dashboard() {
       />
 
       {showOnboarding && <OnboardingFlow onComplete={recheckOnboarding} />}
+
+      {!isAuthModalOpen &&
+        shouldShowGuidedTour(
+          settingsLoaded,
+          settings.tour_pending,
+          activeTab,
+        ) && (
+          <GuidedTour
+            onFinish={() => void updateSetting("tour_pending", false)}
+          />
+        )}
 
       <ExpirationPopup />
 
