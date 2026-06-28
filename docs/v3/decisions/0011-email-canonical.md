@@ -67,7 +67,7 @@ Sub-épique 01-auth was frozen 2026-04-22, before the trial mechanic was finaliz
 
 ## References
 
-- Spec: `docs/superpowers/specs/2026-04-27-v3-premium-offer-design.md` sections 8 + 10.1
+- Spec: `docs/archive/superpowers/specs/2026-04-27-v3-premium-offer-design.md` sections 8 + 10.1
 - Sub-épique: `docs/v3/01-auth.md`
 - Migration: `supabase/migrations/20260601000100_email_canonical.sql`
 - Tests: `supabase/tests/email_canonical.sql`, `src/lib/email-normalize.test.ts`

@@ -12,7 +12,7 @@
 
 **Tech Stack:** Rust `keyring` crate, `@supabase/supabase-js`, `otpauth` (TOTP côté front pour l'URI QR), React 19 + i18next, Tailwind 4 + shadcn/ui + design system `.vt-app`, Tauri 2 single-instance plugin pour le deep link, Cloudflare Pages (statique + `_headers`), Supabase Auth + Postgres.
 
-**Related spec:** [`docs/v3/01-auth.md`](../../v3/01-auth.md) (figée 2026-04-22), [`docs/v3/decisions/0004-auth-methods.md`](../../v3/decisions/0004-auth-methods.md), [`0005-callback-flow-web-page.md`](../../v3/decisions/0005-callback-flow-web-page.md), [`0007-auth-configuration.md`](../../v3/decisions/0007-auth-configuration.md), [`docs/v3/00-threat-model.md`](../../v3/00-threat-model.md).
+**Related spec:** [`docs/v3/01-auth.md`](../../../v3/01-auth.md) (figée 2026-04-22), [`docs/v3/decisions/0004-auth-methods.md`](../../../v3/decisions/0004-auth-methods.md), [`0005-callback-flow-web-page.md`](../../../v3/decisions/0005-callback-flow-web-page.md), [`0007-auth-configuration.md`](../../../v3/decisions/0007-auth-configuration.md), [`docs/v3/00-threat-model.md`](../../../v3/00-threat-model.md).
 
 **Build verification:**
 - Rust : `LIBCLANG_PATH="C:/Program Files/LLVM/bin" PATH="$PATH:/c/Program Files/CMake/bin" cargo check` dans `src-tauri/` (cf. `memory/MEMORY.md`).

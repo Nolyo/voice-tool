@@ -4,8 +4,8 @@
 - **Date** : 2026-05-19
 - **Sous-épique** : 03 — Sync notes
 - **Supersedes** : —
-- **Lien plan** : [`docs/superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md`](../../superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md)
-- **Lien design** : [`docs/superpowers/specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md`](../../superpowers/specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md)
+- **Lien plan** : [`docs/archive/superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md`](../../archive/superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md)
+- **Lien design** : [`docs/archive/superpowers/specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md`](../../archive/superpowers/specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md)
 - **Lien spec figée** : [`docs/v3/03-sync-notes.md`](../03-sync-notes.md)
 - **ADR principal** : [`0016-notes-sync-strategy.md`](./0016-notes-sync-strategy.md)
 
@@ -76,7 +76,7 @@ Tout sort sur une future bêta `v3.0.0-beta.X` (cf. `project_v3_no_subversions`)
 
 - ADR 0016 (figé) : [`0016-notes-sync-strategy.md`](./0016-notes-sync-strategy.md)
 - Spec figée : [`../03-sync-notes.md`](../03-sync-notes.md)
-- Plan : [`../../superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md`](../../superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md)
-- Design : [`../../superpowers/specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md`](../../superpowers/specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md)
+- Plan : [`../../archive/superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md`](../../archive/superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md)
+- Design : [`../../archive/superpowers/specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md`](../../archive/superpowers/specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md)
 - Checklist E2E : [`../03-sync-notes-e2e-checklist.md`](../03-sync-notes-e2e-checklist.md)
 - Runbook purge : [`../runbooks/account-deletion-purge.md`](../runbooks/account-deletion-purge.md)

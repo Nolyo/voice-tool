@@ -330,7 +330,8 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - `docs/v3/runbooks/` — rotations, backups, incidents (cf. `docs/v3/runbooks/README.md`)
 - `docs/v3/compliance/` — registre GDPR, base légale
 - `docs/v3/ops/` — bootstrap infra (Supabase, Cloudflare Pages) et checklist 2FA
-- `docs/superpowers/plans/` — plans d'implémentation (dont `2026-04-24-v3-sub-epic-00-security-foundations.md`)
+- `docs/superpowers/plans/` — plans d'implémentation actifs (les sous-épiques clôturées sont dans `docs/archive/superpowers/plans/`, dont `2026-04-24-v3-sub-epic-00-security-foundations.md`)
+- `docs/archive/` — plans/specs des sous-épiques livrées (≤ 2026-05-19) + research POC, conservés pour mémoire
 
 ### V3 Auth (livré sous-épique 01)
 
@@ -395,8 +396,8 @@ Built with React 19, TypeScript, and Tailwind CSS v4.
 - Procédure de déploiement Supabase : `emails/DEPLOY_SUPABASE.md` (manuel, dashboard)
 - Checklist multi-clients : `emails/COMPATIBILITY.md` (à remplir via Litmus / Email on Acid)
 - Phase 2 prévue : 4 templates Resend via Edge Functions (welcome, new-device, deletion ×2)
-- Spec : `docs/superpowers/specs/2026-05-02-email-templates-supabase-auth-design.md`
-- Plan : `docs/superpowers/plans/2026-05-02-email-templates-supabase-auth.md`
+- Spec : `docs/archive/superpowers/specs/2026-05-02-email-templates-supabase-auth-design.md`
+- Plan : `docs/archive/superpowers/plans/2026-05-02-email-templates-supabase-auth.md`
 
 ## Commit and Push
 

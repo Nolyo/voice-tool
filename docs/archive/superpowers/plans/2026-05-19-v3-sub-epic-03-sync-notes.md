@@ -13,7 +13,7 @@
 
 **Tech Stack :** identique sub-épique 02. `@supabase/supabase-js`, Supabase Edge Functions Deno + TypeScript, `zod`, Tauri Store plugin v2, React 19 + Context, Tailwind 4, i18next. **Pas de nouvelle dépendance front/back.**
 
-**Related design :** [`docs/superpowers/specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md`](../specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md), [`docs/v3/03-sync-notes.md`](../../v3/03-sync-notes.md), [`docs/v3/decisions/0016-notes-sync-strategy.md`](../../v3/decisions/0016-notes-sync-strategy.md).
+**Related design :** [`docs/superpowers/specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md`](../specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md), [`docs/v3/03-sync-notes.md`](../../../v3/03-sync-notes.md), [`docs/v3/decisions/0016-notes-sync-strategy.md`](../../../v3/decisions/0016-notes-sync-strategy.md).
 
 **Build verification :**
 - Rust : `LIBCLANG_PATH="C:/Program Files/LLVM/bin" PATH="$PATH:/c/Program Files/CMake/bin" cargo check` dans `src-tauri/` (cf. `memory/MEMORY.md`).
@@ -160,11 +160,11 @@ Expected: 0 régression.
 
 - [ ] **Step 5: Lire la spec figée**
 
-Fichier : [`docs/v3/03-sync-notes.md`](../../v3/03-sync-notes.md). Repérer le schéma DB, le sync engine, la conflict resolution, et la migration.
+Fichier : [`docs/v3/03-sync-notes.md`](../../../v3/03-sync-notes.md). Repérer le schéma DB, le sync engine, la conflict resolution, et la migration.
 
 - [ ] **Step 6: Lire l'ADR 0016**
 
-Fichier : [`docs/v3/decisions/0016-notes-sync-strategy.md`](../../v3/decisions/0016-notes-sync-strategy.md). Les 13 décisions sont **figées** — ne pas re-débattre en cours d'impl.
+Fichier : [`docs/v3/decisions/0016-notes-sync-strategy.md`](../../../v3/decisions/0016-notes-sync-strategy.md). Les 13 décisions sont **figées** — ne pas re-débattre en cours d'impl.
 
 - [ ] **Step 7: Lire le design doc**
 
@@ -1106,7 +1106,7 @@ PR description doit inclure :
 ## Liens
 
 - [Design doc](../specs/2026-05-19-v3-sub-epic-03-sync-notes-design.md)
-- [Living spec](../../v3/03-sync-notes.md)
-- [ADR 0016](../../v3/decisions/0016-notes-sync-strategy.md)
+- [Living spec](../../../v3/03-sync-notes.md)
+- [ADR 0016](../../../v3/decisions/0016-notes-sync-strategy.md)
 - [Sub-epic 02 plan (référence pattern)](2026-04-24-v3-sub-epic-02-sync-settings.md)
-- [Sub-epic 02 closure ADR](../../v3/decisions/0010-sub-epic-02-closure.md)
+- [Sub-epic 02 closure ADR](../../../v3/decisions/0010-sub-epic-02-closure.md)

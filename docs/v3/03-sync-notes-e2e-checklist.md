@@ -115,5 +115,5 @@
 
 - [Spec figée](./03-sync-notes.md)
 - [ADR 0016](./decisions/0016-notes-sync-strategy.md)
-- [Plan d'implémentation](../superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md)
+- [Plan d'implémentation](../archive/superpowers/plans/2026-05-19-v3-sub-epic-03-sync-notes.md)
 - [Runbook purge cron](./runbooks/account-deletion-purge.md)

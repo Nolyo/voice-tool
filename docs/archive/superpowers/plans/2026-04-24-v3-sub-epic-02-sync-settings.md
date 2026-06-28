@@ -12,7 +12,7 @@
 
 **Tech Stack:** `@supabase/supabase-js` (déjà en place), Supabase Edge Functions (Deno + TypeScript), `zod` (validation), Tauri Store plugin v2 (déjà en place), React 19 + Context, Tailwind 4 + design system `.vt-app`, i18next. **Pas de nouveau code Rust** : toute la logique sync vit côté TS (cohérent avec le pattern sub-epic 01 où auth.rs ne couvrait que keyring / deep link / device ID).
 
-**Related spec:** [`docs/v3/02-sync-settings.md`](../../v3/02-sync-settings.md) (figée 2026-04-22), [`docs/v3/decisions/0002-server-side-encryption.md`](../../v3/decisions/0002-server-side-encryption.md), [`docs/v3/decisions/0003-api-keys-device-local.md`](../../v3/decisions/0003-api-keys-device-local.md), [`docs/v3/decisions/0008-sync-strategy.md`](../../v3/decisions/0008-sync-strategy.md), [`docs/v3/00-threat-model.md`](../../v3/00-threat-model.md).
+**Related spec:** [`docs/v3/02-sync-settings.md`](../../../v3/02-sync-settings.md) (figée 2026-04-22), [`docs/v3/decisions/0002-server-side-encryption.md`](../../../v3/decisions/0002-server-side-encryption.md), [`docs/v3/decisions/0003-api-keys-device-local.md`](../../../v3/decisions/0003-api-keys-device-local.md), [`docs/v3/decisions/0008-sync-strategy.md`](../../../v3/decisions/0008-sync-strategy.md), [`docs/v3/00-threat-model.md`](../../../v3/00-threat-model.md).
 
 **Build verification:**
 - Rust : `LIBCLANG_PATH="C:/Program Files/LLVM/bin" PATH="$PATH:/c/Program Files/CMake/bin" cargo check` dans `src-tauri/` (cf. `memory/MEMORY.md`) — **seulement si** une tâche touche Rust (Task 5 backup fs, Task 17 export).

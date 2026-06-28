@@ -9,7 +9,7 @@
 > ⚠️ **Phase 1 livrée 2026-05-02** — les 3 templates Supabase Auth (magic link, signup confirmation, password reset) sont implémentés en HTML stylé via React Email.
 > **Source de vérité** : `emails/templates/*.tsx`. Le markdown ci-dessous reste de référence textuelle (FR + EN) pour comparaison et préparation des phases suivantes.
 > **Langue déployée v3.0** : EN uniquement. FR reporté à une phase ultérieure (Edge Function `auth-email-hook` selon `user_settings.ui_language`).
-> **Spec & plan** : `docs/superpowers/specs/2026-05-02-email-templates-supabase-auth-design.md` + `docs/superpowers/plans/2026-05-02-email-templates-supabase-auth.md`.
+> **Spec & plan** : `docs/archive/superpowers/specs/2026-05-02-email-templates-supabase-auth-design.md` + `docs/archive/superpowers/plans/2026-05-02-email-templates-supabase-auth.md`.
 
 ---
 

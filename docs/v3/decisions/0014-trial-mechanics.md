@@ -2,7 +2,7 @@
 
 > **Statut**: Acté.
 > **Date**: 2026-04-27 (spec) / 2026-05-05 (ADR rédigé en clôture sous-épique 04).
-> **Source canonique**: [`docs/superpowers/specs/2026-04-27-v3-premium-offer-design.md`](../../superpowers/specs/2026-04-27-v3-premium-offer-design.md), section 5.
+> **Source canonique**: [`docs/archive/superpowers/specs/2026-04-27-v3-premium-offer-design.md`](../../archive/superpowers/specs/2026-04-27-v3-premium-offer-design.md), section 5.
 
 ## Contexte
 

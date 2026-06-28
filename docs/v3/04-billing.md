@@ -9,7 +9,7 @@
 ## Décisions déjà actées (cf. EPIC.md)
 
 - Provider: **Lemon Squeezy** (Merchant of Record) ([ADR 0001](decisions/0001-lemonsqueezy-vs-stripe.md))
-- POC technique fonctionnel: voir [`docs/research/lemonsqueezy-poc/`](../research/lemonsqueezy-poc/)
+- POC technique fonctionnel: voir [`docs/archive/research/lemonsqueezy-poc/`](../archive/research/lemonsqueezy-poc/)
 
 ---
 

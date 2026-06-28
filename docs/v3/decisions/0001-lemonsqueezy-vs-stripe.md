@@ -34,7 +34,7 @@ On retient **Lemon Squeezy**.
 
 - **MoR (Merchant of Record)** = Lemon Squeezy gère intégralement la TVA EU MOSS, la sales tax US (multi-états post-Wayfair), et les autres juridictions. Pour un dev solo français, c'est plusieurs dizaines d'heures par an économisées en déclarations et compliance.
 - Le surcoût de ~2% en frais comparé à Stripe est largement compensé par le temps gagné.
-- **Un POC technique fonctionnel existe déjà** (`docs/research/lemonsqueezy-poc/`): webhook HMAC SHA-256, idempotence, RLS Supabase. La techno est validée bout-en-bout.
+- **Un POC technique fonctionnel existe déjà** (`docs/archive/research/lemonsqueezy-poc/`): webhook HMAC SHA-256, idempotence, RLS Supabase. La techno est validée bout-en-bout.
 - L'alternative crédible était Paddle (plus mature pour le SaaS récurrent), mais le POC Lemon Squeezy étant déjà fait, refaire un POC Paddle = coût de migration sans gain démontré pour notre cas.
 
 ## Conséquences

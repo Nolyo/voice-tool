@@ -101,7 +101,7 @@
 
 12. **CGU article 12 activé** (section "Service payant" actuellement marquée non applicable)
 
-13. **Webhook LS recâblé depuis le POC** (`docs/research/lemonsqueezy-poc/`)
+13. **Webhook LS recâblé depuis le POC** (`docs/archive/research/lemonsqueezy-poc/`)
 
 ---
 

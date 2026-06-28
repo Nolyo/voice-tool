@@ -11,7 +11,7 @@ Ce dossier est l'**epic story** de la v3 de Voice Tool. Il se construit progress
 - **[01-auth.md](01-auth.md)** — Auth & comptes (signup, login, OAuth, deep link).
 - **[02-sync-settings.md](02-sync-settings.md)** — Sync settings (sans clés API).
 - **[03-sync-notes.md](03-sync-notes.md)** — Sync notes texte + migration locale.
-- **[04-billing.md](04-billing.md)** — Lemon Squeezy + gating premium (intègre POC `docs/research/lemonsqueezy-poc/`).
+- **[04-billing.md](04-billing.md)** — Lemon Squeezy + gating premium (intègre POC `docs/archive/research/lemonsqueezy-poc/`).
 - **[05-managed-transcription.md](05-managed-transcription.md)** — Proxy modèles transcription (v3.1+).
 - **[06-onboarding.md](06-onboarding.md)** — Marketing, pricing, onboarding UX.
 - **[decisions/](decisions/)** — Architecture Decision Records (ADR) au format Michael Nygard.

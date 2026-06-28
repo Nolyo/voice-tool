@@ -11,7 +11,7 @@
 
 **Tech Stack:** GitHub Actions YAML, `cargo audit` (crate `cargo-audit`), `pnpm audit` (natif), Node script Node.js pour scanner regex, Markdown pour docs. Aucun changement dans `src/`, `src-tauri/src/`, `app/`.
 
-**Related spec:** [`docs/v3/00-threat-model.md`](../../v3/00-threat-model.md) (figé 2026-04-22), [`docs/v3/decisions/0006-threat-model.md`](../../v3/decisions/0006-threat-model.md), [`docs/v3/decisions/0007-auth-configuration.md`](../../v3/decisions/0007-auth-configuration.md).
+**Related spec:** [`docs/v3/00-threat-model.md`](../../../v3/00-threat-model.md) (figé 2026-04-22), [`docs/v3/decisions/0006-threat-model.md`](../../../v3/decisions/0006-threat-model.md), [`docs/v3/decisions/0007-auth-configuration.md`](../../../v3/decisions/0007-auth-configuration.md).
 
 **Build verification:** Le projet n'a pas de suite de tests. Pour la CI : valider localement les workflows via `act` si installé, sinon pousser sur une branche jetable et vérifier que le job passe/échoue comme attendu. Pour les docs : relecture manuelle avant commit, pas de test automatique.
 
@@ -661,7 +661,7 @@ Garantir qu'un backup Supabase Pro est effectivement restaurable, pas juste pré
 
 ## Préconditions
 
-- Projet Supabase Pro `voice-tool-v3-prod` créé (cf. [`../ops/supabase-bootstrap.md`](../ops/supabase-bootstrap.md))
+- Projet Supabase Pro `voice-tool-v3-prod` créé (cf. [`../ops/supabase-bootstrap.md`](../../../v3/ops/supabase-bootstrap.md))
 - Accès owner au projet
 - PITR activé
 

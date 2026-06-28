@@ -46,5 +46,5 @@ If a clear abuse pattern is detected:
 
 ## Related
 
-- Spec: `docs/superpowers/specs/2026-04-27-v3-premium-offer-design.md` sections 8.1, 8.2
+- Spec: `docs/archive/superpowers/specs/2026-04-27-v3-premium-offer-design.md` sections 8.1, 8.2
 - Schema: `supabase/migrations/20260501000000_user_devices.sql`

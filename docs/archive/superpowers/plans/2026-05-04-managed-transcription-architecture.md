@@ -12,7 +12,7 @@
 
 **Tech Stack:** TypeScript + `@cloudflare/workers-types` + `jose` (JWT verify) + `@supabase/supabase-js` (Worker côté serveur, service-role) ; Wrangler 3 ; Vitest + Miniflare pour tests Worker. PostgreSQL 15 (Supabase). Côté client : Tauri Rust + `reqwest`, React 19 + Context, Tailwind 4 design system `.vt-app`, i18next, Vitest. Pas de framework de routing dans le Worker (vanilla `fetch` handler).
 
-**Related spec:** [`docs/superpowers/specs/2026-05-04-managed-transcription-architecture-design.md`](../specs/2026-05-04-managed-transcription-architecture-design.md), [`docs/superpowers/specs/2026-04-27-v3-premium-offer-design.md`](../specs/2026-04-27-v3-premium-offer-design.md), [`docs/v3/EPIC.md`](../../v3/EPIC.md), [`docs/v3/05-managed-transcription.md`](../../v3/05-managed-transcription.md).
+**Related spec:** [`docs/superpowers/specs/2026-05-04-managed-transcription-architecture-design.md`](../specs/2026-05-04-managed-transcription-architecture-design.md), [`docs/superpowers/specs/2026-04-27-v3-premium-offer-design.md`](../specs/2026-04-27-v3-premium-offer-design.md), [`docs/v3/EPIC.md`](../../../v3/EPIC.md), [`docs/v3/05-managed-transcription.md`](../../../v3/05-managed-transcription.md).
 
 **Build verification:**
 - **Worker** : `pnpm --filter @lexena/transcription-api typecheck` + `pnpm --filter @lexena/transcription-api test` (Vitest + Miniflare). `pnpm --filter @lexena/transcription-api dev` lance Wrangler dev local.
