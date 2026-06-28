@@ -523,6 +523,8 @@
       "cancelDesc": "Stops recording without transcribing",
       "postProcessToggle": "Toggle post-processing",
       "postProcessToggleDesc": "Only active while recording. Enables/disables AI post-processing.",
+      "repaste": "Re-paste last transcription",
+      "repasteDesc": "Pastes the last transcription again at the cursor",
       "conflictsTitle": "Shortcut conflicts",
       "conflictsBody": "If a shortcut doesn't respond, it may be captured by another application. Try a combination with the Win or Alt key."
     },

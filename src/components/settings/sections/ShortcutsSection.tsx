@@ -14,7 +14,8 @@ type HotkeyKey =
   | "ptt_hotkey"
   | "open_window_hotkey"
   | "cancel_hotkey"
-  | "post_process_toggle_hotkey";
+  | "post_process_toggle_hotkey"
+  | "repaste_hotkey";
 
 interface HotkeyRowProps {
   label: string;
@@ -252,6 +253,13 @@ export function ShortcutsSection() {
       sub: t("settings.shortcuts.postProcessToggleDesc"),
       defaultValue: DEFAULT_SETTINGS.settings.post_process_toggle_hotkey,
       value: settings.post_process_toggle_hotkey,
+    },
+    {
+      id: "repaste_hotkey",
+      label: t("settings.shortcuts.repaste"),
+      sub: t("settings.shortcuts.repasteDesc"),
+      defaultValue: DEFAULT_SETTINGS.settings.repaste_hotkey,
+      value: settings.repaste_hotkey,
     },
   ];
 

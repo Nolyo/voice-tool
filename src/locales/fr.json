@@ -523,6 +523,8 @@
       "cancelDesc": "Stoppe l'enregistrement sans transcrire",
       "postProcessToggle": "Toggle post-traitement",
       "postProcessToggleDesc": "Actif uniquement pendant l'enregistrement. Active/désactive le post-traitement IA.",
+      "repaste": "Recoller la dernière transcription",
+      "repasteDesc": "Recolle la dernière transcription à la position du curseur",
       "conflictsTitle": "Conflits de raccourcis",
       "conflictsBody": "Si un raccourci ne répond pas, il est peut-être capturé par une autre application. Essaie une combinaison avec la touche Win ou Alt."
     },

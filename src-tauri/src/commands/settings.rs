@@ -55,6 +55,7 @@ pub fn update_hotkeys(
     open_window_hotkey: Option<String>,
     cancel_hotkey: Option<String>,
     post_process_toggle_hotkey: Option<String>,
+    repaste_hotkey: Option<String>,
 ) -> Result<(), String> {
     let current = state
         .inner()
@@ -78,6 +79,9 @@ pub fn update_hotkeys(
     }
     if let Some(value) = post_process_toggle_hotkey {
         next.post_process_toggle = normalize_hotkey_value(Some(value));
+    }
+    if let Some(value) = repaste_hotkey {
+        next.repaste = normalize_hotkey_value(Some(value));
     }
 
     if let Err(err) = apply_hotkeys(&app_handle, &next) {

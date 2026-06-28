@@ -33,6 +33,14 @@ pub(crate) fn hotkeys_conflict(config: &HotkeyConfig) -> Option<String> {
     {
         return Some("Post-process toggle shortcut must be distinct from other shortcuts.".into());
     }
+    if equals(&config.repaste, &config.record)
+        || equals(&config.repaste, &config.ptt)
+        || equals(&config.repaste, &config.open_window)
+        || equals(&config.repaste, &config.cancel)
+        || equals(&config.repaste, &config.post_process_toggle)
+    {
+        return Some("Repaste shortcut must be distinct from other shortcuts.".into());
+    }
 
     None
 }
@@ -56,6 +64,7 @@ pub(crate) fn normalize_hotkey_value(value: Option<String>) -> Option<String> {
 
 pub(crate) fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Store<R>>) -> HotkeyConfig {
     let mut config = HotkeyConfig::default();
+    let mut repaste_present = false;
 
     if let Some(settings_value) = store.get("settings") {
         if let Some(settings_obj) = settings_value.get("settings").and_then(Value::as_object) {
@@ -83,6 +92,12 @@ pub(crate) fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Sto
             {
                 config.post_process_toggle = normalize_hotkey_value(Some(value.to_string()));
             }
+            if let Some(value) = settings_obj.get("repaste_hotkey") {
+                repaste_present = true;
+                config.repaste = value
+                    .as_str()
+                    .and_then(|s| normalize_hotkey_value(Some(s.to_string())));
+            }
         }
     }
 
@@ -97,6 +112,11 @@ pub(crate) fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Sto
     }
     if config.cancel.is_none() {
         config.cancel = Some("Escape".into());
+    }
+    // repaste defaults to Ctrl+F10 on first run / upgrade (key absent). An
+    // explicitly-empty stored value means the user disabled it — leave it None.
+    if !repaste_present && config.repaste.is_none() {
+        config.repaste = Some("Ctrl+F10".into());
     }
 
     config
@@ -420,6 +440,42 @@ pub(crate) fn unregister_post_process_toggle_shortcut<R: Runtime>(app_handle: &A
     });
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::HotkeyConfig;
+
+    fn base_config() -> HotkeyConfig {
+        HotkeyConfig {
+            record: Some("Ctrl+F11".into()),
+            ptt: Some("Ctrl+F12".into()),
+            open_window: Some("Ctrl+Alt+O".into()),
+            cancel: Some("Escape".into()),
+            post_process_toggle: None,
+            repaste: Some("Ctrl+F10".into()),
+        }
+    }
+
+    #[test]
+    fn repaste_distinct_is_accepted() {
+        assert!(hotkeys_conflict(&base_config()).is_none());
+    }
+
+    #[test]
+    fn repaste_colliding_with_record_is_rejected() {
+        let mut config = base_config();
+        config.repaste = config.record.clone();
+        assert!(hotkeys_conflict(&config).is_some());
+    }
+
+    #[test]
+    fn repaste_colliding_with_cancel_is_rejected() {
+        let mut config = base_config();
+        config.repaste = Some("Escape".into());
+        assert!(hotkeys_conflict(&config).is_some());
+    }
+}
+
 // --- Apply hotkeys (register all shortcuts with callbacks) ---
 
 pub(crate) fn apply_hotkeys<R: Runtime>(
@@ -450,6 +506,12 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
 
     let open_hotkey = config
         .open_window
+        .as_ref()
+        .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
+        .transpose()?;
+
+    let repaste_hotkey = config
+        .repaste
         .as_ref()
         .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
         .transpose()?;
@@ -523,6 +585,23 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
                 format!(
                     "Failed to register shortcut \"{}\": {}",
                     open_label, e
+                )
+            })?;
+    }
+
+    if let Some((repaste_label, repaste_shortcut)) = repaste_hotkey {
+        let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
+            if event.state == ShortcutState::Pressed {
+                let _ = app.emit("repaste-last-transcription", ());
+            }
+        };
+
+        manager
+            .on_shortcut(repaste_shortcut.clone(), handler)
+            .map_err(|e| {
+                format!(
+                    "Failed to register shortcut \"{}\": {}",
+                    repaste_label, e
                 )
             })?;
     }

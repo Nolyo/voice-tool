@@ -12,6 +12,8 @@ pub(crate) struct HotkeyConfig {
     pub(crate) cancel: Option<String>,
     /// Only active while a recording is in progress. Toggles `post_process_enabled`.
     pub(crate) post_process_toggle: Option<String>,
+    /// Re-pastes the last inserted transcription at the cursor. Empty = disabled.
+    pub(crate) repaste: Option<String>,
 }
 
 /// Holds a cached whisper context + state so state buffers are allocated once

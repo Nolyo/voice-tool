@@ -8,7 +8,8 @@ export type HotkeyKey =
   | "ptt_hotkey"
   | "open_window_hotkey"
   | "cancel_hotkey"
-  | "post_process_toggle_hotkey";
+  | "post_process_toggle_hotkey"
+  | "repaste_hotkey";
 
 /**
  * Persist a hotkey change: normalizes the shortcut, calls the Rust
@@ -27,8 +28,9 @@ export function useHotkeyConfig() {
         .filter(Boolean)
         .join("+");
 
-      // Allow empty string for optional hotkeys (post_process_toggle_hotkey).
-      const allowEmpty = key === "post_process_toggle_hotkey";
+      // Allow empty string for optional hotkeys (post_process_toggle_hotkey, repaste_hotkey).
+      const allowEmpty =
+        key === "post_process_toggle_hotkey" || key === "repaste_hotkey";
       if (!normalized && !allowEmpty) throw new Error(t('errors.hotkeyEmpty'));
 
       const currentValue = settings[key];
@@ -53,6 +55,8 @@ export function useHotkeyConfig() {
           key === "post_process_toggle_hotkey"
             ? normalized
             : settings.post_process_toggle_hotkey,
+        repasteHotkey:
+          key === "repaste_hotkey" ? normalized : settings.repaste_hotkey,
       });
 
       await updateSetting(key, normalized);

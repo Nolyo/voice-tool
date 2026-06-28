@@ -101,6 +101,7 @@ export default function Dashboard() {
       settings,
       addTranscription,
       onTranscriptionAdded: setSelectedTranscription,
+      latestHistoryText: transcriptions[0]?.text,
     });
 
   const {
