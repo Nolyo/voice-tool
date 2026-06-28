@@ -38,6 +38,38 @@
     "processing": "Post-traitement IA en cours...",
     "error": "Post-traitement IA échoué : {{error}}"
   },
+  "tour": {
+    "next": "Suivant",
+    "prev": "Précédent",
+    "finish": "Terminer",
+    "skip": "Passer le tour",
+    "replayButton": "Revoir le tour guidé",
+    "replayHint": "Relance la visite guidée des fonctionnalités principales.",
+    "welcome": {
+      "title": "Bienvenue dans Lexena",
+      "body": "30 secondes pour découvrir l'essentiel. Tu peux passer à tout moment."
+    },
+    "dictate": {
+      "title": "Dicte d'un clic",
+      "body": "Lance l'enregistrement ici — ou depuis n'importe quelle application avec ton raccourci global. Le texte s'insère dans la fenêtre active et une mini-fenêtre flotte pendant la dictée."
+    },
+    "history": {
+      "title": "Ton historique",
+      "body": "Toutes tes transcriptions sont conservées ici, prêtes à être copiées ou transformées en notes."
+    },
+    "notes": {
+      "title": "Tes notes",
+      "body": "Écris, organise en dossiers et relie tes notes entre elles."
+    },
+    "settings": {
+      "title": "Réglages",
+      "body": "Choisis ton micro, ton modèle de transcription et personnalise tes raccourcis ici."
+    },
+    "account": {
+      "title": "Compte & synchro",
+      "body": "Connecte-toi pour synchroniser tes réglages et tes notes dans le cloud, sur tous tes appareils."
+    }
+  },
   "sidebar": {
     "home": "Accueil",
     "history": "Historique",
