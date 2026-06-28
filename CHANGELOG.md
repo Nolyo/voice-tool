@@ -75,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drag & drop** for moving notes between folders
 - Custom **folder-creation dialog** (replaces the native browser `prompt()`)
 - Note-to-note linking (`@`) + backlinks panel + broken-link detection (carried over from 2.10.1)
+- **Save a transcription to a note**: from a transcription's detail panel, create a new note seeded with it or append it to an existing note via a searchable picker (sync-safe, 1 MB per-note cap honored)
 
 ### Added — History
 - **Pin transcriptions** to keep important entries at the top of the list
