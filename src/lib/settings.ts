@@ -43,6 +43,8 @@ export interface AppSettings {
     cancel_hotkey: string;
     /** Only active while recording. Empty = disabled. Toggles post_process_enabled. */
     post_process_toggle_hotkey: string;
+    /** Re-pastes the last inserted transcription at the cursor. Empty = disabled. */
+    repaste_hotkey: string;
     ptt_hotkey: string;
     record_mode: "toggle" | "ptt";
 
@@ -126,6 +128,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     open_window_hotkey: "Ctrl+Alt+O",
     cancel_hotkey: "Escape",
     post_process_toggle_hotkey: "",
+    repaste_hotkey: "Ctrl+F10",
     ptt_hotkey: "Ctrl+F12",
     record_mode: "toggle",
 
