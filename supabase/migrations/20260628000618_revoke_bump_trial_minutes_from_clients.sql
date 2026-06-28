@@ -1,0 +1,12 @@
+-- Security fix: bump_trial_minutes was callable by anon/authenticated.
+--
+-- The original migration (20260504100500) used `REVOKE ALL ... FROM PUBLIC`,
+-- which does NOT remove the explicit EXECUTE grants Supabase adds to anon and
+-- authenticated via default privileges. The function therefore stayed reachable
+-- at /rest/v1/rpc/bump_trial_minutes for any caller, who could pass an arbitrary
+-- user_id and:
+--   * a negative p_minutes  -> refill their own trial credits for free
+--   * a positive p_minutes   -> drain another user's trial
+-- It has no in-body auth.uid() check by design: the only legitimate caller is the
+-- Worker running as service_role (whose grant is left untouched here).
+REVOKE EXECUTE ON FUNCTION public.bump_trial_minutes(uuid, numeric) FROM anon, authenticated;
