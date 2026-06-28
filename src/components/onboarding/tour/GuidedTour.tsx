@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ interface Rect {
 
 const SPOTLIGHT_PAD = 8;
 const BUBBLE_GAP = 16;
+const VIEWPORT_MARGIN = 12;
 
 function readRect(anchor: string): Rect | null {
   const el = document.querySelector<HTMLElement>(`[data-tour="${anchor}"]`);
@@ -23,30 +24,51 @@ function readRect(anchor: string): Rect | null {
   return { top: r.top, left: r.left, width: r.width, height: r.height };
 }
 
-function bubbleStyle(
+/**
+ * Anchor-relative bubble position, then clamped so the whole bubble — and its
+ * buttons — always stays inside the viewport (never cut off at an edge).
+ */
+export function bubblePosition(
   placement: TourStep["placement"],
   spot: Rect | null,
+  bubble: { width: number; height: number },
+  vw: number,
+  vh: number,
 ): CSSProperties {
+  let top: number;
+  let left: number;
+
   if (!spot || placement === "center") {
-    return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+    top = vh / 2 - bubble.height / 2;
+    left = vw / 2 - bubble.width / 2;
+  } else if (placement === "right") {
+    top = spot.top;
+    left = spot.left + spot.width + BUBBLE_GAP;
+  } else if (placement === "bottom") {
+    top = spot.top + spot.height + BUBBLE_GAP;
+    left = spot.left;
+  } else if (placement === "top") {
+    top = spot.top - bubble.height - BUBBLE_GAP;
+    left = spot.left;
+  } else {
+    top = spot.top;
+    left = spot.left;
   }
-  switch (placement) {
-    case "right":
-      return { top: spot.top, left: spot.left + spot.width + BUBBLE_GAP };
-    case "bottom":
-      return { top: spot.top + spot.height + BUBBLE_GAP, left: spot.left };
-    case "top":
-      return { top: Math.max(8, spot.top - BUBBLE_GAP), left: spot.left };
-    default:
-      return { top: spot.top, left: spot.left };
-  }
+
+  const maxLeft = Math.max(VIEWPORT_MARGIN, vw - bubble.width - VIEWPORT_MARGIN);
+  const maxTop = Math.max(VIEWPORT_MARGIN, vh - bubble.height - VIEWPORT_MARGIN);
+  left = Math.min(Math.max(VIEWPORT_MARGIN, left), maxLeft);
+  top = Math.min(Math.max(VIEWPORT_MARGIN, top), maxTop);
+
+  return { top: Math.round(top), left: Math.round(left) };
 }
 
 /**
  * One-pass guided tour overlay. Sequencing lives in `useGuidedTour`; this layer
  * resolves each step's `data-tour` anchor into a spotlight rect (a giant
- * box-shadow cuts the dim everywhere except the anchor) and positions the bubble.
- * A missing anchor auto-advances rather than rendering an orphan bubble.
+ * box-shadow cuts the dim everywhere except the anchor) and positions the
+ * bubble, clamped to the viewport. A missing anchor auto-advances rather than
+ * rendering an orphan bubble.
  */
 export function GuidedTour({ onFinish }: { onFinish: () => void }) {
   const { t } = useTranslation();
@@ -56,6 +78,12 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
   );
   const step = TOUR_STEPS[index];
   const [rect, setRect] = useState<Rect | null>(null);
+  const [viewport, setViewport] = useState(() => ({
+    w: typeof window !== "undefined" ? window.innerWidth : 1280,
+    h: typeof window !== "undefined" ? window.innerHeight : 800,
+  }));
+  const [bubbleSize, setBubbleSize] = useState({ width: 320, height: 200 });
+  const bubbleRef = useRef<HTMLDivElement>(null);
 
   // A Radix dialog (the onboarding wizard) that unmounts while still `open`
   // leaves `body { pointer-events: none }` behind. The tour is a body-level
@@ -73,6 +101,17 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
     return unlock;
   }, []);
 
+  // Track viewport size so positions recompute on resize — including the
+  // anchorless centered step, which has no rect to react to.
+  useEffect(() => {
+    const onResize = () =>
+      setViewport({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Resolve the anchor rect for the current step (and on resize). A missing
+  // anchor auto-advances rather than rendering an orphan bubble.
   useLayoutEffect(() => {
     if (step.anchor === null) {
       setRect(null);
@@ -86,11 +125,8 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
       return;
     }
     el.scrollIntoView({ block: "nearest", inline: "nearest" });
-    const update = () => setRect(readRect(step.anchor as string));
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [step.anchor, next]);
+    setRect(readRect(step.anchor));
+  }, [step.anchor, next, viewport]);
 
   const spot: Rect | null = rect
     ? {
@@ -100,6 +136,26 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
         height: rect.height + SPOTLIGHT_PAD * 2,
       }
     : null;
+
+  // Measure the rendered bubble so positioning can clamp it to the viewport.
+  useLayoutEffect(() => {
+    const el = bubbleRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setBubbleSize((prev) =>
+      Math.abs(prev.width - r.width) < 1 && Math.abs(prev.height - r.height) < 1
+        ? prev
+        : { width: r.width, height: r.height },
+    );
+  }, [index, rect, viewport]);
+
+  const pos = bubblePosition(
+    step.placement,
+    spot,
+    bubbleSize,
+    viewport.w,
+    viewport.h,
+  );
 
   return createPortal(
     <div
@@ -115,7 +171,8 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
             left: spot.left,
             width: spot.width,
             height: spot.height,
-            boxShadow: "0 0 0 9999px rgba(0,0,0,0.6)",
+            boxShadow:
+              "0 0 0 2px var(--vt-accent), 0 0 0 9999px rgba(0,0,0,0.6)",
             pointerEvents: "none",
           }}
         />
@@ -127,9 +184,10 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
       )}
 
       <div
+        ref={bubbleRef}
         className="absolute w-[320px] max-w-[90vw] rounded-xl border p-4 shadow-2xl"
         style={{
-          ...bubbleStyle(step.placement, spot),
+          ...pos,
           background: "var(--vt-panel)",
           borderColor: "var(--vt-border)",
           color: "var(--vt-fg)",
