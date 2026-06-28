@@ -85,6 +85,7 @@ export default function Dashboard() {
     moveNoteToFolder,
     moveNoteToFolderAtIndex,
     reorderNotesInFolder,
+    reloadNotes,
   } = useNotes();
   const {
     folders,
@@ -171,6 +172,15 @@ export default function Dashboard() {
       }
     },
     [notes, handleOpenNote],
+  );
+
+  // Open a note (created/updated from a transcription) in the Notes view.
+  const handleOpenNoteFromHistory = useCallback(
+    (noteId: string) => {
+      handleOpenNoteInTabById(noteId);
+      setActiveTab("notes");
+    },
+    [handleOpenNoteInTabById],
   );
 
   const handleDelete = useCallback(
@@ -385,6 +395,8 @@ export default function Dashboard() {
                       onDelete={handleDelete}
                       onClearAll={handleClearAll}
                       onTogglePin={togglePin}
+                      onOpenNote={handleOpenNoteFromHistory}
+                      onNotesMutated={reloadNotes}
                     />
                   )}
                   {activeTab === "statistiques" && (
