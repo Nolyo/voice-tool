@@ -510,6 +510,12 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
         .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
         .transpose()?;
 
+    let repaste_hotkey = config
+        .repaste
+        .as_ref()
+        .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
+        .transpose()?;
+
     if let Some((record_label, record_shortcut)) = record_hotkey {
         let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
             if event.state == ShortcutState::Pressed {
@@ -579,6 +585,23 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
                 format!(
                     "Failed to register shortcut \"{}\": {}",
                     open_label, e
+                )
+            })?;
+    }
+
+    if let Some((repaste_label, repaste_shortcut)) = repaste_hotkey {
+        let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
+            if event.state == ShortcutState::Pressed {
+                let _ = app.emit("repaste-last-transcription", ());
+            }
+        };
+
+        manager
+            .on_shortcut(repaste_shortcut.clone(), handler)
+            .map_err(|e| {
+                format!(
+                    "Failed to register shortcut \"{}\": {}",
+                    repaste_label, e
                 )
             })?;
     }
