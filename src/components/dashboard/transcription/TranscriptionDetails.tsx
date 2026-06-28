@@ -17,18 +17,32 @@ import {
   ChevronRight,
   Pin,
   PinOff,
+  NotebookPen,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { Transcription } from "@/hooks/useTranscriptionHistory";
 import { useSettings } from "@/hooks/useSettings";
 import { invoke } from "@tauri-apps/api/core";
 import { useDateFormatters } from "@/lib/date-format";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
+import type { LocalNoteMeta } from "@/lib/sync/types";
+import {
+  createNoteFromTranscription,
+  appendTranscriptionToNote,
+  NoteTooLargeError,
+} from "@/lib/notes/transcription-note-actions";
+import { SaveToNoteDialog } from "./SaveToNoteDialog";
 
 interface TranscriptionDetailsProps {
   transcription: Transcription | null;
   onClose: () => void;
   onDelete?: (id: string) => void;
   onTogglePin?: (id: string) => void | Promise<void>;
+  /** Open a note (by id) in the Notes view — wired to the "Ouvrir" toast action. */
+  onOpenNote?: (noteId: string) => void;
+  /** Called after a transcription is saved to a note, so the caller can refresh
+   *  its notes list (the new / updated note appears in the sidebar). */
+  onNotesMutated?: () => void;
   compact?: boolean;
 }
 
@@ -92,6 +106,8 @@ export function TranscriptionDetails({
   onClose,
   onDelete,
   onTogglePin,
+  onOpenNote,
+  onNotesMutated,
   compact = false,
 }: TranscriptionDetailsProps) {
   const { t } = useTranslation();
@@ -104,6 +120,7 @@ export function TranscriptionDetails({
   const [isLoading, setIsLoading] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(0);
+  const [saveToNoteOpen, setSaveToNoteOpen] = useState(false);
 
   const stopPlayback = useCallback(() => {
     if (audioRef.current) {
@@ -249,6 +266,49 @@ export function TranscriptionDetails({
     (transcription.apiCost ?? 0) + (transcription.postProcessCost ?? 0);
   const words = wordsOf(transcription.text);
   const wpm = durationSec > 0 ? Math.round(words / (durationSec / 60)) : 0;
+
+  const openNoteToast = (noteId: string) =>
+    onOpenNote
+      ? {
+          action: {
+            label: t("saveToNote.open"),
+            onClick: () => onOpenNote(noteId),
+          },
+        }
+      : undefined;
+
+  const handleCreateNote = async () => {
+    try {
+      const meta = await createNoteFromTranscription(transcription.text);
+      setSaveToNoteOpen(false);
+      onNotesMutated?.();
+      toast.success(t("saveToNote.created"), openNoteToast(meta.id));
+    } catch (e) {
+      console.error("[TranscriptionDetails] create note failed", e);
+      toast.error(t("saveToNote.createFailed"));
+    }
+  };
+
+  const handleAppendToNote = async (note: LocalNoteMeta) => {
+    try {
+      await appendTranscriptionToNote(note.id, transcription.text);
+      setSaveToNoteOpen(false);
+      onNotesMutated?.();
+      toast.success(
+        t("saveToNote.added", {
+          title: note.title || t("notes.editor.untitled"),
+        }),
+        openNoteToast(note.id),
+      );
+    } catch (e) {
+      if (e instanceof NoteTooLargeError) {
+        toast.error(t("saveToNote.tooLarge"));
+      } else {
+        console.error("[TranscriptionDetails] append to note failed", e);
+        toast.error(t("saveToNote.addFailed"));
+      }
+    }
+  };
 
   return (
     <div className="vt-card-sectioned vt-fade-up overflow-hidden" key={transcription.id}>
@@ -586,6 +646,14 @@ export function TranscriptionDetails({
         <button
           type="button"
           className="vt-btn"
+          onClick={() => setSaveToNoteOpen(true)}
+        >
+          <NotebookPen className="w-3.5 h-3.5" />
+          <span>{t("saveToNote.trigger")}</span>
+        </button>
+        <button
+          type="button"
+          className="vt-btn"
           disabled
           data-tip={t("transcriptionDetails.exportComingSoon")}
         >
@@ -662,6 +730,13 @@ export function TranscriptionDetails({
           {t("transcriptionDetails.previewDisabledHelp")}
         </div>
       )}
+
+      <SaveToNoteDialog
+        open={saveToNoteOpen}
+        onOpenChange={setSaveToNoteOpen}
+        onCreateNew={handleCreateNote}
+        onSelectExisting={handleAppendToNote}
+      />
     </div>
   );
 }

@@ -297,6 +297,22 @@
     "back": "Back",
     "backToList": "Back to list"
   },
+  "saveToNote": {
+    "trigger": "To a note…",
+    "title": "Save to a note",
+    "subtitle": "Create a new note or add this dictation to an existing one.",
+    "createNew": "Create a new note",
+    "orExisting": "or add to an existing note",
+    "searchPlaceholder": "Search a note…",
+    "empty": "No notes yet",
+    "noResults": "No matching note",
+    "created": "Note created",
+    "added": "Added to “{{title}}”",
+    "open": "Open",
+    "tooLarge": "The note would exceed the maximum size (1 MB).",
+    "createFailed": "Couldn't create the note.",
+    "addFailed": "Couldn't add to the note."
+  },
   "settings": {
     "loading": "Loading settings...",
     "quitApp": "Close the application completely",

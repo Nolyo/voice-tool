@@ -297,6 +297,22 @@
     "back": "Retour",
     "backToList": "Retour à la liste"
   },
+  "saveToNote": {
+    "trigger": "Vers une note…",
+    "title": "Enregistrer dans une note",
+    "subtitle": "Crée une nouvelle note ou ajoute cette dictée à une note existante.",
+    "createNew": "Créer une nouvelle note",
+    "orExisting": "ou ajouter à une note existante",
+    "searchPlaceholder": "Rechercher une note…",
+    "empty": "Aucune note pour l'instant",
+    "noResults": "Aucune note ne correspond",
+    "created": "Note créée",
+    "added": "Ajouté à « {{title}} »",
+    "open": "Ouvrir",
+    "tooLarge": "La note dépasserait la taille maximale (1 Mo).",
+    "createFailed": "Impossible de créer la note.",
+    "addFailed": "Impossible d'ajouter à la note."
+  },
   "settings": {
     "loading": "Chargement des paramètres...",
     "quitApp": "Fermer complètement l'application",

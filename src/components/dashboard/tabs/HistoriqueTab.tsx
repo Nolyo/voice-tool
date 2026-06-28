@@ -13,6 +13,8 @@ interface HistoriqueTabProps {
   onDelete: (id: string) => void;
   onClearAll: () => void;
   onTogglePin?: (id: string) => void | Promise<void>;
+  onOpenNote?: (noteId: string) => void;
+  onNotesMutated?: () => void;
 }
 
 /**
@@ -31,6 +33,8 @@ export function HistoriqueTab({
   onDelete,
   onClearAll,
   onTogglePin,
+  onOpenNote,
+  onNotesMutated,
 }: HistoriqueTabProps) {
   if (isCompact && isSidebarOpen) {
     return (
@@ -40,6 +44,8 @@ export function HistoriqueTab({
           onClose={onCloseDetails}
           onDelete={onDelete}
           onTogglePin={onTogglePin}
+          onOpenNote={onOpenNote}
+          onNotesMutated={onNotesMutated}
           compact
         />
       </div>
@@ -70,6 +76,8 @@ export function HistoriqueTab({
             onClose={onCloseDetails}
             onDelete={onDelete}
             onTogglePin={onTogglePin}
+            onOpenNote={onOpenNote}
+            onNotesMutated={onNotesMutated}
           />
         </div>
       </div>
