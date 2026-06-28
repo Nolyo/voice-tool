@@ -135,6 +135,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
               onBack={() => setStep(2)}
               onCloud={handleCloud}
               onLocal={handleLocal}
+              onSkip={() => setStep(4)}
             />
           )}
           {step === 4 && (

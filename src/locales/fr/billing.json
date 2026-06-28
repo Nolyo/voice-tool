@@ -73,6 +73,9 @@
       "cta_local": "Continuer en local à la place",
       "cta_back": "Retour",
       "cta_retry": "Réessayer",
+      "cta_skip": "Passer cette étape",
+      "device_label": "Microphone",
+      "device_default": "Périphérique par défaut",
       "error": {
         "rate_limited_title": "Tu as atteint la limite d'essais gratuits",
         "rate_limited_body": "Crée un compte pour 60 minutes offertes — tu pourras tester sans contrainte.",

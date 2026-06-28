@@ -73,6 +73,9 @@
       "cta_local": "Continue with local instead",
       "cta_back": "Back",
       "cta_retry": "Try again",
+      "cta_skip": "Skip this step",
+      "device_label": "Microphone",
+      "device_default": "Default device",
       "error": {
         "rate_limited_title": "You've reached the free demo limit",
         "rate_limited_body": "Create an account for 60 free minutes — you'll be able to test without limits.",
