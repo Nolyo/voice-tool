@@ -373,10 +373,16 @@ export default function Dashboard() {
                   {activeTab === "accueil" && (
                     <AccueilTab
                       notes={notes}
+                      readNote={readNote}
+                      historyCount={transcriptions.length}
+                      isRecording={isRecording}
+                      isTranscribing={isTranscribing}
+                      onToggleRecording={handleToggleRecording}
                       onOpenNote={handleOpenNoteFromSidebar}
                       onCreateNote={() => handleCreateNoteFromSidebar(null)}
                       onViewHistory={() => setActiveTab("historique")}
                       onViewNotes={() => setActiveTab("notes")}
+                      onViewStatistics={() => setActiveTab("statistiques")}
                       onOpenAccountPage={() => {
                         setActiveTab("parametres");
                         setActiveSettingsSection("section-compte");

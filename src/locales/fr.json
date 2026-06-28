@@ -66,6 +66,7 @@
       "plan_starter": "Starter",
       "plan_pro": "Pro",
       "minutesUsed": "{{used}} / {{quota}} min utilisées ce mois-ci",
+      "minutesUnitShort": "min utilisées",
       "manage": "Gérer mon compte",
       "eyebrowInactive": "Compte",
       "titleInactive": "Passe à la transcription cloud",
@@ -85,14 +86,66 @@
       "title": "Dernières notes éditées",
       "empty": "Tu n'as pas encore de note.",
       "createCta": "Créer une note",
-      "viewAll": "Toutes les notes"
+      "viewAll": "Toutes les notes",
+      "newNote": "Nouvelle note",
+      "newNoteDesc": "Démarrer une note vierge",
+      "wordCount_one": "{{count}} mot",
+      "wordCount_other": "{{count}} mots"
     },
     "quickActions": {
       "title": "Accès rapides",
       "newNote": "Nouvelle note",
+      "newNoteDesc": "Page vierge dans l'éditeur",
       "viewHistory": "Voir l'historique",
+      "viewHistoryDesc_one": "{{count}} dictée archivée",
+      "viewHistoryDesc_other": "{{count}} dictées archivées",
+      "statistics": "Statistiques",
+      "statisticsDesc": "Ton activité en détail",
       "recordHint": "Démarrer une dictée",
       "pttHint": "Maintenir pour dicter"
+    },
+    "greeting": {
+      "morning": "Bonjour",
+      "evening": "Bonsoir",
+      "taglineDefault": "Tout est prêt pour dicter.",
+      "taglineSynced": "Dernière synchro {{when}} · tout est prêt pour dicter."
+    },
+    "sections": {
+      "dictate": "Dicter"
+    },
+    "hero": {
+      "ready": "Prêt à dicter",
+      "recording": "Enregistrement…",
+      "transcribing": "Transcription…",
+      "desc": "Maintiens le raccourci, parle, et le texte s'insère automatiquement dans la fenêtre active.",
+      "recordingDesc": "Parle maintenant. Clique ou appuie de nouveau sur le raccourci pour arrêter.",
+      "recordAria": "Démarrer une dictée",
+      "stopAria": "Arrêter la dictée",
+      "toggleLabel": "Démarrer une dictée",
+      "toggleDesc": "Appui pour lancer / arrêter",
+      "pttLabel": "Maintenir pour dicter",
+      "pttDesc": "Mode push-to-talk"
+    },
+    "subscription": {
+      "badgeActive": "Actif",
+      "badgeTrial": "Essai",
+      "renews": "Renouvellement {{date}}"
+    },
+    "syncCard": {
+      "title": "Synchronisation",
+      "upToDate": "À jour",
+      "syncing": "Synchronisation…",
+      "offline": "Hors ligne",
+      "error": "Erreur",
+      "quotaExceeded": "Quota atteint",
+      "syncNow": "Synchroniser maintenant",
+      "fieldProfile": "Profil",
+      "fieldNotes": "Notes",
+      "fieldPending": "En attente",
+      "allSynced": "À jour",
+      "signedOutTitle": "Synchronise tes appareils",
+      "signedOutDesc": "Connecte-toi pour sauvegarder et retrouver tes notes partout.",
+      "signIn": "Se connecter"
     }
   },
   "statistics": {
