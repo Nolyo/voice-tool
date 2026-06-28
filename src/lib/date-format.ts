@@ -35,6 +35,9 @@ export function useDateFormatters() {
       month: "long",
       day: "numeric",
     });
+    const relativeFmt = new Intl.RelativeTimeFormat(locale, {
+      numeric: "auto",
+    });
 
     function dayLabel(d: Date): string {
       const today = startOfDay(new Date());
@@ -46,6 +49,21 @@ export function useDateFormatters() {
       return monthDayFmt.format(dd);
     }
 
+    // Locale-aware "x minutes ago" / "il y a x minutes". Picks the largest
+    // sensible unit. Computes against the call-time clock, so callers re-render
+    // to refresh it.
+    function formatRelative(d: Date): string {
+      const sec = Math.round((d.getTime() - Date.now()) / 1000);
+      const abs = Math.abs(sec);
+      if (abs < 60) return relativeFmt.format(sec, "second");
+      const min = Math.round(sec / 60);
+      if (Math.abs(min) < 60) return relativeFmt.format(min, "minute");
+      const hr = Math.round(min / 60);
+      if (Math.abs(hr) < 24) return relativeFmt.format(hr, "hour");
+      const day = Math.round(hr / 24);
+      return relativeFmt.format(day, "day");
+    }
+
     return {
       locale,
       dayLabel,
@@ -53,6 +71,7 @@ export function useDateFormatters() {
       formatMonthDay: (d: Date) => monthDayFmt.format(d),
       formatTime: (d: Date) => timeFmt.format(d),
       formatLongDate: (d: Date) => longDateFmt.format(d),
+      formatRelative,
     };
   }, [i18n.language, t]);
 }

@@ -66,6 +66,7 @@
       "plan_starter": "Starter",
       "plan_pro": "Pro",
       "minutesUsed": "{{used}} / {{quota}} min used this month",
+      "minutesUnitShort": "min used",
       "manage": "Manage my account",
       "eyebrowInactive": "Account",
       "titleInactive": "Switch to cloud transcription",
@@ -85,14 +86,66 @@
       "title": "Recently edited notes",
       "empty": "You don't have any notes yet.",
       "createCta": "Create a note",
-      "viewAll": "All notes"
+      "viewAll": "All notes",
+      "newNote": "New note",
+      "newNoteDesc": "Start a blank note",
+      "wordCount_one": "{{count}} word",
+      "wordCount_other": "{{count}} words"
     },
     "quickActions": {
       "title": "Quick actions",
       "newNote": "New note",
+      "newNoteDesc": "Blank page in the editor",
       "viewHistory": "View history",
+      "viewHistoryDesc_one": "{{count}} archived dictation",
+      "viewHistoryDesc_other": "{{count}} archived dictations",
+      "statistics": "Statistics",
+      "statisticsDesc": "Your activity in detail",
       "recordHint": "Start a dictation",
       "pttHint": "Hold to dictate"
+    },
+    "greeting": {
+      "morning": "Good morning",
+      "evening": "Good evening",
+      "taglineDefault": "Everything's ready to dictate.",
+      "taglineSynced": "Last sync {{when}} · everything's ready to dictate."
+    },
+    "sections": {
+      "dictate": "Dictate"
+    },
+    "hero": {
+      "ready": "Ready to dictate",
+      "recording": "Recording…",
+      "transcribing": "Transcribing…",
+      "desc": "Hold the shortcut, speak, and the text is inserted automatically into the active window.",
+      "recordingDesc": "Speak now. Click or press the shortcut again to stop.",
+      "recordAria": "Start a dictation",
+      "stopAria": "Stop dictation",
+      "toggleLabel": "Start a dictation",
+      "toggleDesc": "Press to start / stop",
+      "pttLabel": "Hold to dictate",
+      "pttDesc": "Push-to-talk mode"
+    },
+    "subscription": {
+      "badgeActive": "Active",
+      "badgeTrial": "Trial",
+      "renews": "Renews {{date}}"
+    },
+    "syncCard": {
+      "title": "Sync",
+      "upToDate": "Up to date",
+      "syncing": "Syncing…",
+      "offline": "Offline",
+      "error": "Error",
+      "quotaExceeded": "Quota reached",
+      "syncNow": "Sync now",
+      "fieldProfile": "Profile",
+      "fieldNotes": "Notes",
+      "fieldPending": "Pending",
+      "allSynced": "Up to date",
+      "signedOutTitle": "Sync your devices",
+      "signedOutDesc": "Sign in to back up and access your notes everywhere.",
+      "signIn": "Sign in"
     }
   },
   "statistics": {

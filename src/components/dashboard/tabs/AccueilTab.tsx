@@ -1,75 +1,77 @@
-import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@/hooks/useAuth";
-import { useSync } from "@/hooks/useSync";
-import type { NoteMeta } from "@/hooks/useNotes";
-import { TrialAccountCard } from "@/components/dashboard/home/TrialAccountCard";
-import { SyncReminderCard } from "@/components/dashboard/home/SyncReminderCard";
+import type { NoteData, NoteMeta } from "@/hooks/useNotes";
+import { GreetingHeader } from "@/components/dashboard/home/GreetingHeader";
+import { SectionLabel } from "@/components/dashboard/home/SectionLabel";
+import { HeroDictationCard } from "@/components/dashboard/home/HeroDictationCard";
+import { SubscriptionCard } from "@/components/dashboard/home/SubscriptionCard";
+import { SyncStatusCard } from "@/components/dashboard/home/SyncStatusCard";
 import { RecentNotesCard } from "@/components/dashboard/home/RecentNotesCard";
 import { QuickActionsCard } from "@/components/dashboard/home/QuickActionsCard";
 
 interface AccueilTabProps {
   notes: NoteMeta[];
+  readNote: (id: string) => Promise<NoteData>;
+  historyCount: number;
+  isRecording: boolean;
+  isTranscribing: boolean;
+  onToggleRecording: () => void;
   onOpenNote: (note: NoteMeta) => void;
   onCreateNote: () => void;
   onViewHistory: () => void;
   onViewNotes: () => void;
+  onViewStatistics: () => void;
   onOpenAccountPage: () => void;
 }
 
 /**
- * Home screen: the default landing tab. Assembles autonomous cards (account /
- * trial, sync reminder, recent notes, quick actions). The sync reminder only
- * appears when signed in with sync disabled for the current profile — the
- * layout adapts so the account card spans the row when it is hidden.
+ * Home screen — the default landing tab. A time-aware greeting, then three
+ * sections: "Dictate" (hero recording affordance + adaptive subscription &
+ * sync cards), recently edited notes, and quick actions. The shared sidebar /
+ * header live in Dashboard, so this only renders the page body.
  */
 export function AccueilTab({
   notes,
+  readNote,
+  historyCount,
+  isRecording,
+  isTranscribing,
+  onToggleRecording,
   onOpenNote,
   onCreateNote,
   onViewHistory,
   onViewNotes,
+  onViewStatistics,
   onOpenAccountPage,
 }: AccueilTabProps) {
   const { t } = useTranslation();
-  const { status } = useAuth();
-  const { enabled: syncEnabled } = useSync();
-
-  const showSyncReminder = status === "signed-in" && !syncEnabled;
 
   return (
-    <div className="vt-app space-y-5 max-w-5xl mx-auto">
-      {/* Hero */}
-      <div className="vt-anim-fade-up">
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="w-4 h-4 text-[var(--vt-accent)]" />
-          <span className="vt-eyebrow text-[var(--vt-accent)]">
-            {t("home.heroEyebrow")}
-          </span>
-        </div>
-        <h2 className="vt-display text-[22px] font-semibold tracking-tight text-[var(--vt-fg)]">
-          {t("home.heroTitle")}
-        </h2>
-        <p className="text-[13.5px] text-[var(--vt-fg-3)] mt-1 max-w-2xl">
-          {t("home.heroSubtitle")}
-        </p>
-      </div>
+    <div className="vt-app max-w-[1200px] mx-auto space-y-7">
+      <GreetingHeader />
 
-      {/* Account + sync row */}
-      <div
-        className={
-          showSyncReminder ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : ""
-        }
-      >
-        <TrialAccountCard onOpenAccountPage={onOpenAccountPage} />
-        {showSyncReminder && (
-          <SyncReminderCard onOpenAccountPage={onOpenAccountPage} />
-        )}
-      </div>
+      {/* Dictate */}
+      <section>
+        <SectionLabel>{t("home.sections.dictate")}</SectionLabel>
+        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-stretch">
+          <HeroDictationCard
+            isRecording={isRecording}
+            isTranscribing={isTranscribing}
+            onToggleRecording={onToggleRecording}
+          />
+          <div className="grid grid-rows-[auto_1fr] gap-4 min-w-0">
+            <SubscriptionCard onOpenAccountPage={onOpenAccountPage} />
+            <SyncStatusCard
+              notesCount={notes.length}
+              onOpenAccountPage={onOpenAccountPage}
+            />
+          </div>
+        </div>
+      </section>
 
       {/* Recent notes */}
       <RecentNotesCard
         notes={notes}
+        readNote={readNote}
         onOpenNote={onOpenNote}
         onCreateNote={onCreateNote}
         onViewAllNotes={onViewNotes}
@@ -77,8 +79,10 @@ export function AccueilTab({
 
       {/* Quick actions */}
       <QuickActionsCard
+        historyCount={historyCount}
         onCreateNote={onCreateNote}
         onViewHistory={onViewHistory}
+        onViewStatistics={onViewStatistics}
       />
     </div>
   );
