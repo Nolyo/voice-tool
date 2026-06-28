@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,22 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
   const step = TOUR_STEPS[index];
   const [rect, setRect] = useState<Rect | null>(null);
 
+  // A Radix dialog (the onboarding wizard) that unmounts while still `open`
+  // leaves `body { pointer-events: none }` behind. The tour is a body-level
+  // portal, so it would inherit that lock and become unclickable. Clear any
+  // stale lock on mount, and again on unmount so the dashboard underneath is
+  // interactive once the tour closes. The container below also forces
+  // `pointer-events: auto` as a timing-independent guarantee.
+  useEffect(() => {
+    const unlock = () => {
+      if (document.body.style.pointerEvents === "none") {
+        document.body.style.pointerEvents = "";
+      }
+    };
+    unlock();
+    return unlock;
+  }, []);
+
   useLayoutEffect(() => {
     if (step.anchor === null) {
       setRect(null);
@@ -87,7 +103,7 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
 
   return createPortal(
     <div
-      className="vt-app fixed inset-0 z-[60]"
+      className="vt-app fixed inset-0 z-[60] pointer-events-auto"
       role="dialog"
       aria-modal="true"
     >

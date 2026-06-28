@@ -64,6 +64,19 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     return () => setOnboardingActive(false);
   }, []);
 
+  // This wizard is a Radix dialog that is always `open` and torn down by
+  // unmount (not by an open→closed transition). Radix sets
+  // `body { pointer-events: none }` for modal dialogs and only restores it on a
+  // clean close, so unmounting while open can leave the whole app — and any
+  // portal mounted afterwards (the guided tour) — frozen. Restore it on unmount.
+  useEffect(() => {
+    return () => {
+      if (document.body.style.pointerEvents === "none") {
+        document.body.style.pointerEvents = "";
+      }
+    };
+  }, []);
+
   const isEligible = systemInfo ? isLocalEligible(systemInfo) : true;
 
   const markComplete = () => {

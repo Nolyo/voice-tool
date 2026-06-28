@@ -8,13 +8,32 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }));
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  document.body.style.pointerEvents = "";
+});
 
 describe("GuidedTour", () => {
   it("renders the centered welcome step first", () => {
     render(<GuidedTour onFinish={vi.fn()} />);
     expect(screen.getByText("tour.welcome.title")).toBeTruthy();
     expect(screen.getByText("1 / 6")).toBeTruthy();
+  });
+
+  it("clears a stale body pointer-events lock on mount (regression)", () => {
+    // Simulates a Radix dialog (onboarding wizard) that unmounted while open
+    // and left the body frozen — which made the tour buttons unclickable.
+    document.body.style.pointerEvents = "none";
+    render(<GuidedTour onFinish={vi.fn()} />);
+    expect(document.body.style.pointerEvents).toBe("");
+  });
+
+  it("restores the body lock cleanup when unmounted", () => {
+    document.body.style.pointerEvents = "none";
+    const { unmount } = render(<GuidedTour onFinish={vi.fn()} />);
+    document.body.style.pointerEvents = "none"; // re-poison while mounted
+    unmount();
+    expect(document.body.style.pointerEvents).toBe("");
   });
 
   it("calls onFinish when the skip link is clicked", () => {
