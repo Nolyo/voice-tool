@@ -24,6 +24,8 @@ import { supabase } from "@/lib/supabase";
 import { transcribeCloud, postProcessCloud } from "@/lib/cloud/api";
 import { CloudApiError } from "@/lib/cloud/errors";
 import { isOnboardingActive } from "@/components/onboarding/demoState";
+import { pasteTextPreservingClipboard } from "@/lib/paste";
+import { flog } from "@/lib/flog";
 
 type AddTranscription = (
   text: string,
@@ -121,6 +123,9 @@ interface UseRecordingWorkflowOptions {
   addTranscription: AddTranscription;
   /** Called with the new Transcription after a successful run so the caller can select it. */
   onTranscriptionAdded: (transcription: Transcription) => void;
+  /** Text of the most recent history entry, used to seed the re-paste buffer
+   *  so the hotkey works right after launch (before any new transcription). */
+  latestHistoryText?: string;
 }
 
 /**
@@ -144,6 +149,7 @@ export function useRecordingWorkflow({
   settings,
   addTranscription,
   onTranscriptionAdded,
+  latestHistoryText,
 }: UseRecordingWorkflowOptions) {
   const { t } = useTranslation();
   const tRef = useRef(t);
@@ -160,6 +166,18 @@ export function useRecordingWorkflow({
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const previousRecordingRef = useRef(isRecording);
+
+  // Buffer of the last text we inserted, re-pasted by the repaste hotkey.
+  const lastInsertedTextRef = useRef<string>("");
+
+  // Seed from the latest history entry on mount (and once history finishes
+  // loading) so the hotkey works after a restart. Never overwrite a value set
+  // by an actual insertion this session.
+  useEffect(() => {
+    if (!lastInsertedTextRef.current && latestHistoryText) {
+      lastInsertedTextRef.current = latestHistoryText;
+    }
+  }, [latestHistoryText]);
 
   const { playStart, playStop, playSuccess } = useSoundEffects(
     settings.enable_sounds,
@@ -263,25 +281,13 @@ export function useRecordingWorkflow({
       onTranscriptionAdded(newEntry);
       playSuccess();
 
+      // Remember what we just produced so the repaste hotkey can re-insert it,
+      // even in "none" mode (the user opted out of auto-paste but may still
+      // want to re-paste explicitly).
+      lastInsertedTextRef.current = finalText;
+
       if (settings.insertion_mode === "cursor") {
-        const { readText, writeText } = await import(
-          "@tauri-apps/plugin-clipboard-manager"
-        );
-        // Save the user's clipboard so we can restore it after our paste.
-        // readText throws if the clipboard holds a non-text format (image, files);
-        // accept losing that rather than corrupting the cursor insertion.
-        let previousClipboard: string | null = null;
-        try {
-          previousClipboard = await readText();
-        } catch {}
-        await writeText(finalText);
-        await invoke("paste_text_to_active_window", { text: finalText });
-        await new Promise((r) => setTimeout(r, 200));
-        if (previousClipboard !== null) {
-          try {
-            await writeText(previousClipboard);
-          } catch {}
-        }
+        await pasteTextPreservingClipboard(finalText);
       } else if (settings.insertion_mode === "clipboard") {
         const { writeText } = await import(
           "@tauri-apps/plugin-clipboard-manager"
@@ -646,6 +652,57 @@ export function useRecordingWorkflow({
         else unlisten = handle;
       } catch (err) {
         console.error("Failed to register cloud-gate-blocked listener:", err);
+      }
+    };
+    setup();
+
+    return () => {
+      disposed = true;
+      if (unlisten) {
+        unlisten();
+        unlisten = null;
+      }
+    };
+  }, []);
+
+  // Re-paste the last inserted transcription. Always uses the
+  // clipboard-preserving paste regardless of insertion_mode — it's an explicit
+  // user action, so it must paste even when auto-insert is "none".
+  const doRepaste = useCallback(async () => {
+    const text = lastInsertedTextRef.current;
+    if (!text) {
+      flog("[repaste] no last transcription available", "info");
+      return;
+    }
+    try {
+      await pasteTextPreservingClipboard(text);
+      playSuccess();
+    } catch (err) {
+      flog(`[repaste] failed: ${String(err)}`, "error");
+    }
+  }, [playSuccess]);
+
+  // Ref trampoline so the long-lived listener always reaches the latest closure
+  // (playSuccess changes when enable_sounds toggles).
+  const doRepasteRef = useRef(doRepaste);
+  useEffect(() => {
+    doRepasteRef.current = doRepaste;
+  }, [doRepaste]);
+
+  // repaste-last-transcription listener — Rust emits this on the repaste hotkey.
+  useEffect(() => {
+    let unlisten: UnlistenFn | null = null;
+    let disposed = false;
+
+    const setup = async () => {
+      try {
+        const handle = await listen("repaste-last-transcription", () => {
+          void doRepasteRef.current();
+        });
+        if (disposed) handle();
+        else unlisten = handle;
+      } catch (err) {
+        console.error("Failed to register repaste listener:", err);
       }
     };
     setup();
