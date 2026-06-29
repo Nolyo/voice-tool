@@ -24,7 +24,7 @@ const offsetDatetime = () => z.string().datetime({ offset: true });
 const SyncPushNotePayloadSchema = z.object({
   id: z.string().uuid(),
   title: z.string().max(500),
-  content_html: z.string().max(1_048_576),
+  content_html: z.string().max(3_145_728),
   folder_id: z.string().uuid().nullable(),
   favorite: z.boolean(),
   order: z.number().int(),

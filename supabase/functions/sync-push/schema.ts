@@ -32,7 +32,7 @@ export const SnippetSchema = z.object({
 });
 
 // Sub-épique 03 sync-notes : payloads notes + dossiers.
-// Hard cap content_html = 1 MB (1_048_576) — aligné avec la contrainte SQL `octet_length(content_html) <= 1048576`.
+// Hard cap content_html = 3 MB (3_145_728) — aligné avec la contrainte SQL `octet_length(content_html) <= 3145728`.
 // Zod compte en code units UTF-16 ; côté DB c'est des octets. Mismatch possible sur contenus multibytes,
 // mais on accepte cette approximation côté ingress (la DB constraint reste l'autorité finale).
 // `updated_at` / `deleted_at` : `{ offset: true }` car Rust `chrono::Utc::now().to_rfc3339()` émet
@@ -43,7 +43,7 @@ const offsetDatetime = () => z.string().datetime({ offset: true });
 export const NotePayloadSchema = z.object({
   id: z.string().uuid(),
   title: z.string().max(500),
-  content_html: z.string().max(1_048_576),
+  content_html: z.string().max(3_145_728),
   folder_id: z.string().uuid().nullable(),
   favorite: z.boolean(),
   order: z.number().int(),

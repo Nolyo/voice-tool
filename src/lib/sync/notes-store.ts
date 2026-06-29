@@ -29,7 +29,7 @@ import { isNoteSyncable } from "./note-size";
 /**
  * Enqueue a note-upsert, but ONLY when the content fits the cloud hard cap.
  *
- * An oversized note (> 1 MB UTF-8) cannot be synced: the Edge validates the
+ * An oversized note (> 3 MB UTF-8) cannot be synced: the Edge validates the
  * whole push body atomically, so a single oversized note makes the entire batch
  * fail server-side ("invalid body"), silently blocking every other op. We must
  * never let one into the queue — it stays local-only. The editor surfaces a

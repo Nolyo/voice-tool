@@ -10,7 +10,7 @@ interface Props {
 
 /**
  * Non-blocking banner shown at the top of the notes editor when the current
- * note's HTML exceeds the 1 MB sync cap. The note remains usable locally;
+ * note's HTML exceeds the 3 MB sync cap. The note remains usable locally;
  * the message only warns that it won't be uploaded to the cloud.
  */
 export function NoteSizeWarning({ editor }: Props) {
