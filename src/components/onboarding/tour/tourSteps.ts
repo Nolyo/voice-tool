@@ -13,7 +13,7 @@ export const TOUR_STEPS: TourStep[] = [
   { anchor: "nav-historique", titleKey: "tour.history.title", bodyKey: "tour.history.body", placement: "right" },
   { anchor: "nav-notes", titleKey: "tour.notes.title", bodyKey: "tour.notes.body", placement: "right" },
   { anchor: "nav-parametres", titleKey: "tour.settings.title", bodyKey: "tour.settings.body", placement: "right" },
-  { anchor: "profile-switcher", titleKey: "tour.account.title", bodyKey: "tour.account.body", placement: "right" },
+  { anchor: "profile-switcher", titleKey: "tour.account.title", bodyKey: "tour.account.body", placement: "top" },
 ];
 
 /**
