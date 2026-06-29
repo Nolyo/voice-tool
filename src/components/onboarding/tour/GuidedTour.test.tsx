@@ -36,6 +36,15 @@ describe("GuidedTour", () => {
     expect(document.body.style.pointerEvents).toBe("");
   });
 
+  it("keeps the overlay container transparent so the spotlight reveals the page (regression)", () => {
+    // `.vt-app` applies an opaque `background: var(--vt-bg)`. If the full-screen
+    // tour container inherits it, it paints a solid dark fill over the dashboard
+    // and the spotlight hole reveals that fill instead of the highlighted card.
+    render(<GuidedTour onFinish={vi.fn()} />);
+    const container = screen.getByRole("dialog");
+    expect(container.style.background).toBe("transparent");
+  });
+
   it("removes a leaked onboarding overlay on mount (regression)", () => {
     // The onboarding Radix dialog, unmounted while still `open`, can leave its
     // full-screen dim veil orphaned in the DOM. The tour sits above it, so its

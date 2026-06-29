@@ -170,8 +170,17 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
   );
 
   return createPortal(
+    // `vt-app` is kept for the design tokens the bubble + spotlight ring read
+    // (`--vt-accent`, `--vt-fg`, …), but that class also sets an OPAQUE
+    // `background: var(--vt-bg)` (App.css). On a full-screen overlay that paints
+    // a solid dark fill over the whole dashboard, and the spotlight's box-shadow
+    // only cuts a hole in the dim — not in this background — so the "hole" would
+    // reveal the container's own dark fill instead of the highlighted element.
+    // Force the container transparent (inline beats `.vt-app` specificity); the
+    // dim comes solely from the spotlight box-shadow / anchorless backdrop.
     <div
       className="vt-app fixed inset-0 z-[60] pointer-events-auto"
+      style={{ background: "transparent" }}
       role="dialog"
       aria-modal="true"
     >
