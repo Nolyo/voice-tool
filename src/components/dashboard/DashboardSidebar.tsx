@@ -192,6 +192,7 @@ export function DashboardSidebar({
           return (
             <button
               key={id}
+              data-tour={`nav-${id}`}
               onClick={() => onTabChange(id)}
               title={collapsed ? t(labelKey) : undefined}
               aria-current={isActive ? "page" : undefined}
@@ -302,7 +303,7 @@ export function DashboardSidebar({
       )}
 
       {/* Profile switcher — always at the very bottom */}
-      <div className="border-t border-border shrink-0 p-2">
+      <div data-tour="profile-switcher" className="border-t border-border shrink-0 p-2">
         <ProfileSwitcher
           collapsed={collapsed}
           onOpenAccountPage={onOpenAccountPage}

@@ -84,6 +84,7 @@ export function OnboardingWizard({
     <DialogPrimitive.Root open>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
+          data-onboarding-overlay
           className="vt-app fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0"
         />
         <DialogPrimitive.Content

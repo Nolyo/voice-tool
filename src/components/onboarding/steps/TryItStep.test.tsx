@@ -63,6 +63,21 @@ vi.mock("@/hooks/useSettings", () => ({
       silence_threshold: 0.005,
       language: "fr-FR",
     },
+    updateSetting: vi.fn(),
+  }),
+}));
+
+// Controllable audio-device list: tests mutate `audioDeviceState.devices` to
+// show/hide the mic picker without hitting the real `get_audio_devices` command.
+const audioDeviceState = vi.hoisted(() => ({
+  devices: [] as { name: string; index: number; is_default: boolean }[],
+}));
+vi.mock("@/hooks/useAudioDevices", () => ({
+  useAudioDevices: () => ({
+    devices: audioDeviceState.devices,
+    isLoading: false,
+    error: null,
+    refresh: () => {},
   }),
 }));
 
@@ -101,6 +116,7 @@ beforeEach(() => {
   submitDemo.mockReset();
   getDeviceId.mockReset();
   getDeviceId.mockResolvedValue("dev-uuid-12345678");
+  audioDeviceState.devices = [];
 });
 
 import "@/i18n";
@@ -112,12 +128,13 @@ const renderStep = (overrides: Partial<Parameters<typeof TryItStep>[0]> = {}) =>
       onCloud={vi.fn()}
       onLocal={vi.fn()}
       onBack={vi.fn()}
+      onSkip={vi.fn()}
       {...overrides}
     />,
   );
 
 describe("TryItStep", () => {
-  it("renders idle state with record button + back control (no skip)", () => {
+  it("renders idle state with record button + back + skip controls", () => {
     renderStep();
     expect(
       screen.getByRole("button", { name: /Démarrer|Start recording/i }),
@@ -126,8 +143,8 @@ describe("TryItStep", () => {
       screen.getByRole("button", { name: /Retour|Back/i }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /Sauter|Skip the demo/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /Passer cette étape|Skip this step/i }),
+    ).toBeInTheDocument();
   });
 
   it("calls onBack from idle", () => {
@@ -135,6 +152,28 @@ describe("TryItStep", () => {
     renderStep({ onBack });
     fireEvent.click(screen.getByRole("button", { name: /Retour|Back/i }));
     expect(onBack).toHaveBeenCalled();
+  });
+
+  it("calls onSkip from the idle skip link", () => {
+    const onSkip = vi.fn();
+    renderStep({ onSkip });
+    fireEvent.click(
+      screen.getByRole("button", { name: /Passer cette étape|Skip this step/i }),
+    );
+    expect(onSkip).toHaveBeenCalled();
+  });
+
+  it("renders the mic picker only when devices are available", () => {
+    audioDeviceState.devices = [
+      { name: "Micro USB", index: 1, is_default: false },
+    ];
+    renderStep();
+    expect(
+      screen.getByText(/^Microphone$/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox"),
+    ).toBeInTheDocument();
   });
 
   it("transitions idle → recording on start", async () => {

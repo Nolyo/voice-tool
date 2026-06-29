@@ -75,6 +75,8 @@ export interface AppSettings {
 
     // Onboarding
     onboarding_completed: boolean;
+    /** True for exactly one fresh wizard completion → triggers the guided tour once. */
+    tour_pending: boolean;
   };
 }
 
@@ -158,6 +160,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Onboarding
     onboarding_completed: false,
+    tour_pending: false,
   },
 };
 

@@ -38,6 +38,38 @@
     "processing": "Running AI post-processing...",
     "error": "AI post-processing failed: {{error}}"
   },
+  "tour": {
+    "next": "Next",
+    "prev": "Back",
+    "finish": "Done",
+    "skip": "Skip tour",
+    "replayButton": "Replay guided tour",
+    "replayHint": "Restart the guided tour of the main features.",
+    "welcome": {
+      "title": "Welcome to Lexena",
+      "body": "30 seconds to learn the essentials. You can skip anytime."
+    },
+    "dictate": {
+      "title": "Dictate in one click",
+      "body": "Start recording here — or from any app with your global shortcut. The text is inserted into the active window and a mini window floats while you dictate."
+    },
+    "history": {
+      "title": "Your history",
+      "body": "Every transcription is kept here, ready to copy or turn into a note."
+    },
+    "notes": {
+      "title": "Your notes",
+      "body": "Write, organize into folders and link your notes together."
+    },
+    "settings": {
+      "title": "Settings",
+      "body": "Choose your microphone, transcription model and customize your shortcuts here."
+    },
+    "account": {
+      "title": "Account & sync",
+      "body": "Sign in to sync your settings and notes to the cloud across all your devices."
+    }
+  },
   "sidebar": {
     "home": "Home",
     "history": "History",

@@ -41,6 +41,7 @@ export function HeroDictationCard({
 
   return (
     <div
+      data-tour="hero-dictation"
       className="vt-card-elevated relative overflow-hidden p-6 flex flex-col"
       style={{
         background:

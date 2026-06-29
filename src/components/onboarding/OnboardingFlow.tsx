@@ -35,7 +35,7 @@ const TOTAL_STEPS = 4;
 export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const { t } = useTranslation("billing");
   const { openAuthModal } = useAuth();
-  const { settings, updateSetting } = useSettings();
+  const { settings, updateSetting, updateSettings } = useSettings();
   const [step, setStep] = useState<Step>(1);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
 
@@ -64,10 +64,28 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     return () => setOnboardingActive(false);
   }, []);
 
+  // This wizard is a Radix dialog that is always `open` and torn down by
+  // unmount (not by an open→closed transition). Radix sets
+  // `body { pointer-events: none }` for modal dialogs and only restores it on a
+  // clean close, so unmounting while open can leave the whole app — and any
+  // portal mounted afterwards (the guided tour) — frozen. Restore it on unmount.
+  useEffect(() => {
+    return () => {
+      if (document.body.style.pointerEvents === "none") {
+        document.body.style.pointerEvents = "";
+      }
+    };
+  }, []);
+
   const isEligible = systemInfo ? isLocalEligible(systemInfo) : true;
 
+  // Flip both flags in ONE store write. Two back-to-back `updateSetting` calls
+  // race: each reads the same stale base before the other persists, so the
+  // last write wins and silently drops the other flag — which left
+  // `onboarding_completed` false (wizard never tears down, its overlay lingers
+  // under the tour) and could even re-show onboarding on the next launch.
   const markComplete = () => {
-    void updateSetting("onboarding_completed", true);
+    void updateSettings({ onboarding_completed: true, tour_pending: true });
   };
 
   const handleCloud = () => {
@@ -105,7 +123,10 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   return (
     <DialogPrimitive.Root open>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="vt-app fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Overlay
+          data-onboarding-overlay
+          className="vt-app fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0"
+        />
         <DialogPrimitive.Content
           className="vt-app fixed left-1/2 top-1/2 z-50 w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background p-8 shadow-2xl"
           onInteractOutside={(e) => e.preventDefault()}
@@ -135,6 +156,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
               onBack={() => setStep(2)}
               onCloud={handleCloud}
               onLocal={handleLocal}
+              onSkip={() => setStep(4)}
             />
           )}
           {step === 4 && (

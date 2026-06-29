@@ -12,7 +12,15 @@ import {
   Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSettings } from "@/hooks/useSettings";
+import { useAudioDevices } from "@/hooks/useAudioDevices";
 import { getDemoDeviceId } from "@/lib/device-id";
 import {
   DemoTranscribeError,
@@ -34,11 +42,13 @@ interface TryItStepProps {
   onCloud: () => void;
   onLocal: () => void;
   onBack: () => void;
+  onSkip: () => void;
 }
 
-export function TryItStep({ onCloud, onLocal, onBack }: TryItStepProps) {
+export function TryItStep({ onCloud, onLocal, onBack, onSkip }: TryItStepProps) {
   const { t, i18n } = useTranslation("billing");
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
+  const { devices } = useAudioDevices();
   const [phase, setPhase] = useState<Phase>({ status: "idle" });
   const phaseRef = useRef(phase);
   useEffect(() => {
@@ -163,6 +173,45 @@ export function TryItStep({ onCloud, onLocal, onBack }: TryItStepProps) {
         </p>
       </div>
 
+      {(phase.status === "idle" || phase.status === "error") &&
+        devices.length > 0 && (
+          <div className="mx-auto flex w-full max-w-xs flex-col gap-1.5">
+            <label
+              className="text-xs font-medium"
+              style={{ color: "var(--vt-fg-3)" }}
+            >
+              {t("welcome.try.device_label")}
+            </label>
+            <Select
+              value={
+                settings.input_device_index == null
+                  ? "default"
+                  : String(settings.input_device_index)
+              }
+              onValueChange={(val) =>
+                void updateSetting(
+                  "input_device_index",
+                  val === "default" ? null : Number(val),
+                )
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">
+                  {t("welcome.try.device_default")}
+                </SelectItem>
+                {devices.map((d) => (
+                  <SelectItem key={d.index} value={String(d.index)}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
       <div
         className="flex min-h-[220px] flex-col items-center justify-center gap-4 rounded-xl border p-6"
         style={{
@@ -279,6 +328,14 @@ export function TryItStep({ onCloud, onLocal, onBack }: TryItStepProps) {
             <ArrowLeft className="h-4 w-4" />
             {t("welcome.try.cta_back")}
           </Button>
+          <button
+            type="button"
+            onClick={onSkip}
+            className="text-sm underline-offset-4 hover:underline"
+            style={{ color: "var(--vt-fg-3)" }}
+          >
+            {t("welcome.try.cta_skip")}
+          </button>
         </div>
       )}
 
