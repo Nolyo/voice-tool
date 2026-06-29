@@ -36,6 +36,7 @@ afterEach(() => {
 
 const openAuthModal = vi.fn();
 const updateSetting = vi.fn();
+const updateSettings = vi.fn();
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ openAuthModal, user: null }),
@@ -45,6 +46,7 @@ vi.mock("@/hooks/useSettings", () => ({
   useSettings: () => ({
     settings: { record_hotkey: "Ctrl+F11" },
     updateSetting,
+    updateSettings,
   }),
 }));
 
@@ -133,7 +135,10 @@ describe("OnboardingFlow", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continuer$|Continue$/i }));
     expect(screen.getByTestId("try-it-step")).toBeInTheDocument();
     fireEvent.click(screen.getByText("try-cloud"));
-    expect(updateSetting).toHaveBeenCalledWith("onboarding_completed", true);
+    expect(updateSettings).toHaveBeenCalledWith({
+      onboarding_completed: true,
+      tour_pending: true,
+    });
     expect(openAuthModal).toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalled();
   });
@@ -176,7 +181,10 @@ describe("OnboardingFlow", () => {
     // card on ChoiceStep separately by directly triggering it — the cloud CTA
     // in TryItStep already routes through handleCloud (same callback).
     fireEvent.click(screen.getByText("try-cloud"));
-    expect(updateSetting).toHaveBeenCalledWith("onboarding_completed", true);
+    expect(updateSettings).toHaveBeenCalledWith({
+      onboarding_completed: true,
+      tour_pending: true,
+    });
     expect(openAuthModal).toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalled();
   });
@@ -188,7 +196,10 @@ describe("OnboardingFlow", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continuer$|Continue$/i }));
     fireEvent.click(screen.getByText("try-local"));
     fireEvent.click(screen.getByText(/finish/i));
-    expect(updateSetting).toHaveBeenCalledWith("onboarding_completed", true);
+    expect(updateSettings).toHaveBeenCalledWith({
+      onboarding_completed: true,
+      tour_pending: true,
+    });
     expect(onComplete).toHaveBeenCalled();
   });
 

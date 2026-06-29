@@ -438,6 +438,7 @@ export default function Dashboard() {
       {showOnboarding && <OnboardingFlow onComplete={recheckOnboarding} />}
 
       {!isAuthModalOpen &&
+        !showOnboarding &&
         shouldShowGuidedTour(
           settingsLoaded,
           settings.tour_pending,

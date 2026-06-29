@@ -36,6 +36,19 @@ describe("GuidedTour", () => {
     expect(document.body.style.pointerEvents).toBe("");
   });
 
+  it("removes a leaked onboarding overlay on mount (regression)", () => {
+    // The onboarding Radix dialog, unmounted while still `open`, can leave its
+    // full-screen dim veil orphaned in the DOM. The tour sits above it, so its
+    // spotlight hole would reveal the veil instead of the highlighted card.
+    const veil = document.createElement("div");
+    veil.setAttribute("data-onboarding-overlay", "");
+    document.body.appendChild(veil);
+
+    render(<GuidedTour onFinish={vi.fn()} />);
+
+    expect(document.querySelector("[data-onboarding-overlay]")).toBeNull();
+  });
+
   it("calls onFinish when the skip link is clicked", () => {
     const onFinish = vi.fn();
     render(<GuidedTour onFinish={onFinish} />);

@@ -86,19 +86,31 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
 
   // A Radix dialog (the onboarding wizard) that unmounts while still `open`
-  // leaves `body { pointer-events: none }` behind. The tour is a body-level
-  // portal, so it would inherit that lock and become unclickable. Clear any
-  // stale lock on mount, and again on unmount so the dashboard underneath is
-  // interactive once the tour closes. The container below also forces
-  // `pointer-events: auto` as a timing-independent guarantee.
+  // leaves two things behind: `body { pointer-events: none }`, and — more
+  // visibly — its full-screen dim overlay portal node (`[data-onboarding-
+  // overlay]`). The tour is a body-level portal sitting ABOVE that leaked z-50
+  // veil, so its spotlight "hole" reveals the dark veil instead of the
+  // highlighted card — the card looks empty. The tour only ever runs once
+  // onboarding has finished, so any onboarding overlay still in the DOM is
+  // definitely orphaned: clear the lock and remove the leaked veil on mount,
+  // and again on unmount so the dashboard is clean once the tour closes.
   useEffect(() => {
-    const unlock = () => {
+    const cleanup = () => {
       if (document.body.style.pointerEvents === "none") {
         document.body.style.pointerEvents = "";
       }
+      document
+        .querySelectorAll("[data-onboarding-overlay]")
+        .forEach((node) => {
+          try {
+            node.remove();
+          } catch {
+            // Node already detached by React/Radix — nothing to do.
+          }
+        });
     };
-    unlock();
-    return unlock;
+    cleanup();
+    return cleanup;
   }, []);
 
   // Track viewport size so positions recompute on resize — including the
