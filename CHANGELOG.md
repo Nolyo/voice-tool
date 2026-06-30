@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [3.0.0] - 2026-05-XX (in preparation)
+## [3.0.0] - 2026-06-30
 
-> Major release. Voice Tool becomes **Lexena**. User accounts and cloud sync of settings, vocabulary and snippets land. The trust promise stays intact: **the fully local, account-less mode remains free and fully functional, and your API keys never leave your device**.
+> Major release. Voice Tool becomes **Lexena**. The app gains user accounts, cloud sync (settings, vocabulary, snippets, **notes and folders**), an optional **managed cloud transcription** service (Lexena Cloud), public note sharing and a redesigned home. The trust promise stays intact: **the fully local, account-less, offline mode remains free and fully functional** — and Lexena no longer requires any third-party API key.
 
 ### Added — Visual identity
 - Full **Voice Tool → Lexena** rebrand: binary, application identifier (`com.nolyo.lexena`), AppData folder (`%APPDATA%/com.nolyo.lexena/`), deep-link scheme (`lexena://`)
-- New Lexena visual identity: icons, color palette, OKLCH-based design tokens, scoped under `.vt-app`
+- New Lexena visual identity: icons, teal color palette (HUE 162), OKLCH-based design tokens, scoped under `.vt-app`
 
 ### Added — User accounts (sub-epic 01)
 - Sign up via **magic link**, **email + password**, or **Google OAuth**
@@ -46,6 +46,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Runtime payload validation** (Zod) on every cloud read — malformed data is rejected before reaching the UI
 - Settings → Account: sync activation toggle, real-time sync status, local backup list, export shortcut
 
+### Added — Cloud sync of notes & folders (sub-epic 03)
+- **Opt-in cloud sync of notes and folders**, on top of settings, vocabulary and snippets
+- **Last-Write-Wins per item** + **soft-delete with tombstones** (30-day server retention, then purge) so edits and deletions converge across devices
+- **Freemium storage quotas**: Free 10 MB · Starter 100 MB · Pro 500 MB, with a per-note hard cap of **3 MB**
+- In-app **size-warning banner** when a note approaches the per-note cap
+- Local backups now snapshot notes and folders too
+
+### Added — Multi-profile cloud sync
+- Each local profile maps to its **own cloud partition**, so multiple profiles sync independently under a single account
+- **Multi-device import**: discover profiles created on another device and pull them onto a fresh install
+
+### Added — Public note sharing
+- Share any note as a **public, read-only link** (`lexena.app/s/<slug>`), server-rendered
+- Revoke a shared link at any time
+
 ### Added — Account deletion (GDPR)
 - **"Delete my account" button** in Settings → Security with a strong confirmation step
 - **30-day grace period**: a tombstone is recorded, global sign-out fires immediately, and any subsequent login lands on `DeletionPendingScreen` with an "undo" button
@@ -56,8 +71,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added — GDPR data export
 - "Export my data" button in Settings → Account
-- Generates a JSON containing `user_settings`, `user_dictionary_words`, `user_snippets`, `user_devices`
+- Generates a JSON containing `user_settings`, `user_dictionary_words`, `user_snippets`, `user_notes`, `user_folders`, `user_profiles`, `user_devices`
 - Compliant with GDPR Art. 20 (data portability)
+
+### Added — Lexena Cloud transcription (sub-epic 05)
+- **Managed cloud transcription** — no API key required; your audio is transcribed server-side
+- **Free trial**: 60 minutes over 30 days, granted automatically when you verify your email
+- **Eligibility-aware recording**: capture is blocked with a clear message when no active trial or subscription is available; an expiration dialog offers to keep using Local mode
+- Recommended option at onboarding for machines that can't comfortably run the local model
+
+### Added — Subscriptions (preview, sub-epic 04)
+- Subscription plans surfaced in Settings → Account: **Starter** (€5/mo or €49/yr, 400 min/mo) and **Pro** (€9/mo or €89/yr, 1000 min/mo); AI post-processing and settings sync included
+- Monthly / annual toggle (annual ~18% off)
+- **Payments are not enabled yet** — plans are shown as "coming soon" for the Public Beta
 
 ### Added — Security foundations (sub-epic 00)
 - **CI workflow `security-audit.yml`**: `pnpm audit` + `cargo audit` blocking on HIGH/CRITICAL (PRs and daily cron)
@@ -68,6 +94,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **GDPR processing register** + lawful basis per processing activity
 - **Bootstrap docs**: Supabase EU setup, Cloudflare Pages, ops 2FA enrollment checklist
 
+### Added — Emails
+- **Branded Supabase Auth emails** (magic link, signup confirmation, password reset), built with React Email
+- **New-device sign-in email** notification (Edge Function + daily cron)
+
 ### Added — Notes (continuation of 2.x)
 - **Tiptap tables** with a floating toolbar
 - **Code blocks with syntax highlighting** via `lowlight` and a per-block language selector
@@ -75,15 +105,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drag & drop** for moving notes between folders
 - Custom **folder-creation dialog** (replaces the native browser `prompt()`)
 - Note-to-note linking (`@`) + backlinks panel + broken-link detection (carried over from 2.10.1)
-- **Save a transcription to a note**: from a transcription's detail panel, create a new note seeded with it or append it to an existing note via a searchable picker (sync-safe, 1 MB per-note cap honored)
+- **Save a transcription to a note**: from a transcription's detail panel, create a new note seeded with it or append it to an existing note via a searchable picker (sync-safe, 3 MB per-note cap honored)
 
 ### Added — History
 - **Pin transcriptions** to keep important entries at the top of the list
-- **Advanced export + filters**: text search, date range, format
-- **Statistics dashboard**: usage-statistics tab
+- **Statistics dashboard**: a usage-statistics tab
 
 ### Added — Audio
 - **Auto-trim silence** at the start and end of recordings (adaptive threshold, detailed logging)
+
+### Added — Home & onboarding
+- **New Home screen** as the default landing view: time-aware greeting, one-tap dictation card with live waveform and hotkey reminders, adaptive subscription and sync-status cards, recent notes and quick actions
+- **First-run onboarding wizard**: intro → capabilities → live "try it" cloud demo → **Cloud vs Local** choice, with a microphone picker, hardware auto-detection (recommends Cloud on low-end machines) and an EN/FR switch
+- **Guided tour** after setup, highlighting dictation, history, notes, settings and account (replayable)
 
 ### Added — UI / UX
 - **Compact layout mode** for narrow windows
@@ -92,8 +126,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unified copy-to-clipboard feedback (`useCopyToClipboard`) on every copy button
 - Title preview / inline edit in the mini window, settings refresh on startup
 - Slash menu and table-toolbar polish
+- **Settings reorganized** from 11 sections into 7 pages
+- **Re-paste the last transcription** via a dedicated global hotkey
+- Update notification moved to the sidebar with a redesigned modal
 
 ### Changed
+- **Transcription providers are now Local (offline Whisper `large-v3-turbo`) and Lexena Cloud.** The bring-your-own OpenAI / Groq API-key flow has been removed.
+- **AI post-processing** (rewrite, fix, turn into email) is now a managed cloud feature with no API key, available with an active trial or subscription.
 - **AppData layout**: per-profile data is now consistently rooted at `%APPDATA%/com.nolyo.lexena/profiles/<profile_id>/` (settings, recordings, transcriptions, notes). Profile isolation was introduced in 2.9.0; this release finalizes the layout under the new application identifier.
 - Settings sections reorganized — new **Account** and **Security** tabs (only visible when signed in)
 - Post-process mode selector simplified
@@ -107,7 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Atomic 2FA activation** + pinned `search_path` on `pgcrypto`
 - **PKCE flow** for magic link / signup / recovery
 - **Rate limiting**: Postgres table + `check_rate_limit` RPC, daily purge job, revoked from the `anon` role
-- **New-device trigger**: `notified_at` column + payload ready for an Edge Function email send (actual delivery is a follow-up)
+- **New-device sign-in email**: trigger + `notified_at` column + daily cron + Edge Function now deliver the notification
 - **Turnstile hardening**: prod-build guard, theme alignment, submit UX
 - `.gitattributes` enforces LF line endings (eliminates cross-OS CRLF warnings)
 - Pinned transitive deps via `pnpm overrides` for CVE patches
@@ -131,10 +170,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI**: Linux libs added for `cpal`/`enigo`/`reqwest` (alsa, xdo, ssl)
 
 ### Documentation
-- 12 v3 ADRs frozen (`docs/v3/decisions/0001-0012`)
-- 3 sub-epics frozen (00 security, 01 auth, 02 sync) each with a closure ADR
-- Implementation plans for sub-epic 00, 01, 02, account deletion, post-review fixes, auth hardening
-- 3 manual end-to-end checklists (auth, sync, account deletion)
+- v3 ADRs frozen under `docs/v3/decisions/`, including closure ADRs for sub-epics 00 (security), 01 (auth), 02 (sync settings), 03 (sync notes), 04 (billing) and 05 (managed transcription)
+- Implementation plans for every sub-epic plus note sharing, multi-profile sync, onboarding and post-review fixes
+- 6 manual end-to-end checklists (auth, sync settings, account deletion, sync notes, note sharing, managed transcription)
 - 5 operational runbooks
 - GDPR register + lawful basis + bootstrap guides
 - Threat model + per-measure implementation matrix (delivered 2026-05-01)
@@ -149,8 +187,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Profile data**: existing 2.x users keep their `profiles/<id>/` layout untouched. Fresh 3.0 installs land directly in `%APPDATA%/com.nolyo.lexena/profiles/default/`.
 - **Pre-rebrand installs** (`%APPDATA%/voice-tool/` or `%APPDATA%/com.nolyo.voice-tool/`): no automatic AppData migration across application identifiers — users coming from those installs need to copy their `profiles/` folder manually into `%APPDATA%/com.nolyo.lexena/`. A clean reinstall from 3.0 is the recommended path.
 - **Legacy snippets / dictionary** stored in the old Tauri Store keys (`settings.snippets`, `settings.dictionary`) are migrated automatically the first time the recording workflow mounts.
+- **Transcription API keys**: the bring-your-own OpenAI / Groq key flow is gone. 2.x users who transcribed with their own key now choose between offline **Local** transcription (free) and **Lexena Cloud** (60-minute free trial, subscription afterwards).
 
 ### Removed
+- **Bring-your-own OpenAI / Groq API keys** for transcription (replaced by Local + Lexena Cloud)
 - Post Process section removed from settings
 - Redundant stats row removed from history
 - Redundant note icon removed from sidebar / tabs

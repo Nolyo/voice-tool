@@ -3,6 +3,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, Host, Stream, StreamConfig};
 use std::sync::{Arc, Mutex};
 use tauri::Emitter;
+use tracing::{debug, info};
 
 /// Represents an audio recording session
 pub struct AudioRecorder {
@@ -75,7 +76,7 @@ impl AudioRecorder {
         device_index: Option<usize>,
         app_handle: tauri::AppHandle<R>,
     ) -> Result<()> {
-        println!(
+        debug!(
             "start_recording called with device_index: {:?}",
             device_index
         );
@@ -88,7 +89,7 @@ impl AudioRecorder {
         {
             let mut stream_id = self.stream_id.lock().unwrap();
             *stream_id = stream_id.wrapping_add(1);
-            println!("New stream ID: {}", *stream_id);
+            debug!("New stream ID: {}", *stream_id);
         }
 
         // Set recording flag to false briefly to stop old streams
@@ -106,7 +107,7 @@ impl AudioRecorder {
 
         // Log device name
         if let Ok(name) = device.name() {
-            println!("Using audio device: {}", name);
+            info!("Using audio device: {}", name);
         }
 
         // Get the default input config
@@ -116,7 +117,7 @@ impl AudioRecorder {
 
         let sample_format = default_config.sample_format();
         let device_sample_rate = default_config.sample_rate().0;
-        println!(
+        debug!(
             "Device default: format={:?}, sample_rate={}, channels={}",
             sample_format,
             device_sample_rate,
@@ -127,7 +128,7 @@ impl AudioRecorder {
         // Whisper works well with various sample rates (16000, 44100, 48000, etc.)
         let config: StreamConfig = default_config.into();
 
-        println!(
+        debug!(
             "Using device native config: sample_rate={}, channels={}",
             config.sample_rate.0, config.channels
         );
@@ -211,7 +212,7 @@ impl AudioRecorder {
         let avg_rms = calculate_rms(&audio_data);
         let is_silent = avg_rms < silence_threshold;
 
-        println!(
+        info!(
             "stop_recording: captured {} samples at {} Hz (avg RMS: {:.4}, threshold: {:.4}, silent: {})",
             audio_data.len(),
             sample_rate,
@@ -320,7 +321,7 @@ impl AudioRecorder {
                 // Debug: log first few samples on first callback
                 static FIRST_LOG: std::sync::Once = std::sync::Once::new();
                 FIRST_LOG.call_once(|| {
-                    println!(
+                    debug!(
                         "First 10 i16 samples: {:?}",
                         &samples[..samples.len().min(10)]
                     );
