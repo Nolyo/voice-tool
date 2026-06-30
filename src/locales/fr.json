@@ -394,7 +394,7 @@
     "created": "Note créée",
     "added": "Ajouté à « {{title}} »",
     "open": "Ouvrir",
-    "tooLarge": "La note dépasserait la taille maximale (1 Mo).",
+    "tooLarge": "La note dépasserait la taille maximale (3 Mo).",
     "createFailed": "Impossible de créer la note.",
     "addFailed": "Impossible d'ajouter à la note."
   },
@@ -1226,7 +1226,7 @@
       "aal2_required": "Vérification 2FA requise pour confirmer la suppression. Termine le challenge MFA puis réessaie."
     },
     "multi_profile_warning": "La synchronisation couvre uniquement ton profil actif (« {{name}} »). Tes autres profils restent locaux à ce device.",
-    "oversizedNotes_warning": "{{count}} note(s) dépassent la limite d'1 Mo et ne peuvent pas être synchronisées — elles restent sur cet appareil.",
+    "oversizedNotes_warning": "{{count}} note(s) dépassent la limite de 3 Mo et ne peuvent pas être synchronisées — elles restent sur cet appareil.",
     "import": {
       "title": "Profils dans le cloud",
       "desc": "Récupère sur cet appareil les profils déjà synchronisés depuis un autre ordinateur.",

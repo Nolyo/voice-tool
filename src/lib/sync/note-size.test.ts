@@ -25,9 +25,9 @@ describe("note-size", () => {
   });
 
   it("rejects content that passes a code-unit check but exceeds the byte cap", () => {
-    // 600k '🪣' = 1.2M code units (would pass a naive .length check vs 1.05M?)
-    // but 2.4M bytes — must be rejected on the byte measure.
-    const multibyte = "🪣".repeat(600_000);
+    // 900k '🪣' = 1.8M code units (would pass a naive .length check vs 3.15M)
+    // but 3.6M bytes — must be rejected on the byte measure.
+    const multibyte = "🪣".repeat(900_000);
     expect(multibyte.length).toBeLessThan(NOTE_SIZE_LIMIT_BYTES * 2);
     expect(noteContentBytes(multibyte)).toBeGreaterThan(NOTE_SIZE_LIMIT_BYTES);
     expect(isNoteSyncable(multibyte)).toBe(false);

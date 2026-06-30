@@ -148,8 +148,8 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
           break;
         }
         case "note-upsert": {
-          // Taille de `content_html` : Zod (max 1_048_576 code units) rejette avant ce point ;
-          // la DB applique en plus un CHECK `octet_length <= 1_048_576` côté bytes UTF-8 comme autorité finale.
+          // Taille de `content_html` : Zod (max 3_145_728 code units) rejette avant ce point ;
+          // la DB applique en plus un CHECK `octet_length <= 3_145_728` côté bytes UTF-8 comme autorité finale.
           const { error } = await client.from("user_notes").upsert(
             {
               id: op.note.id,

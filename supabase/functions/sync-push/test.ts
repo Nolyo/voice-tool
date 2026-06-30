@@ -513,11 +513,11 @@ Deno.test("folder-upsert: accepts RFC3339 offset datetime + omitted deleted_at (
   assertEquals(upserts[0].record.deleted_at, null);
 });
 
-Deno.test("note-upsert: rejects content_html > 1 MB at Zod parse (400 invalid body)", async () => {
+Deno.test("note-upsert: rejects content_html > 3 MB at Zod parse (400 invalid body)", async () => {
   const { handler } = await import("./index.ts");
   const auth = authOk();
-  // 1 byte past the 1 MB limit — Zod max(1_048_576) rejects at body parse → 400 invalid body.
-  const huge = "a".repeat(1_048_577);
+  // 1 byte past the 3 MB limit — Zod max(3_145_728) rejects at body parse → 400 invalid body.
+  const huge = "a".repeat(3_145_729);
   const note = makeNote({ content_html: huge });
   const req = postJson({
     operations: [{ kind: "note-upsert", note }],
