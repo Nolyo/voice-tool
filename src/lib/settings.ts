@@ -80,6 +80,18 @@ export interface AppSettings {
   };
 }
 
+/**
+ * The only officially-supported local Whisper model. Every other value in the
+ * `local_model_size` union is a deprecated legacy model, kept in the type solely
+ * so the settings migration banner can name a previously-installed model and so
+ * the cloud sync mapping can validate older snapshots. New installs and all
+ * fallbacks must point here — never to a legacy size like "base".
+ */
+export const OFFICIAL_LOCAL_MODEL = "large-v3-turbo" as const;
+
+/** Human-readable download size label for {@link OFFICIAL_LOCAL_MODEL}. */
+export const OFFICIAL_LOCAL_MODEL_SIZE_LABEL = "1.6 GB";
+
 // Detect default UI language from the OS / browser locale at module load.
 // English is the default — only French OS locales get FR out of the box.
 // Keep this in sync with the detection in src/i18n.ts.
@@ -104,7 +116,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     // Transcription
     transcription_provider: "Local",
-    local_model_size: "base", // Recommended for old hardware
+    local_model_size: OFFICIAL_LOCAL_MODEL, // Only officially-supported model
     keep_model_in_memory: null, // null = auto (GPU: keep, CPU: unload after 2min)
     language: "fr-FR",
     smart_formatting: true,

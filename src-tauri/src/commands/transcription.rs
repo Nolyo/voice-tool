@@ -66,7 +66,8 @@ pub async fn transcribe_audio(
         (true, true) => String::new(),
     };
 
-    let model = local_model_size.unwrap_or_else(|| "base".to_string());
+    let model = local_model_size
+        .unwrap_or_else(|| transcription_local::DEFAULT_LOCAL_MODEL.to_string());
     let transcription = transcription_local::transcribe_local(
         &app_handle,
         &audio_samples,

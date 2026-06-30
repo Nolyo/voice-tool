@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import type { AppSettings } from "@/lib/settings";
+import { OFFICIAL_LOCAL_MODEL, type AppSettings } from "@/lib/settings";
 
 type LocalModelSize = AppSettings["settings"]["local_model_size"];
 type TranscriptionProvider = AppSettings["settings"]["transcription_provider"];
@@ -27,7 +27,7 @@ export function useModelDownload(
     setIsChecking(true);
     try {
       const exists = await invoke<boolean>("check_local_model_exists", {
-        model: modelSize || "base",
+        model: modelSize || OFFICIAL_LOCAL_MODEL,
       });
       setIsDownloaded(exists);
     } catch (e) {

@@ -14,10 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useSettings } from "@/hooks/useSettings";
+import {
+  OFFICIAL_LOCAL_MODEL as TURBO_MODEL,
+  OFFICIAL_LOCAL_MODEL_SIZE_LABEL as TURBO_SIZE_LABEL,
+} from "@/lib/settings";
 import type { SystemInfo } from "@/lib/system-eligibility";
-
-const TURBO_MODEL = "large-v3-turbo";
-const TURBO_SIZE_LABEL = "1.6 GB";
 
 export function OnboardingWizard({
   systemInfo,

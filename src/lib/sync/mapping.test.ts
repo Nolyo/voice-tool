@@ -50,7 +50,10 @@ describe("mapping AppSettings ↔ Cloud", () => {
         open_window: "Ctrl+Alt+O",
       },
       features: { auto_paste: "cursor", sound_effects: true },
-      transcription: { provider: "Local", local_model: "base" },
+      transcription: {
+        provider: "Local",
+        local_model: DEFAULT_SETTINGS.settings.local_model_size,
+      },
     });
   });
 
