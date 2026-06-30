@@ -1225,7 +1225,7 @@
       "submitted": "Your deletion request is registered. You've been signed out. Your data will be purged within 30 days.",
       "aal2_required": "2FA verification required to confirm deletion. Complete the MFA challenge and retry."
     },
-    "multi_profile_warning": "Sync covers only your active profile (\"{{name}}\"). Your other profiles stay local to this device.",
+    "multi_profile_warning": "Sync covers only your active profile (\"{{name}}\"). Activate another profile to sync it separately.",
     "oversizedNotes_warning": "{{count}} note(s) exceed the 3 MB limit and can't be synced — they stay on this device.",
     "import": {
       "title": "Cloud profiles",
