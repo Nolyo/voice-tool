@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [3.0.0] - 2026-05-XX (in preparation)
+## [3.0.0] - 2026-06-30
 
 > Major release. Voice Tool becomes **Lexena**. User accounts and cloud sync of settings, vocabulary and snippets land. The trust promise stays intact: **the fully local, account-less mode remains free and fully functional, and your API keys never leave your device**.
 

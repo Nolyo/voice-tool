@@ -197,7 +197,7 @@ async function buildReleasesJson(releases, channel = "stable") {
   // Build final object
   const json = {
     schema_version: SCHEMA_VERSION,
-    app_name: "Voice Tool",
+    app_name: "Lexena",
     repository: `${OWNER}/${REPO}`,
     channel: channel,
     generated_at: new Date().toISOString(),
