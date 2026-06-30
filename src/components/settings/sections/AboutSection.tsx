@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Github, RefreshCw } from "lucide-react";
+import { Github } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useSettings } from "@/hooks/useSettings";
 import { LexenaWordmark } from "@/components/common/LexenaWordmark";
-import { scrollToSettingsAnchor } from "../common/SettingsNav";
 import { Callout, SectionHeader, VtIcon } from "../vt";
 import { UpdaterSection } from "./UpdaterSection";
 
@@ -117,37 +116,6 @@ export function AboutSection() {
               <Github className="w-4 h-4" />
               {t("settings.about.openGithub", {
                 defaultValue: "Ouvrir GitHub",
-              })}
-            </button>
-          </div>
-        </div>
-
-        <div className="vt-row">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[13px] font-semibold">
-                {t("settings.about.checkUpdates", {
-                  defaultValue: "Mises à jour",
-                })}
-              </span>
-              <span
-                className="text-[12px]"
-                style={{ color: "var(--vt-fg-3)" }}
-              >
-                {t("settings.about.checkUpdatesDesc", {
-                  defaultValue:
-                    "Vérifier la disponibilité d'une nouvelle version.",
-                })}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => scrollToSettingsAnchor("section-mises-a-jour")}
-              className="vt-btn-primary inline-flex items-center gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              {t("settings.about.checkUpdatesBtn", {
-                defaultValue: "Vérifier les mises à jour",
               })}
             </button>
           </div>
