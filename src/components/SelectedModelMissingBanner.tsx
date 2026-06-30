@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OFFICIAL_LOCAL_MODEL } from "@/lib/settings";
 import { useSettings } from "@/hooks/useSettings";
 
 interface Props {
@@ -31,7 +32,7 @@ export function SelectedModelMissingBanner({ onGoToSettings }: Props) {
     let cancelled = false;
     Promise.all([
       invoke<boolean>("check_local_model_exists", {
-        model: settings.local_model_size || "base",
+        model: settings.local_model_size || OFFICIAL_LOCAL_MODEL,
       }),
       invoke<boolean>("any_local_model_exists"),
     ])

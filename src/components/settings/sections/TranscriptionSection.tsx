@@ -2,6 +2,10 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
+import {
+  OFFICIAL_LOCAL_MODEL,
+  OFFICIAL_LOCAL_MODEL_SIZE_LABEL,
+} from "@/lib/settings";
 import { useSettings } from "@/hooks/useSettings";
 import { useModelDownload } from "@/hooks/useModelDownload";
 import { useCloud } from "@/hooks/useCloud";
@@ -20,8 +24,8 @@ import {
 } from "../vt";
 
 const ACCENT = "var(--vt-violet)";
-const OFFICIAL_MODEL = "large-v3-turbo";
-const OFFICIAL_MODEL_SIZE = "1.6 GB";
+const OFFICIAL_MODEL = OFFICIAL_LOCAL_MODEL;
+const OFFICIAL_MODEL_SIZE = OFFICIAL_LOCAL_MODEL_SIZE_LABEL;
 
 type Provider = "Local" | "LexenaCloud";
 

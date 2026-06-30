@@ -11,6 +11,11 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 use crate::state::AppState;
 
+/// The only officially-supported local model. Used as the fallback whenever a
+/// stored `local_model_size` is missing — must stay in sync with the frontend
+/// `OFFICIAL_LOCAL_MODEL` constant (src/lib/settings.ts).
+pub const DEFAULT_LOCAL_MODEL: &str = "large-v3-turbo";
+
 /// Core path logic: models dir is always `<base>/models`. Extracted for testability.
 fn models_dir_from_base(base: PathBuf) -> Result<PathBuf> {
     let models_dir = base.join("models");
@@ -305,7 +310,7 @@ pub fn preload_if_configured(app: &mut tauri::App) {
                 s.get("local_model_size")
                     .and_then(|v| v.as_str().map(String::from))
             })
-            .unwrap_or_else(|| "base".to_string());
+            .unwrap_or_else(|| DEFAULT_LOCAL_MODEL.to_string());
 
         let keep_model_in_memory = settings_obj
             .as_ref()
