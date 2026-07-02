@@ -130,7 +130,7 @@ fn window_rms(samples: &[i16], window_idx: usize, window_size: usize) -> f32 {
     rms(&samples[start..end])
 }
 
-fn rms(samples: &[i16]) -> f32 {
+pub(crate) fn rms(samples: &[i16]) -> f32 {
     if samples.is_empty() {
         return 0.0;
     }

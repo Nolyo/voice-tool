@@ -11,6 +11,7 @@ mod logs;
 mod notes;
 mod profiles;
 mod state;
+mod streaming;
 mod sync;
 mod transcription;
 mod transcription_local;
