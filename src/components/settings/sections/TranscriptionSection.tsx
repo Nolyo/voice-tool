@@ -176,6 +176,37 @@ export function TranscriptionSection({ onSectionChange }: TranscriptionSectionPr
         </Row>
 
         <Row
+          label={t("settings.transcription.streaming.title")}
+          hint={t("settings.transcription.streaming.description")}
+        >
+          {cloudSelected ? (
+            <Toggle
+              on={settings.streaming_mode}
+              onClick={() =>
+                updateSetting("streaming_mode", !settings.streaming_mode)
+              }
+              label={
+                settings.streaming_mode
+                  ? t("common.enabled", { defaultValue: "Activé" })
+                  : t("common.disabled", { defaultValue: "Désactivé" })
+              }
+            />
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <Toggle
+                on={false}
+                onClick={() => {}}
+                disabled
+                label={t("common.disabled", { defaultValue: "Désactivé" })}
+              />
+              <ProviderBadge color="var(--vt-accent)">
+                {t("settings.transcription.streaming.cloudOnly")}
+              </ProviderBadge>
+            </div>
+          )}
+        </Row>
+
+        <Row
           label={t("settings.transcription.language")}
           hint={t("settings.transcription.languageHint", {
             defaultValue:

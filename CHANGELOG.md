@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Streaming mode (live transcription)** — Lexena Cloud exclusive. When enabled (Settings → Dictation → Transcription), speech is segmented at natural pauses on the Rust side and each segment is transcribed while you keep talking: the text appears sentence by sentence in the mini window (in place of the visualizer) and in the home hero card (teleprompter style), ~1-2 s after each pause. On stop, the assembled text goes through the unchanged pipeline (AI post-process, snippets, history, auto-paste). Works with the toggle hotkey, push-to-talk and the record button; cancel (Escape) discards everything. Billing is identical to batch (sum of segment durations through the existing `/transcribe` endpoint); quota/auth errors stop the recording cleanly, isolated network failures skip a segment with a warning.
+
+---
+
 ## [3.0.0] - 2026-06-30
 
 > Major release. Voice Tool becomes **Lexena**. The app gains user accounts, cloud sync (settings, vocabulary, snippets, **notes and folders**), an optional **managed cloud transcription** service (Lexena Cloud), public note sharing and a redesigned home. The trust promise stays intact: **the fully local, account-less, offline mode remains free and fully functional** — and Lexena no longer requires any third-party API key.

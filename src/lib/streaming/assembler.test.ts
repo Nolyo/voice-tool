@@ -1,0 +1,61 @@
+import { describe, expect, it } from "vitest";
+import { TranscriptAssembler } from "./assembler";
+
+describe("TranscriptAssembler", () => {
+  it("joins chunks in index order even when upserted out of order", () => {
+    const a = new TranscriptAssembler();
+    a.upsert(2, "trois.");
+    a.upsert(0, "Un,");
+    a.upsert(1, "deux,");
+    expect(a.assembled()).toBe("Un, deux, trois.");
+  });
+
+  it("skips missing indexes without blocking assembly", () => {
+    const a = new TranscriptAssembler();
+    a.upsert(0, "Début");
+    a.upsert(3, "fin.");
+    expect(a.assembled()).toBe("Début fin.");
+  });
+
+  it("excludes failed chunks from the join but counts them", () => {
+    const a = new TranscriptAssembler();
+    a.upsert(0, "Bonjour");
+    a.markFailed(1);
+    a.upsert(2, "monde.");
+    expect(a.assembled()).toBe("Bonjour monde.");
+    expect(a.okCount).toBe(2);
+    expect(a.failedCount).toBe(1);
+  });
+
+  it("ignores empty and whitespace-only chunk texts in the join", () => {
+    const a = new TranscriptAssembler();
+    a.upsert(0, "Texte");
+    a.upsert(1, "   ");
+    a.upsert(2, "");
+    a.upsert(3, "suite.");
+    expect(a.assembled()).toBe("Texte suite.");
+  });
+
+  it("normalizes runs of whitespace between chunks", () => {
+    const a = new TranscriptAssembler();
+    a.upsert(0, "  Un  ");
+    a.upsert(1, "\ndeux\t");
+    expect(a.assembled()).toBe("Un deux");
+  });
+
+  it("overwrites on double upsert of the same index", () => {
+    const a = new TranscriptAssembler();
+    a.upsert(0, "brouillon");
+    a.upsert(0, "final.");
+    expect(a.assembled()).toBe("final.");
+    expect(a.okCount).toBe(1);
+  });
+
+  it("a later success clears a previous failure for that index", () => {
+    const a = new TranscriptAssembler();
+    a.markFailed(0);
+    a.upsert(0, "récupéré.");
+    expect(a.assembled()).toBe("récupéré.");
+    expect(a.failedCount).toBe(0);
+  });
+});

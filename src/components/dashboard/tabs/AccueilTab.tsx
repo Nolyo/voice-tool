@@ -14,6 +14,8 @@ interface AccueilTabProps {
   historyCount: number;
   isRecording: boolean;
   isTranscribing: boolean;
+  /** Assembled live transcript of the active streaming session ("" if none). */
+  liveTranscript?: string;
   onToggleRecording: () => void;
   onOpenNote: (note: NoteMeta) => void;
   onCreateNote: () => void;
@@ -35,6 +37,7 @@ export function AccueilTab({
   historyCount,
   isRecording,
   isTranscribing,
+  liveTranscript,
   onToggleRecording,
   onOpenNote,
   onCreateNote,
@@ -56,6 +59,7 @@ export function AccueilTab({
           <HeroDictationCard
             isRecording={isRecording}
             isTranscribing={isTranscribing}
+            liveTranscript={liveTranscript}
             onToggleRecording={onToggleRecording}
           />
           <div className="grid grid-rows-[auto_1fr] gap-4 min-w-0">

@@ -4,6 +4,7 @@ import { useMiniWindowState } from "@/hooks/useMiniWindowState";
 import { useMiniWindowSize } from "@/hooks/useMiniWindowSize";
 import { MiniVisualizer } from "./MiniVisualizer";
 import { MiniHeader } from "./MiniHeader";
+import { MiniLiveTranscript } from "./MiniLiveTranscript";
 import { MiniTranscriptPreview } from "./MiniTranscriptPreview";
 
 export function MiniShell() {
@@ -22,6 +23,7 @@ export function MiniShell() {
     waveformCapacity,
     showTranscriptPreview,
     lastTranscript,
+    liveTranscript,
     language,
     provider,
   } = useMiniWindowState();
@@ -83,13 +85,19 @@ export function MiniShell() {
             className="flex flex-1 items-center gap-2 min-h-0"
             data-tauri-drag-region
           >
-            <MiniVisualizer
-              mode={visualizerMode}
-              audioLevel={audioLevel}
-              isRecording={isRecording}
-              waveformCapacity={waveformCapacity}
-              barMaxHeight={barMaxHeight}
-            />
+            {status === "recording" && liveTranscript ? (
+              // Streaming session: the words just spoken replace the
+              // visualizer — the text itself is the recording feedback.
+              <MiniLiveTranscript text={liveTranscript} />
+            ) : (
+              <MiniVisualizer
+                mode={visualizerMode}
+                audioLevel={audioLevel}
+                isRecording={isRecording}
+                waveformCapacity={waveformCapacity}
+                barMaxHeight={barMaxHeight}
+              />
+            )}
             <MiniHeader
               isRecording={isRecording}
               recordingTime={recordingTime}

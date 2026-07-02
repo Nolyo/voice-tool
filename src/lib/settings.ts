@@ -19,6 +19,12 @@ export interface AppSettings {
     keep_model_in_memory: boolean | null;
     language: string;
     smart_formatting: boolean;
+    /**
+     * Live sentence-by-sentence transcription while recording. Cloud-only:
+     * only effective when the provider is LexenaCloud and the user is
+     * cloud-eligible (CloudContext pushes the combined flag to Rust).
+     */
+    streaming_mode: boolean;
 
     // Translation
     translate_mode: boolean;
@@ -120,6 +126,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     keep_model_in_memory: null, // null = auto (GPU: keep, CPU: unload after 2min)
     language: "fr-FR",
     smart_formatting: true,
+    streaming_mode: false,
 
     // Translation
     translate_mode: false,

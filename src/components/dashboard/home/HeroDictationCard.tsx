@@ -7,6 +7,8 @@ import { HotkeyTokens } from "@/components/common/HotkeyTokens";
 interface HeroDictationCardProps {
   isRecording: boolean;
   isTranscribing?: boolean;
+  /** Assembled live transcript of the active streaming session ("" if none). */
+  liveTranscript?: string;
   onToggleRecording: () => void;
 }
 
@@ -24,6 +26,7 @@ const WAVE_BARS = Array.from({ length: 40 }, (_, i) => i);
 export function HeroDictationCard({
   isRecording,
   isTranscribing = false,
+  liveTranscript = "",
   onToggleRecording,
 }: HeroDictationCardProps) {
   const { t } = useTranslation();
@@ -76,24 +79,36 @@ export function HeroDictationCard({
         </div>
       </div>
 
-      {/* Live / idle waveform */}
-      <div className="flex items-center gap-[3px] h-10 my-5" aria-hidden="true">
-        {WAVE_BARS.map((i) => (
-          <span
-            key={i}
-            className="flex-1 max-w-[5px] min-w-[3px] rounded-full vt-anim-wave-bar"
-            style={{
-              height: `${28 + WAVE_HEIGHTS[i % WAVE_HEIGHTS.length] * 12}px`,
-              background: isRecording
-                ? "var(--vt-accent)"
-                : "color-mix(in oklab, var(--vt-accent) 38%, transparent)",
-              opacity: isRecording ? 1 : 0.6,
-              animationDelay: `${(i * 0.04).toFixed(2)}s`,
-              animationDuration: isRecording ? "0.7s" : "1.8s",
-            }}
-          />
-        ))}
-      </div>
+      {/* Streaming: teleprompter-style live transcript. Otherwise the
+          live / idle decorative waveform. */}
+      {isRecording && liveTranscript ? (
+        <div
+          className="my-5 min-h-10 max-h-28 overflow-hidden flex flex-col justify-end"
+          aria-live="polite"
+        >
+          <p className="text-[13.5px] leading-relaxed text-[var(--vt-fg-2)] whitespace-pre-wrap">
+            {liveTranscript}
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-center gap-[3px] h-10 my-5" aria-hidden="true">
+          {WAVE_BARS.map((i) => (
+            <span
+              key={i}
+              className="flex-1 max-w-[5px] min-w-[3px] rounded-full vt-anim-wave-bar"
+              style={{
+                height: `${28 + WAVE_HEIGHTS[i % WAVE_HEIGHTS.length] * 12}px`,
+                background: isRecording
+                  ? "var(--vt-accent)"
+                  : "color-mix(in oklab, var(--vt-accent) 38%, transparent)",
+                opacity: isRecording ? 1 : 0.6,
+                animationDelay: `${(i * 0.04).toFixed(2)}s`,
+                animationDuration: isRecording ? "0.7s" : "1.8s",
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-2 mt-auto">
         <HeroKeyRow

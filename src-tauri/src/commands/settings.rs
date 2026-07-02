@@ -212,3 +212,20 @@ pub fn set_cloud_gate(
     *guard = CloudGate { provider, eligible };
     Ok(())
 }
+
+/// Push the renderer's streaming-mode snapshot into `AppState.streaming`.
+/// True only when the user enabled the streaming setting, picked LexenaCloud
+/// AND is cloud-eligible (the renderer's `CloudContext` owns that logic).
+/// Both recording start paths (command + hotkey) read it to decide whether to
+/// open a streaming session alongside the regular batch buffer.
+#[tauri::command]
+pub fn set_streaming_enabled(state: State<AppState>, enabled: bool) -> Result<(), String> {
+    let mut guard = state
+        .inner()
+        .streaming
+        .lock()
+        .map_err(|e| format!("streaming lock poisoned: {}", e))?;
+    guard.enabled = enabled;
+    tracing::info!("Streaming mode enabled: {}", enabled);
+    Ok(())
+}

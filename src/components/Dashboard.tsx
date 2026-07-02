@@ -99,13 +99,17 @@ export default function Dashboard() {
   const { logs, clearLogs } = useAppLogs();
   const isCompact = useIsCompactLayout(sidebarCollapsed);
 
-  const { isRecording, isTranscribing, handleToggleRecording } =
-    useRecordingWorkflow({
-      settings,
-      addTranscription,
-      onTranscriptionAdded: setSelectedTranscription,
-      latestHistoryText: transcriptions[0]?.text,
-    });
+  const {
+    isRecording,
+    isTranscribing,
+    handleToggleRecording,
+    liveTranscript,
+  } = useRecordingWorkflow({
+    settings,
+    addTranscription,
+    onTranscriptionAdded: setSelectedTranscription,
+    latestHistoryText: transcriptions[0]?.text,
+  });
 
   const {
     openNoteIds,
@@ -387,6 +391,7 @@ export default function Dashboard() {
                       historyCount={transcriptions.length}
                       isRecording={isRecording}
                       isTranscribing={isTranscribing}
+                      liveTranscript={liveTranscript}
                       onToggleRecording={handleToggleRecording}
                       onOpenNote={handleOpenNoteFromSidebar}
                       onCreateNote={() => handleCreateNoteFromSidebar(null)}

@@ -76,7 +76,7 @@ function currentMonthBoundsUtc(): { start: string; end: string } {
 
 export function CloudProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const { settings: { transcription_provider } } = useSettings();
+  const { settings: { transcription_provider, streaming_mode } } = useSettings();
 
   const [eligible, setEligible] = useState(false);
   const [trial, setTrial] = useState<TrialStatus>(DEFAULT_TRIAL);
@@ -189,6 +189,16 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     if (!hasCloudSelected) return "local";
     return eligible ? "cloud" : "local";
   }, [user, eligible, hasCloudSelected]);
+
+  // Push the streaming-mode snapshot to Rust: both recording start paths read
+  // it to decide whether to open a streaming session. Effective only when the
+  // user enabled the setting AND the cloud route is actually usable.
+  useEffect(() => {
+    const enabled = Boolean(streaming_mode) && mode === "cloud";
+    void invoke("set_streaming_enabled", { enabled }).catch(() => {
+      // Non-fatal: with a stale/false flag Rust simply keeps batch behavior.
+    });
+  }, [streaming_mode, mode]);
 
   const value = useMemo<CloudContextValue>(
     () => ({
