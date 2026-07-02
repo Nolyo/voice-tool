@@ -480,6 +480,69 @@ body.mini-window-body #root {
   backdrop-filter: blur(12px);
 }
 
+/* ── Streaming live-dictation HUD (mini window) ─────────────────────────── */
+
+/* Single-line clip: right-anchored tail with a left fade so the cut into the
+ * transcript never looks abrupt. */
+.mini-live-clip {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent 0, black 16px);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 16px);
+}
+
+/* Extended layout: the text wraps, sticks to the bottom, and older lines
+ * dissolve into a top fade. */
+.mini-live-clip--multiline {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  mask-image: linear-gradient(to bottom, transparent 0, black 16px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 16px);
+}
+
+/* Words that just arrived: fade in with an accent tint, then settle into the
+ * body color (--vt-fg-2, must match the transcript <p> color). */
+@keyframes vt-mini-fresh-in {
+  0% {
+    opacity: 0;
+    color: var(--vt-accent-2);
+  }
+  45% {
+    opacity: 1;
+    color: var(--vt-accent-2);
+  }
+  100% {
+    opacity: 1;
+    color: var(--vt-fg-2);
+  }
+}
+
+.mini-live-fresh {
+  animation: vt-mini-fresh-in 900ms ease-out both;
+}
+
+@keyframes vt-mini-caret-pulse {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+.mini-live-caret {
+  display: inline-block;
+  width: 2px;
+  height: 0.95em;
+  margin-left: 3px;
+  vertical-align: -0.12em;
+  border-radius: 1px;
+  background: var(--vt-accent);
+  animation: vt-mini-caret-pulse 1.2s ease-in-out infinite;
+}
+
 /* ── Lexena design-system v3 tokens & utilities ──────────────────────────
  * Aligned with the marketing site (voice-tool-web). HUE 162 accent, OKLCH-based.
  * Scoped under `.vt-app` so the same tokens can power any subtree. The dashboard

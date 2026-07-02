@@ -48,6 +48,7 @@ export function useMiniWindowState() {
   );
   const [lastTranscript, setLastTranscript] = useState("");
   const [liveTranscript, setLiveTranscript] = useState("");
+  const [isStreamingLive, setIsStreamingLive] = useState(false);
   const [language, setLanguage] = useState<string | undefined>(undefined);
   const [provider, setProvider] = useState<TranscriptionProvider>(
     DEFAULT_SETTINGS.settings.transcription_provider,
@@ -104,6 +105,9 @@ export function useMiniWindowState() {
     let unlistenProviderChangedFn: (() => void) | null = null;
     let unlistenPostProcessStartFn: (() => void) | null = null;
     let unlistenStreamingTranscriptFn: (() => void) | null = null;
+    let unlistenStreamingStartedFn: (() => void) | null = null;
+    let unlistenStreamingEndFn: (() => void) | null = null;
+    let unlistenStreamingCancelledFn: (() => void) | null = null;
 
     const setupListeners = async () => {
       try {
@@ -197,6 +201,10 @@ export function useMiniWindowState() {
               setErrorMessage("");
               setLastTranscript("");
               setLiveTranscript("");
+            } else {
+              // Safety net: the session-end/cancelled events normally handle
+              // this, but the HUD must never outlive the recording.
+              setIsStreamingLive(false);
             }
           },
         );
@@ -209,6 +217,27 @@ export function useMiniWindowState() {
         }>("streaming-transcript", (event) => {
           setLiveTranscript(event.payload?.text ?? "");
         });
+
+        // Session lifecycle broadcast by the Rust segmenter worker. Lets the
+        // mini switch to the live-dictation HUD from the very first second,
+        // before any chunk has been transcribed.
+        unlistenStreamingStartedFn = await listen(
+          "streaming-session-started",
+          () => {
+            setLiveTranscript("");
+            setIsStreamingLive(true);
+          },
+        );
+        unlistenStreamingEndFn = await listen("streaming-session-end", () => {
+          setIsStreamingLive(false);
+        });
+        unlistenStreamingCancelledFn = await listen(
+          "streaming-session-cancelled",
+          () => {
+            setIsStreamingLive(false);
+            setLiveTranscript("");
+          },
+        );
 
         unlistenTranscriptionStartFn = await listen<
           { provider?: TranscriptionProvider } | undefined
@@ -297,6 +326,9 @@ export function useMiniWindowState() {
       if (unlistenProviderChangedFn) unlistenProviderChangedFn();
       if (unlistenPostProcessStartFn) unlistenPostProcessStartFn();
       if (unlistenStreamingTranscriptFn) unlistenStreamingTranscriptFn();
+      if (unlistenStreamingStartedFn) unlistenStreamingStartedFn();
+      if (unlistenStreamingEndFn) unlistenStreamingEndFn();
+      if (unlistenStreamingCancelledFn) unlistenStreamingCancelledFn();
     };
   }, []);
 
@@ -315,6 +347,7 @@ export function useMiniWindowState() {
     showTranscriptPreview,
     lastTranscript,
     liveTranscript,
+    isStreamingLive,
     language,
     provider,
   };

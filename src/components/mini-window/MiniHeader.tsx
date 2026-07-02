@@ -4,6 +4,8 @@ import type { MiniLayout } from "@/hooks/useMiniWindowSize";
 
 interface MiniHeaderProps {
   isRecording: boolean;
+  /** Active streaming session — the recording dot becomes a LIVE badge. */
+  isStreaming?: boolean;
   recordingTime: number;
   translateMode: boolean;
   onToggleTranslateMode: () => void;
@@ -25,6 +27,7 @@ function formatTime(seconds: number) {
 
 export function MiniHeader({
   isRecording,
+  isStreaming = false,
   recordingTime,
   translateMode,
   onToggleTranslateMode,
@@ -44,21 +47,41 @@ export function MiniHeader({
 
   return (
     <>
-      <span
-        className={`${dotSize} rounded-full flex-shrink-0 ${
-          isRecording
-            ? "bg-vt-danger vt-anim-pulse-dot"
-            : "bg-signal-green/40"
-        }`}
-        style={
-          isRecording
-            ? {
-                boxShadow:
-                  "0 0 8px oklch(from var(--vt-danger) l c h / 0.6)",
-              }
-            : undefined
-        }
-      />
+      {isRecording && isStreaming ? (
+        <span
+          className="flex flex-shrink-0 items-center gap-1 rounded px-1.5 py-0.5"
+          style={{
+            background: "oklch(from var(--vt-danger) l c h / 0.12)",
+            border: "1px solid oklch(from var(--vt-danger) l c h / 0.45)",
+          }}
+        >
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-vt-danger vt-anim-pulse-dot"
+            style={{
+              boxShadow: "0 0 6px oklch(from var(--vt-danger) l c h / 0.6)",
+            }}
+          />
+          <span className="text-[9px] font-semibold tracking-widest text-vt-danger">
+            {t("mini.liveBadge")}
+          </span>
+        </span>
+      ) : (
+        <span
+          className={`${dotSize} rounded-full flex-shrink-0 ${
+            isRecording
+              ? "bg-vt-danger vt-anim-pulse-dot"
+              : "bg-signal-green/40"
+          }`}
+          style={
+            isRecording
+              ? {
+                  boxShadow:
+                    "0 0 8px oklch(from var(--vt-danger) l c h / 0.6)",
+                }
+              : undefined
+          }
+        />
+      )}
       {layout !== "compact" && languageBadge && (
         <span
           className="vt-mono flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-vt-fg-3"

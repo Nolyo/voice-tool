@@ -847,7 +847,9 @@
     "postProcessing": "Post-traitement IA...",
     "transcriptionSuccess": "Transcription réussie",
     "recordingHint": "Enregistrement…",
-    "noTranscriptYet": "Aucune transcription pour l'instant"
+    "noTranscriptYet": "Aucune transcription pour l'instant",
+    "listening": "J'écoute…",
+    "liveBadge": "LIVE"
   },
   "logs": {
     "limitReached": "(limite atteinte)",
