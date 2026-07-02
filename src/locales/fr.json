@@ -477,6 +477,11 @@
       "providerLocalSub": "hors-ligne · CPU/GPU",
       "smartFormatting": "Formatage intelligent (ponctuation, majuscules, espaces)",
       "smartFormattingHint": "Corrige majuscules, ponctuation et espaces sur la sortie Whisper.",
+      "streaming": {
+        "title": "Transcription en continu",
+        "description": "Le texte apparaît phrase par phrase pendant que tu parles, au lieu d'attendre la fin de l'enregistrement.",
+        "cloudOnly": "Exclusif Lexena Cloud"
+      },
       "cloudStatus": {
         "signinRequired": "Connexion requise",
         "trialActive": "Essai actif",
@@ -941,6 +946,10 @@
     "codeTitle": "Code et séparateurs",
     "codeDesc": "<p>Tapez <code>---</code> pour insérer un séparateur, ou <code>```</code> pour un bloc de code.</p>",
     "start": "<p>Commencez à écrire votre première note !</p>"
+  },
+  "streaming": {
+    "partialLoss": "Certains passages n'ont pas pu être transcrits (problème réseau). Le texte peut être incomplet.",
+    "allChunksFailed": "La transcription en continu a échoué : aucun segment n'a pu être transcrit."
   },
   "errors": {
     "transcriptionError": "Erreur de transcription : {{error}}",

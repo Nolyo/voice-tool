@@ -477,6 +477,11 @@
       "providerLocalSub": "offline · CPU/GPU",
       "smartFormatting": "Smart formatting (punctuation, capitals, spaces)",
       "smartFormattingHint": "Fixes capitalization, punctuation and spaces on the Whisper output.",
+      "streaming": {
+        "title": "Live transcription",
+        "description": "Text appears sentence by sentence while you speak, instead of waiting for the recording to end.",
+        "cloudOnly": "Lexena Cloud exclusive"
+      },
       "cloudStatus": {
         "signinRequired": "Sign-in required",
         "trialActive": "Trial active",
@@ -941,6 +946,10 @@
     "codeTitle": "Code and separators",
     "codeDesc": "<p>Type <code>---</code> to insert a separator, or <code>```</code> for a code block.</p>",
     "start": "<p>Start writing your first note!</p>"
+  },
+  "streaming": {
+    "partialLoss": "Some passages could not be transcribed (network issue). The text may be incomplete.",
+    "allChunksFailed": "Live transcription failed: no segment could be transcribed."
   },
   "errors": {
     "transcriptionError": "Transcription error: {{error}}",
