@@ -47,6 +47,7 @@ export function useMiniWindowState() {
     DEFAULT_SETTINGS.settings.show_transcription_in_mini_window,
   );
   const [lastTranscript, setLastTranscript] = useState("");
+  const [liveTranscript, setLiveTranscript] = useState("");
   const [language, setLanguage] = useState<string | undefined>(undefined);
   const [provider, setProvider] = useState<TranscriptionProvider>(
     DEFAULT_SETTINGS.settings.transcription_provider,
@@ -102,6 +103,7 @@ export function useMiniWindowState() {
     let unlistenThemeChangedFn: (() => void) | null = null;
     let unlistenProviderChangedFn: (() => void) | null = null;
     let unlistenPostProcessStartFn: (() => void) | null = null;
+    let unlistenStreamingTranscriptFn: (() => void) | null = null;
 
     const setupListeners = async () => {
       try {
@@ -194,9 +196,19 @@ export function useMiniWindowState() {
               setStatus("recording");
               setErrorMessage("");
               setLastTranscript("");
+              setLiveTranscript("");
             }
           },
         );
+
+        // Live transcript pushed by the main window during a streaming
+        // session (assembled text so far).
+        unlistenStreamingTranscriptFn = await listen<{
+          sessionId: number;
+          text: string;
+        }>("streaming-transcript", (event) => {
+          setLiveTranscript(event.payload?.text ?? "");
+        });
 
         unlistenTranscriptionStartFn = await listen<
           { provider?: TranscriptionProvider } | undefined
@@ -284,6 +296,7 @@ export function useMiniWindowState() {
       if (unlistenThemeChangedFn) unlistenThemeChangedFn();
       if (unlistenProviderChangedFn) unlistenProviderChangedFn();
       if (unlistenPostProcessStartFn) unlistenPostProcessStartFn();
+      if (unlistenStreamingTranscriptFn) unlistenStreamingTranscriptFn();
     };
   }, []);
 
@@ -301,6 +314,7 @@ export function useMiniWindowState() {
     waveformCapacity,
     showTranscriptPreview,
     lastTranscript,
+    liveTranscript,
     language,
     provider,
   };
