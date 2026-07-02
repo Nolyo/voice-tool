@@ -32,6 +32,11 @@ pub fn start_recording(
             e.to_string()
         });
 
+    if result.is_ok() {
+        crate::streaming::maybe_start_streaming_session(state.inner(), &mut recorder, &app_handle);
+    }
+    drop(recorder);
+
     let _ = app_handle.emit("recording-state", true);
 
     if result.is_ok() {
@@ -58,6 +63,10 @@ pub fn stop_recording(
         tracing::error!("Failed to stop recording: {}", e);
         e.to_string()
     });
+
+    // Close the streaming session, if one was opened for this recording. The
+    // worker flushes its tail segment and emits `streaming-session-end`.
+    let _ = crate::streaming::end_streaming_session(state.inner(), &mut recorder, false);
 
     if let Ok(ref recording) = result {
         if recording.is_silent {

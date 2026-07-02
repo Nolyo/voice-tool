@@ -158,6 +158,11 @@ fn start_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
         }
         match recorder.start_recording(None, app_handle.clone()) {
             Ok(_) => {
+                crate::streaming::maybe_start_streaming_session(
+                    state.inner(),
+                    &mut recorder,
+                    app_handle,
+                );
                 drop(recorder);
                 let _ = app_handle.emit("recording-state", true);
                 register_cancel_shortcut(app_handle);
@@ -176,7 +181,12 @@ fn start_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
     }
 }
 
-fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<RecordingResult> {
+/// Stop the hotkey-triggered recording. The boolean is true when a streaming
+/// session was active for this recording — in that case the caller must NOT
+/// emit `audio-captured` (chunks were already shipped to the renderer).
+fn stop_recording_shortcut<R: Runtime>(
+    app_handle: &AppHandle<R>,
+) -> Option<(RecordingResult, bool)> {
     let state: State<AppState> = app_handle.state();
 
     let silence_threshold = 0.005;
@@ -185,7 +195,10 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<Reco
         if !recorder.is_recording() {
             None
         } else {
-            Some(recorder.stop_recording(silence_threshold))
+            let stopped = recorder.stop_recording(silence_threshold);
+            let streaming_was_active =
+                crate::streaming::end_streaming_session(state.inner(), &mut recorder, false);
+            Some((stopped, streaming_was_active))
         }
     } else {
         None
@@ -196,8 +209,8 @@ fn stop_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> Option<Reco
     unregister_post_process_toggle_shortcut(app_handle);
 
     match result {
-        Some(Ok(recording)) => Some(recording),
-        Some(Err(err)) => {
+        Some((Ok(recording), streaming_was_active)) => Some((recording, streaming_was_active)),
+        Some((Err(err), _)) => {
             eprintln!("Error stopping recording: {}", err);
             None
         }
@@ -214,6 +227,8 @@ fn cancel_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) {
             return;
         }
         let _ = recorder.stop_recording(silence_threshold);
+        // Abort the streaming session: nothing must be finalized.
+        let _ = crate::streaming::end_streaming_session(state.inner(), &mut recorder, true);
     }
 
     let _ = app_handle.emit("recording-state", false);
@@ -520,8 +535,10 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
         let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
             if event.state == ShortcutState::Pressed {
                 if is_recorder_active(app) {
-                    if let Some(recording) = stop_recording_shortcut(app) {
-                        emit_audio_samples(app, recording);
+                    if let Some((recording, streaming_was_active)) = stop_recording_shortcut(app) {
+                        if !streaming_was_active {
+                            emit_audio_samples(app, recording);
+                        }
                     }
                 } else {
                     show_mini_window(app);
@@ -553,8 +570,10 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
                     }
                 }
                 ShortcutState::Released => {
-                    if let Some(recording) = stop_recording_shortcut(app) {
-                        emit_audio_samples(app, recording);
+                    if let Some((recording, streaming_was_active)) = stop_recording_shortcut(app) {
+                        if !streaming_was_active {
+                            emit_audio_samples(app, recording);
+                        }
                     }
                 }
             };

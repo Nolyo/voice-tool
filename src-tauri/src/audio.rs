@@ -1,9 +1,12 @@
 use anyhow::{Result, anyhow};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, Host, Stream, StreamConfig};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use tauri::Emitter;
 use tracing::{debug, info};
+
+use crate::streaming::TapMsg;
 
 /// Represents an audio recording session
 pub struct AudioRecorder {
@@ -12,6 +15,11 @@ pub struct AudioRecorder {
     is_recording: Arc<Mutex<bool>>,
     stream_id: Arc<Mutex<u64>>, // Counter to identify current stream
     monitor_only: Arc<Mutex<bool>>, // When true, callback emits levels but skips buffering
+    /// Optional streaming tap: when set, the callback forwards each mono
+    /// sample batch to the streaming segmenter worker (see `streaming.rs`).
+    /// Installed/removed by the recording control paths, never by the
+    /// mic-test monitor.
+    chunk_tap: Arc<Mutex<Option<Sender<TapMsg>>>>,
 }
 
 /// Information about an audio device
@@ -39,7 +47,18 @@ impl AudioRecorder {
             is_recording: Arc::new(Mutex::new(false)),
             stream_id: Arc::new(Mutex::new(0)),
             monitor_only: Arc::new(Mutex::new(false)),
+            chunk_tap: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// Install or remove the streaming tap consumed by the audio callback.
+    pub fn set_chunk_tap(&mut self, tap: Option<Sender<TapMsg>>) {
+        *self.chunk_tap.lock().unwrap() = tap;
+    }
+
+    /// Sample rate of the current (or last) stream.
+    pub fn current_sample_rate(&self) -> u32 {
+        *self.sample_rate.lock().unwrap()
     }
 
     /// Get list of available input devices
@@ -289,6 +308,7 @@ impl AudioRecorder {
     {
         let channels = config.channels as usize;
         let err_fn = |err| eprintln!("Audio stream error: {}", err);
+        let chunk_tap = self.chunk_tap.clone();
 
         let stream = device.build_input_stream(
             config,
@@ -338,8 +358,15 @@ impl AudioRecorder {
                 // mic-test feature in settings to visualize input level without
                 // accumulating samples).
                 if !*monitor_only.lock().unwrap() {
-                    let mut buf = buffer.lock().unwrap();
-                    buf.extend_from_slice(&samples);
+                    {
+                        let mut buf = buffer.lock().unwrap();
+                        buf.extend_from_slice(&samples);
+                    }
+                    // Streaming tap: forward the batch to the segmenter worker.
+                    // Send failures mean the worker is gone — ignore.
+                    if let Some(tx) = chunk_tap.lock().unwrap().as_ref() {
+                        let _ = tx.send(TapMsg::Samples(samples.clone()));
+                    }
                 }
 
                 // Emit audio level event for visualization

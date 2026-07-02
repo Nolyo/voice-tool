@@ -24,7 +24,13 @@
 //!   same rationale as `audio_trim`), and pure silence never leaves the
 //!   segmenter: memory stays bounded during long pauses.
 
+use std::sync::mpsc::{Receiver, Sender};
+
+use tauri::{AppHandle, Emitter, Runtime};
+
+use crate::audio::AudioRecorder;
 use crate::audio_trim::rms;
+use crate::state::AppState;
 
 pub struct SegmenterConfig {
     pub sample_rate: u32,
@@ -296,6 +302,188 @@ impl SpeechSegmenter {
     #[cfg(test)]
     pub fn buffered_len(&self) -> usize {
         self.buffer.len() + self.pending.len()
+    }
+}
+
+// ─── Streaming session runtime ──────────────────────────────────────────────
+
+/// Messages flowing from the audio callback (and the recording control paths)
+/// to the streaming worker thread.
+pub enum TapMsg {
+    Samples(Vec<i16>),
+    /// Recording stopped normally: flush the segmenter and end the session.
+    Finish,
+    /// Recording cancelled (Escape): drop everything, nothing is finalized.
+    Abort,
+}
+
+/// Streaming state held in [`AppState`]. `enabled` is a snapshot pushed by the
+/// renderer (`set_streaming_enabled`): true only when the user turned the
+/// streaming setting on, picked LexenaCloud AND is cloud-eligible.
+pub(crate) struct StreamingRuntime {
+    pub(crate) enabled: bool,
+    session_seq: u64,
+    tap: Option<Sender<TapMsg>>,
+}
+
+impl StreamingRuntime {
+    pub(crate) fn new() -> Self {
+        Self {
+            enabled: false,
+            session_seq: 0,
+            tap: None,
+        }
+    }
+}
+
+/// Open a streaming session if the renderer enabled streaming. Must be called
+/// right after `recorder.start_recording()` succeeded, with the recorder lock
+/// still held (both the command path and the hotkey path do this). Installs
+/// the audio-callback tap and spawns the segmenter worker.
+///
+/// Never called by the mic-test monitor path (`start_audio_monitor`), which
+/// must not stream.
+pub(crate) fn maybe_start_streaming_session<R: Runtime>(
+    state: &AppState,
+    recorder: &mut AudioRecorder,
+    app_handle: &AppHandle<R>,
+) {
+    let (session_id, sample_rate, rx) = {
+        let mut runtime = match state.streaming.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                tracing::warn!("streaming runtime lock poisoned: {}", poisoned);
+                return;
+            }
+        };
+        if !runtime.enabled {
+            recorder.set_chunk_tap(None);
+            return;
+        }
+        runtime.session_seq += 1;
+        let session_id = runtime.session_seq;
+        let sample_rate = recorder.current_sample_rate();
+        let (tx, rx) = std::sync::mpsc::channel::<TapMsg>();
+        recorder.set_chunk_tap(Some(tx.clone()));
+        runtime.tap = Some(tx);
+        (session_id, sample_rate, rx)
+    };
+
+    let handle = app_handle.clone();
+    std::thread::spawn(move || run_streaming_worker(handle, rx, session_id, sample_rate));
+
+    let _ = app_handle.emit(
+        "streaming-session-started",
+        serde_json::json!({ "sessionId": session_id, "sampleRate": sample_rate }),
+    );
+    tracing::info!(
+        "Streaming session {} started ({} Hz)",
+        session_id,
+        sample_rate
+    );
+}
+
+/// Close the active streaming session, if any. `abort = true` on cancel
+/// (Escape): the worker discards everything instead of flushing. Returns
+/// whether a session was active — the hotkey stop path uses this to skip the
+/// batch `audio-captured` emission (chunks were already shipped).
+pub(crate) fn end_streaming_session(
+    state: &AppState,
+    recorder: &mut AudioRecorder,
+    abort: bool,
+) -> bool {
+    let tap = {
+        let mut runtime = match state.streaming.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                tracing::warn!("streaming runtime lock poisoned: {}", poisoned);
+                return false;
+            }
+        };
+        runtime.tap.take()
+    };
+    recorder.set_chunk_tap(None);
+
+    match tap {
+        Some(tx) => {
+            let _ = tx.send(if abort { TapMsg::Abort } else { TapMsg::Finish });
+            true
+        }
+        None => false,
+    }
+}
+
+fn emit_chunk<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    session_id: u64,
+    sample_rate: u32,
+    chunk_index: &mut u32,
+    segment: Segment,
+) {
+    tracing::info!(
+        "Streaming session {}: chunk {} ready ({} samples, {}..{} ms)",
+        session_id,
+        chunk_index,
+        segment.samples.len(),
+        segment.start_ms,
+        segment.end_ms
+    );
+    let _ = app_handle.emit(
+        "streaming-chunk",
+        serde_json::json!({
+            "sessionId": session_id,
+            "chunkIndex": *chunk_index,
+            "samples": segment.samples,
+            "sampleRate": sample_rate,
+            "startMs": segment.start_ms,
+            "endMs": segment.end_ms,
+        }),
+    );
+    *chunk_index += 1;
+}
+
+fn run_streaming_worker<R: Runtime>(
+    app_handle: AppHandle<R>,
+    rx: Receiver<TapMsg>,
+    session_id: u64,
+    sample_rate: u32,
+) {
+    let mut segmenter = SpeechSegmenter::new(SegmenterConfig::new(sample_rate));
+    let mut chunk_index: u32 = 0;
+
+    loop {
+        match rx.recv() {
+            Ok(TapMsg::Samples(samples)) => {
+                for segment in segmenter.push(&samples) {
+                    emit_chunk(&app_handle, session_id, sample_rate, &mut chunk_index, segment);
+                }
+            }
+            Ok(TapMsg::Finish) => {
+                if let Some(segment) = segmenter.flush() {
+                    emit_chunk(&app_handle, session_id, sample_rate, &mut chunk_index, segment);
+                }
+                let _ = app_handle.emit(
+                    "streaming-session-end",
+                    serde_json::json!({ "sessionId": session_id, "totalChunks": chunk_index }),
+                );
+                tracing::info!(
+                    "Streaming session {} finished ({} chunks)",
+                    session_id,
+                    chunk_index
+                );
+                return;
+            }
+            // Abort, or every sender dropped without a Finish (e.g. a new
+            // recording superseded this session): nothing must be finalized.
+            Ok(TapMsg::Abort) | Err(_) => {
+                let _ = app_handle.emit(
+                    "streaming-session-cancelled",
+                    serde_json::json!({ "sessionId": session_id }),
+                );
+                tracing::info!("Streaming session {} cancelled", session_id);
+                return;
+            }
+        }
     }
 }
 

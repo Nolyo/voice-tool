@@ -59,6 +59,9 @@ pub struct AppState {
     /// Cloud routing snapshot pushed by the renderer; used by hotkey handlers
     /// to refuse `start_recording` when LexenaCloud is selected but ineligible.
     pub(crate) cloud_gate: Mutex<CloudGate>,
+    /// Streaming-mode runtime: enabled snapshot pushed by the renderer plus
+    /// the tap of the currently active streaming session, if any.
+    pub(crate) streaming: Mutex<crate::streaming::StreamingRuntime>,
 }
 
 pub(crate) fn create_app_state() -> AppState {
@@ -77,5 +80,6 @@ pub(crate) fn create_app_state() -> AppState {
         active_profile_id: Mutex::new(String::new()),
         auth: Mutex::new(crate::auth::AuthState::new()),
         cloud_gate: Mutex::new(CloudGate::default()),
+        streaming: Mutex::new(crate::streaming::StreamingRuntime::new()),
     }
 }
