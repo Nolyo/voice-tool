@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "app_name": "Lexena",
   "repository": "Nolyo/lexena",
-  "generated_at": "2026-06-30T18:06:35.943Z",
+  "generated_at": "2026-07-02T08:47:48.348Z",
   "latest": {
     "version": "3.0.0",
     "tag": "v3.0.0",
@@ -24,7 +24,7 @@
         "size_bytes": 8960653,
         "size_human": "8.5 MB",
         "sha256": "6804a7b102964a0043f4cf5eae7103203eb974002c2bf6fa320b75b405f76609",
-        "download_count": 0
+        "download_count": 3
       }
     }
   },
@@ -50,7 +50,7 @@
           "size_bytes": 8960653,
           "size_human": "8.5 MB",
           "sha256": "6804a7b102964a0043f4cf5eae7103203eb974002c2bf6fa320b75b405f76609",
-          "download_count": 0
+          "download_count": 3
         }
       }
     },
