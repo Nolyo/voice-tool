@@ -20,6 +20,7 @@ import type {
   TranscriptionInvokeResult,
 } from "@/lib/types";
 import { useCloud } from "@/hooks/useCloud";
+import { useStreamingSession } from "@/hooks/useStreamingSession";
 import { supabase } from "@/lib/supabase";
 import { transcribeCloud, postProcessCloud } from "@/lib/cloud/api";
 import { CloudApiError } from "@/lib/cloud/errors";
@@ -37,6 +38,7 @@ type AddTranscription = (
   postProcessCost?: number,
   duration?: number,
   transcriptionProvider?: string,
+  isStreaming?: boolean,
 ) => Promise<Transcription>;
 
 interface PostProcessOutcome {
@@ -252,6 +254,7 @@ export function useRecordingWorkflow({
       postProcessCost?: number,
       duration?: number,
       transcriptionProvider?: string,
+      isStreaming?: boolean,
     ) => {
       const trimmed = text?.trim();
       if (!trimmed) {
@@ -277,6 +280,7 @@ export function useRecordingWorkflow({
         postProcessCost,
         duration,
         transcriptionProvider,
+        isStreaming,
       );
       onTranscriptionAdded(newEntry);
       playSuccess();
@@ -305,6 +309,80 @@ export function useRecordingWorkflow({
       settings.insertion_mode,
     ],
   );
+
+  // ─── Streaming mode (cloud-only) ──────────────────────────────────────────
+  // The Rust segmenter ships chunks while the user talks; useStreamingSession
+  // uploads them and hands us the assembled text here. Finalization reuses the
+  // exact same pipeline as batch: post-process → snippets → history → paste.
+  const onStreamingFinalize = useCallback(
+    async (text: string, billedSeconds: number, chunksFailed: number) => {
+      setIsTranscribing(true);
+      try {
+        // Same vocab refresh as the batch path so the snippet match in
+        // handleTranscriptionFinal sees fresh Settings edits.
+        try {
+          await refreshVocab();
+        } catch (e) {
+          console.warn("[streaming vocab refresh failed]", e);
+        }
+
+        let postProcessJwt: string | undefined;
+        if (settings.post_process_enabled) {
+          const { data } = await supabase.auth.getSession();
+          postProcessJwt = data.session?.access_token;
+        }
+        const canPostProcess = Boolean(postProcessJwt);
+        if (shouldPostProcess(text, settings, canPostProcess)) {
+          await emit("post-process-start");
+        }
+        const processed: PostProcessOutcome = canPostProcess
+          ? await maybePostProcessCloud(text, settings, postProcessJwt!, tRef.current)
+          : { text };
+
+        await handleTranscriptionFinal(
+          processed.text,
+          "whisper",
+          "", // streaming audio is never written to disk (cloud path parity)
+          0,
+          processed.originalText,
+          undefined,
+          processed.cost,
+          billedSeconds,
+          "Cloud",
+          true,
+        );
+
+        if (chunksFailed > 0) {
+          toast.warning(tRef.current("streaming.partialLoss"));
+        }
+        await emit("transcription-success", { text: processed.text });
+        await invoke("log_separator");
+      } catch (error) {
+        console.error("Streaming finalization error:", error);
+        await emit("transcription-error", { error: String(error) });
+        await invoke("log_separator");
+      } finally {
+        setIsTranscribing(false);
+      }
+    },
+    [settings, handleTranscriptionFinal, refreshVocab],
+  );
+
+  const onStreamingEmpty = useCallback(() => {
+    toast.info(tRef.current("errors.noSound"), {
+      description: tRef.current("errors.noSoundDesc"),
+    });
+    void emit("transcription-error", {
+      error: tRef.current("errors.soundTooLow"),
+    });
+  }, []);
+
+  const { liveTranscript, isStreamingSession, isStreamingSessionRef } =
+    useStreamingSession({
+      settings,
+      onFinalize: onStreamingFinalize,
+      onEmpty: onStreamingEmpty,
+    });
 
   const transcribeAudio = useCallback(
     async (audioData: number[], sampleRate: number) => {
@@ -490,6 +568,13 @@ export function useRecordingWorkflow({
             return;
           }
 
+          // Streaming session: chunks were already shipped and transcribed;
+          // Rust skips this emit when streaming was active, this guard is
+          // defensive only.
+          if (isStreamingSessionRef.current) {
+            return;
+          }
+
           console.log(
             "Audio captured from keyboard shortcut",
             `(RMS: ${event.payload.avgRms.toFixed(4)}, silent: ${event.payload.isSilent})`,
@@ -567,6 +652,11 @@ export function useRecordingWorkflow({
   const handleToggleRecording = useCallback(async () => {
     try {
       if (isRecording) {
+        // Capture the flag BEFORE stopping: the Rust stop path triggers the
+        // streaming session-end event, which may reset the ref before the
+        // invoke below resolves.
+        const wasStreamingSession = isStreamingSessionRef.current;
+
         const result = await invoke<RecordingResult>("stop_recording", {
           silenceThreshold: settings.silence_threshold,
         });
@@ -580,6 +670,12 @@ export function useRecordingWorkflow({
           `(RMS: ${result.avg_rms.toFixed(4)}, silent: ${result.is_silent})`,
         );
         setIsRecording(false);
+
+        if (wasStreamingSession) {
+          // Chunks were transcribed live; the streaming-session-end handler
+          // finalizes (or reports the empty session). Nothing to do here.
+          return;
+        }
 
         if (result.is_silent) {
           console.log("Empty recording detected, transcription cancelled");
@@ -720,5 +816,7 @@ export function useRecordingWorkflow({
     isRecording,
     isTranscribing,
     handleToggleRecording,
+    liveTranscript,
+    isStreamingSession,
   };
 }

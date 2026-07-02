@@ -78,6 +78,7 @@ export function useTranscriptionHistory(historyKeepLast?: number) {
     postProcessCost?: number,
     duration?: number,
     transcriptionProvider?: string,
+    isStreaming?: boolean,
   ): Promise<Transcription> => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -95,6 +96,7 @@ export function useTranscriptionHistory(historyKeepLast?: number) {
       text,
       provider,
       duration,
+      isStreaming,
       audioPath,
       apiCost,
       transcriptionProvider,
