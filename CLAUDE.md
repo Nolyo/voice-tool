@@ -196,6 +196,30 @@ Located in `lib.rs:633-729` and `transcription.rs`:
 - `paste_text_to_active_window()` simulates Ctrl+V using enigo library
 - 50ms delay between clipboard write and paste for reliability
 
+#### Streaming Mode (live transcription, cloud-only)
+
+Located in `src-tauri/src/streaming.rs` + `src/hooks/useStreamingSession.ts`:
+
+- Setting `streaming_mode` (default false), effective only when provider is LexenaCloud
+  and the user is cloud-eligible; `CloudContext` pushes the combined flag to Rust via
+  `set_streaming_enabled` (same pattern as `set_cloud_gate`)
+- Rust: the audio callback feeds an optional tap (`AudioRecorder.chunk_tap`) into a
+  worker thread running `SpeechSegmenter` (pure state machine, 20ms RMS windows,
+  adaptive threshold, cuts at ≥600ms pauses, min 1.4s / force-cut 15s, click guard);
+  segments emitted as `streaming-chunk` events; `streaming-session-started/-end/-cancelled`
+  frame the session. Wired in both start paths (command + hotkey), never in the mic-test
+  monitor. On hotkey stop with an active session, `audio-captured` is NOT emitted
+- Frontend: `useStreamingSession` uploads chunks sequentially through the existing
+  `transcribeCloud` (billing/quota unchanged, idempotency key per chunk), assembles
+  ordered text (`src/lib/streaming/assembler.ts` + `session.ts`, both unit-tested),
+  broadcasts `streaming-transcript` (consumed by the mini window and the home hero card),
+  and on session end hands the text to the standard finalization (post-process →
+  snippets → history entry with `isStreaming: true` → paste)
+- Error policy: quota/auth → abort + stop recording; isolated network failure → chunk
+  skipped (warning toast at the end); >2 consecutive failures → abort
+- Design spec: `docs/superpowers/specs/2026-07-02-streaming-transcription-design.md`;
+  E2E checklist: `docs/v3/streaming-e2e-checklist.md`
+
 #### Auto-Update System
 
 Located in `updater.rs`:
