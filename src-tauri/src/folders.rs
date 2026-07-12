@@ -9,6 +9,10 @@ use tauri::AppHandle;
 pub struct FolderMeta {
     pub id: String,
     pub name: String,
+    /// Emoji icon shown instead of the default folder glyph. `None` = default
+    /// glyph. Synced through the cloud row (same LWW timestamp as the name).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
     pub created_at: String,
     /// Last-write-wins timestamp for sync. Migrated from `created_at` on first
     /// read when missing (see [`migrate_folder_updated_at_if_needed`]).
@@ -25,6 +29,20 @@ pub struct FolderMeta {
 /// soft-deleted. Mirrors `notes::is_note_active`.
 fn is_folder_active(folder: &FolderMeta) -> bool {
     folder.deleted_at.is_none()
+}
+
+/// Pure helper: trims the icon and maps empty/whitespace-only strings to
+/// `None`, so an empty icon is never persisted (the sync-push Edge Function
+/// rejects "" with min(1) too).
+fn normalize_icon(icon: Option<String>) -> Option<String> {
+    icon.and_then(|s| {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
 }
 
 fn get_folders_file(app_handle: &AppHandle) -> Result<PathBuf> {
@@ -107,7 +125,11 @@ pub async fn list_folders(app_handle: AppHandle) -> Result<Vec<FolderMeta>, Stri
 }
 
 #[tauri::command]
-pub async fn create_folder(app_handle: AppHandle, name: String) -> Result<FolderMeta, String> {
+pub async fn create_folder(
+    app_handle: AppHandle,
+    name: String,
+    icon: Option<String>,
+) -> Result<FolderMeta, String> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
         return Err("Folder name cannot be empty".to_string());
@@ -122,6 +144,7 @@ pub async fn create_folder(app_handle: AppHandle, name: String) -> Result<Folder
     let meta = FolderMeta {
         id: uuid::Uuid::new_v4().to_string(),
         name: trimmed.to_string(),
+        icon: normalize_icon(icon),
         created_at: now.clone(),
         updated_at: now,
         order: next_order,
@@ -161,11 +184,16 @@ pub async fn reorder_folders(app_handle: AppHandle, ids: Vec<String>) -> Result<
     Ok(())
 }
 
+/// Rename a folder and set its emoji icon in one atomic write.
+/// `icon` is the FULL desired state: `None` clears any existing emoji (the
+/// FolderNameDialog is the single mutation point and always sends the
+/// complete name+icon pair). `updated_at` is bumped so LWW ships both.
 #[tauri::command]
 pub async fn rename_folder(
     app_handle: AppHandle,
     id: String,
     name: String,
+    icon: Option<String>,
 ) -> Result<FolderMeta, String> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
@@ -179,6 +207,7 @@ pub async fn rename_folder(
         .find(|f| f.id == id)
         .ok_or_else(|| format!("Folder not found: {}", id))?;
     folder.name = trimmed.to_string();
+    folder.icon = normalize_icon(icon);
     folder.updated_at = chrono::Utc::now().to_rfc3339();
     let updated = folder.clone();
 
@@ -251,6 +280,7 @@ mod tests {
         FolderMeta {
             id: "folder-id".to_string(),
             name: "Test".to_string(),
+            icon: None,
             created_at: "2026-05-19T10:00:00Z".to_string(),
             updated_at: updated_at.to_string(),
             order: 0,
@@ -362,6 +392,7 @@ mod tests {
             FolderMeta {
                 id: "active-1".to_string(),
                 name: "Work".to_string(),
+                icon: Some("💼".to_string()),
                 created_at: "2026-05-19T10:00:00Z".to_string(),
                 updated_at: "2026-05-19T11:00:00Z".to_string(),
                 order: 0,
@@ -370,6 +401,7 @@ mod tests {
             FolderMeta {
                 id: "tombstoned-1".to_string(),
                 name: "Old".to_string(),
+                icon: None,
                 created_at: "2026-05-19T09:00:00Z".to_string(),
                 updated_at: "2026-05-19T12:00:00Z".to_string(),
                 order: 1,
@@ -387,11 +419,13 @@ mod tests {
         assert_eq!(restored[0].updated_at, "2026-05-19T11:00:00Z");
         assert_eq!(restored[0].order, 0);
         assert_eq!(restored[0].deleted_at, None);
+        assert_eq!(restored[0].icon, Some("💼".to_string()));
         assert!(is_folder_active(&restored[0]));
 
         assert_eq!(restored[1].id, "tombstoned-1");
         assert_eq!(restored[1].name, "Old");
         assert_eq!(restored[1].deleted_at, Some("2026-05-19T12:00:00Z".to_string()));
+        assert_eq!(restored[1].icon, None);
         assert!(!is_folder_active(&restored[1]), "tombstone must survive restore");
     }
 
@@ -402,20 +436,67 @@ mod tests {
             FolderMeta { id: "active-1".to_string(), name: "A".to_string(),
                 created_at: "2026-05-19T10:00:00Z".to_string(),
                 updated_at: "2026-05-19T10:00:00Z".to_string(),
-                order: 0, deleted_at: None },
+                order: 0, deleted_at: None, icon: None },
             FolderMeta { id: "tombstoned-1".to_string(), name: "B".to_string(),
                 created_at: "2026-05-19T10:00:00Z".to_string(),
                 updated_at: "2026-05-19T11:00:00Z".to_string(),
-                order: 1, deleted_at: Some("2026-05-19T11:00:00Z".to_string()) },
+                order: 1, deleted_at: Some("2026-05-19T11:00:00Z".to_string()), icon: None },
             FolderMeta { id: "tombstoned-not-in-target".to_string(), name: "C".to_string(),
                 created_at: "2026-05-19T10:00:00Z".to_string(),
                 updated_at: "2026-05-19T11:00:00Z".to_string(),
-                order: 2, deleted_at: Some("2026-05-19T11:00:00Z".to_string()) },
+                order: 2, deleted_at: Some("2026-05-19T11:00:00Z".to_string()), icon: None },
         ];
         let target_ids = vec!["active-1".to_string(), "tombstoned-1".to_string()];
         folders.retain(|f| !(target_ids.contains(&f.id) && f.deleted_at.is_some()));
         assert_eq!(folders.len(), 2, "only 'tombstoned-1' should be dropped");
         assert_eq!(folders[0].id, "active-1");
         assert_eq!(folders[1].id, "tombstoned-not-in-target");
+    }
+
+    #[test]
+    fn folder_meta_roundtrips_icon() {
+        let mut folder = make_folder("2026-05-19T11:00:00Z", None);
+        folder.icon = Some("📁".to_string());
+        let json = serde_json::to_string(&folder).expect("serialize");
+        assert!(
+            json.contains("\"icon\":\"📁\""),
+            "expected icon in JSON, got: {}",
+            json
+        );
+        let decoded: FolderMeta = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(decoded.icon, Some("📁".to_string()));
+    }
+
+    #[test]
+    fn folder_meta_deserializes_without_icon() {
+        // Backward compat: folders.json written before the icon field existed.
+        let legacy_json = r#"{
+            "id": "x",
+            "name": "n",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "updatedAt": "2026-01-01T00:00:00Z",
+            "order": 0
+        }"#;
+        let meta: FolderMeta = serde_json::from_str(legacy_json).expect("deserialize legacy");
+        assert_eq!(meta.icon, None);
+    }
+
+    #[test]
+    fn folder_meta_skips_icon_when_none() {
+        let folder = make_folder("2026-05-19T11:00:00Z", None);
+        let json = serde_json::to_string(&folder).expect("serialize");
+        assert!(
+            !json.contains("\"icon\""),
+            "expected icon to be omitted when None, got: {}",
+            json
+        );
+    }
+
+    #[test]
+    fn normalize_icon_trims_and_maps_empty_to_none() {
+        assert_eq!(normalize_icon(None), None);
+        assert_eq!(normalize_icon(Some("".to_string())), None);
+        assert_eq!(normalize_icon(Some("   ".to_string())), None);
+        assert_eq!(normalize_icon(Some(" 📁 ".to_string())), Some("📁".to_string()));
     }
 }
