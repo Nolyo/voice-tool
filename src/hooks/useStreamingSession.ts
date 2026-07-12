@@ -192,6 +192,13 @@ export function useStreamingSession({
               await emit("transcription-error", { error: message });
               return;
             }
+            // A session made only of hesitations assembles to "" after
+            // ellipsis stripping — treat it as empty instead of finalizing
+            // (an empty history entry + empty paste would be useless).
+            if (outcome.text.length === 0) {
+              onEmptyRef.current();
+              return;
+            }
             await onFinalizeRef.current(
               outcome.text,
               outcome.billedMs / 1000,
