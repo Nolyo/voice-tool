@@ -186,10 +186,23 @@ export function useStreamingSession({
               onEmptyRef.current();
               return;
             }
-            if (outcome.chunksOk === 0) {
+            // An empty assembled text with failed chunks means real speech may
+            // have been lost (the successful chunks were hesitations stripped
+            // to "") — surface the failure instead of pretending silence.
+            if (
+              outcome.chunksOk === 0 ||
+              (outcome.text.length === 0 && outcome.chunksFailed > 0)
+            ) {
               const message = tRef.current("streaming.allChunksFailed");
               toast.error(message);
               await emit("transcription-error", { error: message });
+              return;
+            }
+            // A session made only of hesitations assembles to "" after
+            // ellipsis stripping — treat it as empty instead of finalizing
+            // (an empty history entry + empty paste would be useless).
+            if (outcome.text.length === 0) {
+              onEmptyRef.current();
               return;
             }
             await onFinalizeRef.current(
