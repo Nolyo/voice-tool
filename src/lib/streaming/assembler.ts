@@ -1,4 +1,17 @@
 /**
+ * Whisper transcribes hesitation pauses as ellipses ("...", "…"), which
+ * pollute streamed dictation with stray dots the user then has to edit out.
+ * Dictating a literal ellipsis is rare enough that we strip them all
+ * (spec 2026-07-12, PR 1).
+ */
+export function stripEllipses(text: string): string {
+  return text
+    .replace(/(?:\.{3,}|…+)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Ordered assembly of per-chunk transcripts for a streaming session.
  *
  * Chunks are uploaded sequentially but this stays defensive: results are

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TranscriptAssembler } from "./assembler";
+import { TranscriptAssembler, stripEllipses } from "./assembler";
 
 describe("TranscriptAssembler", () => {
   it("joins chunks in index order even when upserted out of order", () => {
@@ -57,5 +57,46 @@ describe("TranscriptAssembler", () => {
     a.upsert(0, "récupéré.");
     expect(a.assembled()).toBe("récupéré.");
     expect(a.failedCount).toBe(0);
+  });
+});
+
+describe("stripEllipses", () => {
+  it("removes a trailing ellipsis glued to a word", () => {
+    expect(stripEllipses("ni le feu ni la glace ne serait... atteindre")).toBe(
+      "ni le feu ni la glace ne serait atteindre",
+    );
+  });
+
+  it("removes a free-standing ellipsis between sentences", () => {
+    expect(stripEllipses("dans l'illusion. ... de son cœur.")).toBe(
+      "dans l'illusion. de son cœur.",
+    );
+  });
+
+  it("removes unicode ellipses, including repeated ones", () => {
+    expect(stripEllipses("Bonjour… monde")).toBe("Bonjour monde");
+    expect(stripEllipses("Attends……")).toBe("Attends");
+  });
+
+  it("removes runs of more than three dots", () => {
+    expect(stripEllipses("euh.... donc")).toBe("euh donc");
+  });
+
+  it("returns an empty string for ellipsis-only text", () => {
+    expect(stripEllipses("...")).toBe("");
+    expect(stripEllipses(" … ")).toBe("");
+  });
+
+  it("keeps sentence punctuation preceding an ellipsis", () => {
+    expect(stripEllipses("Quoi ?...")).toBe("Quoi ?");
+    expect(stripEllipses("Non !...")).toBe("Non !");
+  });
+
+  it("keeps two dots (not an ellipsis)", () => {
+    expect(stripEllipses("Attends..")).toBe("Attends..");
+  });
+
+  it("leaves text without ellipses unchanged", () => {
+    expect(stripEllipses("Un, deux, trois.")).toBe("Un, deux, trois.");
   });
 });
