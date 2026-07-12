@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
-import { Clock, Cloud, CloudOff, Folder } from "lucide-react";
+import { Clock, Cloud, CloudOff } from "lucide-react";
+import { FolderIcon } from "@/components/notes/FolderIcon";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
 import { ShareNoteButton } from "./ShareNoteButton";
@@ -77,7 +78,7 @@ export function NotesEditorHeader({ note, folder, editor, isEditorInSync, onTogg
   return (
     <div className="note-doc-header">
       <div className="note-breadcrumb">
-        <Folder className="note-breadcrumb-icon w-3 h-3" />
+        <FolderIcon icon={folder?.icon} className="note-breadcrumb-icon w-3 h-3" />
         <span>{folderLabel}</span>
         <span className="note-breadcrumb-sep">/</span>
         <span className="note-breadcrumb-current truncate max-w-[340px]">

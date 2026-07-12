@@ -299,7 +299,7 @@ export default function Dashboard() {
         onDeleteNote={handleDeleteNote}
         searchNotes={searchNotes}
         onCreateFolder={createFolder}
-        onRenameFolder={async (id, name) => { await renameFolder(id, name); }}
+        onRenameFolder={async (id, name, icon) => { await renameFolder(id, name, icon); }}
         onDeleteFolder={deleteFolder}
         onReorderFolders={reorderFolders}
         onReorderNotes={reorderNotesInFolder}

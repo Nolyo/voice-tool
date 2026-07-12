@@ -30,7 +30,7 @@ interface NotesEditorProps {
    *  the editor handles that after flushing the pending save on the source note. */
   onRecreateLinkedNote: (title: string) => Promise<string>;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
-  onCreateFolder: (name: string) => Promise<FolderMeta>;
+  onCreateFolder: (name: string, icon?: string | null) => Promise<FolderMeta>;
   readNote: (id: string) => Promise<NoteData>;
 }
 

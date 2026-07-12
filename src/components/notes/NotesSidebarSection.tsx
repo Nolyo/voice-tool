@@ -15,6 +15,7 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
+import { FolderIcon } from "@/components/notes/FolderIcon";
 import {
   DndContext,
   DragOverlay,
@@ -81,8 +82,8 @@ interface NotesSidebarSectionProps {
   onToggleLocalOnly: (id: string) => void;
   onDeleteNote: (id: string) => void;
   searchNotes: (query: string) => Promise<NoteMeta[]>;
-  onCreateFolder: (name: string) => Promise<FolderMeta>;
-  onRenameFolder: (id: string, name: string) => Promise<void>;
+  onCreateFolder: (name: string, icon?: string | null) => Promise<FolderMeta>;
+  onRenameFolder: (id: string, name: string, icon?: string | null) => Promise<void>;
   onDeleteFolder: (id: string) => Promise<void>;
   onReorderFolders: (ids: string[]) => Promise<void>;
   onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
@@ -267,7 +268,7 @@ interface FolderSectionProps {
   onToggleFavorite: (id: string) => void;
   onRequestDeleteNote: (note: NoteMeta) => void;
   onNoteContextMenu: (e: React.MouseEvent, note: NoteMeta) => void;
-  onRename: (id: string, currentName: string) => void;
+  onRename: (id: string, currentName: string, currentIcon?: string) => void;
   onRequestDelete: (folder: FolderMeta) => void;
   onCreateNoteIn: (folderId: string) => void;
   isDropActive: boolean;
@@ -313,7 +314,7 @@ function FolderSection({
           ) : (
             <ChevronDown className="w-3 h-3 shrink-0" style={{ color: "var(--vt-fg-4)" }} />
           )}
-          <Folder className="w-3 h-3 shrink-0" style={{ color: "var(--vt-accent-2)" }} />
+          <FolderIcon icon={folder.icon} className="w-3 h-3 shrink-0" style={{ color: "var(--vt-accent-2)" }} />
           <span className="text-xs font-medium select-none truncate" style={{ color: "var(--vt-fg)" }}>
             {folder.name}
           </span>
@@ -354,7 +355,7 @@ function FolderSection({
             }}
             onClick={(e) => {
               e.stopPropagation();
-              onRename(folder.id, folder.name);
+              onRename(folder.id, folder.name, folder.icon);
             }}
             title={t('notes.folders.rename')}
           >
@@ -591,7 +592,7 @@ export function NotesSidebarSection({
   const [folderToDelete, setFolderToDelete] = useState<FolderMeta | null>(null);
   type FolderDialogState =
     | { mode: "create" }
-    | { mode: "rename"; id: string; currentName: string }
+    | { mode: "rename"; id: string; currentName: string; currentIcon?: string }
     | { mode: "createAndMove"; noteId: string };
   const [folderDialog, setFolderDialog] = useState<FolderDialogState | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -633,19 +634,19 @@ export function NotesSidebarSection({
     setFolderDialog({ mode: "create" });
   };
 
-  const handleRenameFolder = (id: string, currentName: string) => {
-    setFolderDialog({ mode: "rename", id, currentName });
+  const handleRenameFolder = (id: string, currentName: string, currentIcon?: string) => {
+    setFolderDialog({ mode: "rename", id, currentName, currentIcon });
   };
 
-  const handleFolderDialogSubmit = async (name: string) => {
+  const handleFolderDialogSubmit = async (name: string, icon: string | null) => {
     if (!folderDialog) return;
     try {
       if (folderDialog.mode === "create") {
-        await onCreateFolder(name);
+        await onCreateFolder(name, icon);
       } else if (folderDialog.mode === "rename") {
-        await onRenameFolder(folderDialog.id, name);
+        await onRenameFolder(folderDialog.id, name, icon);
       } else if (folderDialog.mode === "createAndMove") {
-        const folder = await onCreateFolder(name);
+        const folder = await onCreateFolder(name, icon);
         await onMoveNote(folderDialog.noteId, folder.id);
       }
     } catch (error) {
@@ -837,7 +838,7 @@ export function NotesSidebarSection({
         items.push({
           label: (
             <span className="flex items-center gap-1.5">
-              <Folder className="w-3 h-3" />
+              <FolderIcon icon={folder.icon} className="w-3 h-3" />
               {folder.name}
             </span>
           ),
@@ -1184,6 +1185,7 @@ export function NotesSidebarSection({
         open={folderDialog !== null}
         mode={folderDialog?.mode === "rename" ? "rename" : "create"}
         initialValue={folderDialog?.mode === "rename" ? folderDialog.currentName : ""}
+        initialIcon={folderDialog?.mode === "rename" ? folderDialog.currentIcon ?? null : null}
         onOpenChange={(open) => { if (!open) setFolderDialog(null); }}
         onSubmit={handleFolderDialogSubmit}
       />

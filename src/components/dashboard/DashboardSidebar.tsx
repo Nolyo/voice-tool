@@ -89,8 +89,8 @@ interface DashboardSidebarProps {
   onToggleLocalOnly: (id: string) => void;
   onDeleteNote: (id: string) => void;
   searchNotes: (query: string) => Promise<NoteMeta[]>;
-  onCreateFolder: (name: string) => Promise<FolderMeta>;
-  onRenameFolder: (id: string, name: string) => Promise<void>;
+  onCreateFolder: (name: string, icon?: string | null) => Promise<FolderMeta>;
+  onRenameFolder: (id: string, name: string, icon?: string | null) => Promise<void>;
   onDeleteFolder: (id: string) => Promise<void>;
   onReorderFolders: (ids: string[]) => Promise<void>;
   onReorderNotes: (folderId: string | null, noteIds: string[]) => Promise<void>;
