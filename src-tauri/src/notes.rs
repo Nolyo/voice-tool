@@ -350,10 +350,16 @@ pub async fn toggle_note_favorite(app_handle: AppHandle, id: String) -> Result<N
     Ok(meta)
 }
 
-/// Toggle whether a note is "local only" (never synced to the cloud).
-/// Does NOT bump `updated_at`: the flag is a local sync policy, not a content
-/// change — same policy as `toggle_note_favorite`. The cloud reconciliation
-/// (tombstone / re-upsert) is handled by the frontend notes-store.
+/// Set whether a note is "local only" (never synced to the cloud).
+/// The cloud reconciliation (tombstone / re-upsert) is handled by the
+/// frontend notes-store.
+///
+/// `updated_at` is bumped ONLY when clearing the flag (re-sync): the server
+/// stamps a fresh `updated_at` on the tombstone created by the earlier
+/// synced → local toggle, so without the bump a pull landing before the
+/// re-upsert flushes would win LWW and soft-delete the local copy on this
+/// very device. Setting the flag needs no bump — the pull guard in
+/// `applyRemoteNote` already shields local-only notes from their cloud rows.
 #[tauri::command]
 pub async fn set_note_local_only(
     app_handle: AppHandle,
@@ -369,6 +375,9 @@ pub async fn set_note_local_only(
 
     let mut meta = read_note_meta(&note_dir).map_err(|e| e.to_string())?;
     meta.local_only = local_only;
+    if !local_only {
+        meta.updated_at = chrono::Utc::now().to_rfc3339();
+    }
 
     let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
     fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;

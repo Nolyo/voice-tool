@@ -465,8 +465,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       let oversized = 0;
       for (const nm of notesMeta) {
         if (nm.deletedAt) continue;
-        // Local-only notes never leave the device — skip before even reading.
-        if (nm.localOnly) continue;
+        if (nm.localOnly) {
+          // Local-only notes never leave the device. Re-assert the opt-out:
+          // if the toggle happened while sync was inactive, the cloud row was
+          // never tombstoned. note-delete is a scoped UPDATE — a harmless
+          // no-op for notes that never reached the cloud.
+          ops.push({ kind: "note-delete", id: nm.id });
+          continue;
+        }
         try {
           const { content } = await readNote(nm.id);
           if (!isNoteSyncable(content)) {
