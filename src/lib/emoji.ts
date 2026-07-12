@@ -11,6 +11,8 @@ interface IntlWithSegmenter {
   ) => GraphemeSegmenter;
 }
 
+const MAX_ICON_UTF16_UNITS = 32;
+
 /** Extract the first grapheme cluster (user-perceived character) of a string.
  * Used to clamp the folder-icon free input to a single emoji: grapheme
  * segmentation keeps ZWJ sequences (👨‍👩‍👧‍👦) and flag pairs (🇫🇷) whole where a
@@ -24,7 +26,13 @@ export function firstGrapheme(input: string): string | null {
   if (SegmenterCtor) {
     const segmenter = new SegmenterCtor(undefined, { granularity: "grapheme" });
     const first = segmenter.segment(trimmed)[Symbol.iterator]().next();
-    return first.done ? null : first.value.segment;
+    if (first.done) return null;
+    // Mirror the sync-push cap (icon max 32 UTF-16 units): an over-long
+    // cluster (e.g. Zalgo text) would 400 the whole push batch server-side.
+    // All legitimate RGI emoji are well under 32 units.
+    return first.value.segment.length > MAX_ICON_UTF16_UNITS
+      ? null
+      : first.value.segment;
   }
   return Array.from(trimmed)[0] ?? null;
 }

@@ -31,13 +31,15 @@ fn is_folder_active(folder: &FolderMeta) -> bool {
     folder.deleted_at.is_none()
 }
 
-/// Pure helper: trims the icon and maps empty/whitespace-only strings to
-/// `None`, so an empty icon is never persisted (the sync-push Edge Function
-/// rejects "" with min(1) too).
+/// Pure helper: trims the icon, maps empty/whitespace-only to `None`, and
+/// rejects anything longer than 32 UTF-16 units (the sync-push Edge cap —
+/// a longer icon would 400 the whole push batch).
 fn normalize_icon(icon: Option<String>) -> Option<String> {
     icon.and_then(|s| {
         let trimmed = s.trim();
-        if trimmed.is_empty() {
+        // Mirror the sync-push cap (max 32 UTF-16 units): an over-long icon
+        // would 400 the whole push batch, so it must never be persisted.
+        if trimmed.is_empty() || trimmed.encode_utf16().count() > 32 {
             None
         } else {
             Some(trimmed.to_string())
@@ -498,5 +500,17 @@ mod tests {
         assert_eq!(normalize_icon(Some("".to_string())), None);
         assert_eq!(normalize_icon(Some("   ".to_string())), None);
         assert_eq!(normalize_icon(Some(" 📁 ".to_string())), Some("📁".to_string()));
+    }
+
+    #[test]
+    fn normalize_icon_rejects_over_32_utf16_units() {
+        // Zalgo-style cluster: 'e' + 40 combining acute accents = 41 UTF-16 units.
+        let zalgo = format!("e{}", "\u{0301}".repeat(40));
+        assert_eq!(normalize_icon(Some(zalgo)), None);
+        // A long-but-legit ZWJ emoji stays (family emoji = 11 UTF-16 units).
+        assert_eq!(
+            normalize_icon(Some("👨\u{200D}👩\u{200D}👧\u{200D}👦".to_string())),
+            Some("👨\u{200D}👩\u{200D}👧\u{200D}👦".to_string())
+        );
     }
 }

@@ -25,4 +25,9 @@ describe("firstGrapheme", () => {
   it("returns null for whitespace-only input", () => {
     expect(firstGrapheme("   ")).toBeNull();
   });
+
+  it("returns null for a grapheme cluster exceeding 32 UTF-16 units (Zalgo guard)", () => {
+    const zalgo = "e" + "́".repeat(40); // 41 units, a single grapheme cluster
+    expect(firstGrapheme(zalgo)).toBeNull();
+  });
 });

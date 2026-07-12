@@ -413,6 +413,18 @@ describe("mapping folders ↔ cloud", () => {
     expect(mapFolderToCloud(folder).icon).toBe("🍽️");
   });
 
+  it("mapFolderToCloud converts an empty-string icon to null (poison-batch guard)", () => {
+    const folder: LocalFolderMeta = {
+      id: UUID_F,
+      name: "Recipes",
+      icon: "",
+      createdAt: "2026-05-19T10:00:00Z",
+      updatedAt: "2026-05-19T11:00:00Z",
+      order: 2,
+    };
+    expect(mapFolderToCloud(folder).icon).toBeNull();
+  });
+
   it("mapFolderFromCloud sets icon for a row carrying an emoji", () => {
     const row: CloudUserFolderRow = {
       id: UUID_F,
