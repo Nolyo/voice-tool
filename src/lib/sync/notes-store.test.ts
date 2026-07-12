@@ -47,6 +47,8 @@ import {
   moveNoteToFolderSynced,
   applyRemoteNote,
   scanOversizedNoteCount,
+  setNoteLocalOnlySynced,
+  scheduleNoteUpdatePush,
 } from "./notes-store";
 import { NOTE_SIZE_LIMIT_BYTES } from "./note-size";
 
@@ -112,21 +114,14 @@ describe("notes-store passthrough helpers", () => {
 });
 
 describe("createNoteSynced", () => {
-  it("invokes create_note then enqueues note-upsert with empty content", async () => {
-    const meta = makeMeta({ id: "new-id", folderId: "fld" });
+  it("does NOT enqueue on create — new notes are empty, first non-empty update pushes", async () => {
     invokeHandlers["create_note"] = (args) => {
       expect(args).toEqual({ folderId: "fld" });
-      return meta;
+      return makeMeta({ id: "new-id", folderId: "fld" });
     };
     const result = await createNoteSynced("fld");
-    expect(result).toEqual(meta);
-    expect(enqueueMock).toHaveBeenCalledTimes(1);
-    const op = enqueueMock.mock.calls[0][0];
-    expect(op.kind).toBe("note-upsert");
-    if (op.kind !== "note-upsert") throw new Error("type narrowing");
-    expect(op.note.id).toBe("new-id");
-    expect(op.note.content_html).toBe("");
-    expect(op.note.folder_id).toBe("fld");
+    expect(result.id).toBe("new-id");
+    expect(enqueueMock).not.toHaveBeenCalled();
   });
 
   it("invokes create_note with folderId=null when called with null", async () => {
@@ -135,48 +130,6 @@ describe("createNoteSynced", () => {
       return makeMeta();
     };
     await createNoteSynced(null);
-  });
-
-  it("local write succeeds even if enqueue throws", async () => {
-    invokeHandlers["create_note"] = () => makeMeta({ id: "local-only" });
-    enqueueMock.mockRejectedValueOnce(new Error("queue offline"));
-    const result = await createNoteSynced(null);
-    expect(result.id).toBe("local-only");
-  });
-
-  it("does NOT enqueue when sync gate is inactive", async () => {
-    gateActive = false;
-    invokeHandlers["create_note"] = () => ({
-      id: "n1",
-      title: "",
-      folderId: null,
-      favorite: false,
-      order: 0,
-      createdAt: "2026-06-23T00:00:00Z",
-      updatedAt: "2026-06-23T00:00:00Z",
-      deletedAt: null,
-    });
-    enqueueMock.mockClear();
-    await createNoteSynced(null);
-    expect(enqueueMock).not.toHaveBeenCalled();
-    gateActive = true; // restore for other tests
-  });
-
-  it("DOES enqueue when sync gate is active", async () => {
-    gateActive = true;
-    invokeHandlers["create_note"] = () => ({
-      id: "n2",
-      title: "",
-      folderId: null,
-      favorite: false,
-      order: 0,
-      createdAt: "2026-06-23T00:00:00Z",
-      updatedAt: "2026-06-23T00:00:00Z",
-      deletedAt: null,
-    });
-    enqueueMock.mockClear();
-    await createNoteSynced(null);
-    expect(enqueueMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -202,6 +155,29 @@ describe("updateNoteSynced", () => {
     enqueueMock.mockRejectedValueOnce(new Error("queue offline"));
     const result = await updateNoteSynced("u2", "x", "y");
     expect(result.id).toBe("u2");
+  });
+
+  it("does NOT enqueue when the note is localOnly", async () => {
+    const meta = makeMeta({ id: "lo2", localOnly: true });
+    invokeHandlers["update_note"] = () => meta;
+    const result = await updateNoteSynced("lo2", "<p>body</p>", "T");
+    expect(result).toEqual(meta);
+    expect(enqueueMock).not.toHaveBeenCalled();
+  });
+
+  it("does NOT enqueue when sync gate is inactive", async () => {
+    gateActive = false;
+    invokeHandlers["update_note"] = () => makeMeta({ id: "g0" });
+    await updateNoteSynced("g0", "<p>x</p>", "t");
+    expect(enqueueMock).not.toHaveBeenCalled();
+    gateActive = true; // restore for other tests
+  });
+
+  it("DOES enqueue when sync gate is active", async () => {
+    gateActive = true;
+    invokeHandlers["update_note"] = () => makeMeta({ id: "g1" });
+    await updateNoteSynced("g1", "<p>x</p>", "t");
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -249,6 +225,16 @@ describe("scanOversizedNoteCount", () => {
   it("returns 0 when all notes fit", async () => {
     invokeHandlers["list_notes"] = () => [makeMeta({ id: "a" }), makeMeta({ id: "b" })];
     invokeHandlers["read_note"] = () => ({ meta: makeMeta(), content: "<p>ok</p>" });
+    expect(await scanOversizedNoteCount()).toBe(0);
+  });
+
+  it("does not count an oversized local-only note (it is not a sync candidate)", async () => {
+    const bigLocal = makeMeta({ id: "biglo", localOnly: true });
+    invokeHandlers["list_notes"] = () => [bigLocal];
+    invokeHandlers["read_note"] = () => ({
+      meta: bigLocal,
+      content: "a".repeat(NOTE_SIZE_LIMIT_BYTES + 1),
+    });
     expect(await scanOversizedNoteCount()).toBe(0);
   });
 });
@@ -318,11 +304,75 @@ describe("moveNoteToFolderSynced", () => {
       expect(args).toEqual({ noteId: "mv2", folderId: null });
       return meta;
     };
-    invokeHandlers["read_note"] = () => ({ meta, content: "" });
+    invokeHandlers["read_note"] = () => ({ meta, content: "<p>x</p>" });
     await moveNoteToFolderSynced("mv2", null);
     const op = enqueueMock.mock.calls[0][0];
     if (op.kind !== "note-upsert") throw new Error("expected note-upsert");
     expect(op.note.folder_id).toBeNull();
+  });
+});
+
+describe("setNoteLocalOnlySynced", () => {
+  it("localOnly=true → invokes set_note_local_only then enqueues note-delete", async () => {
+    const meta = makeMeta({ id: "d1", localOnly: true });
+    invokeHandlers["set_note_local_only"] = (args) => {
+      expect(args).toEqual({ id: "d1", localOnly: true });
+      return meta;
+    };
+    const result = await setNoteLocalOnlySynced("d1", true);
+    expect(result).toEqual(meta);
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
+    const op = enqueueMock.mock.calls[0][0];
+    if (op.kind !== "note-delete") throw new Error("expected note-delete");
+    expect(op.id).toBe("d1");
+  });
+
+  it("localOnly=true cancels a pending debounced upsert (delete must be the only op)", async () => {
+    vi.useFakeTimers();
+    try {
+      const meta = makeMeta({ id: "t1" });
+      invokeHandlers["set_note_local_only"] = () => ({ ...meta, localOnly: true });
+      scheduleNoteUpdatePush("t1", meta, "<p>typed</p>", 2000);
+      await setNoteLocalOnlySynced("t1", true);
+      await vi.runAllTimersAsync();
+      const kinds = enqueueMock.mock.calls.map((c) => c[0].kind);
+      expect(kinds).toEqual(["note-delete"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("localOnly=false → re-enqueues a full note-upsert with current content", async () => {
+    const meta = makeMeta({ id: "s1", title: "Back" });
+    invokeHandlers["set_note_local_only"] = (args) => {
+      expect(args).toEqual({ id: "s1", localOnly: false });
+      return meta;
+    };
+    invokeHandlers["read_note"] = () => ({ meta, content: "<p>body</p>" });
+    const result = await setNoteLocalOnlySynced("s1", false);
+    expect(result).toEqual(meta);
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
+    const op = enqueueMock.mock.calls[0][0];
+    if (op.kind !== "note-upsert") throw new Error("expected note-upsert");
+    expect(op.note.id).toBe("s1");
+    expect(op.note.content_html).toBe("<p>body</p>");
+  });
+
+  it("localOnly=false with empty content does NOT enqueue", async () => {
+    const meta = makeMeta({ id: "e1" });
+    invokeHandlers["set_note_local_only"] = () => meta;
+    invokeHandlers["read_note"] = () => ({ meta, content: "" });
+    await setNoteLocalOnlySynced("e1", false);
+    expect(enqueueMock).not.toHaveBeenCalled();
+  });
+
+  it("does NOT enqueue when sync gate is inactive", async () => {
+    gateActive = false;
+    invokeHandlers["set_note_local_only"] = () =>
+      makeMeta({ id: "g2", localOnly: true });
+    await setNoteLocalOnlySynced("g2", true);
+    expect(enqueueMock).not.toHaveBeenCalled();
+    gateActive = true; // restore for other tests
   });
 });
 
@@ -415,5 +465,29 @@ describe("applyRemoteNote", () => {
     expect(imported).not.toBeNull();
     expect(imported!.meta.title).toBe("Fresh");
     expect(imported!.content).toBe("<p>fresh</p>");
+  });
+
+  it("skips the cloud row entirely when the local note is localOnly", async () => {
+    const localMeta = makeMeta({
+      id: "lo1",
+      localOnly: true,
+      updatedAt: "2026-05-19T10:00:00Z",
+    });
+    invokeHandlers["read_note"] = () => ({ meta: localMeta, content: "<p>local</p>" });
+    let imported = false;
+    invokeHandlers["import_note_for_backup"] = () => {
+      imported = true;
+      return undefined;
+    };
+    // Fresh server tombstone (newer than local) — would win LWW and soft-delete
+    // the local copy without the guard. This is the synced → local toggle's own
+    // tombstone coming back on the source device's next pull.
+    const row = makeCloud({
+      id: "lo1",
+      deleted_at: "2026-05-19T12:00:00Z",
+      updated_at: "2026-05-19T12:00:00Z",
+    });
+    await applyRemoteNote(row);
+    expect(imported).toBe(false);
   });
 });
