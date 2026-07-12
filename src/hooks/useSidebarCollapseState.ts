@@ -29,6 +29,19 @@ async function getSidebarStore(): Promise<Store> {
 }
 
 /**
+ * True when at least one section (favorites/recents/root) or one of the
+ * given folders is currently expanded. A folder missing from the map counts
+ * as expanded (the default).
+ */
+export function isAnyExpanded(
+  state: SidebarCollapseState,
+  folderIds: string[],
+): boolean {
+  if (!state.favorites || !state.recents || !state.root) return true;
+  return folderIds.some((id) => !state.folders[id]);
+}
+
+/**
  * Persists the collapsed/expanded state of the notes-sidebar sections
  * (Favorites, Recents, Root, and each individual folder) in a per-profile
  * Tauri Store file.
@@ -116,6 +129,15 @@ export function useSidebarCollapseState() {
     });
   }, []);
 
+  const setAll = useCallback((collapsed: boolean, folderIds: string[]) => {
+    setState({
+      favorites: collapsed,
+      recents: collapsed,
+      root: collapsed,
+      folders: Object.fromEntries(folderIds.map((id) => [id, collapsed])),
+    });
+  }, []);
+
   return {
     state,
     toggleFavorites,
@@ -124,5 +146,6 @@ export function useSidebarCollapseState() {
     toggleFolder,
     expandFolder,
     expandRoot,
+    setAll,
   };
 }

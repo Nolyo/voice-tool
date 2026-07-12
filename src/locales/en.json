@@ -703,6 +703,8 @@
     "recent": "Recent",
     "emptySearch": "No notes found",
     "empty": "No notes",
+    "collapseAll": "Collapse all",
+    "expandAll": "Expand all",
     "folders": {
       "newFolder": "New folder",
       "newFolderAndMove": "New folder...",
