@@ -20,6 +20,8 @@ pub struct NoteMeta {
     pub order: i32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deleted_at: Option<String>,
+    #[serde(default)]
+    pub local_only: bool,
 }
 
 /// Pure helper: a note is "active" (visible to the user) when it has not been soft-deleted.
@@ -156,6 +158,7 @@ pub fn migrate_notes_from_store(app_handle: &AppHandle) -> Result<u32> {
             folder_id: None,
             order: 0,
             deleted_at: None,
+            local_only: false,
         };
         let meta_json = serde_json::to_string_pretty(&meta)?;
         fs::write(note_dir.join("note.json"), meta_json)?;
@@ -243,6 +246,7 @@ pub async fn create_note(
         folder_id,
         order: 0,
         deleted_at: None,
+        local_only: false,
     };
 
     let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
@@ -339,6 +343,32 @@ pub async fn toggle_note_favorite(app_handle: AppHandle, id: String) -> Result<N
 
     let mut meta = read_note_meta(&note_dir).map_err(|e| e.to_string())?;
     meta.favorite = !meta.favorite;
+
+    let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
+    fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;
+
+    Ok(meta)
+}
+
+/// Toggle whether a note is "local only" (never synced to the cloud).
+/// Does NOT bump `updated_at`: the flag is a local sync policy, not a content
+/// change — same policy as `toggle_note_favorite`. The cloud reconciliation
+/// (tombstone / re-upsert) is handled by the frontend notes-store.
+#[tauri::command]
+pub async fn set_note_local_only(
+    app_handle: AppHandle,
+    id: String,
+    local_only: bool,
+) -> Result<NoteMeta, String> {
+    let notes_dir = get_notes_dir(&app_handle).map_err(|e| e.to_string())?;
+    let note_dir = notes_dir.join(&id);
+
+    if !note_dir.exists() {
+        return Err(format!("Note not found: {}", id));
+    }
+
+    let mut meta = read_note_meta(&note_dir).map_err(|e| e.to_string())?;
+    meta.local_only = local_only;
 
     let meta_json = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
     fs::write(note_dir.join("note.json"), meta_json).map_err(|e| e.to_string())?;
@@ -557,6 +587,7 @@ mod tests {
             folder_id: None,
             order: 0,
             deleted_at,
+            local_only: false,
         }
     }
 
@@ -655,5 +686,47 @@ mod tests {
         let meta: NoteMeta = serde_json::from_str(legacy_json).expect("deserialize legacy");
         assert_eq!(meta.deleted_at, None);
         assert!(is_note_active(&meta));
+    }
+
+    #[test]
+    fn note_meta_roundtrips_local_only_true() {
+        let mut meta = make_meta(None);
+        meta.local_only = true;
+        let json = serde_json::to_string(&meta).expect("serialize");
+        // camelCase rename → JSON key is `localOnly`
+        assert!(
+            json.contains("\"localOnly\":true"),
+            "expected localOnly in JSON, got: {}",
+            json
+        );
+        let decoded: NoteMeta = serde_json::from_str(&json).expect("deserialize");
+        assert!(decoded.local_only);
+    }
+
+    #[test]
+    fn note_meta_defaults_local_only_false_on_legacy_json() {
+        // Backward compat: note.json files written before PR3 have no localOnly key.
+        let legacy_json = r#"{
+            "id": "abc",
+            "title": "Legacy Note",
+            "createdAt": "2026-05-19T10:00:00Z",
+            "updatedAt": "2026-05-19T10:00:00Z",
+            "favorite": false,
+            "order": 0
+        }"#;
+        let meta: NoteMeta = serde_json::from_str(legacy_json).expect("deserialize legacy");
+        assert!(!meta.local_only);
+    }
+
+    #[test]
+    fn import_note_payload_preserves_local_only_via_serde() {
+        // import_note_for_backup serializes the meta exactly as received —
+        // a restored local-only note must stay local-only.
+        let mut meta = make_meta(None);
+        meta.local_only = true;
+        let payload = serde_json::to_string_pretty(&meta).expect("serialize");
+        let restored: NoteMeta = serde_json::from_str(&payload).expect("deserialize");
+        assert!(restored.local_only);
+        assert_eq!(restored.id, meta.id);
     }
 }
