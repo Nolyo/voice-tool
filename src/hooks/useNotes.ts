@@ -43,6 +43,7 @@ export interface NoteMeta {
   favorite: boolean;
   folderId?: string;
   order: number;
+  localOnly?: boolean;
 }
 
 export interface NoteData {
