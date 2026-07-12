@@ -847,7 +847,9 @@
     "postProcessing": "AI post-processing...",
     "transcriptionSuccess": "Transcription successful",
     "recordingHint": "Recording…",
-    "noTranscriptYet": "No transcription yet"
+    "noTranscriptYet": "No transcription yet",
+    "listening": "Listening…",
+    "liveBadge": "LIVE"
   },
   "logs": {
     "limitReached": "(limit reached)",
