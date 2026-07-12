@@ -94,7 +94,13 @@ export function ShareNoteButton({ note }: { note: NoteMeta | null }) {
             </p>
           )}
 
-          {enabled && !active && (
+          {enabled && note.localOnly && (
+            <p className="note-share-warn">
+              {t("notes.share.localOnlyWarn", { defaultValue: "Cette note est locale (non synchronisée) — désactive « note locale » pour la partager." })}
+            </p>
+          )}
+
+          {enabled && !note.localOnly && !active && (
             <>
               <button type="button" className="note-share-action" disabled={busy} onClick={onCreate}>
                 {busy

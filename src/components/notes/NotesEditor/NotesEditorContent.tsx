@@ -21,6 +21,7 @@ interface NotesEditorContentProps {
   activeFolder: FolderMeta | null;
   ai: ReturnType<typeof useAiAssistant>;
   linkEditor: ReturnType<typeof useLinkEditor>;
+  onToggleLocalOnly: (id: string) => void;
 }
 
 /**
@@ -36,6 +37,7 @@ export function NotesEditorContent({
   activeFolder,
   ai,
   linkEditor,
+  onToggleLocalOnly,
 }: NotesEditorContentProps) {
   const { t } = useTranslation();
 
@@ -78,6 +80,7 @@ export function NotesEditorContent({
         folder={activeFolder}
         editor={editor}
         isEditorInSync={isEditorInSync}
+        onToggleLocalOnly={onToggleLocalOnly}
       />
       {isLoadingContent ? (
         <div className="flex items-center justify-center py-10">

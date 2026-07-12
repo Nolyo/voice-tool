@@ -50,4 +50,14 @@ describe("ShareNoteButton", () => {
     expect(screen.getByRole("button", { name: /Copy link|Copier/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Stop sharing|Arrêter/i })).toBeInTheDocument();
   });
+
+  it("shows the local-only warning and hides the create button for a local note", () => {
+    const localNote = { ...note, localOnly: true };
+    render(<ShareNoteButton note={localNote as never} />);
+    fireEvent.click(screen.getByRole("button", { name: /Share|Partager/i }));
+    expect(screen.getByText(/local/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Create a public link|Créer/i })
+    ).not.toBeInTheDocument();
+  });
 });

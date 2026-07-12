@@ -84,6 +84,7 @@ export default function Dashboard() {
     deleteNote,
     searchNotes,
     toggleFavorite,
+    toggleLocalOnly,
     moveNoteToFolder,
     moveNoteToFolderAtIndex,
     reorderNotesInFolder,
@@ -357,6 +358,7 @@ export default function Dashboard() {
               onCloseNote={handleCloseNoteTab}
               onDeleteNote={handleDeleteNote}
               onUpdateNote={updateNote}
+              onToggleLocalOnly={toggleLocalOnly}
               onCreateNote={() => handleCreateNoteFromSidebar(null)}
               onRecreateLinkedNote={handleRecreateLinkedNote}
               onMoveNote={moveNoteToFolder}

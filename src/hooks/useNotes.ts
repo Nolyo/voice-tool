@@ -9,6 +9,7 @@ import {
   pushNoteUpdate,
   scheduleNoteUpdatePush,
   cancelNoteUpdatePush,
+  setNoteLocalOnlySynced,
 } from '@/lib/sync/notes-store';
 
 // Debounce window for the cloud push of updateNote. Local disk write stays
@@ -134,6 +135,12 @@ export function useNotes() {
     setNotes(prev => prev.map(n => n.id === id ? updated : n));
   };
 
+  const toggleLocalOnly = async (id: string): Promise<void> => {
+    const current = notes.find(n => n.id === id);
+    const updated = await setNoteLocalOnlySynced(id, !current?.localOnly);
+    setNotes(prev => prev.map(n => n.id === id ? updated : n));
+  };
+
   const reorderNotesInFolder = async (
     folderId: string | null,
     noteIds: string[],
@@ -208,6 +215,7 @@ export function useNotes() {
     deleteNote,
     searchNotes,
     toggleFavorite,
+    toggleLocalOnly,
     moveNoteToFolder,
     reorderNotesInFolder,
     moveNoteToFolderAtIndex,

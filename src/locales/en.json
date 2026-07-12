@@ -705,6 +705,12 @@
     "empty": "No notes",
     "collapseAll": "Collapse all",
     "expandAll": "Expand all",
+    "localOnly": {
+      "makeLocal": "Stop syncing (local note)",
+      "makeSynced": "Sync this note",
+      "indicator": "Local note — never synced",
+      "headerLabel": "Local"
+    },
     "folders": {
       "newFolder": "New folder",
       "newFolderAndMove": "New folder...",
@@ -836,7 +842,8 @@
       "copy": "Copy link",
       "copied": "Link copied",
       "stop": "Stop sharing",
-      "error": "Sharing failed. Please try again in a moment."
+      "error": "Sharing failed. Please try again in a moment.",
+      "localOnlyWarn": "This note is local (not synced) — turn off \"local note\" to share it."
     }
   },
   "mini": {
