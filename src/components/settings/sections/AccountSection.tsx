@@ -581,7 +581,8 @@ function SyncedInventoryGrid() {
       setCounts({
         snippets: sn.length,
         words: d.words.length,
-        notes: n.length,
+        // Local-only notes are excluded: they are not part of the synced set.
+        notes: n.filter((m) => !m.localOnly).length,
         folders: f.length,
       });
     })();

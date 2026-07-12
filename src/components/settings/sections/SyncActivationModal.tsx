@@ -44,7 +44,8 @@ export function SyncActivationModal({ open, onClose }: Props) {
       const c = {
         snippets: sn.length,
         words: d.words.length,
-        notes: n.length,
+        // Local-only notes are excluded: they will never be uploaded.
+        notes: n.filter((m) => !m.localOnly).length,
         folders: f.length,
       };
       setCounts(c);

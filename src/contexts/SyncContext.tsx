@@ -44,6 +44,7 @@ import {
   scanOversizedNoteCount,
 } from "@/lib/sync/notes-store";
 import { isNoteSyncable } from "@/lib/sync/note-size";
+import { shouldPushNote } from "@/lib/sync/note-push-gate";
 import { applyRemoteFolder, listFolders } from "@/lib/sync/folders-store";
 import {
   loadDictionary,
@@ -464,16 +465,20 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       let oversized = 0;
       for (const nm of notesMeta) {
         if (nm.deletedAt) continue;
+        // Local-only notes never leave the device — skip before even reading.
+        if (nm.localOnly) continue;
         try {
           const { content } = await readNote(nm.id);
           if (!isNoteSyncable(content)) {
             oversized++;
             flog(
-              `[sync] note ${nm.id} ("${nm.title}") skipped (over 1 MB sync cap)`,
+              `[sync] note ${nm.id} ("${nm.title}") skipped (over sync size cap)`,
               "warn"
             );
             continue;
           }
+          // Empty notes have nothing to push (fresh create_note output).
+          if (!shouldPushNote(nm, content)) continue;
           ops.push({ kind: "note-upsert", note: mapNoteToCloud(nm, content) });
         } catch (e) {
           flog(`[sync] readNote failed for ${nm.id}: ${String(e)}`, "warn");
