@@ -34,6 +34,7 @@ export interface BackupNoteMeta {
 export interface BackupFolderMeta {
   id: string;
   name: string;
+  icon?: string;
   createdAt: string;
   updatedAt: string;
   order: number;

@@ -11,6 +11,8 @@ import type { LocalFolderMeta } from '@/lib/sync/types';
 export interface FolderMeta {
   id: string;
   name: string;
+  /** Emoji icon; absent = default folder glyph. */
+  icon?: string;
   createdAt: string;
   updatedAt?: string;
   order: number;
@@ -37,14 +39,14 @@ export function useFolders() {
     loadFolders();
   }, [loadFolders]);
 
-  const createFolder = async (name: string): Promise<FolderMeta> => {
-    const meta = await createFolderSynced(name);
+  const createFolder = async (name: string, icon?: string | null): Promise<FolderMeta> => {
+    const meta = await createFolderSynced(name, icon);
     setFolders(prev => [...prev, meta].sort((a, b) => a.order - b.order));
     return meta;
   };
 
-  const renameFolder = async (id: string, name: string): Promise<FolderMeta> => {
-    const updated = await renameFolderSynced(id, name);
+  const renameFolder = async (id: string, name: string, icon?: string | null): Promise<FolderMeta> => {
+    const updated = await renameFolderSynced(id, name, icon);
     setFolders(prev => prev.map(f => f.id === id ? updated : f));
     return updated;
   };

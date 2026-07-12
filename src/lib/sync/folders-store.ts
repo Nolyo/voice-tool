@@ -22,8 +22,11 @@ export async function listFolders(): Promise<LocalFolderMeta[]> {
   return invoke<LocalFolderMeta[]>("list_folders");
 }
 
-export async function createFolderSynced(name: string): Promise<LocalFolderMeta> {
-  const folder = await invoke<LocalFolderMeta>("create_folder", { name });
+export async function createFolderSynced(
+  name: string,
+  icon?: string | null
+): Promise<LocalFolderMeta> {
+  const folder = await invoke<LocalFolderMeta>("create_folder", { name, icon: icon ?? null });
   try {
     if (isSyncActive()) {
       await enqueue({ kind: "folder-upsert", folder: mapFolderToCloud(folder) });
@@ -36,9 +39,10 @@ export async function createFolderSynced(name: string): Promise<LocalFolderMeta>
 
 export async function renameFolderSynced(
   id: string,
-  name: string
+  name: string,
+  icon?: string | null
 ): Promise<LocalFolderMeta> {
-  const folder = await invoke<LocalFolderMeta>("rename_folder", { id, name });
+  const folder = await invoke<LocalFolderMeta>("rename_folder", { id, name, icon: icon ?? null });
   try {
     if (isSyncActive()) {
       await enqueue({ kind: "folder-upsert", folder: mapFolderToCloud(folder) });
