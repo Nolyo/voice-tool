@@ -568,7 +568,39 @@ Deno.test("folder-upsert: forwards id, name, order on user_folders", async () =>
   assertEquals(upserts[0].record.name, "Projects");
   assertEquals(upserts[0].record.order, 3);
   assertEquals(upserts[0].record.deleted_at, null);
+  // Retro-compat pin: a pre-icon client omits the field → server stamps null.
+  assertEquals(upserts[0].record.icon, null);
   assertEquals(upserts[0].options, { onConflict: "id" });
+});
+
+Deno.test("folder-upsert: forwards icon when provided", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk("user-folder-icon");
+  const folder = makeFolder({ name: "Fire", icon: "🔥" });
+  const req = postJson({
+    operations: [{ kind: "folder-upsert", folder }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 200);
+  const upserts = auth.calls.filter((c): c is UpsertCall => c.kind === "upsert");
+  assertEquals(upserts.length, 1);
+  assertEquals(upserts[0].record.icon, "🔥");
+});
+
+Deno.test("folder-upsert: rejects empty-string icon (400 invalid body)", async () => {
+  const { handler } = await import("./index.ts");
+  const auth = authOk();
+  const folder = makeFolder({ icon: "" });
+  const req = postJson({
+    operations: [{ kind: "folder-upsert", folder }],
+    device_id: "d",
+  });
+  const res = await handler(req, auth);
+  assertEquals(res.status, 400);
+  const body = await res.json();
+  assertEquals(body.error, "invalid body");
+  assertEquals(auth.calls.length, 0);
 });
 
 Deno.test("folder-delete: scoped update with id + user_id on user_folders", async () => {

@@ -184,6 +184,7 @@ export async function handler(req: Request, deps: SyncPushDeps): Promise<Respons
               user_id: userId,
               profile_id,
               name: op.folder.name,
+              icon: op.folder.icon ?? null,
               order: op.folder.order,
               deleted_at: null,
               updated_at: nowIso,
