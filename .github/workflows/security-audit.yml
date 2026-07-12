@@ -47,6 +47,9 @@ jobs:
         # HIGH/CRITICAL gate: warnings (unmaintained) ne cassent pas le job.
         # Les RUSTSECs ignorés viennent de dépendances transitives via Tauri 2.10.x
         # (pas de fix disponible sans bump Tauri majeur). À revoir au prochain bump.
+        # RUSTSEC-2026-0194/0195 : quick-xml <0.41 (DoS parsing XML), aucun backport ;
+        # tiré par wayland-scanner (proc-macro build-time, clipboard Linux) et
+        # plist (Tauri, parsing de bundles macOS de confiance) — input non attaquable.
         run: |
           cargo audit \
             --ignore RUSTSEC-2026-0007 \
@@ -57,4 +60,6 @@ jobs:
             --ignore RUSTSEC-2026-0099 \
             --ignore RUSTSEC-2026-0068 \
             --ignore RUSTSEC-2026-0067 \
-            --ignore RUSTSEC-2026-0009
+            --ignore RUSTSEC-2026-0009 \
+            --ignore RUSTSEC-2026-0194 \
+            --ignore RUSTSEC-2026-0195
