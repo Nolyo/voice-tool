@@ -58,6 +58,24 @@ describe("TranscriptAssembler", () => {
     expect(a.assembled()).toBe("récupéré.");
     expect(a.failedCount).toBe(0);
   });
+
+  it("strips ellipses from chunk texts before assembly", () => {
+    const a = new TranscriptAssembler();
+    a.upsert(0, "ni le feu ni la glace ne serait...");
+    a.upsert(1, "atteindre en intensité, ce qu'enferme un homme dans l'illusion.");
+    a.upsert(2, "... de son cœur.");
+    expect(a.assembled()).toBe(
+      "ni le feu ni la glace ne serait atteindre en intensité, ce qu'enferme un homme dans l'illusion. de son cœur.",
+    );
+  });
+
+  it("excludes chunks that were only ellipses from the join", () => {
+    const a = new TranscriptAssembler();
+    a.upsert(0, "Début");
+    a.upsert(1, "...");
+    a.upsert(2, "fin.");
+    expect(a.assembled()).toBe("Début fin.");
+  });
 });
 
 describe("stripEllipses", () => {

@@ -25,7 +25,7 @@ export class TranscriptAssembler {
 
   upsert(index: number, text: string): void {
     this.failed.delete(index);
-    this.texts.set(index, text);
+    this.texts.set(index, stripEllipses(text));
   }
 
   markFailed(index: number): void {
