@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Clock,
   Folder,
   FolderPlus,
@@ -38,7 +40,7 @@ import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { FolderNameDialog } from "./FolderNameDialog";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
-import { useSidebarCollapseState } from "@/hooks/useSidebarCollapseState";
+import { isAnyExpanded, useSidebarCollapseState } from "@/hooks/useSidebarCollapseState";
 
 type NoteDragData = {
   type: 'note';
@@ -563,10 +565,13 @@ export function NotesSidebarSection({
     toggleFolder: toggleFolderCollapsed,
     expandFolder,
     expandRoot,
+    setAll,
   } = useSidebarCollapseState();
   const favoritesCollapsed = collapseState.favorites;
   const recentsCollapsed = collapseState.recents;
   const rootCollapsed = collapseState.root;
+  const folderIdsForCollapse = useMemo(() => folders.map((f) => f.id), [folders]);
+  const anyExpanded = isAnyExpanded(collapseState, folderIdsForCollapse);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; note: NoteMeta } | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<NoteMeta | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<FolderMeta | null>(null);
@@ -848,7 +853,7 @@ export function NotesSidebarSection({
       className="vt-notes-tree flex flex-col overflow-hidden flex-1 min-h-0"
       style={{ borderTop: "1px solid var(--vt-border)" }}
     >
-      {/* Search input + new-note button + new-folder button */}
+      {/* Search input + new-note + new-folder + collapse-all buttons */}
       <div className="flex items-center gap-1 px-2 py-2 shrink-0">
         <Input
           placeholder={t('notes.searchPlaceholder')}
@@ -876,6 +881,21 @@ export function NotesSidebarSection({
           title={t('notes.folders.newFolder')}
         >
           <FolderPlus className="w-3.5 h-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          style={{ color: "var(--vt-fg-3)" }}
+          onClick={() => setAll(anyExpanded, folderIdsForCollapse)}
+          title={anyExpanded ? t('notes.collapseAll') : t('notes.expandAll')}
+          aria-label={anyExpanded ? t('notes.collapseAll') : t('notes.expandAll')}
+        >
+          {anyExpanded ? (
+            <ChevronsDownUp className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronsUpDown className="w-3.5 h-3.5" />
+          )}
         </Button>
       </div>
 
