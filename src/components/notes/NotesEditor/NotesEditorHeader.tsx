@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
-import { Clock, Folder } from "lucide-react";
+import { Clock, Cloud, CloudOff, Folder } from "lucide-react";
 import { type NoteMeta } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
 import { ShareNoteButton } from "./ShareNoteButton";
@@ -13,6 +13,7 @@ interface NotesEditorHeaderProps {
   /** `false` while the editor is still loading a tab switch — suppresses the
    *  word count so it doesn't briefly show the previous note's count. */
   isEditorInSync: boolean;
+  onToggleLocalOnly: (id: string) => void;
 }
 
 function formatRelative(iso: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
@@ -46,7 +47,7 @@ function formatRelative(iso: string, t: (key: string, opts?: Record<string, unkn
   });
 }
 
-export function NotesEditorHeader({ note, folder, editor, isEditorInSync }: NotesEditorHeaderProps) {
+export function NotesEditorHeader({ note, folder, editor, isEditorInSync, onToggleLocalOnly }: NotesEditorHeaderProps) {
   const { t } = useTranslation();
   const [wordCount, setWordCount] = useState(0);
 
@@ -104,6 +105,18 @@ export function NotesEditorHeader({ note, folder, editor, isEditorInSync }: Note
               </span>
             </span>
           </>
+        )}
+        {note && (
+          <button
+            type="button"
+            className="note-meta-item"
+            aria-label={note.localOnly ? t("notes.localOnly.makeSynced") : t("notes.localOnly.makeLocal")}
+            title={note.localOnly ? t("notes.localOnly.makeSynced") : t("notes.localOnly.makeLocal")}
+            onClick={() => onToggleLocalOnly(note.id)}
+          >
+            {note.localOnly ? <CloudOff className="w-3 h-3" /> : <Cloud className="w-3 h-3" />}
+            {note.localOnly && <span>{t("notes.localOnly.headerLabel")}</span>}
+          </button>
         )}
         <ShareNoteButton note={note} />
       </div>

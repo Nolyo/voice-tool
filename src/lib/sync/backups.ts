@@ -22,6 +22,8 @@ export interface BackupNoteMeta {
   order: number;
   /** ISO RFC3339 timestamp when the note was soft-deleted, or absent/null. */
   deletedAt?: string | null;
+  /** True = never synced to the cloud. Round-trips verbatim through restore. */
+  localOnly?: boolean;
 }
 
 /** Full folder meta shape as serialized by the Rust backend (camelCase).

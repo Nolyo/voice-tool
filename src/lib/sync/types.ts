@@ -166,6 +166,8 @@ export interface LocalNoteMeta {
   folderId?: string; // missing key when None server-side
   order: number;
   deletedAt?: string;
+  /** True = never synced to the cloud (explicit per-note opt-out, PR3). */
+  localOnly?: boolean;
 }
 
 export interface LocalFolderMeta {

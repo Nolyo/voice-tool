@@ -5,6 +5,7 @@ import { mergeNoteLWW } from "./merge";
 import { enqueue } from "./queue";
 import { isSyncActive } from "./sync-gate";
 import { isNoteSyncable } from "./note-size";
+import { shouldPushNote } from "./note-push-gate";
 
 /**
  * Notes store wrapper — sub-épique 03 sync-notes.
@@ -27,7 +28,7 @@ import { isNoteSyncable } from "./note-size";
  */
 
 /**
- * Enqueue a note-upsert, but ONLY when the content fits the cloud hard cap.
+ * Enqueue a note-upsert, but ONLY when the push gate allows it (shouldPushNote: not local-only, not empty, within the cloud size cap).
  *
  * An oversized note (> 3 MB UTF-8) cannot be synced: the Edge validates the
  * whole push body atomically, so a single oversized note makes the entire batch
@@ -44,9 +45,9 @@ async function enqueueNoteUpsertIfSyncable(
 ): Promise<boolean> {
   try {
     if (!isSyncActive()) return false;
-    if (!isNoteSyncable(content)) {
+    if (!shouldPushNote(meta, content)) {
       console.warn(
-        `[notes-store] note ${meta.id} skipped (over 1 MB sync cap) on ${context}`
+        `[notes-store] note ${meta.id} skipped (local-only, empty, or over size cap) on ${context}`
       );
       return false;
     }
@@ -72,6 +73,7 @@ export async function scanOversizedNoteCount(): Promise<number> {
   let count = 0;
   for (const m of metas) {
     if (m.deletedAt) continue;
+    if (m.localOnly) continue; // local-only notes are not sync candidates
     try {
       const { content } = await readNote(m.id);
       if (!isNoteSyncable(content)) count++;
@@ -91,16 +93,10 @@ export async function readNote(
 export async function createNoteSynced(
   folderId: string | null
 ): Promise<LocalNoteMeta> {
-  const meta = await invoke<LocalNoteMeta>("create_note", { folderId });
-  try {
-    if (isSyncActive()) {
-      // A newly-created note has empty content.
-      await enqueue({ kind: "note-upsert", note: mapNoteToCloud(meta, "") });
-    }
-  } catch (e) {
-    console.warn("[notes-store] enqueue failed for create", e);
-  }
-  return meta;
+  // A newly-created note has empty content, and empty notes are never pushed
+  // (shouldPushNote): the first non-empty update enqueues the initial upsert.
+  // sync-push does upserts, so nothing depends on a create-time op.
+  return invoke<LocalNoteMeta>("create_note", { folderId });
 }
 
 export async function updateNoteSynced(
@@ -236,6 +232,44 @@ export async function moveNoteToFolderSynced(
 }
 
 /**
+ * Toggle the per-note "local only" flag and reconcile the cloud state.
+ *
+ * - synced → local (`localOnly: true`): the note must disappear from the
+ *   cloud (and from other devices at their next pull), so we enqueue a
+ *   `note-delete` tombstone. The local copy stays intact — `applyRemoteNote`
+ *   ignores cloud rows for local-only notes, so the tombstone can never
+ *   destroy this device's copy. Any pending debounced upsert is cancelled
+ *   FIRST: it would otherwise fire after the delete and resurrect the note.
+ * - local → synced (`localOnly: false`): re-push the full note (sync-push
+ *   upserts force `deleted_at: null` server-side, clearing the tombstone).
+ *
+ * Enqueue failures are swallowed (local write is the source of truth).
+ */
+export async function setNoteLocalOnlySynced(
+  id: string,
+  localOnly: boolean
+): Promise<LocalNoteMeta> {
+  const meta = await invoke<LocalNoteMeta>("set_note_local_only", {
+    id,
+    localOnly,
+  });
+  try {
+    if (isSyncActive()) {
+      if (localOnly) {
+        cancelNoteUpdatePush(id);
+        await enqueue({ kind: "note-delete", id });
+      } else {
+        const { content } = await readNote(id);
+        await enqueueNoteUpsertIfSyncable(meta, content, "make-synced");
+      }
+    }
+  } catch (e) {
+    console.warn("[notes-store] enqueue failed for set-local-only", e);
+  }
+  return meta;
+}
+
+/**
  * Applies a remote note row to the local filesystem after LWW merge.
  *
  * Reads the local note (if any), runs `mergeNoteLWW`, and writes via
@@ -257,6 +291,13 @@ export async function applyRemoteNote(row: CloudUserNoteRow): Promise<void> {
   } catch {
     // Note not found locally — fine, will adopt remote.
     local = null;
+  }
+  if (local?.meta.localOnly) {
+    // A local-only note ignores its cloud counterpart entirely. In particular,
+    // the tombstone created by the synced → local toggle comes back on this
+    // device's next pull with a fresh server-stamped updated_at — it would win
+    // LWW and soft-delete the local copy without this guard.
+    return;
   }
   if (!local && row.deleted_at !== null) {
     // Nothing to delete locally — server tombstone for a note we never had.

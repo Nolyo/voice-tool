@@ -44,6 +44,7 @@ import {
   scanOversizedNoteCount,
 } from "@/lib/sync/notes-store";
 import { isNoteSyncable } from "@/lib/sync/note-size";
+import { shouldPushNote } from "@/lib/sync/note-push-gate";
 import { applyRemoteFolder, listFolders } from "@/lib/sync/folders-store";
 import {
   loadDictionary,
@@ -462,18 +463,34 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       // restent locales) et on les compte pour avertir l'utilisateur.
       const notesMeta = await listNotes();
       let oversized = 0;
+      const initialDone = await getMeta<boolean>(KEY_INITIAL_PUSH_DONE, false);
       for (const nm of notesMeta) {
         if (nm.deletedAt) continue;
+        if (nm.localOnly) {
+          // Local-only notes never leave the device. On the INITIAL push only,
+          // re-assert the opt-out: a toggle made while sync was disabled never
+          // enqueued its note-delete, and re-enabling resets initial_push_done
+          // so this run covers it (a toggle while sync was active but offline
+          // is already in the persistent queue). note-delete is a scoped
+          // UPDATE — a harmless no-op for notes that never reached the cloud.
+          // Post-initial runs must NOT re-send it: each delete re-stamps
+          // deleted_at server-side, which would reset the 30-day tombstone
+          // purge clock on every "Sync now".
+          if (!initialDone) ops.push({ kind: "note-delete", id: nm.id });
+          continue;
+        }
         try {
           const { content } = await readNote(nm.id);
           if (!isNoteSyncable(content)) {
             oversized++;
             flog(
-              `[sync] note ${nm.id} ("${nm.title}") skipped (over 1 MB sync cap)`,
+              `[sync] note ${nm.id} ("${nm.title}") skipped (over sync size cap)`,
               "warn"
             );
             continue;
           }
+          // Empty notes have nothing to push (fresh create_note output).
+          if (!shouldPushNote(nm, content)) continue;
           ops.push({ kind: "note-upsert", note: mapNoteToCloud(nm, content) });
         } catch (e) {
           flog(`[sync] readNote failed for ${nm.id}: ${String(e)}`, "warn");

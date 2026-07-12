@@ -86,6 +86,7 @@ interface DashboardSidebarProps {
   onOpenNote: (note: NoteMeta) => void;
   onCreateNote: (folderId?: string | null) => void;
   onToggleFavorite: (id: string) => void;
+  onToggleLocalOnly: (id: string) => void;
   onDeleteNote: (id: string) => void;
   searchNotes: (query: string) => Promise<NoteMeta[]>;
   onCreateFolder: (name: string) => Promise<FolderMeta>;
@@ -125,6 +126,7 @@ export function DashboardSidebar({
   onOpenNote,
   onCreateNote,
   onToggleFavorite,
+  onToggleLocalOnly,
   onDeleteNote,
   searchNotes,
   onCreateFolder,
@@ -240,6 +242,7 @@ export function DashboardSidebar({
           onOpenNote={onOpenNote}
           onCreateNote={onCreateNote}
           onToggleFavorite={onToggleFavorite}
+          onToggleLocalOnly={onToggleLocalOnly}
           onDeleteNote={onDeleteNote}
           searchNotes={searchNotes}
           onCreateFolder={onCreateFolder}

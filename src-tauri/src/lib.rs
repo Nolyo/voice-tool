@@ -137,6 +137,7 @@ pub fn run() {
             notes::search_notes,
             notes::get_backlinks,
             notes::toggle_note_favorite,
+            notes::set_note_local_only,
             notes::move_note_to_folder,
             notes::reorder_notes_in_folder,
             notes::purge_soft_deleted_notes_post_pull,

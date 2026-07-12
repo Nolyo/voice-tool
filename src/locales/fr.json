@@ -705,6 +705,12 @@
     "empty": "Aucune note",
     "collapseAll": "Tout replier",
     "expandAll": "Tout déplier",
+    "localOnly": {
+      "makeLocal": "Ne plus synchroniser (note locale)",
+      "makeSynced": "Synchroniser cette note",
+      "indicator": "Note locale — jamais synchronisée",
+      "headerLabel": "Locale"
+    },
     "folders": {
       "newFolder": "Nouveau dossier",
       "newFolderAndMove": "Nouveau dossier...",
@@ -836,7 +842,8 @@
       "copy": "Copier le lien",
       "copied": "Lien copié",
       "stop": "Arrêter le partage",
-      "error": "Le partage a échoué. Réessaie dans un instant."
+      "error": "Le partage a échoué. Réessaie dans un instant.",
+      "localOnlyWarn": "Cette note est locale (non synchronisée) — désactive « note locale » pour la partager."
     }
   },
   "mini": {

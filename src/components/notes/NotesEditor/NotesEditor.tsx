@@ -24,6 +24,7 @@ interface NotesEditorProps {
   onCloseNote: (id: string) => void;
   onDeleteNote: (id: string) => void;
   onUpdateNote: (id: string, content: string, title: string) => void;
+  onToggleLocalOnly: (id: string) => void;
   onCreateNote: () => void;
   /** Create a new note seeded with the given title. Does NOT open a tab —
    *  the editor handles that after flushing the pending save on the source note. */
@@ -49,6 +50,7 @@ export function NotesEditor({
   onCloseNote,
   onDeleteNote,
   onUpdateNote,
+  onToggleLocalOnly,
   onCreateNote,
   onRecreateLinkedNote,
   onMoveNote,
@@ -186,6 +188,7 @@ export function NotesEditor({
           activeFolder={activeFolder}
           ai={ai}
           linkEditor={linkEditor}
+          onToggleLocalOnly={onToggleLocalOnly}
         />
 
         {hasActiveNote && (
