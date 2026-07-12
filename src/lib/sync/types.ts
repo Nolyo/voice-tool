@@ -135,6 +135,8 @@ export interface NotePayload {
 export interface FolderPayload {
   id: string;
   name: string;
+  /** Emoji icon; null clears it. Travels in the same LWW row as the name. */
+  icon: string | null;
   order: number;
   updated_at: string;
   deleted_at: string | null;
@@ -173,6 +175,8 @@ export interface LocalNoteMeta {
 export interface LocalFolderMeta {
   id: string;
   name: string;
+  /** Emoji icon; key absent = default folder glyph. */
+  icon?: string;
   createdAt: string;
   updatedAt: string;
   order: number;
@@ -198,6 +202,8 @@ export interface CloudUserFolderRow {
   user_id: string;
   profile_id: string;
   name: string;
+  /** Optional to tolerate a pre-migration DB row. */
+  icon?: string | null;
   order: number;
   created_at: string;
   updated_at: string;

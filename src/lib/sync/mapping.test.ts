@@ -34,6 +34,7 @@ const SyncPushNotePayloadSchema = z.object({
 const SyncPushFolderPayloadSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(200),
+  icon: z.string().min(1).max(32).nullable().optional(),
   order: z.number().int(),
   updated_at: offsetDatetime(),
   deleted_at: offsetDatetime().nullable().optional(),
@@ -321,8 +322,9 @@ describe("mapping folders ↔ cloud", () => {
       order: 2,
       updated_at: "2026-05-19T11:00:00Z",
       deleted_at: null,
+      icon: null,
     });
-    expect(Object.keys(payload)).toHaveLength(5);
+    expect(Object.keys(payload)).toHaveLength(6);
   });
 
   it("mapFolderFromCloud omits deletedAt for active folder", () => {
@@ -381,6 +383,7 @@ describe("mapping folders ↔ cloud", () => {
       order: row.order,
       updated_at: row.updated_at,
       deleted_at: null,
+      icon: null,
     });
   });
 
@@ -395,6 +398,61 @@ describe("mapping folders ↔ cloud", () => {
     };
     const payload = mapFolderToCloud(folder);
     const parsed = SyncPushFolderPayloadSchema.safeParse(payload);
+    expect(parsed.success).toBe(true);
+  });
+
+  it("mapFolderToCloud carries the icon when set", () => {
+    const folder: LocalFolderMeta = {
+      id: UUID_F,
+      name: "Recipes",
+      icon: "🍽️",
+      createdAt: "2026-05-19T10:00:00Z",
+      updatedAt: "2026-05-19T11:00:00Z",
+      order: 2,
+    };
+    expect(mapFolderToCloud(folder).icon).toBe("🍽️");
+  });
+
+  it("mapFolderFromCloud sets icon for a row carrying an emoji", () => {
+    const row: CloudUserFolderRow = {
+      id: UUID_F,
+      user_id: UUID_U,
+      profile_id: UUID_U,
+      name: "Recipes",
+      icon: "🔥",
+      order: 2,
+      created_at: "2026-05-19T10:00:00Z",
+      updated_at: "2026-05-19T11:00:00Z",
+      deleted_at: null,
+    };
+    expect(mapFolderFromCloud(row).icon).toBe("🔥");
+  });
+
+  it("mapFolderFromCloud omits the icon key when the row has null", () => {
+    const row: CloudUserFolderRow = {
+      id: UUID_F,
+      user_id: UUID_U,
+      profile_id: UUID_U,
+      name: "Recipes",
+      icon: null,
+      order: 2,
+      created_at: "2026-05-19T10:00:00Z",
+      updated_at: "2026-05-19T11:00:00Z",
+      deleted_at: null,
+    };
+    expect(Object.keys(mapFolderFromCloud(row)).includes("icon")).toBe(false);
+  });
+
+  it("mapFolderToCloud output with icon validates against sync-push FolderPayloadSchema", () => {
+    const folder: LocalFolderMeta = {
+      id: UUID_F,
+      name: "Recipes",
+      icon: "📌",
+      createdAt: "2026-05-19T10:00:00Z",
+      updatedAt: "2026-05-19T11:00:00Z",
+      order: 2,
+    };
+    const parsed = SyncPushFolderPayloadSchema.safeParse(mapFolderToCloud(folder));
     expect(parsed.success).toBe(true);
   });
 });

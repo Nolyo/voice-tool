@@ -355,4 +355,16 @@ describe("mergeFolderLWW", () => {
     const merged = mergeFolderLWW(local, remote);
     expect(merged.name).toBe("remote-tied");
   });
+
+  it("adopting remote copies the icon", () => {
+    const remote = cloudFolder({ icon: "📁", updated_at: "2026-01-02T00:00:00Z" });
+    const merged = mergeFolderLWW(null, remote);
+    expect(merged.icon).toBe("📁");
+  });
+
+  it("remote with icon null → icon key absent on the merged local", () => {
+    const remote = cloudFolder({ icon: null });
+    const merged = mergeFolderLWW(null, remote);
+    expect(Object.keys(merged).includes("icon")).toBe(false);
+  });
 });

@@ -126,6 +126,7 @@ export function mapFolderToCloud(folder: LocalFolderMeta): FolderPayload {
   return {
     id: folder.id,
     name: folder.name,
+    icon: folder.icon ?? null,
     order: folder.order,
     updated_at: folder.updatedAt,
     deleted_at: folder.deletedAt ?? null,
@@ -139,6 +140,7 @@ export function mapFolderFromCloud(row: CloudUserFolderRow): LocalFolderMeta {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     order: row.order,
+    ...(typeof row.icon === "string" && { icon: row.icon }),
     ...(row.deleted_at !== null && { deletedAt: row.deleted_at }),
   };
 }

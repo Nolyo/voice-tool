@@ -75,6 +75,7 @@ export const CloudUserFolderRowSchema = z.object({
   user_id: z.string().uuid(),
   profile_id: z.string().uuid(),
   name: z.string(),
+  icon: z.string().nullable().optional(),
   order: z.number().int(),
   created_at: z.string(),
   updated_at: z.string(),

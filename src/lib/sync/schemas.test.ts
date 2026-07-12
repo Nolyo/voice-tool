@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   CloudUserNoteRowSchema,
   CloudUserProfileRowSchema,
+  CloudUserFolderRowSchema,
 } from "./schemas";
 
 // Valid RFC-4122 UUIDs (Zod v4 enforces strict uuid format)
@@ -32,5 +33,32 @@ describe("schemas profile_id", () => {
       deleted_at: null,
     });
     expect(r.success).toBe(true);
+  });
+});
+
+const FOLDER_ID = "33333333-3333-4333-8333-333333333333";
+const PROFILE_ID = "44444444-4444-4444-8444-444444444444";
+
+describe("CloudUserFolderRowSchema icon", () => {
+  const base = {
+    id: FOLDER_ID,
+    user_id: USER_ID,
+    profile_id: PROFILE_ID,
+    name: "Inbox",
+    order: 0,
+    created_at: "2026-07-13T00:00:00Z",
+    updated_at: "2026-07-13T00:00:00Z",
+    deleted_at: null,
+  };
+
+  it("preserves a string icon through parsing (no Zod strip)", () => {
+    const r = CloudUserFolderRowSchema.safeParse({ ...base, icon: "📁" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.icon).toBe("📁");
+  });
+
+  it("accepts icon null and an absent icon key", () => {
+    expect(CloudUserFolderRowSchema.safeParse({ ...base, icon: null }).success).toBe(true);
+    expect(CloudUserFolderRowSchema.safeParse(base).success).toBe(true);
   });
 });
