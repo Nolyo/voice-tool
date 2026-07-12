@@ -76,6 +76,13 @@ describe("TranscriptAssembler", () => {
     a.upsert(2, "fin.");
     expect(a.assembled()).toBe("Début fin.");
   });
+
+  it("still counts an ellipsis-only chunk as a successful upload", () => {
+    const a = new TranscriptAssembler();
+    a.upsert(0, "...");
+    expect(a.okCount).toBe(1);
+    expect(a.assembled()).toBe("");
+  });
 });
 
 describe("stripEllipses", () => {
@@ -116,5 +123,15 @@ describe("stripEllipses", () => {
 
   it("leaves text without ellipses unchanged", () => {
     expect(stripEllipses("Un, deux, trois.")).toBe("Un, deux, trois.");
+  });
+
+  it("does not leave a space before a comma or period after stripping", () => {
+    expect(stripEllipses("Il faudrait..., je pense")).toBe("Il faudrait, je pense");
+    expect(stripEllipses("voilà… .")).toBe("voilà.");
+  });
+
+  it("keeps the French space before ? and !", () => {
+    expect(stripEllipses("Quoi... ?")).toBe("Quoi ?");
+    expect(stripEllipses("Non… !")).toBe("Non !");
   });
 });

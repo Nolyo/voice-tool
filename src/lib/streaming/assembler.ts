@@ -8,6 +8,7 @@ export function stripEllipses(text: string): string {
   return text
     .replace(/(?:\.{3,}|…+)/g, " ")
     .replace(/\s+/g, " ")
+    .replace(/ ([,.])/g, "$1")
     .trim();
 }
 
