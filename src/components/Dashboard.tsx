@@ -295,6 +295,7 @@ export default function Dashboard() {
         onOpenNote={handleOpenNoteFromSidebar}
         onCreateNote={handleCreateNoteFromSidebar}
         onToggleFavorite={toggleFavorite}
+        onToggleLocalOnly={toggleLocalOnly}
         onDeleteNote={handleDeleteNote}
         searchNotes={searchNotes}
         onCreateFolder={createFolder}

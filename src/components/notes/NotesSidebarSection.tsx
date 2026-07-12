@@ -6,6 +6,8 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   Clock,
+  Cloud,
+  CloudOff,
   Folder,
   FolderPlus,
   Pencil,
@@ -76,6 +78,7 @@ interface NotesSidebarSectionProps {
   onOpenNote: (note: NoteMeta) => void;
   onCreateNote: (folderId?: string | null) => void;
   onToggleFavorite: (id: string) => void;
+  onToggleLocalOnly: (id: string) => void;
   onDeleteNote: (id: string) => void;
   searchNotes: (query: string) => Promise<NoteMeta[]>;
   onCreateFolder: (name: string) => Promise<FolderMeta>;
@@ -198,6 +201,16 @@ function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, 
       }}
     >
       <span className="text-xs flex-1 truncate">{note.title}</span>
+      {note.localOnly && (
+        <span
+          className="shrink-0"
+          style={{ color: "var(--vt-fg-4)" }}
+          title={t('notes.localOnly.indicator')}
+          aria-label={t('notes.localOnly.indicator')}
+        >
+          <CloudOff className="w-3 h-3" />
+        </span>
+      )}
       <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
         <button
           className="p-0.5 rounded transition-colors"
@@ -403,6 +416,7 @@ export function NotesSidebarSection({
   onOpenNote,
   onCreateNote,
   onToggleFavorite,
+  onToggleLocalOnly,
   onDeleteNote,
   searchNotes,
   onCreateFolder,
@@ -844,6 +858,16 @@ export function NotesSidebarSection({
       onClick: () => {
         setFolderDialog({ mode: "createAndMove", noteId: note.id });
       },
+    });
+    items.push({ separator: true });
+    items.push({
+      label: (
+        <span className="flex items-center gap-1.5">
+          {note.localOnly ? <Cloud className="w-3 h-3" /> : <CloudOff className="w-3 h-3" />}
+          {note.localOnly ? t('notes.localOnly.makeSynced') : t('notes.localOnly.makeLocal')}
+        </span>
+      ),
+      onClick: () => { onToggleLocalOnly(note.id); },
     });
     return items;
   };
