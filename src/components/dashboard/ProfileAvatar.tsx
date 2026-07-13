@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 /** Initials shown when a profile has no photo. Moved from ProfileSwitcher. */
 export function getInitials(name: string): string {
   return name
@@ -21,12 +23,18 @@ export function ProfileAvatar({
   name,
   className = "",
 }: ProfileAvatarProps) {
-  if (avatarUrl) {
+  // A corrupt avatar.png on disk would render as a broken-image glyph;
+  // fall back to initials instead, and retry when the URL changes.
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [avatarUrl]);
+
+  if (avatarUrl && !broken) {
     return (
       <img
         src={avatarUrl}
         alt=""
         aria-hidden="true"
+        onError={() => setBroken(true)}
         className={`rounded-md object-cover ring-1 ring-primary/30 shrink-0 ${className}`}
       />
     );

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { ProfileAvatar, getInitials } from "./ProfileAvatar";
 
@@ -32,6 +32,17 @@ describe("ProfileAvatar", () => {
     const { container } = render(
       <ProfileAvatar name="Jean Dupont" className="w-7 h-7" />
     );
+    expect(container.querySelector("img")).not.toBeInTheDocument();
+    expect(screen.getByText("JD")).toBeInTheDocument();
+  });
+
+  it("falls back to initials when the image fails to load", () => {
+    const { container } = render(
+      <ProfileAvatar avatarUrl={DATA_URL} name="Jean Dupont" className="w-7 h-7" />
+    );
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    fireEvent.error(img!);
     expect(container.querySelector("img")).not.toBeInTheDocument();
     expect(screen.getByText("JD")).toBeInTheDocument();
   });
