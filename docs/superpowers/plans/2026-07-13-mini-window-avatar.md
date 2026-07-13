@@ -286,4 +286,4 @@ git commit -m "feat: show active profile avatar in the mini window"
 - **Spec coverage:** hook + swallow-all policy (Task 1), left-of-main-row placement idle+recording incl. streaming, layout-dependent sizes, title/aria via `mini.activeProfile` fr+en, no capabilities change, CHANGELOG extension (Task 2). Status row untouched — avatar only renders inside the main-row conditional.
 - **Type consistency:** `ActiveProfileInfo { name: string | null; avatarUrl: string | null }` consumed as `profileName`/`profileAvatarUrl`; `ProfileAvatar` props match PR #81's contract (`avatarUrl?: string | null`, `name: string`, `className`).
 - **Test math:** 490 + 3 = **493 tests / 69 files** after Task 1 (Task 2 adds none).
-- **Drag region note:** the wrapper `<span>` is non-interactive, so window dragging over it keeps working (only `data-tauri-drag-region="false"` elements opt out).
+- **Drag region note:** Tauri drag regions do NOT inherit — the attribute must be stamped on each element (verified in tauri 2.10.3 drag.js). The avatar span is therefore a small non-drag dead zone, consistent with the neighboring visualizer/header elements which don't stamp it either.

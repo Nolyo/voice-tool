@@ -93,6 +93,7 @@ export function MiniShell() {
             {profileName && (
               <span
                 className="flex-shrink-0"
+                role="img"
                 title={t("mini.activeProfile", { name: profileName })}
                 aria-label={t("mini.activeProfile", { name: profileName })}
               >

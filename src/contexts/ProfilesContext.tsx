@@ -7,6 +7,8 @@ import {
   type ReactNode,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
+import { PROFILE_IDENTITY_CHANGED_EVENT } from "@/hooks/useActiveProfileInfo";
 
 export interface ProfileMeta {
   id: string;
@@ -31,6 +33,12 @@ interface ProfilesContextType {
 const ProfilesContext = createContext<ProfilesContextType | undefined>(
   undefined
 );
+
+function broadcastProfileIdentityChanged() {
+  void emit(PROFILE_IDENTITY_CHANGED_EVENT).catch(() => {
+    // Non-fatal: other windows keep their current display until reload.
+  });
+}
 
 export function ProfilesProvider({ children }: { children: ReactNode }) {
   const [profiles, setProfiles] = useState<ProfileMeta[]>([]);
@@ -82,6 +90,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
       setProfiles((prev) =>
         prev.map((p) => (p.id === id ? { ...p, name: newName } : p))
       );
+      broadcastProfileIdentityChanged();
     },
     []
   );
@@ -100,6 +109,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
     async (id: string, dataUrl: string): Promise<void> => {
       await invoke("set_profile_avatar", { id, dataUrl });
       setAvatars((prev) => ({ ...prev, [id]: dataUrl }));
+      broadcastProfileIdentityChanged();
     },
     []
   );
@@ -111,6 +121,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
       delete next[id];
       return next;
     });
+    broadcastProfileIdentityChanged();
   }, []);
 
   const switchProfile = useCallback(async (id: string): Promise<void> => {

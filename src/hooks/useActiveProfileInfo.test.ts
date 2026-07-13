@@ -7,6 +7,15 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invokeMock(...args),
 }));
 
+let identityHandler: (() => void) | null = null;
+const unlistenMock = vi.fn();
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: (_event: string, handler: () => void) => {
+    identityHandler = handler;
+    return Promise.resolve(unlistenMock);
+  },
+}));
+
 import { useActiveProfileInfo } from "./useActiveProfileInfo";
 
 const DATA_URL = "data:image/png;base64,AAAA";
@@ -17,6 +26,7 @@ const PROFILES = [
 
 beforeEach(() => {
   invokeMock.mockReset();
+  identityHandler = null;
 });
 
 describe("useActiveProfileInfo", () => {
@@ -53,5 +63,23 @@ describe("useActiveProfileInfo", () => {
     // Give the effect a tick to settle; nothing must throw or reject unhandled.
     await new Promise((r) => setTimeout(r, 0));
     expect(result.current).toEqual({ name: null, avatarUrl: null });
+  });
+
+  it("reloads the identity when the main window broadcasts a change", async () => {
+    let avatar: string | null = DATA_URL;
+    invokeMock.mockImplementation(async (cmd: unknown) => {
+      if (cmd === "get_active_profile") return "perso";
+      if (cmd === "list_profiles") return PROFILES;
+      if (cmd === "get_profile_avatar") return avatar;
+      return undefined;
+    });
+    const { result } = renderHook(() => useActiveProfileInfo());
+    await waitFor(() => expect(result.current.avatarUrl).toBe(DATA_URL));
+
+    avatar = null;
+    expect(identityHandler).not.toBeNull();
+    identityHandler!();
+    await waitFor(() => expect(result.current.avatarUrl).toBeNull());
+    expect(result.current.name).toBe("Perso");
   });
 });

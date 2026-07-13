@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 interface ProfileMeta {
   id: string;
@@ -13,10 +14,16 @@ export interface ActiveProfileInfo {
 }
 
 /**
- * Loads the active profile's name and avatar once on mount. Errors are
- * swallowed (the mini window must never break over an avatar), and no
- * listener is needed: switching profiles reloads every WebView, so
- * mount-time data is always fresh.
+ * Emitted by the main window whenever a profile's display identity (name,
+ * avatar) changes, so long-lived windows (mini) can refresh what they show.
+ */
+export const PROFILE_IDENTITY_CHANGED_EVENT = "profile-identity-changed";
+
+/**
+ * Loads the active profile's name and avatar on mount, and reloads on
+ * PROFILE_IDENTITY_CHANGED_EVENT (avatar/name edits in the main window).
+ * Errors are swallowed (the mini window must never break over an avatar).
+ * Profile switches reload every WebView, so they need no extra handling.
  */
 export function useActiveProfileInfo(): ActiveProfileInfo {
   const [info, setInfo] = useState<ActiveProfileInfo>({
@@ -26,7 +33,8 @@ export function useActiveProfileInfo(): ActiveProfileInfo {
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
+
+    async function load() {
       try {
         const [id, profiles] = await Promise.all([
           invoke<string>("get_active_profile"),
@@ -45,9 +53,16 @@ export function useActiveProfileInfo(): ActiveProfileInfo {
       } catch {
         // Swallow — the mini window renders without the avatar.
       }
-    })();
+    }
+
+    void load();
+    const unlistenPromise = listen(PROFILE_IDENTITY_CHANGED_EVENT, () => {
+      void load();
+    });
+
     return () => {
       cancelled = true;
+      void unlistenPromise.then((unlisten) => unlisten()).catch(() => {});
     };
   }, []);
 

@@ -26,8 +26,10 @@ d'un coup d'œil le profil en cours de dictée. Fallback initiales pour les prof
   `invoke("get_profile_avatar", { id })` → data-URL ou null.
 - Retourne `{ name: string | null, avatarUrl: string | null }` (null tant que non chargé ou
   en cas d'erreur — chaque étape est enveloppée, échec silencieux).
-- Pas de listener : `switch_profile` recharge toutes les WebViews (`window.location.reload()`),
-  donc un fetch au montage est toujours frais.
+- Fraîcheur : `switch_profile` recharge toutes les WebViews (fetch au montage à jour au switch) ;
+  pour les éditions EN SESSION (photo changée/retirée, profil renommé), la fenêtre principale
+  émet `profile-identity-changed` (constante `PROFILE_IDENTITY_CHANGED_EVENT`) et le hook
+  ré-exécute son fetch à réception (finding revue finale — la mini window vit toute la session).
 
 **Affichage** — dans `MiniShell` (`src/components/mini-window/MiniShell.tsx`) :
 
@@ -45,7 +47,7 @@ d'un coup d'œil le profil en cours de dictée. Fallback initiales pour les prof
 
 - Vitest, hook `useActiveProfileInfo` (mock `@tauri-apps/api/core`) : (1) chargement nominal
   nom + avatar ; (2) profil sans photo → `avatarUrl` null, nom présent ; (3) invoke qui rejette
-  → `{ null, null }` sans erreur non gérée. Base : 490/68 (branche #81) → attendu 493/69.
+  → `{ null, null }` sans erreur non gérée ; (4) re-fetch sur événement identité. Base : 490/68 (branche #81) → attendu 495/69.
 - Vérification manuelle : mini window en dictée, avatar visible ; switch profil → avatar mis à jour.
 
 ## Livraison
