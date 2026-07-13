@@ -126,6 +126,10 @@ export function mapFolderToCloud(folder: LocalFolderMeta): FolderPayload {
   return {
     id: folder.id,
     name: folder.name,
+    // `|| null` (not `??`): an empty-string icon can only come from an
+    // out-of-band DB write pulled into the local store; forwarding it would
+    // 400 the whole push batch (Edge rejects "" with min(1)).
+    icon: folder.icon || null,
     order: folder.order,
     updated_at: folder.updatedAt,
     deleted_at: folder.deletedAt ?? null,
@@ -139,6 +143,7 @@ export function mapFolderFromCloud(row: CloudUserFolderRow): LocalFolderMeta {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     order: row.order,
+    ...(typeof row.icon === "string" && { icon: row.icon }),
     ...(row.deleted_at !== null && { deletedAt: row.deleted_at }),
   };
 }

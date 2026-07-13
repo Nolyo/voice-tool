@@ -721,7 +721,11 @@
       "unfiled": "Unfiled",
       "moveTo": "Move to...",
       "moveToRoot": "No folder (root)",
-      "namePrompt": "Folder name"
+      "namePrompt": "Folder name",
+      "iconLabel": "Icon",
+      "iconNone": "No icon",
+      "iconCustomPlaceholder": "Paste an emoji (Win + .)",
+      "iconPick": "Use {{emoji}}"
     },
     "errors": {
       "moveFailed": "Failed to move the note"

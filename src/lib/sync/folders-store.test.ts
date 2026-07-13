@@ -93,7 +93,7 @@ describe("createFolderSynced", () => {
   it("invokes create_folder then enqueues folder-upsert", async () => {
     const folder = makeFolder({ id: "fld-1", name: "Work", order: 2 });
     invokeHandlers["create_folder"] = (args) => {
-      expect(args).toEqual({ name: "Work" });
+      expect(args).toEqual({ name: "Work", icon: null });
       return folder;
     };
     const result = await createFolderSynced("Work");
@@ -130,13 +130,25 @@ describe("createFolderSynced", () => {
     await createFolderSynced("Active");
     expect(enqueueMock).toHaveBeenCalledTimes(1);
   });
+
+  it("passes the icon to create_folder and ships it in the enqueued op", async () => {
+    const folder = makeFolder({ id: "fld-icon", name: "Fire", icon: "🔥" });
+    invokeHandlers["create_folder"] = (args) => {
+      expect(args).toEqual({ name: "Fire", icon: "🔥" });
+      return folder;
+    };
+    await createFolderSynced("Fire", "🔥");
+    const op = enqueueMock.mock.calls[0][0];
+    if (op.kind !== "folder-upsert") throw new Error("expected folder-upsert");
+    expect(op.folder.icon).toBe("🔥");
+  });
 });
 
 describe("renameFolderSynced", () => {
   it("invokes rename_folder then enqueues folder-upsert", async () => {
     const folder = makeFolder({ id: "fld-2", name: "Renamed" });
     invokeHandlers["rename_folder"] = (args) => {
-      expect(args).toEqual({ id: "fld-2", name: "Renamed" });
+      expect(args).toEqual({ id: "fld-2", name: "Renamed", icon: null });
       return folder;
     };
     const result = await renameFolderSynced("fld-2", "Renamed");
@@ -144,6 +156,18 @@ describe("renameFolderSynced", () => {
     const op = enqueueMock.mock.calls[0][0];
     if (op.kind !== "folder-upsert") throw new Error("expected folder-upsert");
     expect(op.folder.name).toBe("Renamed");
+  });
+
+  it("passes the icon to rename_folder and ships it in the enqueued op", async () => {
+    const folder = makeFolder({ id: "fld-5", name: "Goals", icon: "🎯" });
+    invokeHandlers["rename_folder"] = (args) => {
+      expect(args).toEqual({ id: "fld-5", name: "Goals", icon: "🎯" });
+      return folder;
+    };
+    await renameFolderSynced("fld-5", "Goals", "🎯");
+    const op = enqueueMock.mock.calls[0][0];
+    if (op.kind !== "folder-upsert") throw new Error("expected folder-upsert");
+    expect(op.folder.icon).toBe("🎯");
   });
 });
 

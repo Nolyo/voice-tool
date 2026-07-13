@@ -56,6 +56,11 @@ export const FolderPayloadSchema = z.object({
   // .min(1) mirrors DB CHECK (char_length(name) between 1 and 200). Title côté note n'a pas de min DB
   // (default ''), donc on laisse `NotePayloadSchema.title` sans `.min(1)`.
   name: z.string().min(1).max(200),
+  // Emoji icon (PR4). Optional for backward-compat with pre-icon clients; the
+  // handler stamps null when absent (row-level LWW — an old client renaming a
+  // folder clears its icon, accepted trade-off). max(32) covers the longest
+  // ZWJ emoji sequences; min(1) rejects "" (clients normalize "" → null).
+  icon: z.string().min(1).max(32).nullable().optional(),
   order: z.number().int(),
   updated_at: offsetDatetime(),
   deleted_at: offsetDatetime().nullable().optional(),

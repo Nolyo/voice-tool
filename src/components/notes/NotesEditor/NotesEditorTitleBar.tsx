@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { FloatingMenu, type FloatingMenuEntry } from "@/components/ui/floating-menu";
+import { FolderIcon } from "@/components/notes/FolderIcon";
 import { FolderNameDialog } from "@/components/notes/FolderNameDialog";
 import { type NoteMeta, deriveTitle } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
@@ -27,7 +28,7 @@ interface NotesEditorTitleBarProps {
   onTabClose: (id: string) => void;
   onCreateNote: () => void;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
-  onCreateFolder: (name: string) => Promise<FolderMeta>;
+  onCreateFolder: (name: string, icon?: string | null) => Promise<FolderMeta>;
 }
 
 export function NotesEditorTitleBar({
@@ -82,7 +83,7 @@ export function NotesEditorTitleBar({
             items.push({
               label: (
                 <span className="flex items-center gap-1.5">
-                  <Folder className="w-3 h-3" />
+                  <FolderIcon icon={folder.icon} className="w-3 h-3" />
                   {folder.name}
                 </span>
               ),
@@ -174,7 +175,7 @@ export function NotesEditorTitleBar({
             className="notes-folder-badge"
             title={t("notes.folders.moveTo")}
           >
-            <Folder className="notes-folder-badge-icon w-3 h-3" />
+            <FolderIcon icon={activeFolder?.icon} className="notes-folder-badge-icon w-3 h-3" />
             <span className="truncate">
               {activeFolder ? activeFolder.name : t("notes.folders.unfiled")}
             </span>
@@ -197,10 +198,10 @@ export function NotesEditorTitleBar({
         open={createFolderForNoteId !== null}
         mode="create"
         onOpenChange={(open) => { if (!open) setCreateFolderForNoteId(null); }}
-        onSubmit={(name) => {
+        onSubmit={(name, icon) => {
           const noteId = createFolderForNoteId;
           if (!noteId) return;
-          void onCreateFolder(name).then((folder) => onMoveNote(noteId, folder.id));
+          void onCreateFolder(name, icon).then((folder) => onMoveNote(noteId, folder.id));
         }}
       />
     </div>

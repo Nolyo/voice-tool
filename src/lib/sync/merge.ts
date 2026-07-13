@@ -128,6 +128,7 @@ export function mergeFolderLWW(
     createdAt: remote.created_at,
     updatedAt: remote.updated_at,
     order: remote.order,
+    ...(typeof remote.icon === "string" && { icon: remote.icon }),
     ...(remote.deleted_at !== null && { deletedAt: remote.deleted_at }),
   };
   if (!local) return remoteAsLocal;

@@ -721,7 +721,11 @@
       "unfiled": "Sans dossier",
       "moveTo": "Déplacer vers...",
       "moveToRoot": "Aucun dossier (racine)",
-      "namePrompt": "Nom du dossier"
+      "namePrompt": "Nom du dossier",
+      "iconLabel": "Icône",
+      "iconNone": "Aucune icône",
+      "iconCustomPlaceholder": "Collez un emoji (Win + .)",
+      "iconPick": "Utiliser {{emoji}}"
     },
     "errors": {
       "moveFailed": "Échec du déplacement de la note"
