@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [3.1.0] - 2026-07-13
 
 ### Added
 - **Streaming mode (live transcription)** — Lexena Cloud exclusive. When enabled (Settings → Dictation → Transcription), speech is segmented at natural pauses on the Rust side and each segment is transcribed while you keep talking: the text appears sentence by sentence in the mini window (in place of the visualizer) and in the home hero card (teleprompter style), ~1-2 s after each pause. On stop, the assembled text goes through the unchanged pipeline (AI post-process, snippets, history, auto-paste). Works with the toggle hotkey, push-to-talk and the record button; cancel (Escape) discards everything. Billing is identical to batch (sum of segment durations through the existing `/transcribe` endpoint); quota/auth errors stop the recording cleanly, isolated network failures skip a segment with a warning.
