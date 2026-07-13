@@ -72,6 +72,7 @@ tauri-plugin-deep-link = "2.4.7"
 
 # Date/time for timestamps
 chrono = "0.4"
+base64 = "0.22"
 time = { version = "0.3", features = ["formatting"] }
 
 # UUID generation for note IDs

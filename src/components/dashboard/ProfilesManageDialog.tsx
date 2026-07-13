@@ -1,10 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import {
+  Check,
+  ImageMinus,
+  ImagePlus,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useProfiles, type ProfileMeta } from "@/contexts/ProfilesContext";
+import { fileToAvatarDataUrl } from "@/lib/avatar";
+import { ProfileAvatar } from "./ProfileAvatar";
 
 interface ProfilesManageDialogProps {
   onClose: () => void;
@@ -16,13 +25,48 @@ export function ProfilesManageDialog({
   onCreateNew,
 }: ProfilesManageDialogProps) {
   const { t } = useTranslation();
-  const { profiles, activeProfileId, renameProfile, deleteProfile } =
-    useProfiles();
+  const {
+    profiles,
+    activeProfileId,
+    renameProfile,
+    deleteProfile,
+    avatars,
+    setProfileAvatar,
+    clearProfileAvatar,
+  } = useProfiles();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const avatarTargetIdRef = useRef<string | null>(null);
+
+  function pickAvatar(id: string) {
+    avatarTargetIdRef.current = id;
+    avatarInputRef.current?.click();
+  }
+
+  async function handleAvatarFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const id = avatarTargetIdRef.current;
+    e.target.value = "";
+    if (!file || !id) return;
+    try {
+      const dataUrl = await fileToAvatarDataUrl(file);
+      await setProfileAvatar(id, dataUrl);
+    } catch (err) {
+      toast.error(t("profile.errorAvatar") + ": " + String(err));
+    }
+  }
+
+  async function handleAvatarRemove(id: string) {
+    try {
+      await clearProfileAvatar(id);
+    } catch (err) {
+      toast.error(t("profile.errorAvatar") + ": " + String(err));
+    }
+  }
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -140,6 +184,11 @@ export function ProfilesManageDialog({
               ) : (
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
+                    <ProfileAvatar
+                      avatarUrl={avatars[profile.id]}
+                      name={profile.name}
+                      className="w-6 h-6 text-[10px]"
+                    />
                     <span className="truncate font-medium">{profile.name}</span>
                     {profile.id === activeProfileId && (
                       <span className="text-xs text-primary shrink-0">
@@ -148,6 +197,22 @@ export function ProfilesManageDialog({
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => pickAvatar(profile.id)}
+                      className="text-muted-foreground hover:text-foreground cursor-pointer p-1 rounded"
+                      title={t("profile.avatarChange")}
+                    >
+                      <ImagePlus className="w-3.5 h-3.5" />
+                    </button>
+                    {avatars[profile.id] && (
+                      <button
+                        onClick={() => handleAvatarRemove(profile.id)}
+                        className="text-muted-foreground hover:text-foreground cursor-pointer p-1 rounded"
+                        title={t("profile.avatarRemove")}
+                      >
+                        <ImageMinus className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={() => startEdit(profile)}
                       className="text-muted-foreground hover:text-foreground cursor-pointer p-1 rounded"
@@ -180,6 +245,14 @@ export function ProfilesManageDialog({
             {t("common.close")}
           </Button>
         </div>
+
+        <input
+          ref={avatarInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleAvatarFile}
+        />
       </div>
     </div>
   );

@@ -2713,6 +2713,7 @@ name = "lexena"
 version = "3.1.0-beta.1"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "chrono",
  "cpal",
  "enigo",

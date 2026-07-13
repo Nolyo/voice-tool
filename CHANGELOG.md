@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Notes sidebar** — new toolbar button to collapse or expand all folders and sections (Favorites, Recents, Unfiled) at once.
 - **Local-only notes** — a per-note "local note" toggle (editor header cloud icon + sidebar context menu) keeps a note out of cloud sync entirely. Switching a synced note to local removes it from the cloud and other devices while keeping the local copy intact; switching back re-uploads it. Empty notes are no longer pushed to the cloud.
 - **Folder emojis** — pick an emoji per folder (curated grid + free input) shown in the sidebar, move-to menus and editor breadcrumb; synced across devices.
+- **Profile pictures** — set a local photo per profile from the profile manager (center-cropped and resized to 256×256, stored on this device only, never synced); shown in the profile switcher button and list, with initials as fallback.
 
 ### Fixed
 - **Streaming mode** — hesitation pauses no longer leave stray ellipses ("...") in the live transcript and the final text; Whisper's hesitation artifacts are stripped from each segment. A session made only of hesitations is now treated as an empty recording instead of producing a junk "..." history entry.

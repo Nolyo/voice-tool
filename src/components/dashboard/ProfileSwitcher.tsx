@@ -18,6 +18,7 @@ import { useProfiles } from "@/contexts/ProfilesContext";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { ProfilesManageDialog } from "./ProfilesManageDialog";
+import { ProfileAvatar } from "./ProfileAvatar";
 
 interface ProfileSwitcherProps {
   collapsed: boolean;
@@ -29,7 +30,7 @@ export function ProfileSwitcher({
   onOpenAccountPage,
 }: ProfileSwitcherProps) {
   const { t } = useTranslation();
-  const { profiles, activeProfileId, createProfile, switchProfile } =
+  const { profiles, activeProfileId, createProfile, switchProfile, avatars } =
     useProfiles();
   const { status, user, openAuthModal, signOut } = useAuth();
 
@@ -83,15 +84,6 @@ export function ProfileSwitcher({
       cancelled = true;
     };
   }, [isSignedIn, user?.id]);
-
-  function getInitials(name: string) {
-    return name
-      .split(" ")
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  }
 
   function getAccountInitials(email: string | null | undefined): string {
     if (!email) return "?";
@@ -199,9 +191,11 @@ export function ProfileSwitcher({
           }`}
         >
           {/* Avatar */}
-          <div className="w-7 h-7 rounded-md bg-primary/15 ring-1 ring-primary/30 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
-            {activeProfile ? getInitials(activeProfile.name) : "?"}
-          </div>
+          <ProfileAvatar
+            avatarUrl={activeProfile ? avatars[activeProfile.id] : undefined}
+            name={activeProfile?.name ?? "?"}
+            className="w-7 h-7 text-[11px]"
+          />
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0 text-left leading-tight">
@@ -300,9 +294,11 @@ export function ProfileSwitcher({
                   onClick={() => handleSwitch(profile.id)}
                   className="w-full flex items-center gap-2 px-1.5 py-1.5 rounded-md text-sm text-left hover:bg-accent/50 cursor-pointer"
                 >
-                  <div className="w-6 h-6 rounded-md bg-primary/15 ring-1 ring-primary/30 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">
-                    {getInitials(profile.name)}
-                  </div>
+                  <ProfileAvatar
+                    avatarUrl={avatars[profile.id]}
+                    name={profile.name}
+                    className="w-6 h-6 text-[10px]"
+                  />
                   <span className="flex-1 truncate text-[12.5px]">
                     {profile.name}
                   </span>

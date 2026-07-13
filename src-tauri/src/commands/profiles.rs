@@ -214,3 +214,41 @@ pub fn switch_profile(app: AppHandle, id: String) -> Result<(), String> {
 
     Ok(())
 }
+
+/// Set a profile's avatar from a PNG data-URL (validates profile + payload)
+#[tauri::command]
+pub fn set_profile_avatar(app: AppHandle, id: String, data_url: String) -> Result<(), String> {
+    let manifest = load_manifest(&app).map_err(|e| e.to_string())?;
+    if !crate::profiles::profile_exists(&manifest, &id) {
+        return Err(format!("Profile '{}' not found.", id));
+    }
+    let bytes = crate::profiles::decode_avatar_data_url(&data_url)?;
+    let dir = get_profile_dir(&app, &id).map_err(|e| e.to_string())?;
+    crate::profiles::write_avatar_in(&dir, &bytes)?;
+    tracing::info!("Set avatar for profile: {}", id);
+    Ok(())
+}
+
+/// Get a profile's avatar as a PNG data-URL, or None if absent
+#[tauri::command]
+pub fn get_profile_avatar(app: AppHandle, id: String) -> Result<Option<String>, String> {
+    let manifest = load_manifest(&app).map_err(|e| e.to_string())?;
+    if !crate::profiles::profile_exists(&manifest, &id) {
+        return Err(format!("Profile '{}' not found.", id));
+    }
+    let dir = get_profile_dir(&app, &id).map_err(|e| e.to_string())?;
+    Ok(crate::profiles::read_avatar_data_url_in(&dir))
+}
+
+/// Remove a profile's avatar (no-op if absent)
+#[tauri::command]
+pub fn clear_profile_avatar(app: AppHandle, id: String) -> Result<(), String> {
+    let manifest = load_manifest(&app).map_err(|e| e.to_string())?;
+    if !crate::profiles::profile_exists(&manifest, &id) {
+        return Err(format!("Profile '{}' not found.", id));
+    }
+    let dir = get_profile_dir(&app, &id).map_err(|e| e.to_string())?;
+    crate::profiles::clear_avatar_in(&dir)?;
+    tracing::info!("Cleared avatar for profile: {}", id);
+    Ok(())
+}
