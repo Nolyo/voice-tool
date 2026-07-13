@@ -130,7 +130,17 @@ export function FolderNameDialog({
             </div>
             <Input
               value={customValue}
-              onChange={(e) => setIcon(firstGrapheme(e.target.value))}
+              onChange={(e) => {
+                const raw = e.target.value;
+                // The field never holds more than one grapheme; when a
+                // keystroke appends to the existing one, prefer what was just
+                // typed so typing replaces the icon instead of being ignored.
+                const addition =
+                  customValue && raw.startsWith(customValue)
+                    ? raw.slice(customValue.length)
+                    : raw;
+                setIcon(firstGrapheme(addition) ?? firstGrapheme(raw));
+              }}
               placeholder={t("notes.folders.iconCustomPlaceholder")}
               aria-label={t("notes.folders.iconCustomPlaceholder")}
               autoComplete="off"

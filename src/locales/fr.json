@@ -724,7 +724,7 @@
       "namePrompt": "Nom du dossier",
       "iconLabel": "Icône",
       "iconNone": "Aucune icône",
-      "iconCustomPlaceholder": "Ou tapez un emoji…",
+      "iconCustomPlaceholder": "Collez un emoji (Win + .)",
       "iconPick": "Utiliser {{emoji}}"
     },
     "errors": {

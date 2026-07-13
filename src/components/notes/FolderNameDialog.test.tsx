@@ -60,6 +60,25 @@ describe("FolderNameDialog icon picker", () => {
     expect(onSubmit).toHaveBeenCalledWith("Work", "📌");
   });
 
+  it("typing over an existing custom icon replaces it", () => {
+    const { onSubmit } = renderDialog();
+    fireEvent.change(nameInput(), { target: { value: "Work" } });
+    fireEvent.change(customInput(), { target: { value: "a" } });
+    // The field now shows "a"; a further keystroke appends in the DOM value.
+    fireEvent.change(customInput(), { target: { value: "ab" } });
+    fireEvent.click(saveButton());
+    expect(onSubmit).toHaveBeenCalledWith("Work", "b");
+  });
+
+  it("clearing the custom input clears the icon", () => {
+    const { onSubmit } = renderDialog();
+    fireEvent.change(nameInput(), { target: { value: "Work" } });
+    fireEvent.change(customInput(), { target: { value: "a" } });
+    fireEvent.change(customInput(), { target: { value: "" } });
+    fireEvent.click(saveButton());
+    expect(onSubmit).toHaveBeenCalledWith("Work", null);
+  });
+
   it("rename: save is disabled when name and icon are unchanged", () => {
     renderDialog({ mode: "rename", initialValue: "Docs", initialIcon: "📁" });
     expect(saveButton()).toBeDisabled();

@@ -724,7 +724,7 @@
       "namePrompt": "Folder name",
       "iconLabel": "Icon",
       "iconNone": "No icon",
-      "iconCustomPlaceholder": "Or type an emoji…",
+      "iconCustomPlaceholder": "Paste an emoji (Win + .)",
       "iconPick": "Use {{emoji}}"
     },
     "errors": {
