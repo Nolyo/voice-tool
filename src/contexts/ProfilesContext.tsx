@@ -18,10 +18,14 @@ interface ProfilesContextType {
   profiles: ProfileMeta[];
   activeProfileId: string;
   isLoaded: boolean;
+  /** Profile id -> PNG data-URL. No entry = no avatar. */
+  avatars: Record<string, string>;
   createProfile: (name: string) => Promise<ProfileMeta>;
   renameProfile: (id: string, newName: string) => Promise<void>;
   deleteProfile: (id: string) => Promise<void>;
   switchProfile: (id: string) => Promise<void>;
+  setProfileAvatar: (id: string, dataUrl: string) => Promise<void>;
+  clearProfileAvatar: (id: string) => Promise<void>;
 }
 
 const ProfilesContext = createContext<ProfilesContextType | undefined>(
@@ -32,6 +36,7 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
   const [profiles, setProfiles] = useState<ProfileMeta[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string>("");
   const [isLoaded, setIsLoaded] = useState(false);
+  const [avatars, setAvatars] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function load() {
@@ -42,6 +47,20 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
         ]);
         setProfiles(list);
         setActiveProfileId(active);
+
+        const entries = await Promise.all(
+          list.map(async (p) => {
+            const url = await invoke<string | null>("get_profile_avatar", {
+              id: p.id,
+            }).catch(() => null);
+            return [p.id, url] as const;
+          })
+        );
+        const map: Record<string, string> = {};
+        for (const [id, url] of entries) {
+          if (typeof url === "string") map[id] = url;
+        }
+        setAvatars(map);
       } catch (err) {
         console.error("Failed to load profiles:", err);
       } finally {
@@ -70,6 +89,28 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
   const deleteProfile = useCallback(async (id: string): Promise<void> => {
     await invoke("delete_profile", { id });
     setProfiles((prev) => prev.filter((p) => p.id !== id));
+    setAvatars((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
+  const setProfileAvatar = useCallback(
+    async (id: string, dataUrl: string): Promise<void> => {
+      await invoke("set_profile_avatar", { id, dataUrl });
+      setAvatars((prev) => ({ ...prev, [id]: dataUrl }));
+    },
+    []
+  );
+
+  const clearProfileAvatar = useCallback(async (id: string): Promise<void> => {
+    await invoke("clear_profile_avatar", { id });
+    setAvatars((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }, []);
 
   const switchProfile = useCallback(async (id: string): Promise<void> => {
@@ -83,10 +124,13 @@ export function ProfilesProvider({ children }: { children: ReactNode }) {
         profiles,
         activeProfileId,
         isLoaded,
+        avatars,
         createProfile,
         renameProfile,
         deleteProfile,
         switchProfile,
+        setProfileAvatar,
+        clearProfileAvatar,
       }}
     >
       {children}
