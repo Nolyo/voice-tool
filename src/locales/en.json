@@ -251,7 +251,10 @@
     "errorDelete": "Failed to delete profile",
     "errorSwitch": "Failed to switch profile",
     "localNotSynced": "Local · not synced",
-    "activeProfileLabel": "Active profile"
+    "activeProfileLabel": "Active profile",
+    "avatarChange": "Change photo",
+    "avatarRemove": "Remove photo",
+    "errorAvatar": "Failed to update photo"
   },
   "recording": {
     "transcribing": "Transcribing...",

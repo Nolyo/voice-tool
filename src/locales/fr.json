@@ -251,7 +251,10 @@
     "errorDelete": "Impossible de supprimer le profil",
     "errorSwitch": "Impossible de changer de profil",
     "localNotSynced": "Local · non synchronisé",
-    "activeProfileLabel": "Profil actif"
+    "activeProfileLabel": "Profil actif",
+    "avatarChange": "Changer la photo",
+    "avatarRemove": "Retirer la photo",
+    "errorAvatar": "Impossible de mettre à jour la photo"
   },
   "recording": {
     "transcribing": "Transcription en cours...",
