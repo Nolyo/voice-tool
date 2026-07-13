@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useMiniWindowState } from "@/hooks/useMiniWindowState";
 import { useMiniWindowSize } from "@/hooks/useMiniWindowSize";
+import { useActiveProfileInfo } from "@/hooks/useActiveProfileInfo";
+import { ProfileAvatar } from "@/components/dashboard/ProfileAvatar";
 import { MiniVisualizer } from "./MiniVisualizer";
 import { MiniHeader } from "./MiniHeader";
 import { MiniStreamingHud } from "./MiniStreamingHud";
@@ -35,6 +37,8 @@ export function MiniShell() {
   const translateDisabled = false;
   const translateDisabledReason: string | undefined = undefined;
   const layout = useMiniWindowSize();
+  const { name: profileName, avatarUrl: profileAvatarUrl } =
+    useActiveProfileInfo();
 
   // Transparent background for the frameless window. We also apply the
   // `vt-app` design system scope so MiniHeader/MiniVisualizer/MiniTranscriptPreview
@@ -86,6 +90,23 @@ export function MiniShell() {
             className="flex flex-1 items-center gap-2 min-h-0"
             data-tauri-drag-region
           >
+            {profileName && (
+              <span
+                className="flex-shrink-0"
+                title={t("mini.activeProfile", { name: profileName })}
+                aria-label={t("mini.activeProfile", { name: profileName })}
+              >
+                <ProfileAvatar
+                  avatarUrl={profileAvatarUrl}
+                  name={profileName}
+                  className={
+                    layout === "compact"
+                      ? "h-5 w-5 text-[8px]"
+                      : "h-6 w-6 text-[10px]"
+                  }
+                />
+              </span>
+            )}
             {status === "recording" && isStreamingLive ? (
               // Streaming session: live-dictation HUD from the first second —
               // audio pip + transcript tail (or listening placeholder) + caret.

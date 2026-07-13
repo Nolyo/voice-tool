@@ -865,7 +865,8 @@
     "recordingHint": "Recording…",
     "noTranscriptYet": "No transcription yet",
     "listening": "Listening…",
-    "liveBadge": "LIVE"
+    "liveBadge": "LIVE",
+    "activeProfile": "Active profile: {{name}}"
   },
   "logs": {
     "limitReached": "(limit reached)",
