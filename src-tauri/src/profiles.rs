@@ -281,6 +281,68 @@ pub fn migrate_global_snippets_dict_to_default(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
+// --- Profile avatar (local photo) ---
+//
+// The avatar is `profiles/<id>/avatar.png` (256×256, produced by the frontend
+// canvas). File presence is the source of truth — no ProfileMeta field.
+// IPC carries PNG data-URLs both ways.
+
+pub const AVATAR_FILENAME: &str = "avatar.png";
+pub const AVATAR_DATA_URL_PREFIX: &str = "data:image/png;base64,";
+/// Decoded payload cap. A 256×256 PNG is ~30-80 KB; 1 MB is a generous guard
+/// against arbitrary renderer payloads landing on disk.
+pub const AVATAR_MAX_BYTES: usize = 1024 * 1024;
+pub const PNG_MAGIC: [u8; 8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
+pub fn profile_exists(manifest: &ProfilesManifest, id: &str) -> bool {
+    manifest.profiles.iter().any(|p| p.id == id)
+}
+
+/// Decode and validate an avatar data-URL. Pure (testable).
+pub fn decode_avatar_data_url(data_url: &str) -> Result<Vec<u8>, String> {
+    use base64::Engine as _;
+
+    let b64 = data_url
+        .strip_prefix(AVATAR_DATA_URL_PREFIX)
+        .ok_or_else(|| "Avatar must be a PNG data-URL.".to_string())?;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(b64)
+        .map_err(|e| format!("Invalid base64 avatar payload: {}", e))?;
+    if bytes.len() > AVATAR_MAX_BYTES {
+        return Err("Avatar image is too large (max 1 MB).".to_string());
+    }
+    if bytes.len() < PNG_MAGIC.len() || bytes[..PNG_MAGIC.len()] != PNG_MAGIC {
+        return Err("Avatar payload is not a PNG image.".to_string());
+    }
+    Ok(bytes)
+}
+
+pub fn write_avatar_in(profile_dir: &std::path::Path, bytes: &[u8]) -> Result<(), String> {
+    fs::create_dir_all(profile_dir)
+        .map_err(|e| format!("Failed to create profile directory: {}", e))?;
+    fs::write(profile_dir.join(AVATAR_FILENAME), bytes)
+        .map_err(|e| format!("Failed to write avatar: {}", e))
+}
+
+pub fn read_avatar_data_url_in(profile_dir: &std::path::Path) -> Option<String> {
+    use base64::Engine as _;
+
+    let bytes = fs::read(profile_dir.join(AVATAR_FILENAME)).ok()?;
+    Some(format!(
+        "{}{}",
+        AVATAR_DATA_URL_PREFIX,
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    ))
+}
+
+pub fn clear_avatar_in(profile_dir: &std::path::Path) -> Result<(), String> {
+    let path = profile_dir.join(AVATAR_FILENAME);
+    if path.exists() {
+        fs::remove_file(&path).map_err(|e| format!("Failed to remove avatar: {}", e))?;
+    }
+    Ok(())
+}
+
 // --- ID / name helpers ---
 
 pub fn name_to_id(name: &str) -> String {
@@ -403,5 +465,94 @@ mod tests {
         cleanup_legacy_root_sync_stores_in(&dir).unwrap();
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    use super::{
+        clear_avatar_in, decode_avatar_data_url, profile_exists, read_avatar_data_url_in,
+        write_avatar_in, ProfileMeta, ProfilesManifest, AVATAR_DATA_URL_PREFIX, PNG_MAGIC,
+    };
+
+    /// Minimal valid payload: PNG magic followed by arbitrary bytes.
+    fn fake_png() -> Vec<u8> {
+        let mut v = PNG_MAGIC.to_vec();
+        v.extend_from_slice(b"not-a-real-png-but-magic-is-enough");
+        v
+    }
+
+    fn to_data_url(bytes: &[u8]) -> String {
+        use base64::Engine as _;
+        format!(
+            "{}{}",
+            AVATAR_DATA_URL_PREFIX,
+            base64::engine::general_purpose::STANDARD.encode(bytes)
+        )
+    }
+
+    #[test]
+    fn decode_avatar_data_url_roundtrips_png_bytes() {
+        let bytes = fake_png();
+        let decoded = decode_avatar_data_url(&to_data_url(&bytes)).unwrap();
+        assert_eq!(decoded, bytes);
+    }
+
+    #[test]
+    fn decode_avatar_rejects_wrong_prefix() {
+        let err = decode_avatar_data_url("data:image/jpeg;base64,AAAA").unwrap_err();
+        assert!(err.contains("PNG data-URL"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn decode_avatar_rejects_invalid_base64() {
+        let url = format!("{}%%%not-base64%%%", AVATAR_DATA_URL_PREFIX);
+        assert!(decode_avatar_data_url(&url).is_err());
+    }
+
+    #[test]
+    fn decode_avatar_rejects_non_png_payload() {
+        assert!(decode_avatar_data_url(&to_data_url(b"hello world")).is_err());
+    }
+
+    #[test]
+    fn decode_avatar_rejects_oversized_payload() {
+        let mut big = PNG_MAGIC.to_vec();
+        big.resize(super::AVATAR_MAX_BYTES + 1, 0u8);
+        let err = decode_avatar_data_url(&to_data_url(&big)).unwrap_err();
+        assert!(err.contains("too large"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn avatar_write_read_clear_roundtrip() {
+        let dir = std::env::temp_dir().join(format!("lexena_avatar_test_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+
+        // Missing file -> None
+        assert!(read_avatar_data_url_in(&dir).is_none());
+
+        let bytes = fake_png();
+        write_avatar_in(&dir, &bytes).unwrap();
+        let url = read_avatar_data_url_in(&dir).expect("avatar should exist");
+        assert!(url.starts_with(AVATAR_DATA_URL_PREFIX));
+        assert_eq!(decode_avatar_data_url(&url).unwrap(), bytes);
+
+        clear_avatar_in(&dir).unwrap();
+        assert!(read_avatar_data_url_in(&dir).is_none());
+        // Idempotent
+        clear_avatar_in(&dir).unwrap();
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn profile_exists_checks_manifest_ids() {
+        let manifest = ProfilesManifest {
+            active: "default".to_string(),
+            profiles: vec![ProfileMeta {
+                id: "default".to_string(),
+                name: "Default".to_string(),
+                created_at: "2026-01-01T00:00:00Z".to_string(),
+            }],
+        };
+        assert!(profile_exists(&manifest, "default"));
+        assert!(!profile_exists(&manifest, "ghost"));
     }
 }
