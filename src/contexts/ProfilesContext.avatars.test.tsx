@@ -8,6 +8,11 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invokeMock(...args),
 }));
 
+const emitMock = vi.fn(async (..._args: unknown[]) => {});
+vi.mock("@tauri-apps/api/event", () => ({
+  emit: (...args: unknown[]) => emitMock(...args),
+}));
+
 import { ProfilesProvider, useProfiles } from "./ProfilesContext";
 
 const DATA_URL = "data:image/png;base64,AAAA";
@@ -34,6 +39,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 beforeEach(() => {
   invokeMock.mockReset();
   mockBackend();
+  emitMock.mockReset();
 });
 
 describe("ProfilesContext avatars", () => {
@@ -66,5 +72,21 @@ describe("ProfilesContext avatars", () => {
       id: "default",
     });
     expect(result.current.avatars).toEqual({});
+  });
+
+  it("broadcasts an identity change on avatar set, clear and rename", async () => {
+    const { result } = renderHook(() => useProfiles(), { wrapper });
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+
+    await act(() => result.current.setProfileAvatar("work", NEW_URL));
+    await act(() => result.current.clearProfileAvatar("default"));
+    await act(() => result.current.renameProfile("work", "Boulot"));
+
+    const events = emitMock.mock.calls.map((c) => c[0]);
+    expect(events).toEqual([
+      "profile-identity-changed",
+      "profile-identity-changed",
+      "profile-identity-changed",
+    ]);
   });
 });
