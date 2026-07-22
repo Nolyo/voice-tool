@@ -33,6 +33,10 @@ artifacts/
 .auto-claude/
 .mcp.json
 
+# Codex local config/docs
+.codex/
+AGENTS.md
+
 .design-handoff/
 
 # Auto Claude generated files
