@@ -108,6 +108,47 @@ export function PostProcessSection() {
                 {t("settings.postProcess.autoBody")}
               </Callout>
             </div>
+
+            <Row
+              label={t("settings.postProcess.customInstructions")}
+              hint={t("settings.postProcess.customInstructionsDesc")}
+              align="start"
+            >
+              <div
+                className="rounded-lg overflow-hidden"
+                style={{
+                  border: "1px solid var(--vt-border)",
+                  background: "var(--vt-surface)",
+                }}
+              >
+                <textarea
+                  value={settings.post_process_custom_instructions}
+                  onChange={(e) =>
+                    updateSetting(
+                      "post_process_custom_instructions",
+                      e.target.value.slice(0, 1000),
+                    )
+                  }
+                  placeholder={t("settings.postProcess.customInstructionsPlaceholder")}
+                  className="w-full p-3 bg-transparent focus:outline-none text-[13px] resize-none"
+                  rows={4}
+                  style={{ color: "var(--vt-fg)" }}
+                />
+                <div
+                  className="flex items-center justify-end px-3 py-1.5 border-t"
+                  style={{ borderColor: "var(--vt-border)" }}
+                >
+                  <span
+                    className="vt-mono text-[11px]"
+                    style={{ color: "var(--vt-fg-3)" }}
+                  >
+                    {t("settings.postProcess.customInstructionsCount", {
+                      count: settings.post_process_custom_instructions.length,
+                    })}
+                  </span>
+                </div>
+              </div>
+            </Row>
           </>
         )}
       </div>
