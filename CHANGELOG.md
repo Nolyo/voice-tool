@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.2.0] - Unreleased
+
+### Changed
+- **Post-process custom instructions** — the "Vocabulary context" field (Settings → Vocabulary) is replaced by "Custom instructions" under Settings → Post-processing, visible only when post-processing is enabled. Give the AI post-processing step permanent preferences: vocabulary corrections (e.g. "replace 'volt' with 'Vault'") or business context (e.g. "I'm a developer, my sentences are dev-oriented"). Local Whisper biasing for proper nouns still relies solely on the personal dictionary, unchanged.
+
+---
+
 ## [3.1.0] - 2026-07-13
 
 ### Added
