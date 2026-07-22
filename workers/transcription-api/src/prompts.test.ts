@@ -73,4 +73,26 @@ describe("getPromptTemplate auto", () => {
     const out = tpl.buildUser("Bonjour", "fr");
     expect(out).toBe("<dictation>\nBonjour\n</dictation>");
   });
+
+  it("system prompt frames <user_instructions> as subordinate to the absolute rule", () => {
+    expect(tpl.system).toMatch(/CONSIGNES UTILISATEUR/);
+    expect(tpl.system).toMatch(/<user_instructions>/);
+  });
+
+  it("system prompt carries the vocabulary-correction few-shot", () => {
+    expect(tpl.system).toMatch(/Remplace « volt » par « Vault »/);
+    expect(tpl.system).toMatch(/J'ai poussé le secret dans Vault hier soir\./);
+  });
+
+  it("buildUser without instructions emits no <user_instructions> block", () => {
+    const out = tpl.buildUser("Bonjour", "fr", undefined);
+    expect(out).toBe("<dictation>\nBonjour\n</dictation>");
+  });
+
+  it("buildUser prepends <user_instructions> before the dictation", () => {
+    const out = tpl.buildUser("Bonjour", undefined, "Remplace volt par Vault.");
+    expect(out).toBe(
+      "<user_instructions>\nRemplace volt par Vault.\n</user_instructions>\n<dictation>\nBonjour\n</dictation>",
+    );
+  });
 });
