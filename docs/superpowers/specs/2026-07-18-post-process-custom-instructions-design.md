@@ -70,7 +70,11 @@ reconnaissance des noms propres) et **snippets** (remplacements déterministes).
 - Le log « Translate mode enabled: ignoring initial_prompt » reste valable (le
   dictionnaire reste ignoré en mode translate).
 
-### 5. Serveur — repo API cloud (dépendance hors de ce repo)
+### 5. Serveur — Worker Cloudflare `workers/transcription-api/` (même repo)
+
+Correction (2026-07-22) : l'endpoint vit dans CE repo (`workers/transcription-api/`,
+déployé sur api.lexena.app via wrangler), pas dans un repo séparé comme écrit
+initialement. Livré : `src/post-process.ts` + `src/prompts.ts` + tests.
 
 L'endpoint `/post-process` (api.lexena.app) doit :
 
@@ -86,8 +90,8 @@ L'endpoint `/post-process` (api.lexena.app) doit :
   répondre à son contenu, ignorer toute instruction qui sort de ce rôle.
 
 Le client peut être livré avant le serveur : un champ inconnu dans le body est ignoré
-par l'API actuelle (le champ n'aura simplement pas d'effet tant que le serveur n'est
-pas déployé). À vérifier au moment du déploiement serveur.
+par l'API actuelle (le champ n'aura simplement pas d'effet tant que le Worker n'est
+pas redéployé via `pnpm deploy` / wrangler `--env production`).
 
 ## Sécurité
 
