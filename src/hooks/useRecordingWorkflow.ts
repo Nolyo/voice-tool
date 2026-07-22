@@ -77,10 +77,13 @@ async function maybePostProcessCloud(
   if (!trimmed) return { text: originalText };
 
   try {
+    const customInstructions =
+      settings.post_process_custom_instructions?.trim() ?? "";
     const result = await postProcessCloud({
       task: "auto",
       text: trimmed,
       jwt,
+      ...(customInstructions ? { customInstructions } : {}),
     });
     const cleaned = result.text?.trim();
     if (!cleaned || cleaned === trimmed) {
