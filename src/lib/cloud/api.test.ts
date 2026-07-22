@@ -129,4 +129,41 @@ describe("postProcessCloud", () => {
       }),
     );
   });
+
+  it("forwards customInstructions when provided", async () => {
+    (invoke as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      text: "out",
+      tokens_in: 10,
+      tokens_out: 5,
+      request_id: "r3",
+      source: "trial",
+    });
+    await postProcessCloud({
+      task: "auto",
+      text: "in",
+      customInstructions: "Remplace volt par Vault",
+      jwt: "jwt",
+    });
+    expect(invoke).toHaveBeenCalledWith(
+      "post_process_cloud",
+      expect.objectContaining({
+        customInstructions: "Remplace volt par Vault",
+      }),
+    );
+  });
+
+  it("sends null customInstructions when absent", async () => {
+    (invoke as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      text: "out",
+      tokens_in: 10,
+      tokens_out: 5,
+      request_id: "r4",
+      source: "trial",
+    });
+    await postProcessCloud({ task: "auto", text: "in", jwt: "jwt" });
+    expect(invoke).toHaveBeenCalledWith(
+      "post_process_cloud",
+      expect.objectContaining({ customInstructions: null }),
+    );
+  });
 });

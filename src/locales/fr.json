@@ -537,7 +537,11 @@
       "autoBody": "Dicte une consigne en tête (« traduis en anglais », « rédige ça comme un mail », « mets ça en liste »…) : l'IA l'applique et la retire du texte. Sans consigne, elle se contente de corriger ponctuation, casse et lisibilité.",
       "cloudUpsellTitle": "Disponible avec Lexena Cloud",
       "cloudUpsellBody": "Le post-traitement IA est inclus dans les offres payantes (essai ou abonnement actif).",
-      "cloudUpsellCta": "Voir les offres"
+      "cloudUpsellCta": "Voir les offres",
+      "customInstructions": "Instructions personnalisées",
+      "customInstructionsDesc": "Consignes appliquées par l'IA à chaque post-traitement : corrections de vocabulaire, contexte métier, style.",
+      "customInstructionsPlaceholder": "Remplace « volt » par « Vault ». Je suis développeur, mes phrases sont orientées dev (React, TypeScript, Rust).",
+      "customInstructionsCount": "{{count}} / 1000 caractères"
     },
     "vocabulary": {
       "title": "Vocabulaire",
@@ -550,12 +554,7 @@
       "dictionary": "Dictionnaire",
       "dictionaryDesc": "Mots ou expressions à favoriser lors de la transcription",
       "addWordPlaceholder": "Ajouter un mot...",
-      "addWord": "Ajouter",
-      "initialPrompt": "Contexte de vocabulaire",
-      "initialPromptDesc": "Quelques phrases typiques que tu prononces — Whisper s'en sert pour mieux reconnaître ton jargon. Ce ne sont pas des instructions : montre des exemples plutôt que de demander.",
-      "initialPromptPlaceholder": "Stack : React, TypeScript, Tauri. Exemple : const user = await db.users.findMany({ where: { active: true } });",
-      "initialPromptWordCount": "{{count}} / 200 mots",
-      "initialPromptHint": "Max ~200 tokens recommandé."
+      "addWord": "Ajouter"
     },
     "system": {
       "title": "Système",

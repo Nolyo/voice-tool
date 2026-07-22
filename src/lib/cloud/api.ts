@@ -21,6 +21,8 @@ export interface PostProcessArgs {
   text: string;
   language?: string;
   modelTier?: ModelTier;
+  /** Consignes utilisateur injectées côté serveur dans le message user (cap 1000 chars). */
+  customInstructions?: string;
   jwt: string;
   idempotencyKey?: string;
 }
@@ -83,6 +85,7 @@ export async function postProcessCloud(args: PostProcessArgs): Promise<PostProce
       text: args.text,
       language: args.language ?? null,
       modelTier: args.modelTier ?? null,
+      customInstructions: args.customInstructions ?? null,
       jwt: args.jwt,
       idempotencyKey,
     }),

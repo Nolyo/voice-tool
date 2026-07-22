@@ -24,7 +24,6 @@ pub async fn transcribe_audio(
     keep_last: usize,
     local_model_size: Option<String>,
     dictionary: Option<String>,
-    initial_prompt: Option<String>,
     translate: Option<bool>,
     keep_model_in_memory: Option<bool>,
     trim_silence: Option<bool>,
@@ -58,13 +57,6 @@ pub async fn transcribe_audio(
         .map_err(|e| format!("Failed to save audio: {}", e))?;
 
     let dict = dictionary.as_deref().unwrap_or("").trim();
-    let prompt = initial_prompt.as_deref().unwrap_or("").trim();
-    let combined_prompt = match (prompt.is_empty(), dict.is_empty()) {
-        (false, false) => format!("{}\n\n{}", prompt, dict),
-        (false, true) => prompt.to_string(),
-        (true, false) => dict.to_string(),
-        (true, true) => String::new(),
-    };
 
     let model = local_model_size
         .unwrap_or_else(|| transcription_local::DEFAULT_LOCAL_MODEL.to_string());
@@ -74,7 +66,7 @@ pub async fn transcribe_audio(
         sample_rate,
         &model,
         &language,
-        &combined_prompt,
+        dict,
         translate,
         keep_model_in_memory,
     )

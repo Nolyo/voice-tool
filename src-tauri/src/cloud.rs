@@ -214,6 +214,7 @@ pub async fn post_process_cloud(
     text: String,
     language: Option<String>,
     model_tier: Option<String>,
+    custom_instructions: Option<String>,
     jwt: String,
     idempotency_key: Option<String>,
 ) -> Result<PostProcessResult, CloudError> {
@@ -225,6 +226,7 @@ pub async fn post_process_cloud(
         "text": text,
         "language": language,
         "model_tier": model_tier,
+        "custom_instructions": custom_instructions,
     });
     let mut req = cloud_client()
         .post(format!("{}/post-process", api_base()))

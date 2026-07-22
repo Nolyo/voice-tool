@@ -5,12 +5,14 @@ import { recordUsageEvent, fetchTrialStatus, fetchSubscriptionState } from "./us
 import { errorResponse } from "./errors";
 
 const MAX_INPUT_CHARS = 50_000;
+const MAX_INSTRUCTIONS_CHARS = 1_000;
 
 interface PostProcessBody {
   task: string;
   text: string;
   language?: string;
   model_tier?: string;
+  custom_instructions?: string | null;
 }
 
 export async function handlePostProcess(
@@ -36,6 +38,20 @@ export async function handlePostProcess(
   if (body.text.length > MAX_INPUT_CHARS) {
     return errorResponse("payload_too_large", `text too long (max ${MAX_INPUT_CHARS} chars)`);
   }
+  if (
+    body.custom_instructions !== undefined &&
+    body.custom_instructions !== null &&
+    typeof body.custom_instructions !== "string"
+  ) {
+    return errorResponse("bad_request", "'custom_instructions' must be a string or null");
+  }
+  const customInstructions = (body.custom_instructions ?? "").trim();
+  if (customInstructions.length > MAX_INSTRUCTIONS_CHARS) {
+    return errorResponse(
+      "bad_request",
+      `custom_instructions too long (max ${MAX_INSTRUCTIONS_CHARS} chars)`,
+    );
+  }
   const tier: OpenAIModelTier = body.model_tier === "full" ? "full" : "mini";
 
   // Eligibility: post_process is gated by *any* of trial active OR active subscription.
@@ -51,7 +67,11 @@ export async function handlePostProcess(
   const source = trial.is_active ? "trial" : "quota";
 
   const template = getPromptTemplate(body.task);
-  const userPrompt = template.buildUser(body.text, body.language);
+  const userPrompt = template.buildUser(
+    body.text,
+    body.language,
+    customInstructions || undefined,
+  );
 
   let result;
   try {

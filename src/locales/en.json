@@ -537,7 +537,11 @@
       "autoBody": "Dictate an instruction up front (\"translate to English\", \"write this as an email\", \"turn this into a list\"…): the AI applies it and strips it from the output. Without an instruction, it just fixes punctuation, casing, and readability.",
       "cloudUpsellTitle": "Available with Lexena Cloud",
       "cloudUpsellBody": "AI post-processing is included in paid plans (active trial or subscription).",
-      "cloudUpsellCta": "View plans"
+      "cloudUpsellCta": "View plans",
+      "customInstructions": "Custom instructions",
+      "customInstructionsDesc": "Guidelines the AI applies on every post-process run: vocabulary fixes, domain context, style.",
+      "customInstructionsPlaceholder": "Replace \"volt\" with \"Vault\". I'm a developer, my sentences are dev-oriented (React, TypeScript, Rust).",
+      "customInstructionsCount": "{{count}} / 1000 characters"
     },
     "vocabulary": {
       "title": "Vocabulary",
@@ -550,12 +554,7 @@
       "dictionary": "Dictionary",
       "dictionaryDesc": "Words or phrases to favor during transcription",
       "addWordPlaceholder": "Add a word...",
-      "addWord": "Add",
-      "initialPrompt": "Vocabulary context",
-      "initialPromptDesc": "A few sentences you typically say — Whisper uses them to better recognize your jargon. These are not instructions: show examples rather than asking.",
-      "initialPromptPlaceholder": "Stack: React, TypeScript, Tauri. Example: const user = await db.users.findMany({ where: { active: true } });",
-      "initialPromptWordCount": "{{count}} / 200 words",
-      "initialPromptHint": "Max ~200 tokens recommended."
+      "addWord": "Add"
     },
     "system": {
       "title": "System",
