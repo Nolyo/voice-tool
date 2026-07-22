@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSettings } from "@/hooks/useSettings";
 import { useSync } from "@/hooks/useSync";
 import {
   loadSnippets,
@@ -28,13 +27,10 @@ interface SnippetRow {
 
 export function VocabularySection() {
   const { t } = useTranslation();
-  const { settings, updateSetting } = useSettings();
   const sync = useSync();
 
   const [rows, setRows] = useState<SnippetRow[]>([]);
   const [words, setWords] = useState<string[]>([]);
-  const prompt = settings.whisper_initial_prompt ?? "";
-  const wordCount = prompt.trim().split(/\s+/).filter(Boolean).length;
 
   const toRow = (s: LocalSnippet): SnippetRow => ({
     id: s.id,
@@ -280,45 +276,6 @@ export function VocabularySection() {
                 {t("settings.vocabulary.addWord")}
               </button>
             </form>
-          </div>
-        </Row>
-
-        <Row
-          label={t("settings.vocabulary.initialPrompt")}
-          hint={t("settings.vocabulary.initialPromptDesc")}
-          align="start"
-        >
-          <div
-            className="rounded-lg overflow-hidden"
-            style={{
-              border: "1px solid var(--vt-border)",
-              background: "var(--vt-surface)",
-            }}
-          >
-            <textarea
-              value={prompt}
-              onChange={(e) => updateSetting("whisper_initial_prompt", e.target.value)}
-              placeholder={t("settings.vocabulary.initialPromptPlaceholder")}
-              className="w-full p-3 bg-transparent focus:outline-none text-[13px] resize-none"
-              rows={4}
-              style={{ color: "var(--vt-fg)" }}
-            />
-            <div
-              className="flex items-center justify-between px-3 py-1.5 border-t"
-              style={{ borderColor: "var(--vt-border)" }}
-            >
-              <span className="text-[11px]" style={{ color: "var(--vt-fg-4)" }}>
-                {t("settings.vocabulary.initialPromptHint", {
-                  defaultValue: "Max ~200 tokens recommandé.",
-                })}
-              </span>
-              <span
-                className="vt-mono text-[11px]"
-                style={{ color: "var(--vt-fg-3)" }}
-              >
-                {t("settings.vocabulary.initialPromptWordCount", { count: wordCount })}
-              </span>
-            </div>
           </div>
         </Row>
       </div>

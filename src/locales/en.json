@@ -554,12 +554,7 @@
       "dictionary": "Dictionary",
       "dictionaryDesc": "Words or phrases to favor during transcription",
       "addWordPlaceholder": "Add a word...",
-      "addWord": "Add",
-      "initialPrompt": "Vocabulary context",
-      "initialPromptDesc": "A few sentences you typically say — Whisper uses them to better recognize your jargon. These are not instructions: show examples rather than asking.",
-      "initialPromptPlaceholder": "Stack: React, TypeScript, Tauri. Example: const user = await db.users.findMany({ where: { active: true } });",
-      "initialPromptWordCount": "{{count}} / 200 words",
-      "initialPromptHint": "Max ~200 tokens recommended."
+      "addWord": "Add"
     },
     "system": {
       "title": "System",

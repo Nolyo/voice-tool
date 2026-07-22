@@ -554,12 +554,7 @@
       "dictionary": "Dictionnaire",
       "dictionaryDesc": "Mots ou expressions à favoriser lors de la transcription",
       "addWordPlaceholder": "Ajouter un mot...",
-      "addWord": "Ajouter",
-      "initialPrompt": "Contexte de vocabulaire",
-      "initialPromptDesc": "Quelques phrases typiques que tu prononces — Whisper s'en sert pour mieux reconnaître ton jargon. Ce ne sont pas des instructions : montre des exemples plutôt que de demander.",
-      "initialPromptPlaceholder": "Stack : React, TypeScript, Tauri. Exemple : const user = await db.users.findMany({ where: { active: true } });",
-      "initialPromptWordCount": "{{count}} / 200 mots",
-      "initialPromptHint": "Max ~200 tokens recommandé."
+      "addWord": "Ajouter"
     },
     "system": {
       "title": "Système",

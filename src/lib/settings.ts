@@ -74,7 +74,6 @@ export interface AppSettings {
     // Vocabulary
     snippets: Array<{ trigger: string; replacement: string }>;
     dictionary: string[];
-    whisper_initial_prompt: string;
 
     // Post-process (AI reformatting after transcription, cloud-only)
     post_process_enabled: boolean;
@@ -174,7 +173,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
       replacement: "https://github.com/exemple" 
     }],
     dictionary: ["Ollama"],
-    whisper_initial_prompt: "",
 
     // Post-process
     post_process_enabled: false,

@@ -475,7 +475,6 @@ export function useRecordingWorkflow({
               keepLast: settings.recordings_keep_last,
               localModelSize: settings.local_model_size,
               dictionary: syncDictionaryRef.current.join(", "),
-              initialPrompt: settings.whisper_initial_prompt ?? "",
               translate: settings.translate_mode,
               keepModelInMemory: settings.keep_model_in_memory,
               trimSilence: settings.trim_silence,
