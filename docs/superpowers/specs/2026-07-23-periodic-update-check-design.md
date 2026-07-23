@@ -36,8 +36,10 @@ nouvelle string i18n.
 ### Mécanisme
 
 - Un ref `lastCheckTimeRef: number | null` mémorise l'horodatage (`Date.now()`) du
-  dernier check terminé, quelle que soit son origine (startup, périodique, manuel via
-  le `checkForUpdates` exposé par le contexte).
+  dernier check démarré, quelle que soit son origine (startup, périodique, manuel via
+  le `checkForUpdates` exposé par le contexte). Le stamp au démarrage (et non à la
+  complétion) garantit l'absence de retry rapproché après échec et de double-check
+  concurrent.
 - Un effet monte un `setInterval` de 60 s, actif seulement si `isLoaded` et
   `settings.auto_check_updates` sont vrais. Cleanup au démontage et quand le setting
   passe à faux.
