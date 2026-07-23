@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "app_name": "Lexena",
   "repository": "Nolyo/lexena",
-  "generated_at": "2026-07-13T09:30:14.558Z",
+  "generated_at": "2026-07-23T08:08:38.271Z",
   "latest": {
     "version": "3.1.0",
     "tag": "v3.1.0",
@@ -16,7 +16,7 @@
         "size_bytes": 43098112,
         "size_human": "41.1 MB",
         "sha256": "8b98eb099361e446fd40699eb6f217b512594380cde839d6984e4844ef2cbeda",
-        "download_count": 0
+        "download_count": 1
       },
       "nsis_installer": {
         "filename": "lexena-v3.1.0-setup.exe",
@@ -24,7 +24,7 @@
         "size_bytes": 8984634,
         "size_human": "8.6 MB",
         "sha256": "ac80089561e3ee0dc2ca18ef298eca1ce60a9f86f774a07c5f260dd34dc0df5f",
-        "download_count": 0
+        "download_count": 4
       }
     }
   },
@@ -42,7 +42,7 @@
           "size_bytes": 43098112,
           "size_human": "41.1 MB",
           "sha256": "8b98eb099361e446fd40699eb6f217b512594380cde839d6984e4844ef2cbeda",
-          "download_count": 0
+          "download_count": 1
         },
         "nsis_installer": {
           "filename": "lexena-v3.1.0-setup.exe",
@@ -50,7 +50,7 @@
           "size_bytes": 8984634,
           "size_human": "8.6 MB",
           "sha256": "ac80089561e3ee0dc2ca18ef298eca1ce60a9f86f774a07c5f260dd34dc0df5f",
-          "download_count": 0
+          "download_count": 4
         }
       }
     },
@@ -92,7 +92,7 @@
           "size_bytes": 41593344,
           "size_human": "39.7 MB",
           "sha256": "00b3a107a4aaa6eb54939baa94382b2943f337082605d991e5a4a8d170984888",
-          "download_count": 8
+          "download_count": 9
         },
         "nsis_installer": {
           "filename": "voice-tool-v2.10.1-setup.exe",
@@ -100,7 +100,7 @@
           "size_bytes": 7707493,
           "size_human": "7.4 MB",
           "sha256": "3d7e1b5d5c5ab2e5d450d37ae190c7892a8d4cf5ea24b8a0ecad31ea3d417a14",
-          "download_count": 8
+          "download_count": 9
         }
       }
     },
