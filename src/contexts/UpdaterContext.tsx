@@ -9,6 +9,10 @@ import {
 } from "react";
 import { useUpdater, type UpdateInfo } from "@/hooks/useUpdater";
 import { useSettings } from "@/hooks/useSettings";
+import {
+  PERIODIC_TICK_MS,
+  shouldCheckNow,
+} from "@/lib/updater/periodic-check";
 
 interface UpdaterContextType {
   updateAvailable: boolean;
@@ -51,6 +55,7 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const hasCheckedOnStartup = useRef(false);
   const updaterRef = useRef(updater);
+  const lastCheckTimeRef = useRef<number | null>(null);
 
   // Keep updater ref up to date
   useEffect(() => {
@@ -81,6 +86,7 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
     // Wait 10 seconds after startup to avoid interfering with app initialization
     const timer = setTimeout(async () => {
       console.log("UpdaterContext: Checking for updates on startup...");
+      lastCheckTimeRef.current = Date.now();
       try {
         const info = await updaterRef.current.checkForUpdates();
         console.log("UpdaterContext: Check result:", info);
@@ -101,12 +107,55 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
     };
   }, [isLoaded, settings.auto_check_updates]);
 
+  // Periodic re-check: the app can stay open for days (PC sleep, tray), so a
+  // startup-only check misses releases. A short tick comparing timestamps is
+  // robust to sleep/wake — a 1h setInterval would drift after suspend.
+  useEffect(() => {
+    if (!isLoaded || !settings.auto_check_updates) {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      const updaterNow = updaterRef.current;
+      const due = shouldCheckNow(
+        {
+          lastCheckTime: lastCheckTimeRef.current,
+          updateAvailable,
+          isChecking: updaterNow.isChecking,
+          isDownloading: updaterNow.isDownloading,
+        },
+        Date.now(),
+      );
+      if (!due) {
+        return;
+      }
+
+      console.log("UpdaterContext: Running periodic update check...");
+      lastCheckTimeRef.current = Date.now();
+      try {
+        const info = await updaterNow.checkForUpdates();
+        if (info?.available) {
+          console.log(
+            "UpdaterContext: Periodic check found update:",
+            info.version,
+          );
+          setUpdateAvailable(true);
+        }
+      } catch (error) {
+        console.error("UpdaterContext: Periodic update check failed:", error);
+      }
+    }, PERIODIC_TICK_MS);
+
+    return () => clearInterval(interval);
+  }, [isLoaded, settings.auto_check_updates, updateAvailable]);
+
   // Update the updateAvailable state when updater.updateInfo changes
   useEffect(() => {
     setUpdateAvailable(updater.updateInfo?.available ?? false);
   }, [updater.updateInfo]);
 
   const checkForUpdates = useCallback(async () => {
+    lastCheckTimeRef.current = Date.now();
     const info = await updater.checkForUpdates();
     setUpdateAvailable(info?.available ?? false);
     return info;
