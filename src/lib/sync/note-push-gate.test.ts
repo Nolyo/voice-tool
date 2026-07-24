@@ -30,4 +30,14 @@ describe("shouldPushNote", () => {
   it("treats an explicit localOnly: false like an absent flag", () => {
     expect(shouldPushNote({ localOnly: false }, "<p>hello</p>")).toBe(true);
   });
+
+  it("returns false for a tombstoned note, even with valid content", () => {
+    expect(
+      shouldPushNote({ deletedAt: "2026-07-24T00:00:00Z" }, "<p>hello</p>"),
+    ).toBe(false);
+  });
+
+  it("treats an explicit deletedAt: undefined like an absent tombstone", () => {
+    expect(shouldPushNote({ deletedAt: undefined }, "<p>hello</p>")).toBe(true);
+  });
 });

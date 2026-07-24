@@ -693,6 +693,14 @@
   },
   "notes": {
     "title": "Notes",
+    "detach": {
+      "tooltip": "Open in a separate window",
+      "indicator": "Open in its own window",
+      "reattach": "Reattach to the main window",
+      "pin": "Pin on top",
+      "unpin": "Unpin",
+      "loadError": "Could not load this note"
+    },
     "newNote": "New note",
     "removeFavorite": "Remove from favorites",
     "addFavorite": "Add to favorites",

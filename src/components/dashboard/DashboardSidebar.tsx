@@ -83,6 +83,7 @@ interface DashboardSidebarProps {
   notes: NoteMeta[];
   folders: FolderMeta[];
   activeNoteId: string | null;
+  detachedNoteIds: string[];
   onOpenNote: (note: NoteMeta) => void;
   onCreateNote: (folderId?: string | null) => void;
   onToggleFavorite: (id: string) => void;
@@ -123,6 +124,7 @@ export function DashboardSidebar({
   notes,
   folders,
   activeNoteId,
+  detachedNoteIds,
   onOpenNote,
   onCreateNote,
   onToggleFavorite,
@@ -239,6 +241,7 @@ export function DashboardSidebar({
           notes={notes}
           folders={folders}
           activeNoteId={activeNoteId}
+          detachedNoteIds={detachedNoteIds}
           onOpenNote={onOpenNote}
           onCreateNote={onCreateNote}
           onToggleFavorite={onToggleFavorite}

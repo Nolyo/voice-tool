@@ -32,6 +32,7 @@ interface NotesEditorProps {
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
   onCreateFolder: (name: string, icon?: string | null) => Promise<FolderMeta>;
   readNote: (id: string) => Promise<NoteData>;
+  onDetachNote: (id: string) => void;
 }
 
 /**
@@ -56,6 +57,7 @@ export function NotesEditor({
   onMoveNote,
   onCreateFolder,
   readNote,
+  onDetachNote,
 }: NotesEditorProps) {
   const { t } = useTranslation();
 
@@ -177,6 +179,13 @@ export function NotesEditor({
           onCreateNote={onCreateNote}
           onMoveNote={onMoveNote}
           onCreateFolder={onCreateFolder}
+          onDetachNote={(id) => {
+            // Flush the 500 ms debounced save before ownership moves to the
+            // detached window — otherwise the timer can fire after the tab
+            // switch and write the NEXT note's HTML under this note's id.
+            flushSave();
+            onDetachNote(id);
+          }}
         />
 
         <NotesEditorContent

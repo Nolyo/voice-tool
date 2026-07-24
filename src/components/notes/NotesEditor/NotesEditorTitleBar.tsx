@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
 import {
+  AppWindow,
   ChevronDown,
   Folder,
   FolderPlus,
@@ -29,6 +30,7 @@ interface NotesEditorTitleBarProps {
   onCreateNote: () => void;
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
   onCreateFolder: (name: string, icon?: string | null) => Promise<FolderMeta>;
+  onDetachNote: (id: string) => void;
 }
 
 export function NotesEditorTitleBar({
@@ -42,6 +44,7 @@ export function NotesEditorTitleBar({
   onCreateNote,
   onMoveNote,
   onCreateFolder,
+  onDetachNote,
 }: NotesEditorTitleBarProps) {
   const { t } = useTranslation();
   const editorText = editor?.getText() ?? "";
@@ -142,6 +145,19 @@ export function NotesEditorTitleBar({
             >
               <span className="notes-tab-dot" />
               <span className="notes-tab-title">{displayTitle}</span>
+              {isActive && (
+                <span
+                  className="notes-tab-close"
+                  title={t("notes.detach.tooltip")}
+                  aria-label={t("notes.detach.tooltip")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDetachNote(note.id);
+                  }}
+                >
+                  <AppWindow className="w-3 h-3" />
+                </span>
+              )}
               <span
                 className="notes-tab-close"
                 onClick={(e) => {
