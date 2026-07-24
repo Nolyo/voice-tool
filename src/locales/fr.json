@@ -693,6 +693,14 @@
   },
   "notes": {
     "title": "Notes",
+    "detach": {
+      "tooltip": "Ouvrir dans une fenêtre séparée",
+      "indicator": "Ouverte dans une fenêtre séparée",
+      "reattach": "Réattacher à la fenêtre principale",
+      "pin": "Épingler au premier plan",
+      "unpin": "Ne plus épingler",
+      "loadError": "Impossible de charger cette note"
+    },
     "newNote": "Nouvelle note",
     "removeFavorite": "Retirer des favoris",
     "addFavorite": "Ajouter aux favoris",

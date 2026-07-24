@@ -5,6 +5,7 @@ import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
 import "./i18n";
 import "./App.css";
+import { DetachedNoteShell } from "@/components/note-window/DetachedNoteShell";
 
 // Design-system scope (same as main.tsx) — the detached window is a normal
 // opaque native window, so the opaque `.vt-app` background is correct here.
@@ -15,6 +16,6 @@ const noteId = params.get("noteId");
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <div style={{ padding: 16 }}>{noteId}</div>
+    {noteId ? <DetachedNoteShell noteId={noteId} /> : null}
   </React.StrictMode>,
 );
