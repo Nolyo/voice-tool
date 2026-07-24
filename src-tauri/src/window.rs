@@ -406,9 +406,11 @@ fn position_note_window(
 ) {
     if at_cursor {
         if let Ok(cursor) = app.cursor_position() {
+            // Negative physical coordinates are valid on multi-monitor setups
+            // (a monitor left of/above the primary) — must not be clamped.
             let _ = window.set_position(Position::Physical(PhysicalPosition {
-                x: (cursor.x as i32 - 60).max(0),
-                y: (cursor.y as i32 - 20).max(0),
+                x: cursor.x as i32 - 60,
+                y: cursor.y as i32 - 20,
             }));
             return;
         }
@@ -426,10 +428,7 @@ fn position_note_window(
     let offset = NOTE_CASCADE_OFFSET_PX * existing_note_windows as i32;
     let x = pos.x + (main_size.width as i32 - size.width as i32) / 2 + offset;
     let y = pos.y + (main_size.height as i32 - size.height as i32) / 2 + offset;
-    let _ = window.set_position(Position::Physical(PhysicalPosition {
-        x: x.max(0),
-        y: y.max(0),
-    }));
+    let _ = window.set_position(Position::Physical(PhysicalPosition { x, y }));
 }
 
 /// Create the detached window for a note, or focus it if it already exists.

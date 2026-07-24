@@ -46,11 +46,17 @@ packagé avant release.
 
 ## PR 2 — Drag-out
 
-- [ ] Glisser un onglet hors de la fenêtre principale → fantôme pendant le
-      drag, fenêtre créée au point de lâcher.
-- [ ] Lâcher DANS la fenêtre principale → annulation, rien ne se passe,
-      le clic simple active toujours l'onglet.
+- [ ] Glisser un onglet et lâcher HORS de la barre d'onglets (même dans la
+      fenêtre, ex. au milieu de l'éditeur) → fantôme pendant le drag,
+      fenêtre créée au point de lâcher.
+- [ ] Fenêtre principale MAXIMISÉE → le détachement fonctionne (critère
+      « hors barre », pas « hors fenêtre »).
+- [ ] Lâcher SUR la barre d'onglets → annulation, rien ne se passe, et le
+      clic simple suivant active toujours son onglet.
 - [ ] Échap pendant le drag → annulation.
-- [ ] Drag vers un second écran (DPI différent si possible) → la fenêtre
-      apparaît près du curseur.
+- [ ] Glisser hors de la fenêtre principale (fenêtre restaurée) → fenêtre
+      créée au point de lâcher.
+- [ ] Drag vers un second écran (DPI différent si possible, et écran disposé
+      À GAUCHE du principal si possible) → la fenêtre apparaît près du
+      curseur.
 - [ ] Clic molette sur un onglet ferme toujours l'onglet (régression).

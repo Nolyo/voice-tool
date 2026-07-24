@@ -459,6 +459,7 @@ export default function Dashboard() {
               onCreateFolder={createFolder}
               readNote={readNote}
               onDetachNote={(id) => void handleDetachNote(id)}
+              onDetachNoteAtCursor={(id) => void handleDetachNote(id, true)}
             />
           ) : activeTab === "notes" ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
