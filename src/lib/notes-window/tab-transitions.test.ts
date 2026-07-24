@@ -102,4 +102,12 @@ describe("mergeDetachedAtLoad", () => {
     const next = mergeDetachedAtLoad({ openNoteIds: ["a"], activeNoteId: "a" }, valid);
     expect(next).toEqual({ openNoteIds: ["a"], activeNoteId: "a", detachedNoteIds: [] });
   });
+
+  it("is idempotent — re-merging its own output changes nothing", () => {
+    const once = mergeDetachedAtLoad(
+      { openNoteIds: ["a", "gone"], activeNoteId: "gone", detachedNoteIds: ["a", "b"] },
+      valid,
+    );
+    expect(mergeDetachedAtLoad(once, valid)).toEqual(once);
+  });
 });
