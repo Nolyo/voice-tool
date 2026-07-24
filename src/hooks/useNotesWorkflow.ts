@@ -2,6 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Store } from "@tauri-apps/plugin-store";
 import { invoke } from "@tauri-apps/api/core";
 import type { NoteMeta } from "@/hooks/useNotes";
+import {
+  detachNote,
+  forgetNote,
+  mergeDetachedAtLoad,
+  reattachNote,
+  type NotesTabsState,
+} from "@/lib/notes-window/tab-transitions";
 
 interface UseNotesWorkflowOptions {
   createNote: (folderId?: string | null) => Promise<NoteMeta>;
@@ -13,6 +20,9 @@ interface UseNotesWorkflowOptions {
 interface PersistedTabState {
   openNoteIds: string[];
   activeNoteId: string | null;
+  /** Notes currently open in their own detached window. Optional so tab
+   *  stores written before this feature keep loading. */
+  detachedNoteIds?: string[];
 }
 
 const STORE_KEY = "tabs";
@@ -28,17 +38,12 @@ async function getTabStore(): Promise<Store> {
 }
 
 /**
- * Manages the open-tabs state for the docked notes editor: which notes are
- * currently open as tabs and which one is active.
+ * Manages the open-tabs state for the docked notes editor — which notes are
+ * open as tabs, which one is active — plus the registry of notes detached
+ * into their own OS window (spec 2026-07-24-detachable-notes-design §4).
  *
- * The tab state is persisted per profile so the user finds the same set of
- * open notes when they reopen the app.
- *
- * Handlers preserve the original behavior:
- * - Creating a note automatically opens it as a tab.
- * - Opening an existing note adds it to the tab list if missing.
- * - Closing a tab focuses the last remaining tab.
- * - Deleting a note transparently closes its tab first.
+ * The whole state is persisted per profile; at load, detached notes come
+ * back as tabs (the windows themselves are never restored across restarts).
  */
 export function useNotesWorkflow({
   createNote,
@@ -48,11 +53,18 @@ export function useNotesWorkflow({
 }: UseNotesWorkflowOptions) {
   const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [detachedNoteIds, setDetachedNoteIds] = useState<string[]>([]);
   const hasLoadedRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load persisted tabs once the notes list is available, filtering out any
-  // IDs whose underlying note no longer exists.
+  const applyState = useCallback((next: NotesTabsState) => {
+    setOpenNoteIds(next.openNoteIds);
+    setActiveNoteId(next.activeNoteId);
+    setDetachedNoteIds(next.detachedNoteIds);
+  }, []);
+
+  // Load persisted tabs once the notes list is available. Detached notes are
+  // merged back into the tab strip (idempotent — covers restart and crash).
   useEffect(() => {
     if (!notesLoaded || hasLoadedRef.current) return;
     let cancelled = false;
@@ -63,15 +75,7 @@ export function useNotesWorkflow({
         if (cancelled) return;
         if (persisted) {
           const validIds = new Set(notes.map((n) => n.id));
-          const filtered = persisted.openNoteIds.filter((id) => validIds.has(id));
-          const active =
-            persisted.activeNoteId && filtered.includes(persisted.activeNoteId)
-              ? persisted.activeNoteId
-              : filtered.length > 0
-                ? filtered[filtered.length - 1]
-                : null;
-          setOpenNoteIds(filtered);
-          setActiveNoteId(active);
+          applyState(mergeDetachedAtLoad(persisted, validIds));
         }
       } catch (error) {
         console.error("Failed to load persisted note tabs:", error);
@@ -82,7 +86,7 @@ export function useNotesWorkflow({
     return () => {
       cancelled = true;
     };
-  }, [notesLoaded, notes]);
+  }, [notesLoaded, notes, applyState]);
 
   // Persist tab state on every change, debounced.
   useEffect(() => {
@@ -91,7 +95,7 @@ export function useNotesWorkflow({
     saveTimerRef.current = setTimeout(async () => {
       try {
         const store = await getTabStore();
-        await store.set(STORE_KEY, { openNoteIds, activeNoteId });
+        await store.set(STORE_KEY, { openNoteIds, activeNoteId, detachedNoteIds });
         await store.save();
       } catch (error) {
         console.error("Failed to persist note tabs:", error);
@@ -100,7 +104,7 @@ export function useNotesWorkflow({
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [openNoteIds, activeNoteId]);
+  }, [openNoteIds, activeNoteId, detachedNoteIds]);
 
   const handleCreateNote = useCallback(async (folderId: string | null = null) => {
     const note = await createNote(folderId);
@@ -128,21 +132,85 @@ export function useNotesWorkflow({
     [activeNoteId],
   );
 
+  /** Detach: create/focus the OS window first; only update the tab state
+   *  when the window actually opened. */
+  const handleDetachNote = useCallback(
+    async (id: string, atCursor = false) => {
+      try {
+        await invoke("open_note_window", { noteId: id, atCursor });
+      } catch (error) {
+        console.error("Failed to open note window:", error);
+        return;
+      }
+      applyState(detachNote({ openNoteIds, activeNoteId, detachedNoteIds }, id));
+    },
+    [openNoteIds, activeNoteId, detachedNoteIds, applyState],
+  );
+
+  /** Rust `note-window-closed` (native X or any window death): restore the
+   *  tab silently — the main window is NOT shown. No-op when the id isn't in
+   *  the registry (delete / explicit reattach removed it first). */
+  const handleNoteWindowClosed = useCallback(
+    (id: string) => {
+      applyState(
+        reattachNote({ openNoteIds, activeNoteId, detachedNoteIds }, id, {
+          activate: false,
+        }),
+      );
+    },
+    [openNoteIds, activeNoteId, detachedNoteIds, applyState],
+  );
+
+  /** Explicit « réattacher » button: restore + activate the tab. The caller
+   *  (bridge) also shows the main window and closes the note window. */
+  const handleReattachNote = useCallback(
+    (id: string) => {
+      applyState(
+        reattachNote({ openNoteIds, activeNoteId, detachedNoteIds }, id, {
+          activate: true,
+        }),
+      );
+    },
+    [openNoteIds, activeNoteId, detachedNoteIds, applyState],
+  );
+
   const handleDeleteNote = useCallback(
     async (id: string) => {
-      handleCloseNoteTab(id);
+      if (detachedNoteIds.includes(id)) {
+        // Remove from the registry BEFORE closing so the note-window-closed
+        // handler can't resurrect the tab (spec §4).
+        applyState(forgetNote({ openNoteIds, activeNoteId, detachedNoteIds }, id));
+        try {
+          await invoke("close_note_window", { noteId: id });
+        } catch (error) {
+          console.error("Failed to close note window:", error);
+        }
+      } else {
+        handleCloseNoteTab(id);
+      }
       await deleteNote(id);
     },
-    [handleCloseNoteTab, deleteNote],
+    [
+      openNoteIds,
+      activeNoteId,
+      detachedNoteIds,
+      applyState,
+      handleCloseNoteTab,
+      deleteNote,
+    ],
   );
 
   return {
     openNoteIds,
     activeNoteId,
+    detachedNoteIds,
     setActiveNoteId,
     handleCreateNote,
     handleOpenNote,
     handleCloseNoteTab,
     handleDeleteNote,
+    handleDetachNote,
+    handleNoteWindowClosed,
+    handleReattachNote,
   };
 }
