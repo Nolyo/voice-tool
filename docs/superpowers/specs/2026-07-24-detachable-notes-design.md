@@ -183,11 +183,12 @@ fenêtre détachée (émet `note-detached-updated` pour que le main rafraîchiss
 
 - `pointerdown` sur un onglet + déplacement au-delà d'un seuil → mode drag :
   un **fantôme** (petit rectangle avec le titre de la note) suit le curseur.
-- `pointerup` **hors des limites de la fenêtre principale** → conversion des
-  coordonnées écran CSS (`screenX/screenY`) en coordonnées **physiques**
-  (scale factor du moniteur courant — le code de positionnement de la mini window
-  gère déjà les moniteurs) → `open_note_window(id, { x, y })` → détachement
-  standard (§4).
+- `pointerup` **hors des limites de la fenêtre principale** (détection en
+  coordonnées CSS client, `clientX/clientY` vs `innerWidth/innerHeight` — aucun
+  calcul DPI côté JS) → `open_note_window(id, { atCursor: true })` ; côté Rust,
+  la position de dépose est résolue depuis le curseur OS (`app.cursor_position()`,
+  déjà en coordonnées physiques, gère nativement les moniteurs multiples) →
+  détachement standard (§4).
 - `pointerup` **dans** la fenêtre → annulation (le réordonnancement d'onglets par
   drag est un non-goal, cf. §8). `Escape` annule le drag en cours.
 - L'icône « détacher » sur l'onglet actif reste le déclencheur secondaire
