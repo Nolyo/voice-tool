@@ -50,8 +50,12 @@ export function NotesEditorTitleBar({
   onDetachNoteAtCursor,
 }: NotesEditorTitleBarProps) {
   const { t } = useTranslation();
+  const tabbarRef = useRef<HTMLDivElement>(null);
   const { drag, handleTabPointerDown, suppressNextClick } = useTabDragOut({
     onDetachAtCursor: onDetachNoteAtCursor,
+    // The whole tab bar row is the cancel zone: releasing anywhere else —
+    // even inside the window — detaches (Notepad-style).
+    getStripRect: () => tabbarRef.current?.getBoundingClientRect() ?? null,
   });
   const editorText = editor?.getText() ?? "";
   const isEditorInSync = loadedNoteId !== null && loadedNoteId === activeNoteId;
@@ -121,7 +125,7 @@ export function NotesEditorTitleBar({
     : [];
 
   return (
-    <div className="notes-tabbar flex items-stretch select-none shrink-0">
+    <div ref={tabbarRef} className="notes-tabbar flex items-stretch select-none shrink-0">
       {/* Tabs row (scrollable) */}
       <div
         className="flex items-stretch overflow-x-auto flex-1 min-w-0"

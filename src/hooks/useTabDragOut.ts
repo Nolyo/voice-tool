@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   exceedsDragThreshold,
+  isOutsideStrip,
   isOutsideViewport,
+  type StripRect,
 } from "@/lib/notes-window/drag-out";
 
 export interface TabDragState {
@@ -14,16 +16,21 @@ export interface TabDragState {
 /**
  * Drag-out gesture for the notes tab strip (spec §6, level 1 « au lâcher »):
  * pointerdown on a tab arms the gesture; once the pointer travels beyond the
- * threshold a ghost follows the cursor; releasing OUTSIDE the viewport
- * detaches the note at the OS cursor position (Rust resolves the physical
- * coordinates — no DPI math here). Releasing inside, or pressing Escape,
- * cancels. A completed drag suppresses the click that follows it so the tab
- * doesn't also activate.
+ * threshold a ghost follows the cursor; releasing OUTSIDE the tab bar —
+ * Notepad-style, even inside the app window — detaches the note at the OS
+ * cursor position (Rust resolves the physical coordinates — no DPI math
+ * here). Releasing on the bar, or pressing Escape, cancels. A completed drag
+ * suppresses the click that follows it so the tab doesn't also activate.
  */
 export function useTabDragOut({
   onDetachAtCursor,
+  getStripRect,
 }: {
   onDetachAtCursor: (id: string) => void;
+  /** Bounds of the tab bar (the cancel zone), queried at release time so
+   *  scroll/resize during the drag can't stale it. `null` falls back to the
+   *  outside-viewport criterion. */
+  getStripRect: () => StripRect | null;
 }) {
   const [drag, setDrag] = useState<TabDragState | null>(null);
   const armedRef = useRef<TabDragState | null>(null);
@@ -31,6 +38,8 @@ export function useTabDragOut({
   const suppressNextClick = useRef(false);
   const onDetachAtCursorRef = useRef(onDetachAtCursor);
   onDetachAtCursorRef.current = onDetachAtCursor;
+  const getStripRectRef = useRef(getStripRect);
+  getStripRectRef.current = getStripRect;
 
   const reset = useCallback(() => {
     armedRef.current = null;
@@ -43,9 +52,9 @@ export function useTabDragOut({
       if (e.button !== 0) return; // left button only — middle-click closes
       // Explicit pointer capture keeps move/up events flowing to this
       // document while the cursor is outside the OS window — WebView2 does
-      // not guarantee delivery beyond the window bounds without it, and the
-      // outside-viewport release would never be observed. Captured events
-      // still bubble, so the window-level listeners below keep working.
+      // not guarantee delivery beyond the window bounds without it. Captured
+      // events still bubble, so the window-level listeners below keep
+      // working.
       const el = e.currentTarget as HTMLElement | undefined;
       if (el?.setPointerCapture) {
         try {
@@ -61,10 +70,6 @@ export function useTabDragOut({
   );
 
   useEffect(() => {
-    // TEMP DIAGNOSTICS (remove before merge): trace pointer delivery while
-    // debugging drag-out event flow on WebView2. Filter console on [drag-out].
-    let lastOutside = false;
-
     const onPointerMove = (e: PointerEvent) => {
       const armed = armedRef.current;
       if (!armed) return;
@@ -75,18 +80,6 @@ export function useTabDragOut({
         draggingRef.current = true;
       }
       if (draggingRef.current) {
-        const out = isOutsideViewport(
-          e.clientX,
-          e.clientY,
-          window.innerWidth,
-          window.innerHeight,
-        );
-        if (out !== lastOutside) {
-          console.log(
-            `[drag-out] move ${out ? "OUTSIDE" : "inside"} @${e.clientX},${e.clientY} viewport=${window.innerWidth}x${window.innerHeight}`,
-          );
-          lastOutside = out;
-        }
         setDrag({ ...armed, x: e.clientX, y: e.clientY });
       }
     };
@@ -104,48 +97,30 @@ export function useTabDragOut({
     };
 
     const onPointerUp = (e: PointerEvent) => {
-      if (armedRef.current) {
-        console.log(
-          `[drag-out] up button=${e.button} @${e.clientX},${e.clientY} viewport=${window.innerWidth}x${window.innerHeight} dragging=${draggingRef.current}`,
-        );
-      }
       if (e.button !== 0) return; // ignore right-click/other buttons
       const armed = armedRef.current;
       if (!armed) return;
       const wasDragging = draggingRef.current;
-      const outside = isOutsideViewport(
-        e.clientX,
-        e.clientY,
-        window.innerWidth,
-        window.innerHeight,
-      );
+      const rect = getStripRectRef.current();
+      const outside = rect
+        ? isOutsideStrip(e.clientX, e.clientY, rect)
+        : isOutsideViewport(
+            e.clientX,
+            e.clientY,
+            window.innerWidth,
+            window.innerHeight,
+          );
       reset();
       if (wasDragging) {
         suppressNextClick.current = true;
-        if (outside) {
-          console.log(`[drag-out] DETACH ${armed.id}`);
-          onDetachAtCursorRef.current(armed.id);
-        }
+        if (outside) onDetachAtCursorRef.current(armed.id);
       }
     };
 
     const onPointerCancel = () => {
       // System-initiated interruption (focus loss, OS gesture) — just
       // disarm, no suppress and no detach.
-      if (armedRef.current) {
-        console.log(
-          `[drag-out] pointercancel dragging=${draggingRef.current}`,
-        );
-      }
       reset();
-    };
-
-    const onLostPointerCapture = () => {
-      if (armedRef.current) {
-        console.log(
-          `[drag-out] lostpointercapture dragging=${draggingRef.current}`,
-        );
-      }
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -160,14 +135,12 @@ export function useTabDragOut({
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerCancel);
-    window.addEventListener("lostpointercapture", onLostPointerCapture);
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("pointerdown", onWindowPointerDown, true);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerCancel);
-      window.removeEventListener("lostpointercapture", onLostPointerCapture);
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [reset]);

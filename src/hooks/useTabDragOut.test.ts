@@ -44,10 +44,14 @@ beforeEach(() => {
   Object.defineProperty(window, "innerHeight", { value: 800, writable: true, configurable: true });
 });
 
+/** Tab bar occupies the top 30px of the 1000x800 viewport. */
+const STRIP = { left: 0, top: 0, right: 1000, bottom: 30 };
+const getStripRect = () => STRIP;
+
 describe("useTabDragOut", () => {
-  it("completed drag released outside the viewport detaches and suppresses the next click", () => {
+  it("completed drag released outside the window detaches and suppresses the next click", () => {
     const onDetachAtCursor = vi.fn();
-    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor }));
+    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor, getStripRect }));
 
     act(() => {
       result.current.handleTabPointerDown(
@@ -68,9 +72,9 @@ describe("useTabDragOut", () => {
     expect(result.current.suppressNextClick.current).toBe(true);
   });
 
-  it("release inside the viewport after dragging does not detach but still suppresses", () => {
+  it("release ON the tab bar after dragging cancels (no detach) but still suppresses", () => {
     const onDetachAtCursor = vi.fn();
-    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor }));
+    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor, getStripRect }));
 
     act(() => {
       result.current.handleTabPointerDown(
@@ -83,16 +87,62 @@ describe("useTabDragOut", () => {
       dispatch("pointermove", { clientX: 100, clientY: 10 });
     });
     act(() => {
-      dispatch("pointerup", { clientX: 200, clientY: 200 }); // inside viewport
+      dispatch("pointerup", { clientX: 500, clientY: 15 }); // on the tab bar
     });
 
     expect(onDetachAtCursor).not.toHaveBeenCalled();
     expect(result.current.suppressNextClick.current).toBe(true);
   });
 
+  it("release below the tab bar but inside the window detaches (Notepad-style — works maximized)", () => {
+    const onDetachAtCursor = vi.fn();
+    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor, getStripRect }));
+
+    act(() => {
+      result.current.handleTabPointerDown(
+        makeReactPointerDownEvent({ clientX: 10, clientY: 10 }),
+        "note-1",
+        "Title 1",
+      );
+    });
+    act(() => {
+      dispatch("pointermove", { clientX: 100, clientY: 100 });
+    });
+    act(() => {
+      dispatch("pointerup", { clientX: 200, clientY: 200 }); // inside viewport, off the bar
+    });
+
+    expect(onDetachAtCursor).toHaveBeenCalledTimes(1);
+    expect(onDetachAtCursor).toHaveBeenCalledWith("note-1");
+    expect(result.current.suppressNextClick.current).toBe(true);
+  });
+
+  it("falls back to the outside-viewport criterion when no strip rect is available", () => {
+    const onDetachAtCursor = vi.fn();
+    const { result } = renderHook(() =>
+      useTabDragOut({ onDetachAtCursor, getStripRect: () => null }),
+    );
+
+    act(() => {
+      result.current.handleTabPointerDown(
+        makeReactPointerDownEvent({ clientX: 10, clientY: 10 }),
+        "note-1",
+        "Title 1",
+      );
+    });
+    act(() => {
+      dispatch("pointermove", { clientX: 100, clientY: 100 });
+    });
+    act(() => {
+      dispatch("pointerup", { clientX: 200, clientY: 200 }); // inside viewport
+    });
+
+    expect(onDetachAtCursor).not.toHaveBeenCalled();
+  });
+
   it("a fresh pointerdown anywhere clears a stale suppressNextClick", () => {
     const onDetachAtCursor = vi.fn();
-    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor }));
+    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor, getStripRect }));
 
     // Simulate a stale flag left over from a previous drag whose click
     // never fired (released far from the original target).
@@ -109,7 +159,7 @@ describe("useTabDragOut", () => {
 
   it("a non-left-button pointerup while dragging does not end the drag; a later left release still works", () => {
     const onDetachAtCursor = vi.fn();
-    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor }));
+    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor, getStripRect }));
 
     act(() => {
       result.current.handleTabPointerDown(
@@ -138,7 +188,7 @@ describe("useTabDragOut", () => {
 
   it("pointercancel resets without detaching and without suppressing", () => {
     const onDetachAtCursor = vi.fn();
-    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor }));
+    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor, getStripRect }));
 
     act(() => {
       result.current.handleTabPointerDown(
@@ -167,7 +217,7 @@ describe("useTabDragOut", () => {
 
   it("Escape while merely armed (no movement past threshold) does not suppress", () => {
     const onDetachAtCursor = vi.fn();
-    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor }));
+    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor, getStripRect }));
 
     act(() => {
       result.current.handleTabPointerDown(
@@ -190,7 +240,7 @@ describe("useTabDragOut", () => {
 
   it("Escape while dragging (past threshold) suppresses, resets the ghost, and prevents a later detach", () => {
     const onDetachAtCursor = vi.fn();
-    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor }));
+    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor, getStripRect }));
 
     act(() => {
       result.current.handleTabPointerDown(

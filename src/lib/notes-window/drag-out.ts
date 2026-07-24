@@ -28,3 +28,33 @@ export function isOutsideViewport(
     clientY > viewportHeight
   );
 }
+
+/** Releases within this distance (px) of the tab bar still count as "on the
+ *  bar" — a small forgiveness band so a sloppy release right at its edge
+ *  doesn't detach. */
+export const STRIP_EXIT_MARGIN_PX = 8;
+
+export interface StripRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** Notepad-style drop criterion (spec §6): releasing OUTSIDE the tab bar —
+ *  even inside the app window — is a detach drop; releasing on the bar
+ *  cancels. Unlike an outside-the-window criterion, this stays reachable
+ *  when the window is maximized on a single monitor. */
+export function isOutsideStrip(
+  clientX: number,
+  clientY: number,
+  rect: StripRect,
+  margin: number = STRIP_EXIT_MARGIN_PX,
+): boolean {
+  return (
+    clientX < rect.left - margin ||
+    clientX > rect.right + margin ||
+    clientY < rect.top - margin ||
+    clientY > rect.bottom + margin
+  );
+}

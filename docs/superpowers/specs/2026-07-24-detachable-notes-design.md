@@ -183,14 +183,18 @@ fenêtre détachée (émet `note-detached-updated` pour que le main rafraîchiss
 
 - `pointerdown` sur un onglet + déplacement au-delà d'un seuil → mode drag :
   un **fantôme** (petit rectangle avec le titre de la note) suit le curseur.
-- `pointerup` **hors des limites de la fenêtre principale** (détection en
-  coordonnées CSS client, `clientX/clientY` vs `innerWidth/innerHeight` — aucun
-  calcul DPI côté JS) → `open_note_window(id, { atCursor: true })` ; côté Rust,
-  la position de dépose est résolue depuis le curseur OS (`app.cursor_position()`,
-  déjà en coordonnées physiques, gère nativement les moniteurs multiples) →
-  détachement standard (§4).
-- `pointerup` **dans** la fenêtre → annulation (le réordonnancement d'onglets par
-  drag est un non-goal, cf. §8). `Escape` annule le drag en cours.
+  Une capture de pointeur explicite (`setPointerCapture`) garantit la livraison
+  des événements même hors de la fenêtre OS (WebView2 ne la garantit pas sans).
+- `pointerup` **hors de la barre d'onglets** — style Bloc-notes Windows : même
+  à l'intérieur de la fenêtre (détection en coordonnées CSS client contre le
+  rect de la barre, marge de tolérance ~8 px — aucun calcul DPI côté JS) →
+  `open_note_window(id, { atCursor: true })` ; côté Rust, la position de dépose
+  est résolue depuis le curseur OS (`app.cursor_position()`, déjà en coordonnées
+  physiques, gère nativement les moniteurs multiples) → détachement standard
+  (§4). Ce critère reste utilisable fenêtre maximisée sur un seul écran, là où
+  un critère « hors fenêtre » ne l'est pas (décision utilisateur, 2026-07-24).
+- `pointerup` **sur la barre d'onglets** → annulation (le réordonnancement
+  d'onglets par drag est un non-goal, cf. §8). `Escape` annule le drag en cours.
 - L'icône « détacher » sur l'onglet actif reste le déclencheur secondaire
   (découvrabilité, accessibilité, fallback).
 - Les calculs de coordonnées/seuils sont extraits en fonctions pures testables ;
