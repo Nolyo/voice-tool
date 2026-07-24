@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import type { CloudUserNoteRow, LocalNoteMeta } from "./types";
 import { mapNoteToCloud } from "./mapping";
 import { mergeNoteLWW } from "./merge";
@@ -140,6 +141,37 @@ export async function pushNoteUpdate(
 // flush on disable/logout (Task 19) without a hook → context circular dep.
 
 const updateNoteDebounceMap = new Map<string, ReturnType<typeof setTimeout>>();
+
+/** Debounce window for the disk → cloud push of a note update. Shared by the
+ *  docked editor (useNotes.updateNote) and the detached-window bridge. */
+export const UPDATE_NOTE_PUSH_DEBOUNCE_MS = 2_000;
+
+/**
+ * Like `scheduleNoteUpdatePush`, but reads meta + content from disk when the
+ * debounce fires instead of capturing them at schedule time. Used by the main
+ * window when a DETACHED window saved a note: the detached window wrote the
+ * disk, the main window owns the sync queue (spec §5) and only knows the id.
+ * Shares `updateNoteDebounceMap`, so cancel/flush keep working.
+ */
+export function scheduleNoteUpdatePushFromDisk(id: string, delayMs: number): void {
+  const existing = updateNoteDebounceMap.get(id);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    updateNoteDebounceMap.delete(id);
+    void (async () => {
+      try {
+        const { meta, content } = await invoke<{
+          meta: LocalNoteMeta;
+          content: string;
+        }>("read_note", { id });
+        await pushNoteUpdate(meta, content);
+      } catch (e) {
+        console.warn("[notes-store] push-from-disk failed for note", id, e);
+      }
+    })();
+  }, delayMs);
+  updateNoteDebounceMap.set(id, timer);
+}
 
 /** Register / replace a debounced push for the given note id. */
 export function scheduleNoteUpdatePush(
@@ -312,4 +344,15 @@ export async function applyRemoteNote(row: CloudUserNoteRow): Promise<void> {
     meta: merged.meta,
     content: merged.content,
   });
+
+  // Tell open editors (detached note windows today, docked editor in a
+  // follow-up) that this note changed on disk behind their back.
+  try {
+    await emit("note-remote-updated", {
+      id: merged.meta.id,
+      updatedAt: merged.meta.updatedAt,
+    });
+  } catch (e) {
+    console.warn("[notes-store] emit note-remote-updated failed", e);
+  }
 }

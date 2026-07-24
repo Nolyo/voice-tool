@@ -10,11 +10,8 @@ import {
   scheduleNoteUpdatePush,
   cancelNoteUpdatePush,
   setNoteLocalOnlySynced,
+  UPDATE_NOTE_PUSH_DEBOUNCE_MS,
 } from '@/lib/sync/notes-store';
-
-// Debounce window for the cloud push of updateNote. Local disk write stays
-// immediate; only the queue enqueue is delayed to coalesce rapid keystrokes.
-const UPDATE_NOTE_DEBOUNCE_MS = 2_000;
 
 // Module-level flag: survives React StrictMode double-mount but resets on
 // full page reload, which is the correct scope for "first launch" detection.
@@ -116,8 +113,19 @@ export function useNotes() {
     setNotes(prev => prev.map(n => n.id === id ? updated : n));
 
     // 2) Debounce 2s the cloud push to coalesce rapid keystrokes into one upsert.
-    scheduleNoteUpdatePush(id, updated, content, UPDATE_NOTE_DEBOUNCE_MS);
+    scheduleNoteUpdatePush(id, updated, content, UPDATE_NOTE_PUSH_DEBOUNCE_MS);
   };
+
+  /** Apply title/updatedAt coming from a detached window's save event —
+   *  keeps the sidebar fresh without re-reading every note from disk. */
+  const applyExternalNoteMeta = useCallback(
+    (id: string, title: string, updatedAt: string) => {
+      setNotes(prev =>
+        prev.map(n => (n.id === id ? { ...n, title, updatedAt } : n)),
+      );
+    },
+    [],
+  );
 
   const deleteNote = async (id: string) => {
     // Cancel any pending debounced push for this note — soft-delete supersedes.
@@ -212,6 +220,7 @@ export function useNotes() {
     createNote,
     readNote,
     updateNote,
+    applyExternalNoteMeta,
     deleteNote,
     searchNotes,
     toggleFavorite,
