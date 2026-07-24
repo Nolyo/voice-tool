@@ -28,6 +28,12 @@ interface PersistedTabState {
 const STORE_KEY = "tabs";
 const SAVE_DEBOUNCE_MS = 300;
 
+const EMPTY_TABS_STATE: NotesTabsState = {
+  openNoteIds: [],
+  activeNoteId: null,
+  detachedNoteIds: [],
+};
+
 let tabStore: Store | null = null;
 async function getTabStore(): Promise<Store> {
   if (!tabStore) {
@@ -42,8 +48,13 @@ async function getTabStore(): Promise<Store> {
  * open as tabs, which one is active — plus the registry of notes detached
  * into their own OS window (spec 2026-07-24-detachable-notes-design §4).
  *
- * The whole state is persisted per profile; at load, detached notes come
- * back as tabs (the windows themselves are never restored across restarts).
+ * The whole state lives in ONE object mutated exclusively through functional
+ * updates built on the pure transitions: every transition reads the TRUE
+ * latest state even when scheduled after an await (Rust IPC round-trip), so
+ * two in-flight detaches can never clobber each other's registry entries.
+ *
+ * The state is persisted per profile; at load, detached notes come back as
+ * tabs (the windows themselves are never restored across restarts).
  */
 export function useNotesWorkflow({
   createNote,
@@ -51,17 +62,13 @@ export function useNotesWorkflow({
   notes,
   notesLoaded,
 }: UseNotesWorkflowOptions) {
-  const [openNoteIds, setOpenNoteIds] = useState<string[]>([]);
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
-  const [detachedNoteIds, setDetachedNoteIds] = useState<string[]>([]);
+  const [tabsState, setTabsState] = useState<NotesTabsState>(EMPTY_TABS_STATE);
   const hasLoadedRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const applyState = useCallback((next: NotesTabsState) => {
-    setOpenNoteIds(next.openNoteIds);
-    setActiveNoteId(next.activeNoteId);
-    setDetachedNoteIds(next.detachedNoteIds);
-  }, []);
+  // Fresh mirror for synchronous READS inside async handlers — never used
+  // for updates (those always go through the functional setter).
+  const tabsStateRef = useRef(tabsState);
+  tabsStateRef.current = tabsState;
 
   // Load persisted tabs once the notes list is available. Detached notes are
   // merged back into the tab strip (idempotent — covers restart and crash).
@@ -75,7 +82,7 @@ export function useNotesWorkflow({
         if (cancelled) return;
         if (persisted) {
           const validIds = new Set(notes.map((n) => n.id));
-          applyState(mergeDetachedAtLoad(persisted, validIds));
+          setTabsState(mergeDetachedAtLoad(persisted, validIds));
         }
       } catch (error) {
         console.error("Failed to load persisted note tabs:", error);
@@ -86,7 +93,7 @@ export function useNotesWorkflow({
     return () => {
       cancelled = true;
     };
-  }, [notesLoaded, notes, applyState]);
+  }, [notesLoaded, notes]);
 
   // Persist tab state on every change, debounced.
   useEffect(() => {
@@ -95,7 +102,11 @@ export function useNotesWorkflow({
     saveTimerRef.current = setTimeout(async () => {
       try {
         const store = await getTabStore();
-        await store.set(STORE_KEY, { openNoteIds, activeNoteId, detachedNoteIds });
+        await store.set(STORE_KEY, {
+          openNoteIds: tabsState.openNoteIds,
+          activeNoteId: tabsState.activeNoteId,
+          detachedNoteIds: tabsState.detachedNoteIds,
+        });
         await store.save();
       } catch (error) {
         console.error("Failed to persist note tabs:", error);
@@ -104,106 +115,88 @@ export function useNotesWorkflow({
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [openNoteIds, activeNoteId, detachedNoteIds]);
+  }, [tabsState]);
 
-  const handleCreateNote = useCallback(async (folderId: string | null = null) => {
-    const note = await createNote(folderId);
-    setOpenNoteIds((prev) => [...prev, note.id]);
-    setActiveNoteId(note.id);
-  }, [createNote]);
-
-  const handleOpenNote = useCallback((note: NoteMeta) => {
-    setOpenNoteIds((prev) =>
-      prev.includes(note.id) ? prev : [...prev, note.id],
-    );
-    setActiveNoteId(note.id);
+  const setActiveNoteId = useCallback((id: string | null) => {
+    setTabsState((prev) => ({ ...prev, activeNoteId: id }));
   }, []);
 
-  const handleCloseNoteTab = useCallback(
-    (id: string) => {
-      setOpenNoteIds((prev) => {
-        const next = prev.filter((nid) => nid !== id);
-        if (activeNoteId === id) {
-          setActiveNoteId(next.length > 0 ? next[next.length - 1] : null);
-        }
-        return next;
-      });
+  const handleCreateNote = useCallback(
+    async (folderId: string | null = null) => {
+      const note = await createNote(folderId);
+      setTabsState((prev) => ({
+        ...prev,
+        openNoteIds: [...prev.openNoteIds, note.id],
+        activeNoteId: note.id,
+      }));
     },
-    [activeNoteId],
+    [createNote],
   );
+
+  const handleOpenNote = useCallback((note: NoteMeta) => {
+    setTabsState((prev) => ({
+      ...prev,
+      openNoteIds: prev.openNoteIds.includes(note.id)
+        ? prev.openNoteIds
+        : [...prev.openNoteIds, note.id],
+      activeNoteId: note.id,
+    }));
+  }, []);
+
+  /** Closing a plain tab and forgetting a note share the same transition —
+   *  forgetNote's registry filter is a no-op for a non-detached note. */
+  const handleCloseNoteTab = useCallback((id: string) => {
+    setTabsState((prev) => forgetNote(prev, id));
+  }, []);
 
   /** Detach: create/focus the OS window first; only update the tab state
    *  when the window actually opened. */
-  const handleDetachNote = useCallback(
-    async (id: string, atCursor = false) => {
-      try {
-        await invoke("open_note_window", { noteId: id, atCursor });
-      } catch (error) {
-        console.error("Failed to open note window:", error);
-        return;
-      }
-      applyState(detachNote({ openNoteIds, activeNoteId, detachedNoteIds }, id));
-    },
-    [openNoteIds, activeNoteId, detachedNoteIds, applyState],
-  );
+  const handleDetachNote = useCallback(async (id: string, atCursor = false) => {
+    try {
+      await invoke("open_note_window", { noteId: id, atCursor });
+    } catch (error) {
+      console.error("Failed to open note window:", error);
+      return;
+    }
+    setTabsState((prev) => detachNote(prev, id));
+  }, []);
 
   /** Rust `note-window-closed` (native X or any window death): restore the
    *  tab silently — the main window is NOT shown. No-op when the id isn't in
    *  the registry (delete / explicit reattach removed it first). */
-  const handleNoteWindowClosed = useCallback(
-    (id: string) => {
-      applyState(
-        reattachNote({ openNoteIds, activeNoteId, detachedNoteIds }, id, {
-          activate: false,
-        }),
-      );
-    },
-    [openNoteIds, activeNoteId, detachedNoteIds, applyState],
-  );
+  const handleNoteWindowClosed = useCallback((id: string) => {
+    setTabsState((prev) => reattachNote(prev, id, { activate: false }));
+  }, []);
 
   /** Explicit « réattacher » button: restore + activate the tab. The caller
    *  (bridge) also shows the main window and closes the note window. */
-  const handleReattachNote = useCallback(
-    (id: string) => {
-      applyState(
-        reattachNote({ openNoteIds, activeNoteId, detachedNoteIds }, id, {
-          activate: true,
-        }),
-      );
-    },
-    [openNoteIds, activeNoteId, detachedNoteIds, applyState],
-  );
+  const handleReattachNote = useCallback((id: string) => {
+    setTabsState((prev) => reattachNote(prev, id, { activate: true }));
+  }, []);
 
   const handleDeleteNote = useCallback(
     async (id: string) => {
-      if (detachedNoteIds.includes(id)) {
-        // Remove from the registry BEFORE closing so the note-window-closed
-        // handler can't resurrect the tab (spec §4).
-        applyState(forgetNote({ openNoteIds, activeNoteId, detachedNoteIds }, id));
+      // Read BEFORE mutating (fresh ref snapshot): was this note detached?
+      const wasDetached = tabsStateRef.current.detachedNoteIds.includes(id);
+      // Remove from the registry BEFORE closing so the note-window-closed
+      // handler can't resurrect the tab (spec §4).
+      setTabsState((prev) => forgetNote(prev, id));
+      if (wasDetached) {
         try {
           await invoke("close_note_window", { noteId: id });
         } catch (error) {
           console.error("Failed to close note window:", error);
         }
-      } else {
-        handleCloseNoteTab(id);
       }
       await deleteNote(id);
     },
-    [
-      openNoteIds,
-      activeNoteId,
-      detachedNoteIds,
-      applyState,
-      handleCloseNoteTab,
-      deleteNote,
-    ],
+    [deleteNote],
   );
 
   return {
-    openNoteIds,
-    activeNoteId,
-    detachedNoteIds,
+    openNoteIds: tabsState.openNoteIds,
+    activeNoteId: tabsState.activeNoteId,
+    detachedNoteIds: tabsState.detachedNoteIds,
     setActiveNoteId,
     handleCreateNote,
     handleOpenNote,
