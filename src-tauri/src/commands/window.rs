@@ -72,3 +72,54 @@ pub fn recenter_mini_window(app_handle: AppHandle) -> Result<(), String> {
     tracing::info!("Mini window recentered");
     Ok(())
 }
+
+/// Open (or focus) the detached window for a note. `at_cursor: true` places
+/// the window at the OS cursor position (drag-out drop).
+#[tauri::command]
+pub fn open_note_window(
+    app_handle: AppHandle,
+    note_id: String,
+    at_cursor: Option<bool>,
+) -> Result<(), String> {
+    if !crate::notes::is_valid_note_id(&note_id) {
+        return Err("Invalid note id".to_string());
+    }
+    if !crate::notes::note_exists(&app_handle, &note_id) {
+        return Err("Note not found".to_string());
+    }
+    crate::window::open_note_window(&app_handle, &note_id, at_cursor.unwrap_or(false))?;
+    tracing::info!("Note window opened for {}", note_id);
+    Ok(())
+}
+
+/// Close the detached window for a note (delete flow, explicit reattach).
+#[tauri::command]
+pub fn close_note_window(app_handle: AppHandle, note_id: String) -> Result<(), String> {
+    let label = crate::window::note_window_label(&note_id);
+    if let Some(window) = app_handle.get_webview_window(&label) {
+        window
+            .close()
+            .map_err(|e| format!("Failed to close note window: {e}"))?;
+    }
+    Ok(())
+}
+
+/// Show + focus the main window (explicit reattach, wiki-link opened from a
+/// detached window).
+#[tauri::command]
+pub fn show_main_window(app_handle: AppHandle) {
+    if let Some(main) = app_handle.get_webview_window("main") {
+        let _ = main.show();
+        let _ = main.unminimize();
+        let _ = main.set_focus();
+    }
+}
+
+/// Close every detached note window (profile switch).
+pub(crate) fn close_all_note_windows(app_handle: &AppHandle) {
+    for (label, window) in app_handle.webview_windows() {
+        if label.starts_with("note-") {
+            let _ = window.close();
+        }
+    }
+}

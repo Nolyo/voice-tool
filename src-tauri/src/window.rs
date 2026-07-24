@@ -386,6 +386,111 @@ pub(crate) fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn s
     Ok(())
 }
 
+pub(crate) const DEFAULT_NOTE_WIDTH: f64 = 520.0;
+pub(crate) const DEFAULT_NOTE_HEIGHT: f64 = 640.0;
+const NOTE_CASCADE_OFFSET_PX: i32 = 32;
+
+pub(crate) fn note_window_label(note_id: &str) -> String {
+    format!("note-{note_id}")
+}
+
+/// Position a freshly-created (still hidden) note window: at the OS cursor
+/// (drag-out drop) or centered on the main window with a cascade offset so
+/// several detached notes don't stack exactly on top of each other.
+/// All coordinates are physical pixels — no DPI math in JS.
+fn position_note_window(
+    app: &tauri::AppHandle,
+    window: &WebviewWindow,
+    at_cursor: bool,
+    existing_note_windows: usize,
+) {
+    if at_cursor {
+        if let Ok(cursor) = app.cursor_position() {
+            let _ = window.set_position(Position::Physical(PhysicalPosition {
+                x: (cursor.x as i32 - 60).max(0),
+                y: (cursor.y as i32 - 20).max(0),
+            }));
+            return;
+        }
+    }
+    let size = window
+        .outer_size()
+        .ok()
+        .unwrap_or_else(|| PhysicalSize::new(DEFAULT_NOTE_WIDTH as u32, DEFAULT_NOTE_HEIGHT as u32));
+    let Some(main) = app.get_webview_window("main") else {
+        return;
+    };
+    let (Ok(pos), Ok(main_size)) = (main.outer_position(), main.outer_size()) else {
+        return;
+    };
+    let offset = NOTE_CASCADE_OFFSET_PX * existing_note_windows as i32;
+    let x = pos.x + (main_size.width as i32 - size.width as i32) / 2 + offset;
+    let y = pos.y + (main_size.height as i32 - size.height as i32) / 2 + offset;
+    let _ = window.set_position(Position::Physical(PhysicalPosition {
+        x: x.max(0),
+        y: y.max(0),
+    }));
+}
+
+/// Create the detached window for a note, or focus it if it already exists.
+pub(crate) fn open_note_window(
+    app: &tauri::AppHandle,
+    note_id: &str,
+    at_cursor: bool,
+) -> Result<(), String> {
+    use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder};
+
+    let label = note_window_label(note_id);
+
+    if let Some(existing) = app.get_webview_window(&label) {
+        let _ = existing.show();
+        let _ = existing.unminimize();
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+
+    let existing_note_windows = app
+        .webview_windows()
+        .keys()
+        .filter(|l| l.starts_with("note-"))
+        .count();
+
+    let window = WebviewWindowBuilder::new(
+        app,
+        &label,
+        WebviewUrl::App(format!("note.html?noteId={note_id}").into()),
+    )
+    .title("Lexena")
+    .inner_size(DEFAULT_NOTE_WIDTH, DEFAULT_NOTE_HEIGHT)
+    .min_inner_size(320.0, 240.0)
+    .resizable(true)
+    .visible(false)
+    .build()
+    .map_err(|e| format!("Failed to create note window: {e}"))?;
+
+    position_note_window(app, &window, at_cursor, existing_note_windows);
+
+    // Closing the window IS the reattach signal (spec §4): the main window
+    // restores the tab silently. Flows that must NOT restore it (delete,
+    // explicit reattach) remove the id from `detachedNoteIds` BEFORE closing,
+    // and the main-window handler ignores ids absent from the registry.
+    let app_handle = app.clone();
+    let closed_note_id = note_id.to_string();
+    window.on_window_event(move |event| {
+        if matches!(event, WindowEvent::Destroyed) {
+            let _ = app_handle.emit(
+                "note-window-closed",
+                serde_json::json!({ "noteId": closed_note_id }),
+            );
+        }
+    });
+
+    let _ = window.show();
+    let _ = window.set_focus();
+
+    Ok(())
+}
+
 /// Setup main window: restore state, register event handlers, handle --minimized flag
 pub(crate) fn setup_main_window(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -442,4 +547,17 @@ pub(crate) fn setup_main_window(app: &mut tauri::App) -> Result<(), Box<dyn std:
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod note_window_tests {
+    use super::note_window_label;
+
+    #[test]
+    fn label_prefixes_note_id() {
+        assert_eq!(
+            note_window_label("0f8fad5b-d9cb-469f-a165-70867728950e"),
+            "note-0f8fad5b-d9cb-469f-a165-70867728950e"
+        );
+    }
 }
