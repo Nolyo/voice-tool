@@ -187,4 +187,35 @@ describe("useTabDragOut", () => {
     expect(result.current.suppressNextClick.current).toBe(false);
     expect(result.current.drag).toBeNull();
   });
+
+  it("Escape while dragging (past threshold) suppresses, resets the ghost, and prevents a later detach", () => {
+    const onDetachAtCursor = vi.fn();
+    const { result } = renderHook(() => useTabDragOut({ onDetachAtCursor }));
+
+    act(() => {
+      result.current.handleTabPointerDown(
+        makeReactPointerDownEvent({ clientX: 10, clientY: 10 }),
+        "note-1",
+        "Title 1",
+      );
+    });
+    act(() => {
+      dispatch("pointermove", { clientX: 100, clientY: 10 }); // past 6px threshold
+    });
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+
+    expect(result.current.suppressNextClick.current).toBe(true);
+    expect(result.current.drag).toBeNull();
+
+    // The gesture was reset, so a later left release outside the viewport
+    // must not be treated as a completed drag.
+    act(() => {
+      dispatch("pointerup", { clientX: -50, clientY: 10 });
+    });
+    expect(onDetachAtCursor).not.toHaveBeenCalled();
+  });
 });

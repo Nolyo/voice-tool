@@ -68,7 +68,8 @@ export function useTabDragOut({
     // otherwise stay true and eat the NEXT unrelated tab click. Clearing it
     // at the start of every gesture keeps same-gesture suppression intact
     // (pointerdown clears → pointerup may set → click consumes) while
-    // killing stale flags from a previous gesture.
+    // killing stale flags from a previous gesture. Registered on the capture
+    // phase so a target's stopPropagation() can't prevent this clear.
     const onWindowPointerDown = () => {
       suppressNextClick.current = false;
     };
@@ -105,13 +106,13 @@ export function useTabDragOut({
       }
     };
 
-    window.addEventListener("pointerdown", onWindowPointerDown);
+    window.addEventListener("pointerdown", onWindowPointerDown, true);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerCancel);
     window.addEventListener("keydown", onKeyDown);
     return () => {
-      window.removeEventListener("pointerdown", onWindowPointerDown);
+      window.removeEventListener("pointerdown", onWindowPointerDown, true);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerCancel);
