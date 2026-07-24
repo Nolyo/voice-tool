@@ -18,12 +18,13 @@ interface NotesEditorFooterProps {
   /** Id of the note the user selected (may trail `loadedNoteId` during a
    *  tab switch while `readNote()` resolves). */
   activeNoteId: string | null;
-  isAiLoading: boolean;
+  isAiLoading?: boolean;
   /** True when the user has an active trial or subscription — required for
    *  the cloud-managed AI assistant. */
-  isAiEligible: boolean;
-  onAiAction: (systemPrompt: string) => void;
+  isAiEligible?: boolean;
+  onAiAction?: (systemPrompt: string) => void;
   onRequestDelete: () => void;
+  showAiAction?: boolean;
 }
 
 export function NotesEditorFooter({
@@ -31,10 +32,11 @@ export function NotesEditorFooter({
   hasActiveNote,
   loadedNoteId,
   activeNoteId,
-  isAiLoading,
-  isAiEligible,
+  isAiLoading = false,
+  isAiEligible = false,
   onAiAction,
   onRequestDelete,
+  showAiAction = true,
 }: NotesEditorFooterProps) {
   const { t } = useTranslation();
   const { copy, justCopied } = useCopyToClipboard();
@@ -130,16 +132,18 @@ export function NotesEditorFooter({
       <div className="notes-footer-actions">
         {hasActiveNote && (
           <>
-            <AiActionMenu
-              onAction={onAiAction}
-              isLoading={isAiLoading}
-              disabled={!editorText.trim() || !isAiEligible}
-              disabledReason={
-                !isAiEligible
-                  ? t("ai.cloudUpsellTooltip")
-                  : undefined
-              }
-            />
+            {showAiAction && onAiAction && (
+              <AiActionMenu
+                onAction={onAiAction}
+                isLoading={isAiLoading}
+                disabled={!editorText.trim() || !isAiEligible}
+                disabledReason={
+                  !isAiEligible
+                    ? t("ai.cloudUpsellTooltip")
+                    : undefined
+                }
+              />
+            )}
             <button
               type="button"
               className="footer-action"

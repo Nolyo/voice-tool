@@ -19,9 +19,10 @@ interface NotesEditorContentProps {
   loadedNoteId: string | null;
   activeNote: NoteMeta | null;
   activeFolder: FolderMeta | null;
-  ai: ReturnType<typeof useAiAssistant>;
+  ai?: ReturnType<typeof useAiAssistant>;
   linkEditor: ReturnType<typeof useLinkEditor>;
   onToggleLocalOnly: (id: string) => void;
+  showShare?: boolean;
 }
 
 /**
@@ -38,6 +39,7 @@ export function NotesEditorContent({
   ai,
   linkEditor,
   onToggleLocalOnly,
+  showShare = true,
 }: NotesEditorContentProps) {
   const { t } = useTranslation();
 
@@ -54,7 +56,7 @@ export function NotesEditorContent({
     );
   }
 
-  if (ai.state === "preview") {
+  if (ai && ai.state === "preview") {
     return (
       <NotesEditorAiPreview
         originalText={ai.originalText}
@@ -81,6 +83,7 @@ export function NotesEditorContent({
         editor={editor}
         isEditorInSync={isEditorInSync}
         onToggleLocalOnly={onToggleLocalOnly}
+        showShare={showShare}
       />
       {isLoadingContent ? (
         <div className="flex items-center justify-center py-10">
@@ -97,7 +100,7 @@ export function NotesEditorContent({
           />
         </>
       )}
-      {ai.state === "loading" && (
+      {ai && ai.state === "loading" && (
         <div className="absolute inset-0 flex items-center justify-center">
           <span
             className="text-[12px] px-3 py-1.5 rounded-md"

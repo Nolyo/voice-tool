@@ -15,6 +15,7 @@ interface NotesEditorHeaderProps {
    *  word count so it doesn't briefly show the previous note's count. */
   isEditorInSync: boolean;
   onToggleLocalOnly: (id: string) => void;
+  showShare?: boolean;
 }
 
 function formatRelative(iso: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
@@ -48,7 +49,7 @@ function formatRelative(iso: string, t: (key: string, opts?: Record<string, unkn
   });
 }
 
-export function NotesEditorHeader({ note, folder, editor, isEditorInSync, onToggleLocalOnly }: NotesEditorHeaderProps) {
+export function NotesEditorHeader({ note, folder, editor, isEditorInSync, onToggleLocalOnly, showShare = true }: NotesEditorHeaderProps) {
   const { t } = useTranslation();
   const [wordCount, setWordCount] = useState(0);
 
@@ -119,7 +120,7 @@ export function NotesEditorHeader({ note, folder, editor, isEditorInSync, onTogg
             {note.localOnly && <span>{t("notes.localOnly.headerLabel")}</span>}
           </button>
         )}
-        <ShareNoteButton note={note} />
+        {showShare && <ShareNoteButton note={note} />}
       </div>
 
       <div className="note-doc-divider" />
