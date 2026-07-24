@@ -59,6 +59,25 @@ fn get_notes_dir(app_handle: &AppHandle) -> Result<PathBuf> {
     Ok(notes_dir)
 }
 
+/// Canonical UUID shape (8-4-4-4-12 hex groups). Note ids become window
+/// labels (`note-<id>`), which only accept [a-zA-Z0-9\-/:_] — rejecting
+/// anything else up front prevents label injection and builder panics.
+pub(crate) fn is_valid_note_id(id: &str) -> bool {
+    id.len() == 36
+        && id.bytes().enumerate().all(|(i, b)| match i {
+            8 | 13 | 18 | 23 => b == b'-',
+            _ => b.is_ascii_hexdigit(),
+        })
+}
+
+/// True when the note exists on disk for the active profile.
+pub(crate) fn note_exists(app_handle: &AppHandle, id: &str) -> bool {
+    match get_notes_dir(app_handle) {
+        Ok(dir) => dir.join(id).join("note.json").exists(),
+        Err(_) => false,
+    }
+}
+
 /// Read note metadata from a note directory
 fn read_note_meta(note_dir: &PathBuf) -> Result<NoteMeta> {
     let meta_path = note_dir.join("note.json");
@@ -737,5 +756,31 @@ mod tests {
         let restored: NoteMeta = serde_json::from_str(&payload).expect("deserialize");
         assert!(restored.local_only);
         assert_eq!(restored.id, meta.id);
+    }
+}
+
+#[cfg(test)]
+mod note_id_tests {
+    use super::is_valid_note_id;
+
+    #[test]
+    fn accepts_canonical_uuid() {
+        assert!(is_valid_note_id("0f8fad5b-d9cb-469f-a165-70867728950e"));
+    }
+
+    #[test]
+    fn rejects_empty_and_traversal() {
+        assert!(!is_valid_note_id(""));
+        assert!(!is_valid_note_id("../../etc/passwd"));
+    }
+
+    #[test]
+    fn rejects_wrong_shape() {
+        // no dashes
+        assert!(!is_valid_note_id("0f8fad5bd9cb469fa16570867728950e0000"));
+        // non-hex char at the end
+        assert!(!is_valid_note_id("0f8fad5b-d9cb-469f-a165-70867728950g"));
+        // dash at wrong index
+        assert!(!is_valid_note_id("0f8fad5bd-9cb-469f-a165-70867728950e"));
     }
 }
