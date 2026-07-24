@@ -41,6 +41,19 @@ export function useTabDragOut({
   const handleTabPointerDown = useCallback(
     (e: React.PointerEvent, id: string, title: string) => {
       if (e.button !== 0) return; // left button only — middle-click closes
+      // Explicit pointer capture keeps move/up events flowing to this
+      // document while the cursor is outside the OS window — WebView2 does
+      // not guarantee delivery beyond the window bounds without it, and the
+      // outside-viewport release would never be observed. Captured events
+      // still bubble, so the window-level listeners below keep working.
+      const el = e.currentTarget as HTMLElement | undefined;
+      if (el?.setPointerCapture) {
+        try {
+          el.setPointerCapture(e.pointerId);
+        } catch {
+          // best-effort: the drag still works inside the window
+        }
+      }
       armedRef.current = { id, title, x: e.clientX, y: e.clientY };
       draggingRef.current = false;
     },
@@ -48,6 +61,10 @@ export function useTabDragOut({
   );
 
   useEffect(() => {
+    // TEMP DIAGNOSTICS (remove before merge): trace pointer delivery while
+    // debugging drag-out event flow on WebView2. Filter console on [drag-out].
+    let lastOutside = false;
+
     const onPointerMove = (e: PointerEvent) => {
       const armed = armedRef.current;
       if (!armed) return;
@@ -58,6 +75,18 @@ export function useTabDragOut({
         draggingRef.current = true;
       }
       if (draggingRef.current) {
+        const out = isOutsideViewport(
+          e.clientX,
+          e.clientY,
+          window.innerWidth,
+          window.innerHeight,
+        );
+        if (out !== lastOutside) {
+          console.log(
+            `[drag-out] move ${out ? "OUTSIDE" : "inside"} @${e.clientX},${e.clientY} viewport=${window.innerWidth}x${window.innerHeight}`,
+          );
+          lastOutside = out;
+        }
         setDrag({ ...armed, x: e.clientX, y: e.clientY });
       }
     };
@@ -75,6 +104,11 @@ export function useTabDragOut({
     };
 
     const onPointerUp = (e: PointerEvent) => {
+      if (armedRef.current) {
+        console.log(
+          `[drag-out] up button=${e.button} @${e.clientX},${e.clientY} viewport=${window.innerWidth}x${window.innerHeight} dragging=${draggingRef.current}`,
+        );
+      }
       if (e.button !== 0) return; // ignore right-click/other buttons
       const armed = armedRef.current;
       if (!armed) return;
@@ -88,14 +122,30 @@ export function useTabDragOut({
       reset();
       if (wasDragging) {
         suppressNextClick.current = true;
-        if (outside) onDetachAtCursorRef.current(armed.id);
+        if (outside) {
+          console.log(`[drag-out] DETACH ${armed.id}`);
+          onDetachAtCursorRef.current(armed.id);
+        }
       }
     };
 
     const onPointerCancel = () => {
       // System-initiated interruption (focus loss, OS gesture) — just
       // disarm, no suppress and no detach.
+      if (armedRef.current) {
+        console.log(
+          `[drag-out] pointercancel dragging=${draggingRef.current}`,
+        );
+      }
       reset();
+    };
+
+    const onLostPointerCapture = () => {
+      if (armedRef.current) {
+        console.log(
+          `[drag-out] lostpointercapture dragging=${draggingRef.current}`,
+        );
+      }
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -110,12 +160,14 @@ export function useTabDragOut({
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerCancel);
+    window.addEventListener("lostpointercapture", onLostPointerCapture);
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("pointerdown", onWindowPointerDown, true);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerCancel);
+      window.removeEventListener("lostpointercapture", onLostPointerCapture);
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [reset]);
