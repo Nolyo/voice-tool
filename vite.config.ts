@@ -20,6 +20,7 @@ export default defineConfig(async () => ({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         mini: path.resolve(__dirname, 'mini.html'),
+        note: path.resolve(__dirname, 'note.html'),
       },
     },
   },
