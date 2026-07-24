@@ -179,7 +179,13 @@ export function NotesEditor({
           onCreateNote={onCreateNote}
           onMoveNote={onMoveNote}
           onCreateFolder={onCreateFolder}
-          onDetachNote={onDetachNote}
+          onDetachNote={(id) => {
+            // Flush the 500 ms debounced save before ownership moves to the
+            // detached window — otherwise the timer can fire after the tab
+            // switch and write the NEXT note's HTML under this note's id.
+            flushSave();
+            onDetachNote(id);
+          }}
         />
 
         <NotesEditorContent

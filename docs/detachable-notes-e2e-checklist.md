@@ -18,6 +18,8 @@ packagé avant release.
       (tester main visible ET main dans le tray).
 - [ ] Bouton « réattacher » : onglet restauré + main affiché/focus, onglet
       Notes actif, note active.
+- [ ] Frappe continue puis X natif (ou bouton réattacher) immédiat → l'onglet
+      restauré contient bien les derniers caractères tapés (flush du debounce).
 - [ ] Épingle : always-on-top on/off, état visuel du bouton.
 - [ ] Suppression depuis la fenêtre détachée (footer) → confirmation → note
       supprimée, fenêtre fermée, pas d'onglet fantôme.

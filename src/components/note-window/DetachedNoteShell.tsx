@@ -118,6 +118,19 @@ export function DetachedNoteShell({ noteId }: { noteId: string }) {
     };
   }, [noteId, editor, isQuiescent, reloadFromDisk]);
 
+  // The native X is the canonical reattach gesture (spec §4): flush the
+  // pending debounced save before teardown so the restored tab always has
+  // the final keystrokes. The invoke is dispatched before the webview dies;
+  // Rust completes the disk write regardless.
+  useEffect(() => {
+    const unlistenPromise = getCurrentWindow().onCloseRequested(() => {
+      flushSave();
+    });
+    return () => {
+      void unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, [flushSave]);
+
   const togglePin = useCallback(async () => {
     const next = !pinned;
     try {
@@ -157,6 +170,9 @@ export function DetachedNoteShell({ noteId }: { noteId: string }) {
     const { title, onResolved } = brokenDialog;
     setBrokenDialog(null);
     try {
+      // createNoteSynced is a bare invoke("create_note") passthrough here:
+      // its enqueue path is gated by isSyncActive(), never true in this
+      // provider-less webview — the main window stays the sole sync owner.
       const created = await createNoteSynced(null);
       const safeTitle = title
         .replace(/&/g, "&amp;")
@@ -225,7 +241,12 @@ export function DetachedNoteShell({ noteId }: { noteId: string }) {
           <button
             type="button"
             className="footer-action"
-            onClick={requestReattach}
+            onClick={() => {
+              // Flush the pending debounced save before the main window
+              // closes this window and re-reads the note from disk.
+              flushSave();
+              requestReattach();
+            }}
             title={t("notes.detach.reattach")}
             aria-label={t("notes.detach.reattach")}
           >
