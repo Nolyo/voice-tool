@@ -29,6 +29,8 @@ export function useTabDragOut({
   const armedRef = useRef<TabDragState | null>(null);
   const draggingRef = useRef(false);
   const suppressNextClick = useRef(false);
+  const onDetachAtCursorRef = useRef(onDetachAtCursor);
+  onDetachAtCursorRef.current = onDetachAtCursor;
 
   const reset = useCallback(() => {
     armedRef.current = null;
@@ -60,7 +62,19 @@ export function useTabDragOut({
       }
     };
 
+    // A native `click` only fires when pointerdown/pointerup share the same
+    // target, so a real drag (released far away, or outside the viewport)
+    // never produces a click to consume `suppressNextClick` — it would
+    // otherwise stay true and eat the NEXT unrelated tab click. Clearing it
+    // at the start of every gesture keeps same-gesture suppression intact
+    // (pointerdown clears → pointerup may set → click consumes) while
+    // killing stale flags from a previous gesture.
+    const onWindowPointerDown = () => {
+      suppressNextClick.current = false;
+    };
+
     const onPointerUp = (e: PointerEvent) => {
+      if (e.button !== 0) return; // ignore right-click/other buttons
       const armed = armedRef.current;
       if (!armed) return;
       const wasDragging = draggingRef.current;
@@ -73,26 +87,37 @@ export function useTabDragOut({
       reset();
       if (wasDragging) {
         suppressNextClick.current = true;
-        if (outside) onDetachAtCursor(armed.id);
+        if (outside) onDetachAtCursorRef.current(armed.id);
       }
+    };
+
+    const onPointerCancel = () => {
+      // System-initiated interruption (focus loss, OS gesture) — just
+      // disarm, no suppress and no detach.
+      reset();
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && armedRef.current) {
+        const wasDragging = draggingRef.current;
         reset();
-        suppressNextClick.current = true;
+        if (wasDragging) suppressNextClick.current = true;
       }
     };
 
+    window.addEventListener("pointerdown", onWindowPointerDown);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
     window.addEventListener("keydown", onKeyDown);
     return () => {
+      window.removeEventListener("pointerdown", onWindowPointerDown);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerCancel);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [onDetachAtCursor, reset]);
+  }, [reset]);
 
   return { drag, handleTabPointerDown, suppressNextClick };
 }
