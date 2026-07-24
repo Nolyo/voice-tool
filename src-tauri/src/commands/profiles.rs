@@ -167,8 +167,10 @@ pub fn switch_profile(app: AppHandle, id: String) -> Result<(), String> {
         return Err(format!("Profile '{}' not found.", id));
     }
 
-    // Detached note windows belong to the outgoing profile — close them all
-    // before any path swaps so they can't write into the new profile.
+    // Close all detached note windows — they belong to the outgoing profile.
+    // close() is a request (async teardown), but a stray in-flight autosave is
+    // harmless: update_note rejects ids that don't exist in the (new) active
+    // profile, and note ids are UUIDs so cross-profile collisions can't occur.
     crate::commands::window::close_all_note_windows(&app);
 
     manifest.active = id.clone();

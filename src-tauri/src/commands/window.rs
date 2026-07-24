@@ -95,6 +95,9 @@ pub fn open_note_window(
 /// Close the detached window for a note (delete flow, explicit reattach).
 #[tauri::command]
 pub fn close_note_window(app_handle: AppHandle, note_id: String) -> Result<(), String> {
+    if !crate::notes::is_valid_note_id(&note_id) {
+        return Err("Invalid note id".to_string());
+    }
     let label = crate::window::note_window_label(&note_id);
     if let Some(window) = app_handle.get_webview_window(&label) {
         window
