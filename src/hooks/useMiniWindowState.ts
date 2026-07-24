@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import { listen, emit } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { Store } from "@tauri-apps/plugin-store";
-import i18n from "@/i18n";
-import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
-import { applyTheme, type Theme } from "@/lib/theme";
+import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { bootstrapSecondaryWindow } from "@/lib/window-bootstrap";
 
 export type WindowStatus =
   | "idle"
@@ -99,10 +97,9 @@ export function useMiniWindowState() {
     let unlistenTranscriptionErrorFn: (() => void) | null = null;
     let unlistenTranslateModeChangedFn: (() => void) | null = null;
     let unlistenPostProcessEnabledChangedFn: (() => void) | null = null;
-    let unlistenLanguageChangedFn: (() => void) | null = null;
     let unlistenVisualizerModeChangedFn: (() => void) | null = null;
-    let unlistenThemeChangedFn: (() => void) | null = null;
     let unlistenProviderChangedFn: (() => void) | null = null;
+    let unlistenBootstrapFn: (() => void) | null = null;
     let unlistenPostProcessStartFn: (() => void) | null = null;
     let unlistenStreamingTranscriptFn: (() => void) | null = null;
     let unlistenStreamingStartedFn: (() => void) | null = null;
@@ -111,40 +108,26 @@ export function useMiniWindowState() {
 
     const setupListeners = async () => {
       try {
-        // Load settings from the profile-scoped Tauri store (same store the
-        // main window writes to). Used for initial mini-window-specific state.
-        try {
-          const storePath = await invoke<string>(
-            "get_active_profile_settings_path",
-          );
-          const store = await Store.load(storePath);
-          const saved = await store.get<AppSettings>("settings");
-          const s = saved?.settings;
-          if (s) {
-            setTranslateMode(Boolean(s.translate_mode));
-            setPostProcessEnabled(Boolean(s.post_process_enabled));
-            if (s.mini_visualizer_mode) setVisualizerMode(s.mini_visualizer_mode);
-            if (typeof s.mini_window_waveform_samples === "number") {
-              setWaveformCapacity(s.mini_window_waveform_samples);
-            }
-            if (typeof s.show_transcription_in_mini_window === "boolean") {
-              setShowTranscriptPreview(s.show_transcription_in_mini_window);
-            }
-            if (s.language) setLanguage(s.language);
-            if (
-              s.transcription_provider === "Local" ||
-              s.transcription_provider === "LexenaCloud"
-            ) {
-              setProvider(s.transcription_provider);
-            }
-            if (s.theme === "light" || s.theme === "dark") {
-              applyTheme(s.theme);
-            } else {
-              applyTheme(DEFAULT_SETTINGS.settings.theme);
-            }
+        const bootstrap = await bootstrapSecondaryWindow();
+        unlistenBootstrapFn = bootstrap.unlisten;
+        const s = bootstrap.settings;
+        if (s) {
+          setTranslateMode(Boolean(s.translate_mode));
+          setPostProcessEnabled(Boolean(s.post_process_enabled));
+          if (s.mini_visualizer_mode) setVisualizerMode(s.mini_visualizer_mode);
+          if (typeof s.mini_window_waveform_samples === "number") {
+            setWaveformCapacity(s.mini_window_waveform_samples);
           }
-        } catch (e) {
-          console.log("Mini window: could not load settings from store", e);
+          if (typeof s.show_transcription_in_mini_window === "boolean") {
+            setShowTranscriptPreview(s.show_transcription_in_mini_window);
+          }
+          if (s.language) setLanguage(s.language);
+          if (
+            s.transcription_provider === "Local" ||
+            s.transcription_provider === "LexenaCloud"
+          ) {
+            setProvider(s.transcription_provider);
+          }
         }
 
         unlistenTranslateModeChangedFn = await listen<boolean>(
@@ -161,28 +144,11 @@ export function useMiniWindowState() {
           },
         );
 
-        // Sync i18n language with main window
-        unlistenLanguageChangedFn = await listen<string>(
-          "language-changed",
-          (event) => {
-            i18n.changeLanguage(event.payload);
-          },
-        );
-
         unlistenVisualizerModeChangedFn = await listen<VisualizerMode>(
           "mini-visualizer-mode-changed",
           (event) => {
             if (event.payload === "bars" || event.payload === "waveform") {
               setVisualizerMode(event.payload);
-            }
-          },
-        );
-
-        unlistenThemeChangedFn = await listen<Theme>(
-          "theme-changed",
-          (event) => {
-            if (event.payload === "light" || event.payload === "dark") {
-              applyTheme(event.payload);
             }
           },
         );
@@ -320,15 +286,14 @@ export function useMiniWindowState() {
       if (unlistenTranscriptionErrorFn) unlistenTranscriptionErrorFn();
       if (unlistenTranslateModeChangedFn) unlistenTranslateModeChangedFn();
       if (unlistenPostProcessEnabledChangedFn) unlistenPostProcessEnabledChangedFn();
-      if (unlistenLanguageChangedFn) unlistenLanguageChangedFn();
       if (unlistenVisualizerModeChangedFn) unlistenVisualizerModeChangedFn();
-      if (unlistenThemeChangedFn) unlistenThemeChangedFn();
       if (unlistenProviderChangedFn) unlistenProviderChangedFn();
       if (unlistenPostProcessStartFn) unlistenPostProcessStartFn();
       if (unlistenStreamingTranscriptFn) unlistenStreamingTranscriptFn();
       if (unlistenStreamingStartedFn) unlistenStreamingStartedFn();
       if (unlistenStreamingEndFn) unlistenStreamingEndFn();
       if (unlistenStreamingCancelledFn) unlistenStreamingCancelledFn();
+      if (unlistenBootstrapFn) unlistenBootstrapFn();
     };
   }, []);
 
