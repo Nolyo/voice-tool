@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.2.0] - Unreleased
 
+### Added
+- **Detachable note windows** — open a note in its own window to see and edit two notes side by side. Drag a tab out of the tab bar (Notepad-style: release anywhere outside the bar, even with the window maximized — the note window appears under the cursor) or click the detach icon on the active tab. Detached windows offer the full rich editor (no AI/share — those stay in the main window), a pin-on-top toggle and native window controls. Closing the window (X) silently brings the note back as a tab without raising the main window; the "reattach" button does the same and focuses the main window. Detached notes keep working while the main window sits in the tray, come back as tabs after a restart, and save/sync exactly like docked notes.
+
 ### Changed
 - **Post-process custom instructions** — the "Vocabulary context" field (Settings → Vocabulary) is replaced by "Custom instructions" under Settings → Post-processing, visible only when post-processing is enabled. Give the AI post-processing step permanent preferences: vocabulary corrections (e.g. "replace 'volt' with 'Vault'") or business context (e.g. "I'm a developer, my sentences are dev-oriented"). Local Whisper biasing for proper nouns still relies solely on the personal dictionary, unchanged.
 
