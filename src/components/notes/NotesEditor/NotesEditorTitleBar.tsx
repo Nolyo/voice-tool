@@ -14,6 +14,7 @@ import { FolderIcon } from "@/components/notes/FolderIcon";
 import { FolderNameDialog } from "@/components/notes/FolderNameDialog";
 import { type NoteMeta, deriveTitle } from "@/hooks/useNotes";
 import { type FolderMeta } from "@/hooks/useFolders";
+import { useTabDragOut } from "@/hooks/useTabDragOut";
 
 interface NotesEditorTitleBarProps {
   openNotes: NoteMeta[];
@@ -31,6 +32,7 @@ interface NotesEditorTitleBarProps {
   onMoveNote: (noteId: string, folderId: string | null) => Promise<void>;
   onCreateFolder: (name: string, icon?: string | null) => Promise<FolderMeta>;
   onDetachNote: (id: string) => void;
+  onDetachNoteAtCursor: (id: string) => void;
 }
 
 export function NotesEditorTitleBar({
@@ -45,8 +47,12 @@ export function NotesEditorTitleBar({
   onMoveNote,
   onCreateFolder,
   onDetachNote,
+  onDetachNoteAtCursor,
 }: NotesEditorTitleBarProps) {
   const { t } = useTranslation();
+  const { drag, handleTabPointerDown, suppressNextClick } = useTabDragOut({
+    onDetachAtCursor: onDetachNoteAtCursor,
+  });
   const editorText = editor?.getText() ?? "";
   const isEditorInSync = loadedNoteId !== null && loadedNoteId === activeNoteId;
   const [badgeMenu, setBadgeMenu] = useState<{ x: number; y: number } | null>(null);
@@ -135,13 +141,20 @@ export function NotesEditorTitleBar({
               key={note.id}
               className="notes-tab"
               data-active={isActive}
-              onClick={() => onActivateNote(note.id)}
+              onClick={() => {
+                if (suppressNextClick.current) {
+                  suppressNextClick.current = false;
+                  return;
+                }
+                onActivateNote(note.id);
+              }}
               onMouseDown={(e) => {
                 if (e.button === 1) {
                   e.preventDefault();
                   onTabClose(note.id);
                 }
               }}
+              onPointerDown={(e) => handleTabPointerDown(e, note.id, displayTitle)}
             >
               <span className="notes-tab-dot" />
               <span className="notes-tab-title">{displayTitle}</span>
@@ -220,6 +233,21 @@ export function NotesEditorTitleBar({
           void onCreateFolder(name, icon).then((folder) => onMoveNote(noteId, folder.id));
         }}
       />
+
+      {drag && (
+        <div
+          className="fixed z-50 pointer-events-none px-3 py-1.5 rounded-md shadow-lg text-sm max-w-[240px] truncate"
+          style={{
+            left: drag.x + 8,
+            top: drag.y + 8,
+            background: "var(--vt-panel-2)",
+            border: "1px solid var(--vt-border)",
+            color: "var(--vt-fg)",
+          }}
+        >
+          {drag.title}
+        </div>
+      )}
     </div>
   );
 }

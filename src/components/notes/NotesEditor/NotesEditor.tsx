@@ -33,6 +33,7 @@ interface NotesEditorProps {
   onCreateFolder: (name: string, icon?: string | null) => Promise<FolderMeta>;
   readNote: (id: string) => Promise<NoteData>;
   onDetachNote: (id: string) => void;
+  onDetachNoteAtCursor: (id: string) => void;
 }
 
 /**
@@ -58,6 +59,7 @@ export function NotesEditor({
   onCreateFolder,
   readNote,
   onDetachNote,
+  onDetachNoteAtCursor,
 }: NotesEditorProps) {
   const { t } = useTranslation();
 
@@ -185,6 +187,12 @@ export function NotesEditor({
             // switch and write the NEXT note's HTML under this note's id.
             flushSave();
             onDetachNote(id);
+          }}
+          onDetachNoteAtCursor={(id) => {
+            // Same flush-before-transfer invariant as onDetachNote above —
+            // a drag-out is another ownership transfer to a detached window.
+            flushSave();
+            onDetachNoteAtCursor(id);
           }}
         />
 
