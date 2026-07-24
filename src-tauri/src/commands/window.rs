@@ -75,8 +75,11 @@ pub fn recenter_mini_window(app_handle: AppHandle) -> Result<(), String> {
 
 /// Open (or focus) the detached window for a note. `at_cursor: true` places
 /// the window at the OS cursor position (drag-out drop).
+/// MUST stay `async`: on Windows, creating a webview from a synchronous
+/// command deadlocks the main thread (WebView2 known issue — see
+/// `WebviewWindowBuilder::new` docs), freezing all further IPC.
 #[tauri::command]
-pub fn open_note_window(
+pub async fn open_note_window(
     app_handle: AppHandle,
     note_id: String,
     at_cursor: Option<bool>,
