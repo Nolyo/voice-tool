@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  AppWindow,
   ChevronDown,
   ChevronRight,
   ChevronsDownUp,
@@ -76,6 +77,7 @@ interface NotesSidebarSectionProps {
   notes: NoteMeta[];
   folders: FolderMeta[];
   activeNoteId: string | null;
+  detachedNoteIds: string[];
   onOpenNote: (note: NoteMeta) => void;
   onCreateNote: (folderId?: string | null) => void;
   onToggleFavorite: (id: string) => void;
@@ -99,6 +101,7 @@ interface NoteItemProps {
   note: NoteMeta;
   isActive: boolean;
   indented?: boolean;
+  isDetached?: boolean;
   onOpen: (note: NoteMeta) => void;
   onToggleFavorite: (id: string) => void;
   onRequestDelete: (note: NoteMeta) => void;
@@ -171,7 +174,7 @@ function DragOverlayNoteCard({ note }: DragOverlayNoteCardProps) {
   );
 }
 
-function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, onRequestDelete, onContextMenu, t }: NoteItemProps) {
+function NoteItem({ note, isActive, indented = false, isDetached = false, onOpen, onToggleFavorite, onRequestDelete, onContextMenu, t }: NoteItemProps) {
   return (
     <div
       className={`vt-notes-tree-item group relative flex items-center gap-1.5 ${indented ? "pl-8 pr-3" : "px-3"} py-1.5 cursor-pointer transition-colors`}
@@ -210,6 +213,16 @@ function NoteItem({ note, isActive, indented = false, onOpen, onToggleFavorite, 
           aria-label={t('notes.localOnly.indicator')}
         >
           <CloudOff className="w-3 h-3" />
+        </span>
+      )}
+      {isDetached && (
+        <span
+          className="shrink-0"
+          style={{ color: "var(--vt-fg-4)" }}
+          title={t('notes.detach.indicator')}
+          aria-label={t('notes.detach.indicator')}
+        >
+          <AppWindow className="w-3 h-3" />
         </span>
       )}
       <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
@@ -262,6 +275,7 @@ interface FolderSectionProps {
   folder: FolderMeta;
   notes: NoteMeta[];
   activeNoteId: string | null;
+  detachedNoteIds: string[];
   collapsed: boolean;
   onToggle: () => void;
   onOpenNote: (note: NoteMeta) => void;
@@ -279,6 +293,7 @@ function FolderSection({
   folder,
   notes,
   activeNoteId,
+  detachedNoteIds,
   collapsed,
   onToggle,
   onOpenNote,
@@ -396,6 +411,7 @@ function FolderSection({
                 note={note}
                 isActive={note.id === activeNoteId}
                 indented
+                isDetached={detachedNoteIds.includes(note.id)}
                 onOpen={onOpenNote}
                 onToggleFavorite={onToggleFavorite}
                 onRequestDelete={onRequestDeleteNote}
@@ -414,6 +430,7 @@ export function NotesSidebarSection({
   notes,
   folders,
   activeNoteId,
+  detachedNoteIds,
   onOpenNote,
   onCreateNote,
   onToggleFavorite,
@@ -941,6 +958,7 @@ export function NotesSidebarSection({
                 key={note.id}
                 note={note}
                 isActive={note.id === activeNoteId}
+                isDetached={detachedNoteIds.includes(note.id)}
                 onOpen={onOpenNote}
                 onToggleFavorite={onToggleFavorite}
                 onRequestDelete={setNoteToDelete}
@@ -994,6 +1012,7 @@ export function NotesSidebarSection({
                       note={note}
                       isActive={note.id === activeNoteId}
                       indented
+                      isDetached={detachedNoteIds.includes(note.id)}
                       onOpen={onOpenNote}
                       onToggleFavorite={onToggleFavorite}
                       onRequestDelete={setNoteToDelete}
@@ -1037,6 +1056,7 @@ export function NotesSidebarSection({
                       note={note}
                       isActive={note.id === activeNoteId}
                       indented
+                      isDetached={detachedNoteIds.includes(note.id)}
                       onOpen={onOpenNote}
                       onToggleFavorite={onToggleFavorite}
                       onRequestDelete={setNoteToDelete}
@@ -1058,6 +1078,7 @@ export function NotesSidebarSection({
                   folder={folder}
                   notes={notesForFolder(folder.id)}
                   activeNoteId={activeNoteId}
+                  detachedNoteIds={detachedNoteIds}
                   collapsed={collapseState.folders[folder.id] ?? false}
                   onToggle={() => toggleFolderCollapsed(folder.id)}
                   onOpenNote={onOpenNote}
@@ -1131,6 +1152,7 @@ export function NotesSidebarSection({
                         note={note}
                         isActive={note.id === activeNoteId}
                         indented={folders.length > 0}
+                        isDetached={detachedNoteIds.includes(note.id)}
                         onOpen={onOpenNote}
                         onToggleFavorite={onToggleFavorite}
                         onRequestDelete={setNoteToDelete}

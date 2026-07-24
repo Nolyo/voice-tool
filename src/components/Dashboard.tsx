@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import { DashboardHeader } from "./common/DashboardHeader";
 import {
   DashboardSidebar,
@@ -43,6 +45,11 @@ import { useUpdaterContext } from "@/contexts/UpdaterContext";
 import { useRecordingWorkflow } from "@/hooks/useRecordingWorkflow";
 import { useNotesWorkflow } from "@/hooks/useNotesWorkflow";
 import { useIsCompactLayout } from "@/hooks/useIsCompactLayout";
+import { useDetachedNotesBridge } from "@/hooks/useDetachedNotesBridge";
+import {
+  scheduleNoteUpdatePushFromDisk,
+  UPDATE_NOTE_PUSH_DEBOUNCE_MS,
+} from "@/lib/sync/notes-store";
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -89,6 +96,7 @@ export default function Dashboard() {
     moveNoteToFolderAtIndex,
     reorderNotesInFolder,
     reloadNotes,
+    applyExternalNoteMeta,
   } = useNotes();
   const {
     folders,
@@ -120,6 +128,10 @@ export default function Dashboard() {
     handleOpenNote,
     handleCloseNoteTab,
     handleDeleteNote,
+    detachedNoteIds,
+    handleDetachNote,
+    handleNoteWindowClosed,
+    handleReattachNote,
   } = useNotesWorkflow({
     createNote,
     deleteNote,
@@ -129,10 +141,17 @@ export default function Dashboard() {
 
   const handleOpenNoteFromSidebar = useCallback(
     (note: NoteMeta) => {
+      if (detachedNoteIds.includes(note.id)) {
+        // Already detached — focus its window instead of opening a tab.
+        void invoke("open_note_window", { noteId: note.id }).catch((e) =>
+          console.error("Failed to focus note window:", e),
+        );
+        return;
+      }
       handleOpenNote(note);
       setActiveTab("notes");
     },
-    [handleOpenNote],
+    [detachedNoteIds, handleOpenNote],
   );
 
   const handleCreateNoteFromSidebar = useCallback(
@@ -180,6 +199,79 @@ export default function Dashboard() {
     },
     [notes, handleOpenNote],
   );
+
+  const handleReattachRequestFromDetached = useCallback(
+    async (id: string) => {
+      handleReattachNote(id);
+      setActiveTab("notes");
+      try {
+        await invoke("show_main_window");
+      } catch (e) {
+        console.error("Failed to show main window:", e);
+      }
+      try {
+        await invoke("close_note_window", { noteId: id });
+      } catch (e) {
+        console.error("Failed to close note window:", e);
+      }
+    },
+    [handleReattachNote],
+  );
+
+  const handleOpenRequestFromDetached = useCallback(
+    async (id: string) => {
+      if (detachedNoteIds.includes(id)) {
+        try {
+          await invoke("open_note_window", { noteId: id });
+        } catch (e) {
+          console.error("Failed to focus note window:", e);
+        }
+        return;
+      }
+      // The target may be brand new (recreated broken link) — refresh first.
+      await reloadNotes();
+      handleOpenNoteInTabById(id);
+      setActiveTab("notes");
+      try {
+        await invoke("show_main_window");
+      } catch (e) {
+        console.error("Failed to show main window:", e);
+      }
+    },
+    [detachedNoteIds, reloadNotes, handleOpenNoteInTabById],
+  );
+
+  const handleDetachedUpdated = useCallback(
+    (payload: { id: string; title: string; updatedAt: string }) => {
+      applyExternalNoteMeta(payload.id, payload.title, payload.updatedAt);
+      // The detached window wrote the disk; the main window owns the sync
+      // queue and ships the coalesced state after the debounce window.
+      scheduleNoteUpdatePushFromDisk(payload.id, UPDATE_NOTE_PUSH_DEBOUNCE_MS);
+    },
+    [applyExternalNoteMeta],
+  );
+
+  const handleToggleLocalOnlyFromDetached = useCallback(
+    async (id: string) => {
+      try {
+        await toggleLocalOnly(id);
+        const data = await readNote(id);
+        await emit("note-meta-updated", { meta: data.meta });
+      } catch (e) {
+        console.error("Failed to toggle local-only from detached window:", e);
+      }
+    },
+    [toggleLocalOnly, readNote],
+  );
+
+  useDetachedNotesBridge({
+    onWindowClosed: handleNoteWindowClosed,
+    onReattachRequest: (id) => void handleReattachRequestFromDetached(id),
+    onOpenRequest: (id) => void handleOpenRequestFromDetached(id),
+    onDeleteRequest: (id) => void handleDeleteNote(id),
+    onDetachedUpdated: handleDetachedUpdated,
+    onToggleLocalOnlyRequest: (id) => void handleToggleLocalOnlyFromDetached(id),
+  });
 
   // Open a note (created/updated from a transcription) in the Notes view.
   const handleOpenNoteFromHistory = useCallback(
@@ -292,6 +384,7 @@ export default function Dashboard() {
         notes={notes}
         folders={folders}
         activeNoteId={activeNoteId}
+        detachedNoteIds={detachedNoteIds}
         onOpenNote={handleOpenNoteFromSidebar}
         onCreateNote={handleCreateNoteFromSidebar}
         onToggleFavorite={toggleFavorite}
@@ -365,6 +458,7 @@ export default function Dashboard() {
               onMoveNote={moveNoteToFolder}
               onCreateFolder={createFolder}
               readNote={readNote}
+              onDetachNote={(id) => void handleDetachNote(id)}
             />
           ) : activeTab === "notes" ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">

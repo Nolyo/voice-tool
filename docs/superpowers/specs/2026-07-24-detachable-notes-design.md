@@ -174,6 +174,8 @@ fenêtre détachée (émet `note-detached-updated` pour que le main rafraîchiss
 | `note-detached-updated` | fenêtre note → broadcast | `{ id, title, updatedAt }` |
 | `note-detached-delete-request` | fenêtre note → main | `{ id }` |
 | `note-open-request` | fenêtre note → main | `{ id }` |
+| `note-toggle-local-only-request` | fenêtre note → main | `{ id }` |
+| `note-meta-updated` | main → broadcast | `{ meta: NoteMeta }` |
 | `note-remote-updated` | main → broadcast | `{ id, updatedAt }` |
 | `theme-changed`, `language-changed` | main → broadcast *(existants)* | inchangés |
 
