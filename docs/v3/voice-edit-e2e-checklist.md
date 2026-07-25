@@ -47,9 +47,12 @@
 - [ ] 12. Copier un texte témoin (« ABC »), puis faire un Voice Edit complet sur une
   autre sélection. Coller ensuite (Ctrl+V) ailleurs : **« ABC » est toujours là**
   tant qu'on n'a pas cliqué « Copier » ou « Remplacer ».
-- [ ] 13. Même chose avec un **presse-papiers vide** au départ : il reste vide.
-- [ ] 14. Même chose avec une **image** dans le presse-papiers : elle n'est pas perdue,
-  ou à défaut le comportement est documenté (le plugin ne lit que le texte).
+- [ ] 13. Même chose avec un **presse-papiers vide** au départ : le presse-papiers
+  contient ensuite le texte sélectionné (comme après un Ctrl+C manuel). Le
+  presse-papiers n'est jamais écrasé silencieusement par du vide.
+- [ ] 14. Copier une **image** (capture d'écran), puis Ctrl+F9 sur une sélection de
+  texte ailleurs. Revenir coller l'image : **elle est toujours là**. Un presse-papiers
+  non textuel n'est jamais écrit par Voice Edit.
 
 ## États et bords
 
@@ -61,17 +64,39 @@
   bandeau de troncature affiché avant l'appel.
 - [ ] 18. **Relancer** depuis le résultat : rejoue la même action.
 - [ ] 19. Ctrl+F9 **pendant un enregistrement en cours** (Ctrl+F11 actif) : ignoré,
-  aucun overlay, la dictée continue normalement.
+  aucun overlay, la dictée continue normalement, et un toast explique pourquoi.
 - [ ] 20. **Non éligible cloud** (se déconnecter) : l'overlay s'ouvre sur l'écran
   d'upsell, **aucun appel réseau** (vérifier l'onglet réseau / les logs).
+- [ ] 21. Une erreur affichée (couper le réseau, lancer une action), puis **Relancer**
+  avec le réseau rétabli : le message d'erreur **disparaît**, il ne reste pas
+  affiché sous le résultat réussi.
+
+## Cohabitation avec la dictée
+
+- [ ] 22. Ctrl+F9, puis **Ctrl+F11 pendant que l'overlay écoute** : rien n'est collé
+  dans l'application source. L'instruction n'est jamais traitée comme une dictée.
+- [ ] 23. Overlay ouvert sur un résultat, lancer une dictée avec Ctrl+F11, puis
+  **Échap** (l'overlay a le focus) : la dictée **continue**, elle n'est pas coupée.
+- [ ] 24. Overlay ouvert sur un résultat, dictée en cours, appuyer sur `1` :
+  la dictée n'est pas interrompue.
 
 ## Réglages
 
-- [ ] 21. Vider le raccourci Voice Edit : le raccourci est désactivé, Ctrl+F9 ne fait
+- [ ] 25. Vider le raccourci Voice Edit : le raccourci est désactivé, Ctrl+F9 ne fait
   plus rien, et le réglage survit à un redémarrage.
-- [ ] 22. Assigner à Voice Edit un raccourci **déjà utilisé** (Ctrl+F11) : refusé avec
+- [ ] 26. Assigner à Voice Edit un raccourci **déjà utilisé** (Ctrl+F11) : refusé avec
   un message de conflit, l'ancien raccourci reste actif.
-- [ ] 23. Redémarrer l'app : le raccourci et les deux langues sont conservés.
+- [ ] 27. Redémarrer l'app : le raccourci et les deux langues sont conservés.
+- [ ] 28. **Chemin de mise à jour** — affecter Ctrl+F9 à la dictée, supprimer la clé
+  `voice_edit_hotkey` du `settings.json` du profil, relancer : tous les raccourcis
+  existants fonctionnent toujours (Voice Edit reste simplement désactivé).
+
+## Overlay
+
+- [ ] 29. Thème **sombre** puis **clair** : l'overlay suit, y compris s'il est ouvert
+  au moment du changement.
+- [ ] 30. Changer la langue de l'interface : les libellés de la palette de l'overlay
+  suivent sans redémarrer l'application.
 
 ## Non couvert par ce lot
 

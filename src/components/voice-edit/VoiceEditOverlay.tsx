@@ -1,20 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { Loader2, Mic, Sparkles } from "lucide-react";
+import { bootstrapSecondaryWindow } from "@/lib/window-bootstrap";
 import {
   getDefaultVoiceEditActions,
   SELECTION_CHAR_CAP,
-  type VoiceEditAction,
+  truncateSelection,
 } from "@/lib/voice-edit/actions";
 import {
   nextVoiceEditState,
+  type VoiceEditEvent,
   type VoiceEditState,
 } from "./voice-edit-machine";
 import { VoiceEditPalette } from "./VoiceEditPalette";
 import "./voice-edit.css";
+
+/** How much of the selection is echoed back in the overlay header. */
+const PREVIEW_CHAR_CAP = 140;
 
 interface OpenPayload {
   text: string;
@@ -24,11 +29,9 @@ interface OpenPayload {
 }
 
 interface StatePayload {
-  state: VoiceEditState;
+  event: VoiceEditEvent;
   result?: string;
   error?: string;
-  /** Palette actions resolved by the main window (user-customised ones). */
-  actions?: VoiceEditAction[];
 }
 
 /**
@@ -41,14 +44,18 @@ interface StatePayload {
  * detached-notes design explicitly rejected.
  */
 export function VoiceEditOverlay() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [state, setState] = useState<VoiceEditState>("listening");
   const [selection, setSelection] = useState<OpenPayload | null>(null);
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [actions, setActions] = useState<VoiceEditAction[]>(() =>
-    getDefaultVoiceEditActions(),
+  // Rebuilt when the UI language changes: `bootstrapSecondaryWindow` forwards
+  // the main window's `language-changed` broadcast into this webview's i18n.
+  const actions = useMemo(
+    () => getDefaultVoiceEditActions(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [i18n.language],
   );
   // Read inside event handlers registered once — a stale closure here would
   // send the replace request with the previous invocation's window handle.
@@ -73,15 +80,60 @@ export function VoiceEditOverlay() {
     };
   }, []);
 
+  // Same bootstrap as the mini and detached-note windows: without it this
+  // webview never gets the `dark` class (the default theme) and never follows
+  // theme or language changes made in the main window.
+  useEffect(() => {
+    let dispose: (() => void) | null = null;
+    let disposed = false;
+    void bootstrapSecondaryWindow().then(({ unlisten }) => {
+      if (disposed) unlisten();
+      else dispose = unlisten;
+    });
+    return () => {
+      disposed = true;
+      dispose?.();
+    };
+  }, []);
+
+  /**
+   * Single entry point for state changes.
+   *
+   * Everything goes through the machine — including the events pushed by the
+   * main window — so the transitions it forbids (a late instruction rewinding a
+   * running request, a resolution landing after an error) stay forbidden here
+   * too. The error message is cleared by the same rule: it survives exactly as
+   * long as the machine stays in `error`.
+   */
+  const applyEvent = useCallback(
+    (event: VoiceEditEvent, extra?: { result?: string; error?: string }) => {
+      const next = nextVoiceEditState(stateRef.current, event);
+      stateRef.current = next;
+      setState(next);
+
+      if (next === "error") {
+        if (extra?.error) setError(extra.error);
+      } else {
+        setError("");
+      }
+      if (next === "result" && extra?.result !== undefined) {
+        setResult(extra.result);
+        setCopied(false);
+      }
+    },
+    [],
+  );
+
   const close = useCallback(() => {
     void emit("voice-edit-close");
+    // A no-op on the Rust side unless a Voice Edit capture actually owns the
+    // microphone, so this cannot cut short a dictation started meanwhile.
     void invoke("stop_voice_edit_instruction", { abort: true }).catch(() => {});
     void invoke("hide_voice_edit_overlay").catch(() => {});
-    setState("listening");
+    applyEvent({ type: "close" });
     setResult("");
-    setError("");
     setCopied(false);
-  }, []);
+  }, [applyEvent]);
 
   const runAction = useCallback(
     (index: number) => {
@@ -90,25 +142,25 @@ export function VoiceEditOverlay() {
       // The mic loses the race: drop the audio rather than transcribing an
       // instruction the user replaced with a keystroke.
       void invoke("stop_voice_edit_instruction", { abort: true }).catch(() => {});
-      setState((s) => nextVoiceEditState(s, { type: "palette-key" }));
+      applyEvent({ type: "palette-key" });
       void emit("voice-edit-run", {
         actionIndex: index,
         text: current.text,
         sourceWindow: current.sourceWindow,
       });
     },
-    [],
+    [applyEvent],
   );
 
   const retry = useCallback(() => {
     const current = selectionRef.current;
     if (!current) return;
-    setState((s) => nextVoiceEditState(s, { type: "retry" }));
+    applyEvent({ type: "retry" });
     void emit("voice-edit-retry", {
       text: current.text,
       sourceWindow: current.sourceWindow,
     });
-  }, []);
+  }, [applyEvent]);
 
   const copy = useCallback(async () => {
     if (!result) return;
@@ -134,7 +186,6 @@ export function VoiceEditOverlay() {
       await invoke("replace_selection", {
         text: result,
         sourceWindow: current.sourceWindow,
-        mode: "cursor",
       });
       close();
     } catch (e) {
@@ -150,6 +201,7 @@ export function VoiceEditOverlay() {
   useEffect(() => {
     const unlistenOpen = listen<OpenPayload>("voice-edit-open", (event) => {
       setSelection(event.payload);
+      stateRef.current = "listening";
       setState("listening");
       setResult("");
       setError("");
@@ -157,18 +209,15 @@ export function VoiceEditOverlay() {
     });
 
     const unlistenState = listen<StatePayload>("voice-edit-state", (event) => {
-      const payload = event.payload;
-      if (payload.actions?.length) setActions(payload.actions);
-      if (payload.result !== undefined) setResult(payload.result);
-      if (payload.error !== undefined) setError(payload.error);
-      setState(payload.state);
+      const { event: machineEvent, result, error } = event.payload;
+      applyEvent(machineEvent, { result, error });
     });
 
     return () => {
       void unlistenOpen.then((f) => f());
       void unlistenState.then((f) => f());
     };
-  }, []);
+  }, [applyEvent]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -188,6 +237,12 @@ export function VoiceEditOverlay() {
   }, [close, runAction]);
 
   const busy = state === "transcribing" || state === "processing";
+  // Code-point aware: a raw `.slice` would cut a surrogate pair in half and
+  // render a lone U+FFFD at the end of the preview.
+  const preview = useMemo(
+    () => truncateSelection(selection?.text ?? "", PREVIEW_CHAR_CAP),
+    [selection?.text],
+  );
 
   return (
     <div className="voice-edit" role="dialog" aria-label={t("voiceEdit.overlay.title")}>
@@ -206,8 +261,8 @@ export function VoiceEditOverlay() {
           <span className="voice-edit__selection-label">
             {t("voiceEdit.overlay.selectionLabel")}
           </span>
-          {selection.text.slice(0, 140)}
-          {selection.text.length > 140 ? "…" : ""}
+          {preview.text}
+          {preview.truncated ? "…" : ""}
         </p>
       )}
 

@@ -12,7 +12,7 @@
 //! that never reach the microphone at all.
 
 use std::sync::mpsc::{Receiver, Sender};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
@@ -52,6 +52,23 @@ impl VoiceEditRuntime {
     }
 }
 
+/// True while a Voice Edit instruction capture owns the microphone.
+///
+/// Used by the recording shortcuts to tell "the user is dictating" apart from
+/// "Voice Edit is listening for an instruction": both make `is_recording()`
+/// true, but only the former may be stopped and shipped for transcription.
+pub(crate) fn is_capture_active<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
+    let state: State<AppState> = app_handle.state();
+    // Takes the runtime lock alone and releases it before returning, so it can
+    // never invert the recorder → runtime order used by the capture paths.
+    state
+        .inner()
+        .voice_edit
+        .lock()
+        .map(|runtime| runtime.tap.is_some())
+        .unwrap_or(false)
+}
+
 /// Open the microphone and listen for a single instruction.
 ///
 /// Returns false when a recording is already in progress: the audio callback
@@ -75,6 +92,10 @@ pub(crate) fn start_instruction_capture<R: Runtime>(app_handle: &AppHandle<R>) -
 
         let Ok(mut runtime) = state.inner().voice_edit.lock() else {
             tracing::warn!("Voice Edit: runtime lock poisoned");
+            // The microphone is already live at this point: bail out without
+            // rolling it back and it would stay open forever, with no tap and
+            // no worker to close it.
+            let _ = recorder.stop_recording(0.005);
             return false;
         };
         runtime.session_seq += 1;
@@ -99,6 +120,11 @@ pub(crate) fn start_instruction_capture<R: Runtime>(app_handle: &AppHandle<R>) -
 
 /// Close the microphone. `abort = true` discards the audio (palette key pressed,
 /// or the overlay was dismissed) instead of shipping it for transcription.
+///
+/// A no-op when no Voice Edit capture is running: the overlay calls this on
+/// Escape and on every palette key, and it stays on top of a dictation the user
+/// may have started meanwhile — stopping the recorder unconditionally would
+/// silently kill that dictation.
 pub(crate) fn stop_instruction_capture<R: Runtime>(app_handle: &AppHandle<R>, abort: bool) {
     let state: State<AppState> = app_handle.state();
 
@@ -109,22 +135,28 @@ pub(crate) fn stop_instruction_capture<R: Runtime>(app_handle: &AppHandle<R>, ab
         let Ok(mut recorder) = state.inner().audio_recorder.lock() else {
             return;
         };
+
+        // Taking the tap out is what claims ownership: whoever gets `Some` is
+        // the one that must tear the microphone down, and a second call finds
+        // `None` and leaves the recorder alone.
+        let tap = match state.inner().voice_edit.lock() {
+            Ok(mut runtime) => runtime.tap.take(),
+            Err(_) => None,
+        };
+        let Some(tap) = tap else {
+            return;
+        };
+
         if recorder.is_recording() {
             // The silence threshold is irrelevant here: the segmenter already
             // did the trimming, and the result of stop_recording is discarded.
             let _ = recorder.stop_recording(0.005);
         }
         recorder.set_chunk_tap(None);
-
-        match state.inner().voice_edit.lock() {
-            Ok(mut runtime) => runtime.tap.take(),
-            Err(_) => None,
-        }
+        tap
     };
 
-    if let Some(tx) = tap {
-        let _ = tx.send(if abort { TapMsg::Abort } else { TapMsg::Finish });
-    }
+    let _ = tap.send(if abort { TapMsg::Abort } else { TapMsg::Finish });
 }
 
 /// Renderer-facing stop, used when a palette key is pressed or the overlay is
@@ -155,6 +187,18 @@ fn emit_instruction<R: Runtime>(
     );
 }
 
+/// Nothing was said within the budget: close the microphone and let the overlay
+/// tell the user, instead of leaving it live behind an idle window.
+fn expire_instruction<R: Runtime>(app_handle: &AppHandle<R>, session_id: u64) {
+    tracing::info!(
+        "Voice Edit instruction {} timed out after {}s, closing the mic",
+        session_id,
+        INSTRUCTION_TIMEOUT_SECS
+    );
+    stop_instruction_capture(app_handle, true);
+    let _ = app_handle.emit("voice-edit-instruction-timeout", session_id);
+}
+
 fn run_instruction_worker<R: Runtime>(
     app_handle: AppHandle<R>,
     rx: Receiver<TapMsg>,
@@ -162,10 +206,20 @@ fn run_instruction_worker<R: Runtime>(
     sample_rate: u32,
 ) {
     let mut segmenter = SpeechSegmenter::new(voice_edit_segmenter_config(sample_rate));
-    let timeout = Duration::from_secs(INSTRUCTION_TIMEOUT_SECS);
+    // Absolute deadline, not a per-`recv` timeout: the audio callback pushes a
+    // batch every few milliseconds whether or not anyone is speaking, so a
+    // per-call timeout would be rearmed forever and the microphone would never
+    // close for a user who walked away.
+    let deadline = Instant::now() + Duration::from_secs(INSTRUCTION_TIMEOUT_SECS);
 
     loop {
-        match rx.recv_timeout(timeout) {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            expire_instruction(&app_handle, session_id);
+            return;
+        }
+
+        match rx.recv_timeout(remaining) {
             Ok(TapMsg::Samples(samples)) => {
                 // First complete segment wins: an instruction is one sentence.
                 if let Some(segment) = segmenter.push(&samples).into_iter().next() {
@@ -184,13 +238,7 @@ fn run_instruction_worker<R: Runtime>(
                 return;
             }
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                tracing::info!(
-                    "Voice Edit instruction {} timed out after {}s, closing the mic",
-                    session_id,
-                    INSTRUCTION_TIMEOUT_SECS
-                );
-                stop_instruction_capture(&app_handle, true);
-                let _ = app_handle.emit("voice-edit-instruction-timeout", session_id);
+                expire_instruction(&app_handle, session_id);
                 return;
             }
             // Every sender dropped without a Finish: nothing to finalize.

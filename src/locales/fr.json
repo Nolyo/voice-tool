@@ -1015,12 +1015,13 @@
       "focusFailed": "Impossible de revenir à la fenêtre d'origine. Le résultat est copié dans le presse-papiers.",
       "transcriptionFailed": "L'instruction n'a pas pu être transcrite. Réessayez ou choisissez une action.",
       "emptyInstruction": "Aucune instruction entendue.",
+      "micUnavailable": "Le micro n'a pas pu être ouvert. Choisissez plutôt une action ci-dessous.",
+      "recordingInProgress": "Voice Edit est indisponible pendant un enregistrement.",
       "generic": "Le traitement a échoué. Réessayez."
     },
     "upsell": {
       "title": "Voice Edit nécessite Lexena Cloud",
-      "body": "Le traitement du texte par l'IA passe par le service managé. Activez votre essai gratuit ou un abonnement pour l'utiliser.",
-      "cta": "Voir les offres"
+      "body": "Le traitement du texte par l'IA passe par le service managé. Activez votre essai gratuit ou un abonnement pour l'utiliser."
     },
     "settings": {
       "title": "Voice Edit",

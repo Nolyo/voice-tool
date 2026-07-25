@@ -27,9 +27,6 @@ export type VoiceEditEvent =
   | { type: "retry" }
   | { type: "close" };
 
-/** States from which no automatic progress is possible any more. */
-const TERMINAL: readonly VoiceEditState[] = ["error", "upsell"];
-
 export function nextVoiceEditState(
   current: VoiceEditState,
   event: VoiceEditEvent,
@@ -98,8 +95,4 @@ export function nextVoiceEditState(
     default:
       return current;
   }
-}
-
-export function isTerminal(state: VoiceEditState): boolean {
-  return TERMINAL.includes(state);
 }

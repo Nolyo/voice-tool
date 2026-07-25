@@ -1015,12 +1015,13 @@
       "focusFailed": "Could not switch back to the source window. The result is on your clipboard.",
       "transcriptionFailed": "Your instruction could not be transcribed. Try again or pick an action.",
       "emptyInstruction": "No instruction was heard.",
+      "micUnavailable": "The microphone could not be opened. Pick an action below instead.",
+      "recordingInProgress": "Voice Edit is unavailable while a recording is in progress.",
       "generic": "Processing failed. Try again."
     },
     "upsell": {
       "title": "Voice Edit needs Lexena Cloud",
-      "body": "AI text processing runs on the managed service. Start your free trial or subscribe to use it.",
-      "cta": "See the plans"
+      "body": "AI text processing runs on the managed service. Start your free trial or subscribe to use it."
     },
     "settings": {
       "title": "Voice Edit",
