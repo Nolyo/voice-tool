@@ -633,6 +633,8 @@
       "postProcessToggleDesc": "Actif uniquement pendant l'enregistrement. Active/désactive le post-traitement IA.",
       "repaste": "Recoller la dernière transcription",
       "repasteDesc": "Recolle la dernière transcription à la position du curseur",
+      "voiceEdit": "Voice Edit",
+      "voiceEditDesc": "Agit à la voix sur le texte sélectionné dans n'importe quelle application",
       "conflictsTitle": "Conflits de raccourcis",
       "conflictsBody": "Si un raccourci ne répond pas, il est peut-être capturé par une autre application. Essaie une combinaison avec la touche Win ou Alt."
     },
@@ -1023,21 +1025,9 @@
     "settings": {
       "title": "Voice Edit",
       "description": "Agir à la voix sur le texte sélectionné dans n'importe quelle application.",
-      "hotkeyLabel": "Raccourci Voice Edit",
-      "hotkeyHint": "Laissez vide pour désactiver Voice Edit.",
       "primaryLang": "Langue principale",
       "secondaryLang": "Langue secondaire",
-      "langHint": "Un texte dans une autre langue est traduit vers la langue principale. Un texte déjà dans la langue principale est traduit vers la secondaire.",
-      "actionsTitle": "Actions de la palette",
-      "actionsHint": "Les touches 1 à 9 déclenchent ces actions dans l'ordre.",
-      "actionLabel": "Libellé",
-      "actionPrompt": "Instruction envoyée à l'IA",
-      "translatePromptLocked": "Construite automatiquement à partir des deux langues ci-dessus.",
-      "addAction": "Ajouter une action",
-      "removeAction": "Supprimer l'action",
-      "moveUp": "Monter",
-      "moveDown": "Descendre",
-      "resetActions": "Rétablir les actions par défaut"
+      "langHint": "Un texte dans une autre langue est traduit vers la langue principale. Un texte déjà dans la langue principale est traduit vers la secondaire."
     }
   },
   "streaming": {

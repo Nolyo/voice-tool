@@ -633,6 +633,8 @@
       "postProcessToggleDesc": "Only active while recording. Enables/disables AI post-processing.",
       "repaste": "Re-paste last transcription",
       "repasteDesc": "Pastes the last transcription again at the cursor",
+      "voiceEdit": "Voice Edit",
+      "voiceEditDesc": "Acts on the text selected in any application, using your voice",
       "conflictsTitle": "Shortcut conflicts",
       "conflictsBody": "If a shortcut doesn't respond, it may be captured by another application. Try a combination with the Win or Alt key."
     },
@@ -1023,21 +1025,9 @@
     "settings": {
       "title": "Voice Edit",
       "description": "Act on the text selected in any application, using your voice.",
-      "hotkeyLabel": "Voice Edit shortcut",
-      "hotkeyHint": "Leave empty to disable Voice Edit.",
       "primaryLang": "Primary language",
       "secondaryLang": "Secondary language",
-      "langHint": "Text in another language is translated into the primary language. Text already in the primary language is translated into the secondary one.",
-      "actionsTitle": "Palette actions",
-      "actionsHint": "Keys 1 to 9 trigger these actions, in order.",
-      "actionLabel": "Label",
-      "actionPrompt": "Instruction sent to the AI",
-      "translatePromptLocked": "Built automatically from the two languages above.",
-      "addAction": "Add an action",
-      "removeAction": "Remove this action",
-      "moveUp": "Move up",
-      "moveDown": "Move down",
-      "resetActions": "Restore default actions"
+      "langHint": "Text in another language is translated into the primary language. Text already in the primary language is translated into the secondary one."
     }
   },
   "streaming": {
