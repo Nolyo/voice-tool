@@ -14,6 +14,8 @@ pub(crate) struct HotkeyConfig {
     pub(crate) post_process_toggle: Option<String>,
     /// Re-pastes the last inserted transcription at the cursor. Empty = disabled.
     pub(crate) repaste: Option<String>,
+    /// Opens the Voice Edit overlay on the current selection. Empty = disabled.
+    pub(crate) voice_edit: Option<String>,
 }
 
 /// Holds a cached whisper context + state so state buffers are allocated once
@@ -62,6 +64,10 @@ pub struct AppState {
     /// Streaming-mode runtime: enabled snapshot pushed by the renderer plus
     /// the tap of the currently active streaming session, if any.
     pub(crate) streaming: Mutex<crate::streaming::StreamingRuntime>,
+    /// Voice Edit runtime: tap of the instruction capture currently listening,
+    /// if any. Mutually exclusive with a dictation — the recorder has a single
+    /// tap slot.
+    pub(crate) voice_edit: Mutex<crate::voice_edit::VoiceEditRuntime>,
 }
 
 pub(crate) fn create_app_state() -> AppState {
@@ -81,5 +87,6 @@ pub(crate) fn create_app_state() -> AppState {
         auth: Mutex::new(crate::auth::AuthState::new()),
         cloud_gate: Mutex::new(CloudGate::default()),
         streaming: Mutex::new(crate::streaming::StreamingRuntime::new()),
+        voice_edit: Mutex::new(crate::voice_edit::VoiceEditRuntime::new()),
     }
 }

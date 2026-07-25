@@ -21,6 +21,7 @@ export default defineConfig(async () => ({
         main: path.resolve(__dirname, 'index.html'),
         mini: path.resolve(__dirname, 'mini.html'),
         note: path.resolve(__dirname, 'note.html'),
+        voiceEdit: path.resolve(__dirname, 'voice-edit.html'),
       },
     },
   },

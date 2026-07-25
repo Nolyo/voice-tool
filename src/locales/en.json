@@ -633,6 +633,8 @@
       "postProcessToggleDesc": "Only active while recording. Enables/disables AI post-processing.",
       "repaste": "Re-paste last transcription",
       "repasteDesc": "Pastes the last transcription again at the cursor",
+      "voiceEdit": "Voice Edit",
+      "voiceEditDesc": "Acts on the text selected in any application, using your voice",
       "conflictsTitle": "Shortcut conflicts",
       "conflictsBody": "If a shortcut doesn't respond, it may be captured by another application. Try a combination with the Win or Alt key."
     },
@@ -972,6 +974,64 @@
     "codeTitle": "Code and separators",
     "codeDesc": "<p>Type <code>---</code> to insert a separator, or <code>```</code> for a code block.</p>",
     "start": "<p>Start writing your first note!</p>"
+  },
+  "voiceEdit": {
+    "prompts": {
+      "suffix": "Return only the resulting text, with no explanation, no comment and no quotes around the response. Preserve the original formatting, line breaks and punctuation.",
+      "translate": "You are a professional translator. Detect the language of the text provided. If it differs from {{primary}}, translate the text into {{primary}}. If it is already {{primary}}, translate it into {{secondary}}. Preserve the tone and style of the original.",
+      "instruction": "Apply the following instruction to the text provided: \"{{instruction}}\""
+    },
+    "actions": {
+      "translate": "Translate",
+      "fix": "Fix",
+      "rephrase": "Rephrase",
+      "summarize": "Summarize",
+      "fixPrompt": "You are a spelling and grammar proofreader. Correct the spelling, grammar and punctuation mistakes in the text provided, without changing its meaning, tone or vocabulary.",
+      "rephrasePrompt": "You are a writing assistant. Rephrase the text provided to make it clearer and more fluent, strictly preserving its meaning and register.",
+      "summarizePrompt": "You are a summarization assistant. Summarize the text provided, keeping the essential information, in the language of the original text."
+    },
+    "overlay": {
+      "title": "Voice Edit",
+      "listening": "Say your instruction…",
+      "secondsShort": "{{seconds}} s",
+      "micAutoClose": "Microphone open — closes on its own in {{seconds}} s",
+      "orChoose": "or pick one:",
+      "transcribing": "Transcribing your instruction…",
+      "processing": "Working…",
+      "noSelection": "No text selected — just speak, the result will show up here.",
+      "selectionLabel": "Selection",
+      "truncated": "Selection too long: only the first {{count}} characters will be processed.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "replace": "Replace",
+      "retry": "Retry",
+      "close": "Close",
+      "closeHint": "Esc to close",
+      "copyAria": "Copy the result to the clipboard",
+      "replaceAria": "Replace the selected text with the result",
+      "retryAria": "Run the same action again",
+      "closeAria": "Close Voice Edit"
+    },
+    "errors": {
+      "replaceFailed": "The text could not be inserted here (read-only area?). It is still on your clipboard.",
+      "focusFailed": "Could not switch back to the source window. The result is on your clipboard.",
+      "transcriptionFailed": "Your instruction could not be transcribed. Try again or pick an action.",
+      "emptyInstruction": "No instruction was heard.",
+      "micUnavailable": "The microphone could not be opened. Pick an action below instead.",
+      "recordingInProgress": "Voice Edit is unavailable while a recording is in progress.",
+      "generic": "Processing failed. Try again."
+    },
+    "upsell": {
+      "title": "Voice Edit needs Lexena Cloud",
+      "body": "AI text processing runs on the managed service. Start your free trial or subscribe to use it."
+    },
+    "settings": {
+      "title": "Voice Edit",
+      "description": "Act on the text selected in any application, using your voice.",
+      "primaryLang": "Primary language",
+      "secondaryLang": "Secondary language",
+      "langHint": "Text in another language is translated into the primary language. Text already in the primary language is translated into the secondary one."
+    }
   },
   "streaming": {
     "partialLoss": "Some passages could not be transcribed (network issue). The text may be incomplete.",

@@ -18,6 +18,7 @@ mod transcription_local;
 mod transcriptions;
 mod tray;
 mod updater;
+mod voice_edit;
 mod window;
 
 // Re-export for transcription_local compatibility
@@ -115,6 +116,9 @@ pub fn run() {
             commands::transcription::load_recording,
             commands::misc::paste_text_to_active_window,
             commands::misc::type_text_at_cursor,
+            commands::selection::replace_selection,
+            voice_edit::stop_voice_edit_instruction,
+            window::hide_voice_edit_overlay,
             commands::misc::frontend_log,
             updater::check_for_updates,
             updater::download_and_install_update,
@@ -253,6 +257,7 @@ pub fn run() {
 
             // Window setup
             window::create_mini_window(&app.handle())?;
+            window::create_voice_edit_window(&app.handle())?;
             window::setup_main_window(app)?;
 
             // Hotkeys

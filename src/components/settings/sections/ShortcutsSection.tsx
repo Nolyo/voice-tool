@@ -6,6 +6,7 @@ import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { buildShortcutFromEvent } from "../common/HotkeyInput";
 import { Callout, Kbd, SectionHeader, VtIcon } from "../vt";
 import { InsertionModeCard } from "./InsertionModeCard";
+import { VoiceEditCard } from "./VoiceEditCard";
 
 const ACCENT = "var(--vt-accent)";
 
@@ -15,7 +16,8 @@ type HotkeyKey =
   | "open_window_hotkey"
   | "cancel_hotkey"
   | "post_process_toggle_hotkey"
-  | "repaste_hotkey";
+  | "repaste_hotkey"
+  | "voice_edit_hotkey";
 
 interface HotkeyRowProps {
   label: string;
@@ -261,6 +263,13 @@ export function ShortcutsSection() {
       defaultValue: DEFAULT_SETTINGS.settings.repaste_hotkey,
       value: settings.repaste_hotkey,
     },
+    {
+      id: "voice_edit_hotkey",
+      label: t("settings.shortcuts.voiceEdit"),
+      sub: t("settings.shortcuts.voiceEditDesc"),
+      defaultValue: DEFAULT_SETTINGS.settings.voice_edit_hotkey,
+      value: settings.voice_edit_hotkey,
+    },
   ];
 
   return (
@@ -302,6 +311,8 @@ export function ShortcutsSection() {
             "Si un raccourci ne répond pas, il est peut-être capturé par une autre application. Essaie une combinaison avec la touche Win ou Alt.",
         })}
       </Callout>
+
+      <VoiceEditCard />
 
       <InsertionModeCard />
     </div>

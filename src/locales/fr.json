@@ -633,6 +633,8 @@
       "postProcessToggleDesc": "Actif uniquement pendant l'enregistrement. Active/désactive le post-traitement IA.",
       "repaste": "Recoller la dernière transcription",
       "repasteDesc": "Recolle la dernière transcription à la position du curseur",
+      "voiceEdit": "Voice Edit",
+      "voiceEditDesc": "Agit à la voix sur le texte sélectionné dans n'importe quelle application",
       "conflictsTitle": "Conflits de raccourcis",
       "conflictsBody": "Si un raccourci ne répond pas, il est peut-être capturé par une autre application. Essaie une combinaison avec la touche Win ou Alt."
     },
@@ -972,6 +974,64 @@
     "codeTitle": "Code et séparateurs",
     "codeDesc": "<p>Tapez <code>---</code> pour insérer un séparateur, ou <code>```</code> pour un bloc de code.</p>",
     "start": "<p>Commencez à écrire votre première note !</p>"
+  },
+  "voiceEdit": {
+    "prompts": {
+      "suffix": "Retourne uniquement le texte résultant, sans explication, sans commentaire et sans guillemets autour de la réponse. Préserve la mise en forme, les sauts de ligne et la ponctuation de l'original.",
+      "translate": "Tu es un traducteur professionnel. Détecte la langue du texte fourni. Si elle est différente de {{primary}}, traduis le texte vers {{primary}}. Si elle est déjà {{primary}}, traduis-le vers {{secondary}}. Conserve le ton et le style de l'original.",
+      "instruction": "Applique l'instruction suivante au texte fourni : « {{instruction}} »"
+    },
+    "actions": {
+      "translate": "Traduire",
+      "fix": "Corriger",
+      "rephrase": "Reformuler",
+      "summarize": "Résumer",
+      "fixPrompt": "Tu es un correcteur orthographique et grammatical. Corrige les fautes d'orthographe, de grammaire, de conjugaison et de ponctuation du texte fourni, sans en modifier le sens, le ton ni le vocabulaire.",
+      "rephrasePrompt": "Tu es un assistant d'écriture. Reformule le texte fourni pour le rendre plus clair et plus fluide, en conservant strictement son sens et son niveau de langue.",
+      "summarizePrompt": "Tu es un assistant de synthèse. Résume le texte fourni en conservant les informations essentielles, dans la langue du texte d'origine."
+    },
+    "overlay": {
+      "title": "Voice Edit",
+      "listening": "Dictez votre instruction…",
+      "secondsShort": "{{seconds}} s",
+      "micAutoClose": "Micro ouvert — fermeture automatique dans {{seconds}} s",
+      "orChoose": "ou choisissez :",
+      "transcribing": "Transcription de l'instruction…",
+      "processing": "Traitement en cours…",
+      "noSelection": "Aucun texte sélectionné — dictez, le résultat s'affichera ici.",
+      "selectionLabel": "Sélection",
+      "truncated": "Sélection trop longue : seuls les {{count}} premiers caractères seront traités.",
+      "copy": "Copier",
+      "copied": "Copié",
+      "replace": "Remplacer",
+      "retry": "Relancer",
+      "close": "Fermer",
+      "closeHint": "Échap pour fermer",
+      "copyAria": "Copier le résultat dans le presse-papiers",
+      "replaceAria": "Remplacer le texte sélectionné par le résultat",
+      "retryAria": "Relancer la même action",
+      "closeAria": "Fermer Voice Edit"
+    },
+    "errors": {
+      "replaceFailed": "Le texte n'a pas pu être inséré ici (zone en lecture seule ?). Il reste copié dans le presse-papiers.",
+      "focusFailed": "Impossible de revenir à la fenêtre d'origine. Le résultat est copié dans le presse-papiers.",
+      "transcriptionFailed": "L'instruction n'a pas pu être transcrite. Réessayez ou choisissez une action.",
+      "emptyInstruction": "Aucune instruction entendue.",
+      "micUnavailable": "Le micro n'a pas pu être ouvert. Choisissez plutôt une action ci-dessous.",
+      "recordingInProgress": "Voice Edit est indisponible pendant un enregistrement.",
+      "generic": "Le traitement a échoué. Réessayez."
+    },
+    "upsell": {
+      "title": "Voice Edit nécessite Lexena Cloud",
+      "body": "Le traitement du texte par l'IA passe par le service managé. Activez votre essai gratuit ou un abonnement pour l'utiliser."
+    },
+    "settings": {
+      "title": "Voice Edit",
+      "description": "Agir à la voix sur le texte sélectionné dans n'importe quelle application.",
+      "primaryLang": "Langue principale",
+      "secondaryLang": "Langue secondaire",
+      "langHint": "Un texte dans une autre langue est traduit vers la langue principale. Un texte déjà dans la langue principale est traduit vers la secondaire."
+    }
   },
   "streaming": {
     "partialLoss": "Certains passages n'ont pas pu être transcrits (problème réseau). Le texte peut être incomplet.",

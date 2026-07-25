@@ -386,6 +386,63 @@ pub(crate) fn create_mini_window(app: &tauri::AppHandle) -> Result<(), Box<dyn s
     Ok(())
 }
 
+pub(crate) const VOICE_EDIT_WIDTH: f64 = 560.0;
+pub(crate) const VOICE_EDIT_HEIGHT: f64 = 320.0;
+
+/// Create the Voice Edit overlay at startup (hidden by default).
+///
+/// Pre-created like the mini window: building a webview on demand costs enough
+/// to be visible, and this overlay opens on a keystroke.
+pub(crate) fn create_voice_edit_window(
+    app: &tauri::AppHandle,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri::WebviewUrl;
+    use tauri::WebviewWindowBuilder;
+
+    WebviewWindowBuilder::new(
+        app,
+        "voice-edit",
+        WebviewUrl::App("voice-edit.html".into()),
+    )
+    .title("Lexena - Voice Edit")
+    .inner_size(VOICE_EDIT_WIDTH, VOICE_EDIT_HEIGHT)
+    .resizable(false)
+    .decorations(false)
+    .always_on_top(true)
+    .transparent(true)
+    .visible(false)
+    .skip_taskbar(true)
+    // Unlike the mini window, this one must take focus: the palette is driven
+    // by digit keys and Escape, captured by the webview itself rather than by
+    // extra global shortcuts.
+    .focusable(true)
+    .center()
+    .build()?;
+
+    Ok(())
+}
+
+pub(crate) fn show_voice_edit_window<R: Runtime>(app_handle: &AppHandle<R>) {
+    if let Some(window) = app_handle.get_webview_window("voice-edit") {
+        let _ = window.center();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+pub(crate) fn hide_voice_edit_window<R: Runtime>(app_handle: &AppHandle<R>) {
+    if let Some(window) = app_handle.get_webview_window("voice-edit") {
+        let _ = window.hide();
+    }
+}
+
+/// Renderer-facing hide, called when the overlay dismisses itself (Escape, or
+/// after a successful replace).
+#[tauri::command]
+pub fn hide_voice_edit_overlay(app_handle: AppHandle) {
+    hide_voice_edit_window(&app_handle);
+}
+
 pub(crate) const DEFAULT_NOTE_WIDTH: f64 = 520.0;
 pub(crate) const DEFAULT_NOTE_HEIGHT: f64 = 640.0;
 const NOTE_CASCADE_OFFSET_PX: i32 = 32;

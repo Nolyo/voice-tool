@@ -1,0 +1,275 @@
+/* Voice Edit overlay.
+ *
+ * The window is frameless and transparent, so the visible surface is this
+ * card. `.vt-app` (applied on <body> for the design tokens) sets an opaque
+ * background of its own — the body rule below overrides it, otherwise the
+ * rounded corners sit on a solid rectangle.
+ */
+
+.voice-edit-body {
+  background: transparent !important;
+  margin: 0;
+  overflow: hidden;
+}
+
+.voice-edit {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  height: 100vh;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--vt-border, rgba(255, 255, 255, 0.12));
+  background: var(--vt-surface, rgba(20, 22, 26, 0.96));
+  color: var(--vt-fg, #f5f6f7);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.voice-edit__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-edit__title {
+  font-weight: 600;
+}
+
+.voice-edit__hint {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+.voice-edit__glyph {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.voice-edit__glyph--spin {
+  animation: voice-edit-spin 1s linear infinite;
+}
+
+@keyframes voice-edit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.voice-edit__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  opacity: 0.9;
+}
+
+.voice-edit__selection {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--vt-surface-muted, rgba(255, 255, 255, 0.05));
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 0.8;
+  max-height: 3.2em;
+  overflow: hidden;
+}
+
+.voice-edit__selection-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+  margin-bottom: 2px;
+}
+
+.voice-edit__note,
+.voice-edit__warning,
+.voice-edit__error {
+  margin: 0;
+  font-size: 12px;
+}
+
+.voice-edit__warning {
+  color: var(--vt-warning, #f0b429);
+}
+
+.voice-edit__error {
+  color: var(--vt-danger, #f26d6d);
+}
+
+.voice-edit__note {
+  opacity: 0.7;
+}
+
+/* Live microphone meter — only rendered while Rust confirms the mic is open. */
+
+.voice-edit-mic {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.voice-edit-mic__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.voice-edit-mic__bars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.voice-edit-mic__bar {
+  width: 2.5px;
+  height: 18px;
+  border-radius: 999px;
+  transform-origin: center;
+  background: linear-gradient(
+    180deg,
+    var(--vt-accent, #17b6a0) 0%,
+    color-mix(in oklab, var(--vt-accent, #17b6a0) 55%, transparent) 100%
+  );
+  transition: transform 140ms ease-out;
+}
+
+.voice-edit-mic__label {
+  opacity: 0.9;
+}
+
+.voice-edit-mic__countdown {
+  margin-left: auto;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.55;
+}
+
+.voice-edit-mic__gauge {
+  height: 2px;
+  border-radius: 999px;
+  background: var(--vt-surface-muted, rgba(255, 255, 255, 0.08));
+  overflow: hidden;
+}
+
+.voice-edit-mic__gauge-fill {
+  display: block;
+  height: 100%;
+  transform-origin: left center;
+  background: var(--vt-accent, #17b6a0);
+  opacity: 0.5;
+  /* Matches the sampling tick, so the bar drains continuously. */
+  transition: transform 100ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-edit-mic__bar,
+  .voice-edit-mic__gauge-fill {
+    transition: none;
+  }
+}
+
+.voice-edit-palette__hint {
+  margin: 0 0 6px;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.voice-edit-palette__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.voice-edit-palette__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--vt-border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.voice-edit-palette__item:hover {
+  background: var(--vt-surface-muted, rgba(255, 255, 255, 0.07));
+}
+
+.voice-edit-palette__key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--vt-accent, #17b6a0);
+  color: #06120f;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.voice-edit__result {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--vt-surface-muted, rgba(255, 255, 255, 0.05));
+}
+
+.voice-edit__result-text {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.voice-edit__upsell {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--vt-surface-muted, rgba(255, 255, 255, 0.05));
+}
+
+.voice-edit__upsell-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.voice-edit__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.voice-edit__actions button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--vt-border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.voice-edit__actions button:hover:not(:disabled) {
+  background: var(--vt-surface-muted, rgba(255, 255, 255, 0.07));
+}
+
+.voice-edit__actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

@@ -41,6 +41,15 @@ pub(crate) fn hotkeys_conflict(config: &HotkeyConfig) -> Option<String> {
     {
         return Some("Repaste shortcut must be distinct from other shortcuts.".into());
     }
+    if equals(&config.voice_edit, &config.record)
+        || equals(&config.voice_edit, &config.ptt)
+        || equals(&config.voice_edit, &config.open_window)
+        || equals(&config.voice_edit, &config.cancel)
+        || equals(&config.voice_edit, &config.post_process_toggle)
+        || equals(&config.voice_edit, &config.repaste)
+    {
+        return Some("Voice Edit shortcut must be distinct from other shortcuts.".into());
+    }
 
     None
 }
@@ -49,6 +58,21 @@ pub(crate) fn parse_hotkey_str(value: &str) -> Result<Shortcut, String> {
     value
         .parse::<Shortcut>()
         .map_err(|err| format!("Invalid shortcut \"{}\": {}", value, err))
+}
+
+/// True when `candidate` is already bound to one of `others` (case-insensitive,
+/// matching [`hotkeys_conflict`]).
+///
+/// Guards the first-run defaults: injecting one that a user already assigned by
+/// hand makes the whole config conflicting, and `apply_hotkeys` refuses a
+/// conflicting config outright — costing the user *every* shortcut, not just
+/// the new one.
+fn hotkey_taken(candidate: &str, others: &[&Option<String>]) -> bool {
+    others.iter().any(|other| {
+        other
+            .as_deref()
+            .is_some_and(|value| value.eq_ignore_ascii_case(candidate))
+    })
 }
 
 pub(crate) fn normalize_hotkey_value(value: Option<String>) -> Option<String> {
@@ -65,6 +89,7 @@ pub(crate) fn normalize_hotkey_value(value: Option<String>) -> Option<String> {
 pub(crate) fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Store<R>>) -> HotkeyConfig {
     let mut config = HotkeyConfig::default();
     let mut repaste_present = false;
+    let mut voice_edit_present = false;
 
     if let Some(settings_value) = store.get("settings") {
         if let Some(settings_obj) = settings_value.get("settings").and_then(Value::as_object) {
@@ -98,6 +123,12 @@ pub(crate) fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Sto
                     .as_str()
                     .and_then(|s| normalize_hotkey_value(Some(s.to_string())));
             }
+            if let Some(value) = settings_obj.get("voice_edit_hotkey") {
+                voice_edit_present = true;
+                config.voice_edit = value
+                    .as_str()
+                    .and_then(|s| normalize_hotkey_value(Some(s.to_string())));
+            }
         }
     }
 
@@ -115,8 +146,50 @@ pub(crate) fn load_hotkey_config<R: Runtime>(store: &Arc<tauri_plugin_store::Sto
     }
     // repaste defaults to Ctrl+F10 on first run / upgrade (key absent). An
     // explicitly-empty stored value means the user disabled it — leave it None.
+    // Skipped when the user already bound that combination to something else:
+    // an upgrade must never cost them the shortcuts they had.
     if !repaste_present && config.repaste.is_none() {
-        config.repaste = Some("Ctrl+F10".into());
+        let candidate = "Ctrl+F10";
+        if hotkey_taken(
+            candidate,
+            &[
+                &config.record,
+                &config.ptt,
+                &config.open_window,
+                &config.cancel,
+                &config.post_process_toggle,
+            ],
+        ) {
+            tracing::warn!(
+                "Default repaste shortcut {} is already in use, leaving repaste disabled",
+                candidate
+            );
+        } else {
+            config.repaste = Some(candidate.into());
+        }
+    }
+    // Same first-run / upgrade rule as repaste: an explicitly-empty stored
+    // value means the user disabled Voice Edit, so leave it None.
+    if !voice_edit_present && config.voice_edit.is_none() {
+        let candidate = "Ctrl+F9";
+        if hotkey_taken(
+            candidate,
+            &[
+                &config.record,
+                &config.ptt,
+                &config.open_window,
+                &config.cancel,
+                &config.post_process_toggle,
+                &config.repaste,
+            ],
+        ) {
+            tracing::warn!(
+                "Default Voice Edit shortcut {} is already in use, leaving Voice Edit disabled",
+                candidate
+            );
+        } else {
+            config.voice_edit = Some(candidate.into());
+        }
     }
 
     config
@@ -132,6 +205,20 @@ fn is_recorder_active<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
         .lock()
         .map(|recorder| recorder.is_recording())
         .unwrap_or(false)
+}
+
+/// Recording shortcuts must stand down while Voice Edit holds the microphone.
+///
+/// Both make `is_recorder_active` true, but the Voice Edit audio is a spoken
+/// *instruction*: stopping it through the dictation path would ship it as
+/// `audio-captured` and the renderer would transcribe and paste "translate
+/// this" into whatever the user was editing.
+fn voice_edit_owns_microphone<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
+    if crate::voice_edit::is_capture_active(app_handle) {
+        tracing::info!("Recording shortcut ignored: Voice Edit is capturing an instruction");
+        return true;
+    }
+    false
 }
 
 fn start_recording_shortcut<R: Runtime>(app_handle: &AppHandle<R>) -> bool {
@@ -468,7 +555,67 @@ mod tests {
             cancel: Some("Escape".into()),
             post_process_toggle: None,
             repaste: Some("Ctrl+F10".into()),
+            voice_edit: Some("Ctrl+F9".into()),
         }
+    }
+
+    #[test]
+    fn voice_edit_conflict_is_reported_as_such() {
+        let mut config = base_config();
+        config.voice_edit = config.ptt.clone();
+        let message = hotkeys_conflict(&config).expect("collision must be reported");
+        assert!(
+            message.contains("Voice Edit"),
+            "the message must name the offending shortcut, got: {}",
+            message
+        );
+    }
+
+    #[test]
+    fn voice_edit_colliding_with_open_window_is_rejected() {
+        let mut config = base_config();
+        config.voice_edit = config.open_window.clone();
+        assert!(hotkeys_conflict(&config).is_some());
+    }
+
+    #[test]
+    fn voice_edit_colliding_with_post_process_toggle_is_rejected() {
+        let mut config = base_config();
+        config.post_process_toggle = Some("Ctrl+F8".into());
+        config.voice_edit = Some("ctrl+f8".into());
+        assert!(
+            hotkeys_conflict(&config).is_some(),
+            "comparison must ignore case"
+        );
+    }
+
+    #[test]
+    fn voice_edit_disabled_never_conflicts() {
+        let mut config = base_config();
+        config.voice_edit = None;
+        config.repaste = None;
+        assert!(hotkeys_conflict(&config).is_none());
+    }
+
+    #[test]
+    fn voice_edit_colliding_with_repaste_is_rejected() {
+        let mut config = base_config();
+        config.voice_edit = config.repaste.clone();
+        assert!(hotkeys_conflict(&config).is_some());
+    }
+
+    #[test]
+    fn voice_edit_colliding_with_record_is_rejected() {
+        let mut config = base_config();
+        config.voice_edit = config.record.clone();
+        assert!(hotkeys_conflict(&config).is_some());
+    }
+
+    #[test]
+    fn voice_edit_colliding_with_cancel_is_rejected() {
+        let mut config = base_config();
+        config.voice_edit = Some("Escape".into());
+        assert!(hotkeys_conflict(&config).is_some());
     }
 
     #[test]
@@ -488,6 +635,45 @@ mod tests {
         let mut config = base_config();
         config.repaste = Some("Escape".into());
         assert!(hotkeys_conflict(&config).is_some());
+    }
+
+    #[test]
+    fn hotkey_taken_matches_ignoring_case() {
+        let record = Some("Ctrl+F9".to_string());
+        assert!(hotkey_taken("ctrl+f9", &[&record]));
+    }
+
+    #[test]
+    fn hotkey_taken_ignores_unset_entries() {
+        let none: Option<String> = None;
+        let other = Some("Ctrl+F11".to_string());
+        assert!(!hotkey_taken("Ctrl+F9", &[&none, &other]));
+    }
+
+    /// Regression guard for the upgrade path: a user who already bound Ctrl+F9
+    /// must not get the Voice Edit default injected on top of it, because
+    /// `apply_hotkeys` refuses a conflicting config wholesale and would leave
+    /// them with no global shortcut at all.
+    #[test]
+    fn injected_default_would_conflict_when_already_bound() {
+        let mut config = base_config();
+        config.record = Some("Ctrl+F9".into());
+        config.voice_edit = None;
+
+        assert!(hotkey_taken(
+            "Ctrl+F9",
+            &[
+                &config.record,
+                &config.ptt,
+                &config.open_window,
+                &config.cancel,
+                &config.post_process_toggle,
+                &config.repaste,
+            ]
+        ));
+
+        // Left disabled, the config stays valid.
+        assert!(hotkeys_conflict(&config).is_none());
     }
 }
 
@@ -531,9 +717,18 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
         .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
         .transpose()?;
 
+    let voice_edit_hotkey = config
+        .voice_edit
+        .as_ref()
+        .map(|value| parse_hotkey_str(value).map(|shortcut| (value.clone(), shortcut)))
+        .transpose()?;
+
     if let Some((record_label, record_shortcut)) = record_hotkey {
         let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
             if event.state == ShortcutState::Pressed {
+                if voice_edit_owns_microphone(app) {
+                    return;
+                }
                 if is_recorder_active(app) {
                     if let Some((recording, streaming_was_active)) = stop_recording_shortcut(app) {
                         if !streaming_was_active {
@@ -561,18 +756,25 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
 
     if let Some((ptt_label, ptt_shortcut)) = ptt_hotkey {
         let handler =
-            move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| match event.state
-            {
-                ShortcutState::Pressed => {
-                    show_mini_window(app);
-                    if !start_recording_shortcut(app) {
-                        hide_mini_window(app);
-                    }
+            move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
+                // Guards the release too: the press was ignored, so the release
+                // must not stop a microphone Voice Edit opened.
+                if voice_edit_owns_microphone(app) {
+                    return;
                 }
-                ShortcutState::Released => {
-                    if let Some((recording, streaming_was_active)) = stop_recording_shortcut(app) {
-                        if !streaming_was_active {
-                            emit_audio_samples(app, recording);
+                match event.state {
+                    ShortcutState::Pressed => {
+                        show_mini_window(app);
+                        if !start_recording_shortcut(app) {
+                            hide_mini_window(app);
+                        }
+                    }
+                    ShortcutState::Released => {
+                        if let Some((recording, streaming_was_active)) = stop_recording_shortcut(app)
+                        {
+                            if !streaming_was_active {
+                                emit_audio_samples(app, recording);
+                            }
                         }
                     }
                 }
@@ -625,7 +827,68 @@ pub(crate) fn apply_hotkeys<R: Runtime>(
             })?;
     }
 
+    if let Some((voice_edit_label, voice_edit_shortcut)) = voice_edit_hotkey {
+        let handler = move |app: &AppHandle<R>, _shortcut: &Shortcut, event: ShortcutEvent| {
+            if event.state == ShortcutState::Pressed {
+                open_voice_edit_overlay(app);
+            }
+        };
+
+        manager
+            .on_shortcut(voice_edit_shortcut.clone(), handler)
+            .map_err(|e| {
+                format!(
+                    "Failed to register shortcut \"{}\": {}",
+                    voice_edit_label, e
+                )
+            })?;
+    }
+
     Ok(())
+}
+
+/// Voice Edit entry point: capture the selection of whatever window is in
+/// front, then show the overlay and start listening for the instruction.
+///
+/// Capture must happen *before* the overlay appears — the simulated `Ctrl+C`
+/// goes to the focused window, and by then that would be the overlay itself.
+fn open_voice_edit_overlay<R: Runtime>(app_handle: &AppHandle<R>) {
+    // Early-out *before* the clipboard round-trip: the capture hijacks the
+    // clipboard and sleeps 120 ms, neither of which is acceptable in the middle
+    // of a dictation. `start_instruction_capture` re-checks authoritatively
+    // under the recorder lock; this check only avoids the side effects.
+    if is_recorder_active(app_handle) {
+        tracing::warn!("Voice Edit ignored: a recording is already in progress");
+        let _ = app_handle.emit("voice-edit-blocked", "recording_in_progress");
+        return;
+    }
+
+    // A failed capture is not fatal: the overlay opens with no selection, which
+    // is exactly what the user sees anyway, and the microphone still takes a
+    // free-form instruction. Bailing out here would make the shortcut look dead.
+    let captured = crate::commands::selection::capture_selection_inner(app_handle)
+        .unwrap_or_else(|err| {
+            tracing::error!("Voice Edit: selection capture failed: {}", err);
+            crate::commands::selection::CapturedSelection::empty()
+        });
+
+    let _ = app_handle.emit(
+        "voice-edit-open",
+        serde_json::json!({
+            "text": captured.text,
+            "sourceWindow": captured.source_window,
+            "hadSelection": captured.had_selection,
+            "truncated": captured.truncated,
+        }),
+    );
+
+    crate::window::show_voice_edit_window(app_handle);
+
+    if !crate::voice_edit::start_instruction_capture(app_handle) {
+        // The palette still works without the microphone, but the overlay would
+        // otherwise sit on "Say your instruction…" forever.
+        let _ = app_handle.emit("voice-edit-blocked", "mic_unavailable");
+    }
 }
 
 /// Setup initial hotkeys from stored configuration during app startup
@@ -636,14 +899,38 @@ pub(crate) fn setup_initial_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn 
     let store = StoreBuilder::new(app, settings_path).build()?;
     let initial_hotkeys = load_hotkey_config(&store);
 
-    match apply_hotkeys(&app.handle(), &initial_hotkeys) {
-        Ok(_) => {
-            if let Ok(mut guard) = app.state::<AppState>().inner().hotkeys.lock() {
-                *guard = initial_hotkeys;
+    let applied = match apply_hotkeys(&app.handle(), &initial_hotkeys) {
+        Ok(_) => Some(initial_hotkeys),
+        Err(err) => {
+            // `apply_hotkeys` is all-or-nothing, so one bad entry would
+            // otherwise leave the app with *no* global shortcut at all. Retry
+            // without the optional ones so recording keeps working.
+            tracing::error!(
+                "[hotkeys] initial registration failed ({}), retrying without the optional shortcuts",
+                err
+            );
+            let fallback = HotkeyConfig {
+                post_process_toggle: None,
+                repaste: None,
+                voice_edit: None,
+                ..initial_hotkeys
+            };
+            match apply_hotkeys(&app.handle(), &fallback) {
+                Ok(_) => Some(fallback),
+                Err(err) => {
+                    tracing::error!(
+                        "[hotkeys] fallback registration failed too ({}): no global shortcut is active",
+                        err
+                    );
+                    None
+                }
             }
         }
-        Err(err) => {
-            eprintln!("[hotkeys] Initial registration failed: {}", err);
+    };
+
+    if let Some(config) = applied {
+        if let Ok(mut guard) = app.state::<AppState>().inner().hotkeys.lock() {
+            *guard = config;
         }
     }
 

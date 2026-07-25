@@ -46,6 +46,7 @@ import { useRecordingWorkflow } from "@/hooks/useRecordingWorkflow";
 import { useNotesWorkflow } from "@/hooks/useNotesWorkflow";
 import { useIsCompactLayout } from "@/hooks/useIsCompactLayout";
 import { useDetachedNotesBridge } from "@/hooks/useDetachedNotesBridge";
+import { useVoiceEdit } from "@/hooks/useVoiceEdit";
 import {
   scheduleNoteUpdatePushFromDisk,
   UPDATE_NOTE_PUSH_DEBOUNCE_MS,
@@ -272,6 +273,10 @@ export default function Dashboard() {
     onDetachedUpdated: handleDetachedUpdated,
     onToggleLocalOnlyRequest: (id) => void handleToggleLocalOnlyFromDetached(id),
   });
+
+  // Drives the Voice Edit overlay: that window has no auth/cloud context of
+  // its own, so the AI calls run here.
+  useVoiceEdit();
 
   // Open a note (created/updated from a transcription) in the Notes view.
   const handleOpenNoteFromHistory = useCallback(

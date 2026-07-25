@@ -220,6 +220,68 @@ Located in `src-tauri/src/streaming.rs` + `src/hooks/useStreamingSession.ts`:
 - Design spec: `docs/superpowers/specs/2026-07-02-streaming-transcription-design.md`;
   E2E checklist: `docs/v3/streaming-e2e-checklist.md`
 
+#### Voice Edit (AI on the selection, system-wide)
+
+Located in `src-tauri/src/commands/selection.rs` + `src-tauri/src/voice_edit.rs` +
+`src/components/voice-edit/` + `src/hooks/useVoiceEdit.ts`:
+
+- Setting `voice_edit_hotkey` (default `Ctrl+F9`, empty = disabled) + `voice_edit_primary_lang` /
+  `voice_edit_secondary_lang`. Surfaced in Settings → Shortcuts (`ShortcutsSection` row +
+  `VoiceEditCard`)
+- Flow: hotkey → `capture_selection_inner` (reads the clipboard → clears it **only if it
+  held text** → simulated `Ctrl+C` via enigo → reads back → restores the previous text, and
+  records the source `HWND` from `GetForegroundWindow`) → `voice-edit-open` event → overlay
+  window shown → mic opened for a single instruction
+- **Clipboard rule**: a non-textual clipboard (image, files, RTF) is never written to — the
+  plugin cannot read it back, so clearing it would destroy it. The cost is that a capture
+  started from an empty/non-textual clipboard leaves the copied text there, exactly like a
+  manual `Ctrl+C`
+- **Capture happens before the overlay is shown** — the simulated `Ctrl+C` goes to whichever
+  window holds the focus
+- `voice_edit.rs` reuses the streaming `SpeechSegmenter` with its own profile
+  (`silence_gap_ms: 800`, `min_segment_ms: 400`) and stops at the **first** complete segment.
+  `streaming.rs` is untouched. A 30 s **absolute deadline** closes the mic if nothing is said
+  (a per-`recv` timeout would be rearmed forever — the audio callback pushes batches whether
+  or not anyone is speaking)
+- **Recorder ownership** is the tap slot: `VoiceEditRuntime.tap` is `Some` exactly while a
+  Voice Edit capture owns the mic. `is_capture_active` gates the record/PTT shortcuts (they
+  stand down, so the instruction is never shipped as `audio-captured` and pasted), and
+  `stop_instruction_capture` is a no-op unless it can take the tap (so Escape or a palette key
+  in the overlay can never kill a dictation). Conversely Voice Edit is refused while a
+  dictation runs, with a `voice-edit-blocked` event so the renderer can toast
+- The overlay (`voice-edit.html`, capability `voice-edit.json`, pre-created hidden at startup
+  like the mini window) is a **passive display**: it captures digit keys and Escape, and emits
+  `voice-edit-run` / `voice-edit-retry` / `voice-edit-close`. It is `focusable(true)`, unlike
+  the mini window. It mounts no auth/cloud provider — that was the detached-notes failure mode
+  — but it does call `bootstrapSecondaryWindow()` for theme + `language-changed`, like the
+  mini and detached-note windows
+- **Mic feedback**: `start_instruction_capture` emits `voice-edit-listening`
+  (`{ sessionId, timeoutMs }`) *only* on the success path; the overlay swaps its static
+  prompt for `VoiceEditMicMeter` (live bars off the existing `audio-level` broadcast + a
+  draining 30 s gauge). The meter is never rendered speculatively — "is the mic on" must not
+  be a guess. It clears on any transition out of `listening`
+- `useVoiceEdit` (mounted once in `Dashboard`) owns everything needing settings/auth/cloud:
+  eligibility gate (upsell **before** any network call), the captured selection (from
+  `voice-edit-open`, which is what the dictated-instruction path applies the prompt to),
+  instruction transcription via `transcribeCloud`, LLM call via the **unchanged**
+  `notes_assist_cloud`
+- **Both sides run `nextVoiceEditState`**: the overlay applies `palette-key` / `retry` locally,
+  `useVoiceEdit` mirrors them and pushes machine *events* (not raw states) over
+  `voice-edit-state`. That mirror is what lets a palette key that won the race drop the
+  in-flight instruction before it is billed
+- Replacement (`replace_selection`) does `SetForegroundWindow` + `type_text_at_cursor`, always
+  — Replace is an explicit action, so it ignores `insertion_mode` exactly like the repaste
+  shortcut. **Known risk**: Windows restricts `SetForegroundWindow`; if it fails, the text
+  stays in the overlay and on the clipboard. Case 1 of the E2E checklist is the blocking
+  validation
+- Prompts and action labels live in i18n under `voiceEdit.*` (same pattern as `ai-prompts.ts`),
+  with a Voice-Edit-specific suffix — the notes one preserves *Markdown*, which would paste
+  back as literal asterisks here
+- **Not shipped**: palette action customisation (labels/prompts are fixed)
+- Design spec: `docs/superpowers/specs/2026-07-25-voice-edit-design.md`;
+  plan: `docs/superpowers/plans/2026-07-25-voice-edit.md`;
+  E2E checklist: `docs/v3/voice-edit-e2e-checklist.md`
+
 #### Auto-Update System
 
 Located in `updater.rs`:
