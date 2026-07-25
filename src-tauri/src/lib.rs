@@ -115,6 +115,8 @@ pub fn run() {
             commands::transcription::load_recording,
             commands::misc::paste_text_to_active_window,
             commands::misc::type_text_at_cursor,
+            commands::selection::capture_selection,
+            commands::selection::replace_selection,
             commands::misc::frontend_log,
             updater::check_for_updates,
             updater::download_and_install_update,
