@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.2.0] - Unreleased
 
+### Added
+- **Voice Edit** — act on text you selected in *any* Windows application, with your voice. Select text anywhere (browser, PDF, email, editor), press the Voice Edit shortcut (**Ctrl+F9** by default), and either say what you want done with it ("translate this but keep the formal tone") or press a digit for a preset action: **1** Translate · **2** Fix · **3** Rephrase · **4** Summarize. The result appears in a floating overlay with **Copy**, **Replace** and **Retry** — so it works both on text you're reading (where replacement is impossible) and on text you're writing. Dictated instructions end automatically on a ~800 ms pause; the microphone closes on its own after 30 s of silence. Translation uses an automatic toggle: foreign text goes to your primary language, text already in your primary language goes to your secondary one (both configurable under Settings → Shortcuts → Voice Edit). Your clipboard is saved and restored around the capture. Voice Edit requires Lexena Cloud — the overlay shows an upsell and makes no network call when you are not eligible.
+
 ### Changed
 - **Post-process custom instructions** — the "Vocabulary context" field (Settings → Vocabulary) is replaced by "Custom instructions" under Settings → Post-processing, visible only when post-processing is enabled. Give the AI post-processing step permanent preferences: vocabulary corrections (e.g. "replace 'volt' with 'Vault'") or business context (e.g. "I'm a developer, my sentences are dev-oriented"). Local Whisper biasing for proper nouns still relies solely on the personal dictionary, unchanged.
 

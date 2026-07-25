@@ -1,7 +1,7 @@
 # Voice Edit — l'IA vocale sur la sélection, partout dans Windows — Design
 
 **Date** : 2026-07-25
-**Statut** : validé (brainstorming complet avec l'utilisateur)
+**Statut** : implémenté sur `feat/voice-edit` — validation runtime en attente (cf. §10)
 **Périmètre** : un raccourci global qui capture le texte sélectionné dans n'importe quelle
 application, écoute une instruction dictée (ou une action rapide de la palette), et affiche
 le résultat dans un overlay avec option de remplacement in-place.
@@ -291,10 +291,31 @@ l'utilisateur.
 
 **Modifiés**
 - `src-tauri/src/commands/mod.rs`, `lib.rs` (enregistrement des commandes)
+- `src-tauri/src/commands/settings.rs` (`update_hotkeys`)
 - `src-tauri/src/hotkeys.rs` (hotkey + validation de conflits)
 - `src-tauri/src/window.rs` (création de la fenêtre)
 - `vite.config.ts` (entrée multi-page)
-- `src/lib/settings.ts` (4 clés)
-- `src/components/settings/sections/` (personnalisation des actions)
+- `src/lib/settings.ts` (3 clés — cf. §10)
+- `src/components/settings/sections/ShortcutsSection.tsx` + `VoiceEditCard.tsx`
+- `src/components/Dashboard.tsx` (montage de `useVoiceEdit`)
+- `src/hooks/useHotkeyConfig.ts`
 - `src/locales/*` (fr + en)
-- `CHANGELOG.md`
+- `CHANGELOG.md`, `CLAUDE.md`
+
+## 10. Écarts entre le design et l'implémentation
+
+Décisions prises pendant l'implémentation, toutes assumées :
+
+| Point | Design initial | Livré | Raison |
+|---|---|---|---|
+| Personnalisation des actions | Réglage `voice_edit_actions` éditable (libellé + prompt, ajout/suppression/ordre) | **Non livré** — palette fixe à 4 actions | Le réglage n'était consommé nulle part et l'UI CRUD n'était pas validable sans runtime. Laisser un réglage mort aurait été pire. Les 4 actions par défaut couvrent le besoin exprimé. |
+| Transcription de l'instruction | Via le provider configuré (cloud ou local) | **Toujours via le cloud** | Voice Edit exige déjà l'éligibilité cloud pour l'étape LLM. Passer 2 s d'audio par Whisper local chargerait le modèle et écrirait un WAV parasite dans le dossier `recordings` pour rien. |
+| Micro laissé ouvert | Non traité | **Timeout de 30 s** | Un overlay oublié laisserait le micro ouvert indéfiniment — inacceptable pour une app qui vend la confidentialité. |
+| Emplacement des réglages | Section dédiée | Page **Raccourcis** (ligne de hotkey + carte `VoiceEditCard`) | Les sections de réglages sont fixes ; Voice Edit est piloté par raccourci, c'est là qu'on le cherche. |
+| Suffixe de prompt | Non spécifié | Suffixe **dédié** (`voiceEdit.prompts.suffix`) | Celui de `ai-prompts.ts` impose de préserver le *Markdown* : recollé dans une app tierce, ça produit des astérisques littéraux. |
+
+**Validation runtime en attente.** L'agent ne peut pas lancer `pnpm tauri dev`. Ce qui est
+vérifié : `cargo check` sans warning, `cargo test` (7 tests Voice Edit), `pnpm build`,
+`pnpm vitest run` (600 tests). Ce qui **ne l'est pas** : tout le comportement Windows réel —
+`SetForegroundWindow`, le `Ctrl+C` simulé selon les applications, le focus de l'overlay, le
+rendu visuel. Le cas 1 de `docs/v3/voice-edit-e2e-checklist.md` est la validation bloquante.
