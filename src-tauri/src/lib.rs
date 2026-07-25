@@ -18,6 +18,7 @@ mod transcription_local;
 mod transcriptions;
 mod tray;
 mod updater;
+mod voice_edit;
 mod window;
 
 // Re-export for transcription_local compatibility
@@ -117,6 +118,7 @@ pub fn run() {
             commands::misc::type_text_at_cursor,
             commands::selection::capture_selection,
             commands::selection::replace_selection,
+            voice_edit::stop_voice_edit_instruction,
             commands::misc::frontend_log,
             updater::check_for_updates,
             updater::download_and_install_update,
