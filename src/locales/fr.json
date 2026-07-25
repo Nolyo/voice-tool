@@ -973,6 +973,22 @@
     "codeDesc": "<p>Tapez <code>---</code> pour insérer un séparateur, ou <code>```</code> pour un bloc de code.</p>",
     "start": "<p>Commencez à écrire votre première note !</p>"
   },
+  "voiceEdit": {
+    "prompts": {
+      "suffix": "Retourne uniquement le texte résultant, sans explication, sans commentaire et sans guillemets autour de la réponse. Préserve la mise en forme, les sauts de ligne et la ponctuation de l'original.",
+      "translate": "Tu es un traducteur professionnel. Détecte la langue du texte fourni. Si elle est différente de {{primary}}, traduis le texte vers {{primary}}. Si elle est déjà {{primary}}, traduis-le vers {{secondary}}. Conserve le ton et le style de l'original.",
+      "instruction": "Applique l'instruction suivante au texte fourni : « {{instruction}} »"
+    },
+    "actions": {
+      "translate": "Traduire",
+      "fix": "Corriger",
+      "rephrase": "Reformuler",
+      "summarize": "Résumer",
+      "fixPrompt": "Tu es un correcteur orthographique et grammatical. Corrige les fautes d'orthographe, de grammaire, de conjugaison et de ponctuation du texte fourni, sans en modifier le sens, le ton ni le vocabulaire.",
+      "rephrasePrompt": "Tu es un assistant d'écriture. Reformule le texte fourni pour le rendre plus clair et plus fluide, en conservant strictement son sens et son niveau de langue.",
+      "summarizePrompt": "Tu es un assistant de synthèse. Résume le texte fourni en conservant les informations essentielles, dans la langue du texte d'origine."
+    }
+  },
   "streaming": {
     "partialLoss": "Certains passages n'ont pas pu être transcrits (problème réseau). Le texte peut être incomplet.",
     "allChunksFailed": "La transcription en continu a échoué : aucun segment n'a pu être transcrit."

@@ -973,6 +973,22 @@
     "codeDesc": "<p>Type <code>---</code> to insert a separator, or <code>```</code> for a code block.</p>",
     "start": "<p>Start writing your first note!</p>"
   },
+  "voiceEdit": {
+    "prompts": {
+      "suffix": "Return only the resulting text, with no explanation, no comment and no quotes around the response. Preserve the original formatting, line breaks and punctuation.",
+      "translate": "You are a professional translator. Detect the language of the text provided. If it differs from {{primary}}, translate the text into {{primary}}. If it is already {{primary}}, translate it into {{secondary}}. Preserve the tone and style of the original.",
+      "instruction": "Apply the following instruction to the text provided: \"{{instruction}}\""
+    },
+    "actions": {
+      "translate": "Translate",
+      "fix": "Fix",
+      "rephrase": "Rephrase",
+      "summarize": "Summarize",
+      "fixPrompt": "You are a spelling and grammar proofreader. Correct the spelling, grammar and punctuation mistakes in the text provided, without changing its meaning, tone or vocabulary.",
+      "rephrasePrompt": "You are a writing assistant. Rephrase the text provided to make it clearer and more fluent, strictly preserving its meaning and register.",
+      "summarizePrompt": "You are a summarization assistant. Summarize the text provided, keeping the essential information, in the language of the original text."
+    }
+  },
   "streaming": {
     "partialLoss": "Some passages could not be transcribed (network issue). The text may be incomplete.",
     "allChunksFailed": "Live transcription failed: no segment could be transcribed."
