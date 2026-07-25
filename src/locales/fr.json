@@ -993,6 +993,8 @@
     "overlay": {
       "title": "Voice Edit",
       "listening": "Dictez votre instruction…",
+      "secondsShort": "{{seconds}} s",
+      "micAutoClose": "Micro ouvert — fermeture automatique dans {{seconds}} s",
       "orChoose": "ou choisissez :",
       "transcribing": "Transcription de l'instruction…",
       "processing": "Traitement en cours…",

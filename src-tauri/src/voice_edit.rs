@@ -110,6 +110,17 @@ pub(crate) fn start_instruction_capture<R: Runtime>(app_handle: &AppHandle<R>) -
     let handle = app_handle.clone();
     std::thread::spawn(move || run_instruction_worker(handle, rx, session_id, sample_rate));
 
+    // Tells the overlay the microphone is *actually* live, and for how long.
+    // Emitted only on the success path: the overlay uses it to switch from a
+    // static prompt to a live meter, so it must never claim an open mic.
+    let _ = app_handle.emit(
+        "voice-edit-listening",
+        serde_json::json!({
+            "sessionId": session_id,
+            "timeoutMs": INSTRUCTION_TIMEOUT_SECS * 1_000,
+        }),
+    );
+
     tracing::info!(
         "Voice Edit instruction capture {} started ({} Hz)",
         session_id,

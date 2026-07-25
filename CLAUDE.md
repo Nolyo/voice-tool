@@ -255,6 +255,11 @@ Located in `src-tauri/src/commands/selection.rs` + `src-tauri/src/voice_edit.rs`
   the mini window. It mounts no auth/cloud provider — that was the detached-notes failure mode
   — but it does call `bootstrapSecondaryWindow()` for theme + `language-changed`, like the
   mini and detached-note windows
+- **Mic feedback**: `start_instruction_capture` emits `voice-edit-listening`
+  (`{ sessionId, timeoutMs }`) *only* on the success path; the overlay swaps its static
+  prompt for `VoiceEditMicMeter` (live bars off the existing `audio-level` broadcast + a
+  draining 30 s gauge). The meter is never rendered speculatively — "is the mic on" must not
+  be a guess. It clears on any transition out of `listening`
 - `useVoiceEdit` (mounted once in `Dashboard`) owns everything needing settings/auth/cloud:
   eligibility gate (upsell **before** any network call), the captured selection (from
   `voice-edit-open`, which is what the dictated-instruction path applies the prompt to),

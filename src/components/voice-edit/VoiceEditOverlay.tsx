@@ -15,11 +15,25 @@ import {
   type VoiceEditEvent,
   type VoiceEditState,
 } from "./voice-edit-machine";
+import { VoiceEditMicMeter } from "./VoiceEditMicMeter";
 import { VoiceEditPalette } from "./VoiceEditPalette";
 import "./voice-edit.css";
 
 /** How much of the selection is echoed back in the overlay header. */
 const PREVIEW_CHAR_CAP = 140;
+
+/** Emitted by Rust once the instruction capture is really running. */
+interface ListeningPayload {
+  sessionId: number;
+  timeoutMs: number;
+}
+
+/** Live microphone session, or null when the mic is not open. */
+interface MicSession {
+  /** Epoch ms at which Rust closes the mic on its own. */
+  deadline: number;
+  timeoutMs: number;
+}
 
 interface OpenPayload {
   text: string;
@@ -50,6 +64,7 @@ export function VoiceEditOverlay() {
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [mic, setMic] = useState<MicSession | null>(null);
   // Rebuilt when the UI language changes: `bootstrapSecondaryWindow` forwards
   // the main window's `language-changed` broadcast into this webview's i18n.
   const actions = useMemo(
@@ -111,6 +126,10 @@ export function VoiceEditOverlay() {
       stateRef.current = next;
       setState(next);
 
+      // Leaving "listening" always means Rust closed the microphone: a segment
+      // was captured, a palette key aborted it, or it timed out.
+      if (next !== "listening") setMic(null);
+
       if (next === "error") {
         if (extra?.error) setError(extra.error);
       } else {
@@ -131,6 +150,8 @@ export function VoiceEditOverlay() {
     void invoke("stop_voice_edit_instruction", { abort: true }).catch(() => {});
     void invoke("hide_voice_edit_overlay").catch(() => {});
     applyEvent({ type: "close" });
+    // `close` lands back on "listening", so the meter has to be cleared here.
+    setMic(null);
     setResult("");
     setCopied(false);
   }, [applyEvent]);
@@ -206,7 +227,19 @@ export function VoiceEditOverlay() {
       setResult("");
       setError("");
       setCopied(false);
+      // `voice-edit-listening` follows only if the mic actually opens.
+      setMic(null);
     });
+
+    const unlistenListening = listen<ListeningPayload>(
+      "voice-edit-listening",
+      (event) => {
+        setMic({
+          deadline: Date.now() + event.payload.timeoutMs,
+          timeoutMs: event.payload.timeoutMs,
+        });
+      },
+    );
 
     const unlistenState = listen<StatePayload>("voice-edit-state", (event) => {
       const { event: machineEvent, result, error } = event.payload;
@@ -215,6 +248,7 @@ export function VoiceEditOverlay() {
 
     return () => {
       void unlistenOpen.then((f) => f());
+      void unlistenListening.then((f) => f());
       void unlistenState.then((f) => f());
     };
   }, [applyEvent]);
@@ -274,10 +308,20 @@ export function VoiceEditOverlay() {
 
       {state === "listening" && (
         <>
-          <p className="voice-edit__status">
-            <Mic className="voice-edit__glyph" aria-hidden="true" />
-            {t("voiceEdit.overlay.listening")}
-          </p>
+          {mic ? (
+            <VoiceEditMicMeter
+              deadline={mic.deadline}
+              timeoutMs={mic.timeoutMs}
+            />
+          ) : (
+            // Before Rust confirms the capture started — a few milliseconds in
+            // practice. Never claim an open microphone we have not been told
+            // about.
+            <p className="voice-edit__status">
+              <Mic className="voice-edit__glyph" aria-hidden="true" />
+              {t("voiceEdit.overlay.listening")}
+            </p>
+          )}
           <VoiceEditPalette actions={actions} onPick={runAction} />
         </>
       )}

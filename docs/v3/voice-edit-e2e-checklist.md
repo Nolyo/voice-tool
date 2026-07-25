@@ -39,8 +39,13 @@
   en plus court ») : l'instruction n'est pas coupée en deux.
 - [ ] 10. Appuyer sur `1` **pendant** qu'on parle : l'action de palette gagne, le micro
   est coupé, aucune transcription parasite n'arrive après coup.
-- [ ] 11. Ouvrir l'overlay et **ne rien dire pendant 30 s** : le micro se ferme tout
-  seul, message « Aucune instruction entendue ».
+- [ ] 11. Ouvrir l'overlay et **ne rien dire pendant 30 s** : le compte à rebours
+  descend jusqu'à 0, le micro se ferme tout seul, message « Aucune instruction
+  entendue ».
+- [ ] 11 bis. **Indicateur micro** — dès l'ouverture, les barres réagissent à la voix
+  (et retombent au silence), et le compte à rebours démarre à 30 s. Dès qu'on se
+  tait et que la transcription part, barres et jauge **disparaissent** : plus rien
+  ne suggère un micro ouvert.
 
 ## Presse-papiers
 
