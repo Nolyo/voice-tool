@@ -51,6 +51,12 @@ export interface AppSettings {
     post_process_toggle_hotkey: string;
     /** Re-pastes the last inserted transcription at the cursor. Empty = disabled. */
     repaste_hotkey: string;
+    /** Opens the Voice Edit overlay on the current selection. Empty = disabled. */
+    voice_edit_hotkey: string;
+    /** Voice Edit "Translate": target for text detected in another language. */
+    voice_edit_primary_lang: string;
+    /** Voice Edit "Translate": target when the text is already in the primary language. */
+    voice_edit_secondary_lang: string;
     ptt_hotkey: string;
     record_mode: "toggle" | "ptt";
 
@@ -151,6 +157,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     cancel_hotkey: "Escape",
     post_process_toggle_hotkey: "",
     repaste_hotkey: "Ctrl+F10",
+    voice_edit_hotkey: "Ctrl+F9",
+    voice_edit_primary_lang: "fr",
+    voice_edit_secondary_lang: "en",
     ptt_hotkey: "Ctrl+F12",
     record_mode: "toggle",
 

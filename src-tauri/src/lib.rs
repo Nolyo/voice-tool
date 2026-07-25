@@ -119,6 +119,7 @@ pub fn run() {
             commands::selection::capture_selection,
             commands::selection::replace_selection,
             voice_edit::stop_voice_edit_instruction,
+            window::hide_voice_edit_overlay,
             commands::misc::frontend_log,
             updater::check_for_updates,
             updater::download_and_install_update,
@@ -257,6 +258,7 @@ pub fn run() {
 
             // Window setup
             window::create_mini_window(&app.handle())?;
+            window::create_voice_edit_window(&app.handle())?;
             window::setup_main_window(app)?;
 
             // Hotkeys

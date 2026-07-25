@@ -14,7 +14,7 @@ use std::thread;
 use std::time::Duration;
 
 use serde::Serialize;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
 /// Upper bound on what we ship to the LLM. Matches `SELECTION_CHAR_CAP` in
@@ -84,11 +84,11 @@ fn focus_window(_handle: isize) -> bool {
 
 /// Read the clipboard as text. The plugin returns an error when the clipboard
 /// holds no text at all (empty, or an image) — that is not a failure here.
-fn read_clipboard_text(app: &AppHandle) -> Option<String> {
+fn read_clipboard_text<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
     app.clipboard().read_text().ok()
 }
 
-fn restore_clipboard(app: &AppHandle, previous: Option<String>) {
+fn restore_clipboard<R: Runtime>(app: &AppHandle<R>, previous: Option<String>) {
     let result = match previous {
         Some(text) if !text.is_empty() => app.clipboard().write_text(text),
         // The user's clipboard was empty (or non-textual): leave it empty
@@ -125,10 +125,12 @@ fn send_copy_shortcut() -> Result<(), String> {
 ///
 /// Must be called *before* the overlay is shown: the simulated `Ctrl+C` goes to
 /// whichever window holds the focus.
-#[tauri::command]
-pub fn capture_selection(app: AppHandle) -> Result<CapturedSelection, String> {
+///
+/// Generic over the runtime because the global-shortcut handler calls it
+/// directly with an `AppHandle<R>`, without going through the IPC layer.
+pub fn capture_selection_inner<R: Runtime>(app: &AppHandle<R>) -> Result<CapturedSelection, String> {
     let source_window = foreground_window();
-    let previous = read_clipboard_text(&app);
+    let previous = read_clipboard_text(app);
 
     // Clearing first is what lets us tell "the app copied nothing" apart from
     // "the app copied nothing and we are reading the previous content back".
@@ -137,14 +139,14 @@ pub fn capture_selection(app: AppHandle) -> Result<CapturedSelection, String> {
     }
 
     if let Err(err) = send_copy_shortcut() {
-        restore_clipboard(&app, previous);
+        restore_clipboard(app, previous);
         return Err(err);
     }
 
     thread::sleep(Duration::from_millis(CLIPBOARD_SETTLE_MS));
-    let captured = read_clipboard_text(&app).unwrap_or_default();
+    let captured = read_clipboard_text(app).unwrap_or_default();
 
-    restore_clipboard(&app, previous);
+    restore_clipboard(app, previous);
 
     let had_selection = !captured.trim().is_empty();
     let (text, truncated) = truncate_selection(&captured, SELECTION_CHAR_CAP);
@@ -161,6 +163,14 @@ pub fn capture_selection(app: AppHandle) -> Result<CapturedSelection, String> {
         had_selection,
         truncated,
     })
+}
+
+/// IPC wrapper. The overlay never calls this — the shortcut handler captures
+/// before the overlay is shown — but it keeps the command available for the
+/// settings screen's "test capture" affordance and for manual debugging.
+#[tauri::command]
+pub fn capture_selection(app: AppHandle) -> Result<CapturedSelection, String> {
+    capture_selection_inner(&app)
 }
 
 /// Bring the source window back to the front and insert `text` at the caret.

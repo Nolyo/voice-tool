@@ -987,6 +987,57 @@
       "fixPrompt": "Tu es un correcteur orthographique et grammatical. Corrige les fautes d'orthographe, de grammaire, de conjugaison et de ponctuation du texte fourni, sans en modifier le sens, le ton ni le vocabulaire.",
       "rephrasePrompt": "Tu es un assistant d'écriture. Reformule le texte fourni pour le rendre plus clair et plus fluide, en conservant strictement son sens et son niveau de langue.",
       "summarizePrompt": "Tu es un assistant de synthèse. Résume le texte fourni en conservant les informations essentielles, dans la langue du texte d'origine."
+    },
+    "overlay": {
+      "title": "Voice Edit",
+      "listening": "Dictez votre instruction…",
+      "orChoose": "ou choisissez :",
+      "transcribing": "Transcription de l'instruction…",
+      "processing": "Traitement en cours…",
+      "noSelection": "Aucun texte sélectionné — dictez, le résultat s'affichera ici.",
+      "selectionLabel": "Sélection",
+      "truncated": "Sélection trop longue : seuls les {{count}} premiers caractères seront traités.",
+      "copy": "Copier",
+      "copied": "Copié",
+      "replace": "Remplacer",
+      "retry": "Relancer",
+      "close": "Fermer",
+      "closeHint": "Échap pour fermer",
+      "copyAria": "Copier le résultat dans le presse-papiers",
+      "replaceAria": "Remplacer le texte sélectionné par le résultat",
+      "retryAria": "Relancer la même action",
+      "closeAria": "Fermer Voice Edit"
+    },
+    "errors": {
+      "replaceFailed": "Le texte n'a pas pu être inséré ici (zone en lecture seule ?). Il reste copié dans le presse-papiers.",
+      "focusFailed": "Impossible de revenir à la fenêtre d'origine. Le résultat est copié dans le presse-papiers.",
+      "transcriptionFailed": "L'instruction n'a pas pu être transcrite. Réessayez ou choisissez une action.",
+      "emptyInstruction": "Aucune instruction entendue.",
+      "generic": "Le traitement a échoué. Réessayez."
+    },
+    "upsell": {
+      "title": "Voice Edit nécessite Lexena Cloud",
+      "body": "Le traitement du texte par l'IA passe par le service managé. Activez votre essai gratuit ou un abonnement pour l'utiliser.",
+      "cta": "Voir les offres"
+    },
+    "settings": {
+      "title": "Voice Edit",
+      "description": "Agir à la voix sur le texte sélectionné dans n'importe quelle application.",
+      "hotkeyLabel": "Raccourci Voice Edit",
+      "hotkeyHint": "Laissez vide pour désactiver Voice Edit.",
+      "primaryLang": "Langue principale",
+      "secondaryLang": "Langue secondaire",
+      "langHint": "Un texte dans une autre langue est traduit vers la langue principale. Un texte déjà dans la langue principale est traduit vers la secondaire.",
+      "actionsTitle": "Actions de la palette",
+      "actionsHint": "Les touches 1 à 9 déclenchent ces actions dans l'ordre.",
+      "actionLabel": "Libellé",
+      "actionPrompt": "Instruction envoyée à l'IA",
+      "translatePromptLocked": "Construite automatiquement à partir des deux langues ci-dessus.",
+      "addAction": "Ajouter une action",
+      "removeAction": "Supprimer l'action",
+      "moveUp": "Monter",
+      "moveDown": "Descendre",
+      "resetActions": "Rétablir les actions par défaut"
     }
   },
   "streaming": {

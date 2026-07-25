@@ -14,6 +14,8 @@ pub(crate) struct HotkeyConfig {
     pub(crate) post_process_toggle: Option<String>,
     /// Re-pastes the last inserted transcription at the cursor. Empty = disabled.
     pub(crate) repaste: Option<String>,
+    /// Opens the Voice Edit overlay on the current selection. Empty = disabled.
+    pub(crate) voice_edit: Option<String>,
 }
 
 /// Holds a cached whisper context + state so state buffers are allocated once
