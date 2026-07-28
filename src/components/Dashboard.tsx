@@ -505,6 +505,10 @@ export default function Dashboard() {
                         setActiveTab("parametres");
                         setActiveSettingsSection("section-compte");
                       }}
+                      onOpenAboutPage={() => {
+                        setActiveTab("parametres");
+                        setActiveSettingsSection("section-a-propos");
+                      }}
                     />
                   )}
                   {activeTab === "historique" && (
