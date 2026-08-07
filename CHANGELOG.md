@@ -9,7 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [3.2.0] - Unreleased
+## [3.2.1] - 2026-08-07
+
+### Added
+- **Version badge on the Home screen** — the installed version and its release channel (**Stable** / **Beta**) are now shown next to the greeting, so you can tell which build you are running without opening Settings. The channel is derived from the version string itself (any pre-release suffix means Beta), so it reflects the binary actually installed rather than your update-channel preference. Click the badge to jump straight to Settings → About.
+
+---
+
+## [3.2.0] - 2026-07-28
 
 ### Added
 - **Voice Edit** — act on text you selected in *any* Windows application, with your voice. Select text anywhere (browser, PDF, email, editor), press the Voice Edit shortcut (**Ctrl+F9** by default), and either say what you want done with it ("translate this but keep the formal tone") or press a digit for a preset action: **1** Translate · **2** Fix · **3** Rephrase · **4** Summarize. The result appears in a floating overlay with **Copy**, **Replace** and **Retry** — so it works both on text you're reading (where replacement is impossible) and on text you're writing. While the overlay listens, a live level meter and a countdown show that the microphone is open and when it closes. Dictated instructions end automatically on a ~800 ms pause; the microphone closes on its own after 30 s of silence. Translation uses an automatic toggle: foreign text goes to your primary language, text already in your primary language goes to your secondary one (both configurable under Settings → Shortcuts → Voice Edit). Your clipboard text is saved and restored around the capture, and a clipboard holding an image or files is never touched at all. Voice Edit requires Lexena Cloud — the overlay shows an upsell and makes no network call when you are not eligible.

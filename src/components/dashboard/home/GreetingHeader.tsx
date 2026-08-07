@@ -3,6 +3,12 @@ import { useProfiles } from "@/contexts/ProfilesContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useSync } from "@/hooks/useSync";
 import { useDateFormatters } from "@/lib/date-format";
+import { VersionBadge } from "@/components/dashboard/home/VersionBadge";
+
+interface GreetingHeaderProps {
+  /** Opens Settings → About from the version badge. */
+  onOpenAboutPage: () => void;
+}
 
 /**
  * Time-aware greeting at the top of the home screen. We have no first name
@@ -10,7 +16,7 @@ import { useDateFormatters } from "@/lib/date-format";
  * profile's name — always present, user-chosen. The tagline surfaces the last
  * sync time when sync is on, otherwise a neutral "ready to dictate".
  */
-export function GreetingHeader() {
+export function GreetingHeader({ onOpenAboutPage }: GreetingHeaderProps) {
   const { t } = useTranslation();
   const { profiles, activeProfileId } = useProfiles();
   const { status } = useAuth();
@@ -34,9 +40,12 @@ export function GreetingHeader() {
 
   return (
     <div className="vt-anim-fade-up">
-      <div className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--vt-fg-4)]">
-        <span className="w-1.5 h-1.5 rounded-full bg-[var(--vt-accent)] vt-anim-pulse-dot" />
-        {t("home.heroEyebrow")}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--vt-fg-4)]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--vt-accent)] vt-anim-pulse-dot" />
+          {t("home.heroEyebrow")}
+        </div>
+        <VersionBadge onOpenAboutPage={onOpenAboutPage} />
       </div>
       <h1 className="vt-display text-[26px] leading-[1.08] font-semibold tracking-tight text-[var(--vt-fg)] mt-1.5">
         {name ? (

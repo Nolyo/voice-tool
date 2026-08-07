@@ -86,6 +86,11 @@
     "heroEyebrow": "Accueil",
     "heroTitle": "Bienvenue sur Lexena",
     "heroSubtitle": "Un coup d'œil sur ton compte, ta synchronisation et tes dernières notes.",
+    "version": {
+      "channelStable": "Stable",
+      "channelBeta": "Bêta",
+      "openAbout": "Version {{version}} — canal {{channel}}. Ouvrir À propos."
+    },
     "account": {
       "eyebrowSignedOut": "Compte",
       "titleSignedOut": "Crée un compte Lexena",

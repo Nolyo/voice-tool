@@ -23,6 +23,7 @@ interface AccueilTabProps {
   onViewNotes: () => void;
   onViewStatistics: () => void;
   onOpenAccountPage: () => void;
+  onOpenAboutPage: () => void;
 }
 
 /**
@@ -45,12 +46,13 @@ export function AccueilTab({
   onViewNotes,
   onViewStatistics,
   onOpenAccountPage,
+  onOpenAboutPage,
 }: AccueilTabProps) {
   const { t } = useTranslation();
 
   return (
     <div className="vt-app max-w-[1200px] mx-auto space-y-7">
-      <GreetingHeader />
+      <GreetingHeader onOpenAboutPage={onOpenAboutPage} />
 
       {/* Dictate */}
       <section>
